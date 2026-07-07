@@ -1,16 +1,98 @@
 # 1980s-NW Standalone
 
-`1980s-NW` 是独立浏览器页面项目。正式运行不需要安装或打开 SillyTavern，也不需要加载酒馆脚本。
+`1980s-NW`（MyRaidRealm）是一个**纯浏览器端的 AI 文字角色扮演 / 世界模拟**项目。它把原本运行在 SillyTavern（酒馆）里的玩法完全搬到独立网页中：正式运行**不需要安装或打开 SillyTavern，也不需要加载任何酒馆脚本**。
+
+构建产物是一个**自包含的单文件** `dist/index.html`（JS/CSS 全部内联）。用户直接在浏览器里打开这个文件，即可配置 API、选择开局预设、开局、发送消息、自动更新游戏变量、保存与导入存档。
+
+## 功能特性
+
+- **独立运行**：单个 HTML 文件，双击即可打开，无后端、无框架依赖注入。
+- **自带 API 配置**：在页面内填写 OpenAI 兼容接口（地址 / Key / 模型），即可驱动正文与变量更新。
+- **丰富开局预设**：内置约 38 个世界观预设 + 21 个 Workshop 世界包（末世、修仙、官场、权游、漫威、火影、高考模拟等）。
+- **自定义开局向导**：分步配置世界时间、社会、身份、货币、阵营、商业等，或用 AI 一键生成世界。
+- **变量驱动模拟**：通过本地 `stat_data` + `<JSONPatch>` 维护角色、NPC、商业、阵营等结构化状态，独立于 MVU。
+- **本地补充内容 / 世界书**：按发送目标（正文模型 / 变量模型 / 双向）注入规则与世界资料。
+- **内置小游戏**：骰子（Farkle）玩法面板。
+- **存档管理**：浏览器本地存档 + JSON 导入导出。
+- **国际化**：内置 `zh-CN`（默认）与 `en` 两种界面语言。
+
+## 技术栈
+
+- **UI 框架**：Vue 3（`<script setup>` 单文件组件）
+- **状态管理**：Pinia
+- **语言**：TypeScript 5
+- **样式**：Tailwind CSS v4 + PostCSS + Sass
+- **校验**：Zod
+- **图谱/可视化**：vis-network / vis-data
+- **模板**：EJS（浏览器端运行时）
+- **构建**：Webpack 5，输出内联单文件 `dist/index.html`
+- **包管理**：pnpm（要求 Node 18+，开发环境 Node 24 / pnpm 11 已验证）
+
+## 快速开始
+
+```bash
+# 1. 安装依赖（本目录即子项目根）
+pnpm install
+
+# 2. 生产构建 -> 生成 dist/index.html
+pnpm build
+
+# 3. 本地开发（development 模式 + watch 监听重建）
+pnpm watch
+```
+
+可用脚本（见 `package.json`）：
+
+| 命令 | 说明 |
+| --- | --- |
+| `pnpm build` | 生产模式构建，产出自包含 `dist/index.html` |
+| `pnpm build:dev` | development 模式单次构建（便于调试） |
+| `pnpm watch` | development 模式 + `--watch`，改动即重建 |
+
+构建完成后，直接用浏览器打开 `dist/index.html` 即可使用。
 
 ## 正式入口
 
 - 发布入口：`dist/index.html`
+- HTML 模板：`src/index.html`
 - 源码入口：`src/index.ts`
-- 构建配置：根目录 `webpack.1980s-nw-standalone.config.ts`
-- 构建命令：在仓库根目录运行 `pnpm build:1980s-nw-standalone`
-- 本地开发命令：在仓库根目录运行 `pnpm dev:1980s-nw-standalone`
+- 构建配置：`webpack.1980s-nw-standalone.config.ts`
+- 构建命令：在本目录运行 `pnpm build`
+- 本地开发命令：在本目录运行 `pnpm watch`（development 模式监听重建）
 
 构建后的 `dist/index.html` 是给用户打开的独立网页。用户在页面里配置 API、选择预设、开局、发送消息、自动更新变量、保存和导入存档。
+
+## 目录结构
+
+```
+1980s-NW/
+├─ src/                     # 网页源码（独立版主流程）
+│  ├─ index.ts / index.html # 应用入口与 HTML 模板
+│  ├─ App.vue               # 根组件
+│  ├─ components/           # UI 组件
+│  │  ├─ layout/            # 布局（Header、侧栏、主区、面板）
+│  │  ├─ panels/            # 功能面板（角色、商业、阵营、抽奖、设置…）
+│  │  ├─ setup/             # 开局向导（预设选择、自定义向导、AI 生成）
+│  │  ├─ config/            # 世界/玩家/商业/阵营配置
+│  │  ├─ game/              # 骰子小游戏组件
+│  │  └─ common/            # 通用组件
+│  ├─ stores/               # Pinia 状态（消息、设置、statData…）
+│  ├─ composables/          # 组合式函数
+│  ├─ presets/              # 开局预设定义（含 ws/ 世界包 JSON）
+│  ├─ assets/               # standalone 本地内容、世界书、注册表
+│  ├─ utils/                # 运行时/独立版工具函数
+│  ├─ game/                 # Farkle 骰子游戏引擎
+│  └─ i18n/                 # 国际化（zh-CN / en）
+├─ runtime/                 # 独立运行时（Provider、回合、状态、提示词）
+├─ schema/                  # 变量/数据结构 Schema（schema.ts / schema.json）
+├─ preset-package/          # 预设包入口（挂到全局供网页运行时加载）
+├─ assets-design/           # 设计稿与原始预设 JSON（不参与构建）
+├─ legacy-reference/        # 旧酒馆脚本参考（不作为入口，仅存档）
+├─ docs/                    # 计划、进度、快照文档
+├─ scripts/tests/           # 测试脚本
+├─ dist/                    # 构建产物（index.html，git 忽略）
+└─ webpack.1980s-nw-standalone.config.ts
+```
 
 ## 发布边界
 
