@@ -167,13 +167,13 @@ const presetGroups = computed<PresetDisplayGroup[]>(() => {
 
   return [
     {
-      key: 'builtin',
+      key: 'builtin' as const,
       title: t('setup.presetSelect.builtInGroupTitle'),
       kicker: t('setup.presetSelect.builtInGroupKicker'),
       items: builtInPresets,
     },
     {
-      key: 'workshop',
+      key: 'workshop' as const,
       title: t('setup.presetSelect.workshopGroupTitle'),
       kicker: t('setup.presetSelect.workshopGroupKicker'),
       items: workshopItems,

@@ -20,7 +20,7 @@ Module._resolveFilename = function patchedResolveFilename(request, parent, isMai
   if (typeof request === 'string' && path.basename(request) === 'schema' && path.extname(request) === '') {
     try {
       return originalResolveFilename.call(this, `${request}.ts`, parent, isMain, options);
-    } catch (error) {
+    } catch {
       // 回退到默认解析，保持非测试场景下的原始行为
     }
   }

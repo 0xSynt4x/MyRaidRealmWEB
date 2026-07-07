@@ -14,4 +14,7 @@ type StandaloneEventOnReturn = {
   stop: () => void;
 };
 
+/** 与 eventOn 返回值一致的事件句柄别名，供组件订阅时标注类型 */
+type EventOnReturn = StandaloneEventOnReturn;
+
 declare function eventOn(eventType: string, listener: (...args: any[]) => void): StandaloneEventOnReturn;
