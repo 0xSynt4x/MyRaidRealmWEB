@@ -1,0 +1,44 @@
+# Normalize line endings: treat everything as text with LF in the repo.
+# This avoids the "LF will be replaced by CRLF" noise on Windows checkouts.
+* text=auto eol=lf
+
+# Explicit text file types (checked out with LF everywhere)
+*.ts       text eol=lf
+*.tsx      text eol=lf
+*.js       text eol=lf
+*.cjs      text eol=lf
+*.mjs      text eol=lf
+*.vue      text eol=lf
+*.json     text eol=lf
+*.css      text eol=lf
+*.scss     text eol=lf
+*.html     text eol=lf
+*.md       text eol=lf
+*.txt      text eol=lf
+*.yml      text eol=lf
+*.yaml     text eol=lf
+*.ini      text eol=lf
+*.d.ts     text eol=lf
+
+# Binary files: never touch line endings
+*.png      binary
+*.jpg      binary
+*.jpeg     binary
+*.gif      binary
+*.webp     binary
+*.ico      binary
+*.woff     binary
+*.woff2    binary
+*.ttf      binary
+*.eot      binary
+*.otf      binary
+*.mp3      binary
+*.mp4      binary
+*.pdf      binary
+*.zip      binary
+
+# Lockfiles: keep as-is, mark as generated so diffs collapse on GitHub
+pnpm-lock.yaml -diff linguist-generated=true
+
+# Build output should not skew language stats
+dist/**    linguist-generated=true
