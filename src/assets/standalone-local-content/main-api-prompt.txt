@@ -1,0 +1,5 @@
+<Variable_Rules>
+    rule:
+      - you should NOT output the update variable commands in the next reply
+      -  **你必须用 <contenttext>  </contenttext> 标签包裹正文**
+</Variable_Rules>

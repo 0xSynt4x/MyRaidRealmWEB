@@ -1,0 +1,82 @@
+/* ========== 统一删除按钮样式 ========== */
+
+/* 卡片悬浮删除按钮 - 用于面板中的卡片项 */
+.card-delete-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: none;
+  background: var(--accent-danger);
+  color: white;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transform: scale(0.8);
+  transition:
+    opacity 200ms ease,
+    transform 200ms ease,
+    background 200ms ease;
+  z-index: 10;
+  line-height: 1;
+  padding: 0;
+}
+
+.card-delete-btn:hover {
+  background: color-mix(in srgb, var(--accent-danger) 80%, black);
+  transform: scale(1.1);
+}
+
+/* 触摸设备始终显示 */
+@media (hover: none) {
+  .card-delete-btn {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+}
+
+/* 行内删除按钮 - 用于列表行中的删除操作 */
+.inline-delete-btn {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 13px;
+  border-radius: 4px;
+  transition: all 150ms;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+}
+
+.inline-delete-btn:hover {
+  background: var(--accent-danger);
+  color: white;
+}
+
+/* 矩形删除按钮 - 用于表单项中的删除操作 */
+.rect-delete-btn {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: var(--accent-danger);
+  color: white;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  transition: all 200ms ease;
+  flex-shrink: 0;
+}
+
+.rect-delete-btn:hover {
+  background: color-mix(in srgb, var(--accent-danger) 80%, black);
+}

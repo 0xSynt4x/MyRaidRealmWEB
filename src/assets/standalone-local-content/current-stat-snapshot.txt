@@ -1,0 +1,4 @@
+<status_current_variables>
+仅作提示词用,勿输出
+[当前变量快照]: {{format_message_variable::stat_data}}
+</status_current_variables>

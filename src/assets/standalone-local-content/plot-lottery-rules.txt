@@ -1,0 +1,21 @@
+<%
+  let count = Number(getvar('stat_data.设置.积分系统.抽奖次数')) || 1;
+  let isPity = getvar('stat_data.设置.积分系统.保底触发');
+  const getQuality = (forceEpic) => {
+    if (forceEpic) return '传说';
+    const r = _.random(1, 100);
+    if (r === 100) return '传说';
+    if (r >= 96) return '史诗';
+    if (r >= 81) return '稀有';
+    if (r >= 51) return '精良';
+    return '普通';
+  };
+%>
+以下是内部规则,知晓即可
+rules:
+  - 进入抽奖环节,抽奖积分已被前端扣除
+  - 本次回复不要描写剧情,不要提及积分增减,仅在<contenttext>标签内生成抽奖结果
+  - **系统已强制生成如下<%= count %>次抽奖结果，你必须严格遵守，不可更改品质：**
+<% for(let i=0; i<count; i++) { -%>
+    - 第<%= i+1 %>次：【<%= getQuality(i === 0 && isPity) %>】
+<% } -%>

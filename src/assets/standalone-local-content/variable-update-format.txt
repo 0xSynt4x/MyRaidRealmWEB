@@ -1,0 +1,90 @@
+---
+变量输出格式:
+  rule:
+    - you must output both analysis and patch in one response
+    - output only contain exactly one <UpdateVariable> block, with exactly one <Analysis> and one <JSONPatch>
+    - the patch must be a valid JSON array of operation objects only, no comments, no trailing commas, no extra text inside <JSONPatch>
+    - allowed operations are only: replace, delta, insert, remove, move
+    - do not update any field whose final key starts with `_`
+    - do not invent new paths: every path must be grounded in existing schema fields or existing runtime keys
+    - JSON Pointer must follow RFC 6901 escaping: `~` -> `~0`, `/` -> `~1`
+    - for number change on existing number field, prefer `delta`; use `replace` only when setting absolute value is necessary
+    - `replace` and `delta` require target path already exists
+    - `insert`:
+      - for object: path must be `/.../newKey` and parent object must exist
+      - for array append: path must be `/.../-`
+      - for array index insert: path must be `/.../{index}` with valid index
+      - for existing array fields, NEVER insert to the array root path `/.../arrayField`; you MUST use `/.../arrayField/-` (append) or `/.../arrayField/{index}`
+      - for list-like/event-log/history arrays, append a new entry with `insert` at `/.../arrayField/-`
+      - for existing arrays, prefer incremental update by default (`insert` to `/.../arrayField/-`); use `replace` on the whole array only when full reconstruction is explicitly required
+    - `remove` requires target path exists; do not remove required structural roots
+    - `move` requires both `from` exists and `to` parent exists; never move across incompatible types
+    - no redundant operations: do not emit duplicate writes to same path in one patch unless strictly ordered and necessary
+    - if one event implies multiple variable impacts, you must update all impacted fields, not a subset
+    - if no valid update is needed, output empty array `[]` and explain why in analysis
+
+  format: |-
+    <UpdateVariable>
+    <Analysis>
+    [Scene Anchor]
+    - IN ENGLISH
+    - put all reasoning only inside this single <Analysis> block
+    - do not output any extra analysis tag, code fence, or preface such as <analysis_block>
+    - Current time/location: {{read from world state}}
+    - Player state: {{brief current action / condition}}
+    - Present characters: {{list NPCs currently in scene}}
+    - Area traits: {{read from current location data}}
+
+    [Character Status Quick Check]
+    - Important NPCs (must check one by one): {{list all important NPCs and whether present}}
+    - Focused NPCs (survival system): {{list NPCs where _关注=true}}
+    - Current favor / trust state: {{brief relation summary for present NPCs}}
+
+    [Variable Update Checklist]
+    - list all candidate variables touched by current reply
+    - mark each candidate as: update / no-update with short reason
+    - explicitly check at least:
+      - 世界.时间系统.当前时间
+      - 世界.空间定位.当前位置
+      - 玩家.生存状态（血量/体力值/饥饿值/口渴值）
+      - 玩家.物品栏 / 货币资源
+      - 玩家.技能系统
+      - 人物档案（important NPCs one by one）
+      - 玩家.势力关系
+      - 世界.势力网络
+      - 商城.物品 / 技能（must update when user requests refresh）
+      - other impacted variables
+    - for each update, state expected change briefly
+
+    [Intent Calibration]
+    - interpret user_input literally as the user role's in-character intent; do not overread it as manipulation / power / violence / coercion unless explicitly stated
+    - do not depict characters through dominance / commands / owner-servant framing / obedience / fawning / mind control / worship unless the user explicitly requests such portrayal
+    - independence check: preserve each character's core setting, agency, and behavioral consistency
+
+    [Logic Construction]
+    - worldview logic: ensure the scene, reactions, and updates fit established world rules and current context
+    - NPC internal logic: ensure each NPC's motive, knowledge, stance, and reaction remain internally consistent
+    - emotional intensity check: ensure reactions stay proportionate and are not excessive for the triggering event
+
+    [Skip Declaration]
+    - explicitly list variables not updated this turn and why
+
+    [Legality Check]
+    - check path legality and operation legality before finalizing
+    - confirm all relationship changes have explicit event support
+    - confirm survival changes match action logic
+    - confirm all present NPC status/location fields are updated when needed
+    - if no valid update is needed, explain why and output [] in <JSONPatch>
+    </Analysis>
+    <JSONPatch>
+    [
+      { "op": "delta", "path": "/path/to/existing/number", "value": 3 },
+      { "op": "replace", "path": "/path/to/existing/value", "value": "new value" },
+      { "op": "insert", "path": "/path/to/existing/object/newKey", "value": { "x": 1 } },
+      { "op": "insert", "path": "/path/to/existing/array/-", "value": "new item" },
+      { "op": "insert", "path": "/path/to/existing/historyArray/-", "value": "new item" },
+      { "op": "remove", "path": "/path/to/existing/object/key" },
+      { "op": "move", "from": "/path/from", "to": "/path/to" }
+    ]
+    </JSONPatch>
+    </UpdateVariable>

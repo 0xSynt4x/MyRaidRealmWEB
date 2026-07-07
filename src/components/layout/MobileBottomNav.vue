@@ -1,0 +1,160 @@
+<template>
+  <nav ref="navRef" class="mobile-bottom-nav" :aria-label="t('nav.mobileAriaLabel')">
+    <button
+      v-for="item in navItems"
+      :key="item.id"
+      :class="['nav-item', { active: overlayPanel === item.id }]"
+      :title="item.label"
+      @click="handleNavClick(item.id)"
+    >
+      <i :class="item.icon"></i>
+      <span>{{ item.label }}</span>
+    </button>
+
+    <div v-if="showRightHint" class="right-scroll-hint" aria-hidden="true">
+      <i class="fa-solid fa-chevron-right"></i>
+    </div>
+  </nav>
+</template>
+
+<script setup lang="ts">
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
+import { useI18n } from '../../i18n';
+import { useLayoutStore, type TabType } from '../../stores/layout';
+
+interface NavItem {
+  id: TabType;
+  label: string;
+  icon: string;
+}
+
+const layoutStore = useLayoutStore();
+const { t } = useI18n();
+
+const navItems = computed<NavItem[]>(() => [
+  { id: 'profile', label: t('nav.profile'), icon: 'fa-regular fa-id-card' },
+  { id: 'faction', label: t('nav.faction'), icon: 'fa-solid fa-sitemap' },
+  { id: 'business', label: t('nav.business'), icon: 'fa-solid fa-briefcase' },
+  { id: 'notebook', label: t('nav.notebook'), icon: 'fa-regular fa-note-sticky' },
+  { id: 'content', label: t('nav.contentCenter'), icon: 'fa-solid fa-book-open-reader' },
+  { id: 'characters', label: t('nav.characters'), icon: 'fa-solid fa-users' },
+  { id: 'shop', label: t('nav.shop'), icon: 'fa-solid fa-store' },
+  { id: 'lottery', label: t('nav.lottery'), icon: 'fa-solid fa-gift' },
+  { id: 'dicegame', label: t('nav.dicegame'), icon: 'fa-solid fa-dice' },
+  { id: 'settings', label: t('nav.settings'), icon: 'fa-solid fa-gear' },
+  { id: 'donate', label: t('nav.donate'), icon: 'fa-solid fa-heart' },
+]);
+
+const overlayPanel = computed(() => layoutStore.overlayPanel);
+const navRef = ref<HTMLElement | null>(null);
+const showRightHint = ref(false);
+
+function updateRightHintVisibility() {
+  const navEl = navRef.value;
+  if (!navEl) {
+    showRightHint.value = false;
+    return;
+  }
+
+  const remainingScroll = navEl.scrollWidth - navEl.clientWidth - navEl.scrollLeft;
+  showRightHint.value = remainingScroll > 1;
+}
+
+function handleNavScroll() {
+  updateRightHintVisibility();
+}
+
+function handleResize() {
+  updateRightHintVisibility();
+}
+
+onMounted(() => {
+  const navEl = navRef.value;
+  navEl?.addEventListener('scroll', handleNavScroll, { passive: true });
+  window.addEventListener('resize', handleResize);
+  void nextTick(() => {
+    updateRightHintVisibility();
+  });
+});
+
+onBeforeUnmount(() => {
+  navRef.value?.removeEventListener('scroll', handleNavScroll);
+  window.removeEventListener('resize', handleResize);
+});
+
+function handleNavClick(tabId: TabType) {
+  layoutStore.toggleOverlayPanel(tabId);
+}
+</script>
+
+<style scoped>
+.mobile-bottom-nav {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 4px;
+  background: var(--card-bg-strong);
+  border-top: 1px solid var(--glass-border);
+  border-bottom: 1px solid var(--border-light);
+  backdrop-filter: var(--glass-blur-light);
+  -webkit-backdrop-filter: var(--glass-blur-light);
+}
+
+.mobile-bottom-nav::-webkit-scrollbar {
+  height: 0;
+}
+
+.nav-item {
+  min-width: 52px;
+  height: 44px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-tertiary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.nav-item i {
+  font-size: 14px;
+}
+
+.nav-item span {
+  font-size: 10px;
+  line-height: 1;
+}
+
+.nav-item.active {
+  color: var(--accent-primary);
+  background: rgba(var(--accent-primary-rgb), 0.12);
+  box-shadow: inset 0 0 0 1px rgba(var(--accent-primary-rgb), 0.2);
+}
+
+.right-scroll-hint {
+  position: sticky;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: -24px;
+  pointer-events: none;
+  background: linear-gradient(to right, transparent, var(--card-bg-strong) 58%);
+  z-index: 2;
+}
+
+.right-scroll-hint i {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  opacity: 0.9;
+}
+</style>

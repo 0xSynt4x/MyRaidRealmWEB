@@ -1,0 +1,14 @@
+# 依赖与构建产物
+node_modules/
+dist/
+
+# 工具与 IDE 临时目录
+.idea/
+.omx/
+.playwright-mcp/
+.sisyphus/
+
+# 系统与日志
+.DS_Store
+Thumbs.db
+*.log

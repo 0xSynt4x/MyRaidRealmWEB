@@ -1,0 +1,959 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "设置": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "生存系统模式": {
+          "default": "关闭",
+          "type": "string",
+          "enum": [
+            "关闭",
+            "基础模式",
+            "生存模式"
+          ]
+        },
+        "积分系统": {
+          "default": {},
+          "type": "object",
+          "properties": {
+            "商城刷新": {
+              "type": "boolean"
+            },
+            "抽奖触发": {
+              "type": "boolean"
+            },
+            "$保底次数": {
+              "type": "number"
+            },
+            "保底触发": {
+              "type": "boolean"
+            },
+            "抽奖次数": {
+              "type": "number"
+            },
+            "上次签到日期": {
+              "type": "string"
+            },
+            "_兑换比例": {
+              "default": 100,
+              "type": "number"
+            }
+          }
+        }
+      }
+    },
+    "世界": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "时间系统": {
+          "default": {},
+          "type": "object",
+          "properties": {
+            "当前时间": {
+              "type": "string"
+            },
+            "纪元名称": {
+              "type": "string"
+            },
+            "当前天气": {
+              "type": "string"
+            }
+          }
+        },
+        "空间定位": {
+          "default": {},
+          "type": "object",
+          "properties": {
+            "当前位置": {
+              "type": "string"
+            },
+            "区域特征": {
+              "type": "string"
+            }
+          }
+        },
+        "社会环境": {
+          "default": {},
+          "type": "object",
+          "properties": {
+            "权力结构": {
+              "type": "string"
+            },
+            "社会氛围": {
+              "type": "string"
+            },
+            "主流价值观": {
+              "type": "string"
+            }
+          }
+        },
+        "力量体系": {
+          "type": "string"
+        },
+        "玩法侧重": {
+          "type": "string"
+        },
+        "运行规则": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "叙事玩法": {
+          "type": "string"
+        },
+        "信息层级": {
+          "default": {},
+          "type": "object",
+          "properties": {
+            "全局重大事件": {
+              "type": "string"
+            },
+            "势力动态": {
+              "type": "string"
+            },
+            "区域事件": {
+              "type": "string"
+            },
+            "本地消息": {
+              "type": "string"
+            },
+            "圈内传闻": {
+              "type": "string"
+            }
+          }
+        },
+        "势力网络": {
+          "default": {},
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "description": "势力名称"
+          },
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "影响力": {
+                "default": 10,
+                "type": "number"
+              },
+              "人数": {
+                "type": "number"
+              },
+              "关系": {
+                "default": {},
+                "type": "object",
+                "propertyNames": {
+                  "type": "string",
+                  "description": "目标势力"
+                },
+                "additionalProperties": {
+                  "type": "object",
+                  "properties": {
+                    "关系值": {
+                      "type": "number"
+                    },
+                    "关系描述": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "玩家": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "生存状态": {
+          "default": {},
+          "type": "object",
+          "properties": {
+            "血量": {
+              "default": 100,
+              "type": "number"
+            },
+            "体力值": {
+              "default": 100,
+              "type": "number"
+            },
+            "饥饿值": {
+              "default": 100,
+              "type": "number"
+            },
+            "口渴值": {
+              "default": 100,
+              "type": "number"
+            }
+          }
+        },
+        "姓名": {
+          "type": "string"
+        },
+        "年龄": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
+          ]
+        },
+        "性别": {
+          "type": "string"
+        },
+        "身份信息": {
+          "default": {},
+          "type": "object",
+          "properties": {
+            "职业": {
+              "type": "string"
+            },
+            "阶层": {
+              "type": "string"
+            },
+            "所属组织": {
+              "type": "string"
+            },
+            "特殊身份": {
+              "type": "string"
+            },
+            "背景信息": {
+              "type": "string"
+            }
+          }
+        },
+        "当前目标": {
+          "type": "string"
+        },
+        "技能系统": {
+          "default": {},
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "description": "技能名称"
+          },
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "品质": {
+                "type": "string",
+                "enum": [
+                  "普通",
+                  "精良",
+                  "稀有",
+                  "史诗",
+                  "传说"
+                ]
+              },
+              "描述": {
+                "type": "string"
+              },
+              "类型": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "品质"
+            ]
+          }
+        },
+        "势力关系": {
+          "default": {},
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "description": "势力名称"
+          },
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "声望值": {
+                "type": "number"
+              },
+              "声望等级": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "string",
+                    "const": "待计算"
+                  }
+                ]
+              },
+              "关系状态": {
+                "type": "string"
+              },
+              "头衔列表": {
+                "default": [],
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "近期互动": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "货币资源": {
+          "default": {},
+          "type": "object",
+          "properties": {
+            "主货币": {
+              "default": {},
+              "type": "object",
+              "properties": {
+                "名称": {
+                  "type": "string"
+                },
+                "数量": {
+                  "default": 500,
+                  "type": "number"
+                }
+              }
+            },
+            "次级货币": {
+              "default": {},
+              "type": "object",
+              "propertyNames": {
+                "type": "string",
+                "description": "货币名称"
+              },
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "数量": {
+                    "type": "number"
+                  },
+                  "兑换比例": {
+                    "type": "string"
+                  },
+                  "用途说明": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "物品栏": {
+          "default": {},
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "description": "物品名称"
+          },
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "数量": {
+                "type": "number"
+              },
+              "类型": {
+                "type": "string"
+              },
+              "品质": {
+                "default": "普通",
+                "type": "string",
+                "enum": [
+                  "普通",
+                  "精良",
+                  "稀有",
+                  "史诗",
+                  "传说"
+                ]
+              },
+              "有效期": {
+                "type": "string"
+              },
+              "特殊属性": {
+                "type": "string"
+              },
+              "备注": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "商业情报": {
+          "default": {},
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "description": "情报编号或简述"
+          },
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "类型": {
+                "type": "string"
+              },
+              "内容": {
+                "type": "string"
+              },
+              "可靠度": {
+                "type": "string"
+              },
+              "获取时间": {
+                "type": "string"
+              },
+              "时效性": {
+                "type": "string"
+              },
+              "$time": {
+                "default": 1779619141531,
+                "type": "number"
+              }
+            }
+          }
+        },
+        "库存详情": {
+          "default": {},
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "description": "货物名称"
+          },
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "数量": {
+                "type": "number"
+              },
+              "单位": {
+                "type": "string"
+              },
+              "存放地点": {
+                "type": "string"
+              },
+              "品质状况": {
+                "type": "string"
+              },
+              "进货价": {
+                "type": "number"
+              },
+              "预计售价": {
+                "type": "number"
+              },
+              "备注": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "经营实体": {
+          "default": {},
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "description": "实体名称"
+          },
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "类型": {
+                "type": "string"
+              },
+              "位置": {
+                "type": "string"
+              },
+              "外观": {
+                "type": "string"
+              },
+              "财务": {
+                "default": {},
+                "type": "object",
+                "properties": {
+                  "收入": {
+                    "type": "number"
+                  },
+                  "支出": {
+                    "type": "number"
+                  },
+                  "资产价值": {
+                    "type": "number"
+                  },
+                  "负债": {
+                    "type": "number"
+                  }
+                }
+              },
+              "运营": {
+                "default": {},
+                "type": "object",
+                "properties": {
+                  "运营状态": {
+                    "type": "string"
+                  },
+                  "人员数量": {
+                    "type": "number"
+                  }
+                }
+              },
+              "市场": {
+                "default": {},
+                "type": "object",
+                "properties": {
+                  "客户群体": {
+                    "type": "string"
+                  },
+                  "竞争态势": {
+                    "type": "string"
+                  },
+                  "特色优势": {
+                    "type": "string"
+                  }
+                }
+              },
+              "重要设施": {
+                "default": [],
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "当前问题": {
+                "type": "string"
+              },
+              "发展潜力": {
+                "type": "string"
+              },
+              "备注": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "记事本": {
+          "default": {},
+          "type": "object",
+          "properties": {
+            "潜在危机": {
+              "default": {},
+              "type": "object",
+              "propertyNames": {
+                "type": "string",
+                "description": "危机简述"
+              },
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "严重程度": {
+                    "type": "string"
+                  },
+                  "预计影响时间": {
+                    "type": "string"
+                  },
+                  "应对措施": {
+                    "type": "string"
+                  },
+                  "$time": {
+                    "default": 1779619141531,
+                    "type": "number"
+                  }
+                }
+              }
+            },
+            "当前机遇": {
+              "default": {},
+              "type": "object",
+              "propertyNames": {
+                "type": "string",
+                "description": "机遇简述"
+              },
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "时效性": {
+                    "type": "string"
+                  },
+                  "所需资源": {
+                    "type": "string"
+                  },
+                  "行动计划": {
+                    "type": "string"
+                  },
+                  "$time": {
+                    "default": 1779619141531,
+                    "type": "number"
+                  }
+                }
+              }
+            },
+            "待办事项": {
+              "default": {},
+              "type": "object",
+              "propertyNames": {
+                "type": "string",
+                "description": "事项描述"
+              },
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "优先级": {
+                    "type": "string"
+                  },
+                  "截止时间": {
+                    "type": "string"
+                  },
+                  "状态": {
+                    "type": "string"
+                  },
+                  "$time": {
+                    "default": 1779619141531,
+                    "type": "number"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "人物档案": {
+      "default": {},
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "description": "人物ID - 仅可使用 NPC_数字 格式（如\"NPC_1\",\"NPC_2\"），数字键在同一批导入内必须不重复且自增"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "姓名": {
+            "type": "string"
+          },
+          "种族": {
+            "type": "string"
+          },
+          "性别": {
+            "type": "string"
+          },
+          "年龄": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "生存状态": {
+            "default": {},
+            "type": "object",
+            "properties": {
+              "血量": {
+                "default": 100,
+                "type": "number"
+              },
+              "体力值": {
+                "default": 100,
+                "type": "number"
+              },
+              "饥饿值": {
+                "default": 100,
+                "type": "number"
+              },
+              "口渴值": {
+                "default": 100,
+                "type": "number"
+              }
+            }
+          },
+          "社会身份": {
+            "default": {},
+            "type": "object",
+            "properties": {
+              "职业": {
+                "type": "string"
+              },
+              "所属势力": {
+                "type": "string"
+              },
+              "社会地位": {
+                "type": "string"
+              }
+            }
+          },
+          "关系数据": {
+            "default": {},
+            "type": "object",
+            "properties": {
+              "好感度": {
+                "type": "number"
+              },
+              "信任度": {
+                "type": "number"
+              },
+              "关系类型": {
+                "type": "string"
+              },
+              "印象标签": {
+                "default": [],
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "核心锚点": {
+                "default": [],
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "事件": {
+                      "type": "string"
+                    },
+                    "影响": {
+                      "type": "string"
+                    },
+                    "权重": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "事件",
+                    "影响",
+                    "权重"
+                  ]
+                }
+              }
+            }
+          },
+          "个人信息": {
+            "default": {},
+            "type": "object",
+            "properties": {
+              "价值观": {
+                "default": {},
+                "type": "object",
+                "properties": {
+                  "喜好": {
+                    "default": [],
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "厌恶": {
+                    "default": [],
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "雷区": {
+                    "type": "string"
+                  }
+                }
+              },
+              "执念与目标": {
+                "type": "string"
+              },
+              "心理创伤": {
+                "type": "string"
+              },
+              "外貌": {
+                "type": "string"
+              },
+              "表性格": {
+                "type": "string"
+              },
+              "里性格": {
+                "type": "string"
+              },
+              "当前想法": {
+                "type": "string"
+              },
+              "特殊能力": {
+                "type": "string"
+              },
+              "当前穿着": {
+                "type": "string"
+              },
+              "当前位置": {
+                "type": "string"
+              },
+              "当前状态": {
+                "type": "string"
+              },
+              "持有物品": {
+                "type": "string"
+              },
+              "过往经历": {
+                "default": [],
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "备注": {
+                "type": "string"
+              }
+            }
+          },
+          "交互记忆": {
+            "default": {},
+            "type": "object",
+            "properties": {
+              "未完成约定": {
+                "default": [],
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "共同秘密": {
+                "default": [],
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "赠礼记录": {
+                "default": [],
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "重要NPC": {
+            "type": "boolean"
+          },
+          "_关注": {
+            "type": "boolean"
+          },
+          "婚姻状态": {
+            "type": "string"
+          },
+          "联系方式": {
+            "type": "string"
+          },
+          "近期事件": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "重要经历": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "$time": {
+            "default": 1779619141531,
+            "type": "number"
+          }
+        }
+      }
+    },
+    "商城": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "物品": {
+          "default": {},
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "description": "物品名称"
+          },
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "价格": {
+                "type": "number"
+              },
+              "库存": {
+                "default": -1,
+                "type": "number"
+              },
+              "数量": {
+                "default": 1,
+                "type": "number"
+              },
+              "类型": {
+                "type": "string"
+              },
+              "品质": {
+                "default": "普通",
+                "type": "string",
+                "enum": [
+                  "普通",
+                  "精良",
+                  "稀有",
+                  "史诗",
+                  "传说"
+                ]
+              },
+              "有效期": {
+                "type": "string"
+              },
+              "特殊属性": {
+                "type": "string"
+              },
+              "备注": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "技能": {
+          "default": {},
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "description": "技能名称"
+          },
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "价格": {
+                "type": "number"
+              },
+              "库存": {
+                "default": -1,
+                "type": "number"
+              },
+              "品质": {
+                "default": "普通",
+                "type": "string",
+                "enum": [
+                  "普通",
+                  "精良",
+                  "稀有",
+                  "史诗",
+                  "传说"
+                ]
+              },
+              "描述": {
+                "type": "string"
+              },
+              "类型": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
