@@ -7,6 +7,8 @@
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-07-07
+
 ### Added
 
 - `.gitattributes`：统一换行符为 LF，消除 Windows 下的 CRLF 提交噪音。
@@ -24,6 +26,9 @@
 
 - 修复完整类型检查下的 90 个 TypeScript 错误（此前构建用 transpileOnly 未做类型检查）。
   类型检查现为 0 错误。
+- 移除 `tsconfig.json` 中未安装、未使用的 `yaml` 类型引用。
+- 修正 `pnpm-workspace.yaml` 的无效 `allowBuilds` 占位配置，改用
+  `ignoredBuiltDependencies` 并关闭隐式的 run 前 install，修复 CI 的 ignored-builds 失败。
 
 ## [1.0.0] - 2026-07-07
 
@@ -34,5 +39,6 @@
 - 变量驱动的角色/NPC/商业/阵营模拟、本地世界书注入、骰子小游戏、本地存档与 JSON 导入导出。
 - 中英双语界面（zh-CN / en）。
 
-[Unreleased]: https://github.com/0xSynt4x/MyRaidRealmWEB/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/0xSynt4x/MyRaidRealmWEB/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/0xSynt4x/MyRaidRealmWEB/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/0xSynt4x/MyRaidRealmWEB/releases/tag/v1.0.0
