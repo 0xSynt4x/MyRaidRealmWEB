@@ -1,6 +1,8 @@
 # pnpm workspace / project settings.
 #
-# @parcel/watcher is a transitive optional native dependency (via tailwind/sass
-# tooling). Its build script is not required for building this project, so we
-# explicitly opt out to avoid pnpm's "ignored build scripts" hard failure in CI.
-onlyBuiltDependencies: []
+# @parcel/watcher is a transitive optional native dependency pulled in by the
+# tailwind/sass tooling. Its lifecycle (build) script is not required to build
+# this project, so we explicitly mark it as an intentionally ignored build
+# dependency. This resolves ERR_PNPM_IGNORED_BUILDS (strictDepBuilds) in CI.
+ignoredBuiltDependencies:
+  - '@parcel/watcher'
