@@ -3,6 +3,17 @@
 # @parcel/watcher is a transitive optional native dependency pulled in by the
 # tailwind/sass tooling. Its lifecycle (build) script is not required to build
 # this project, so we explicitly mark it as an intentionally ignored build
-# dependency. This resolves ERR_PNPM_IGNORED_BUILDS (strictDepBuilds) in CI.
+# dependency. This resolves ERR_PNPM_IGNORED_BUILDS (strictDepBuilds).
 ignoredBuiltDependencies:
   - '@parcel/watcher'
+
+# Treat unreviewed build scripts as a warning, not a hard error. Combined with
+# ignoredBuiltDependencies above, this prevents ERR_PNPM_IGNORED_BUILDS from
+# breaking installs (including the implicit ones some pnpm versions run).
+strictDepBuilds: false
+
+# Do not run an implicit `pnpm install` before every `pnpm run <script>`.
+# CI installs dependencies explicitly in its own step, and the implicit
+# pre-run install ignores CLI flags, which reintroduced ERR_PNPM_IGNORED_BUILDS
+# on the typecheck/lint/build steps.
+verifyDepsBeforeRun: false
