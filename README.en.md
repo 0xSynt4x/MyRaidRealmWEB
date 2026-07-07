@@ -50,8 +50,11 @@ Available scripts (see `package.json`):
 | `pnpm build` | Production build; produces the self-contained `dist/index.html` |
 | `pnpm build:dev` | One-off development-mode build (for debugging) |
 | `pnpm watch` | Development mode + `--watch`; rebuilds on change |
+| `pnpm typecheck` | Full type check via `vue-tsc` (0 errors) |
+| `pnpm lint` | Run ESLint (0 errors; warnings are known tech debt) |
+| `pnpm format` | Format with Prettier (existing code is not fully formatted; prefer running only on changed files) |
 
-After the build, open `dist/index.html` in a browser to use it.
+After the build, open `dist/index.html` in a browser to use it. See [`CONTRIBUTING.md`](./CONTRIBUTING.md) for the development workflow.
 
 ## Production Entry Points
 

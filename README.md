@@ -50,8 +50,11 @@ pnpm watch
 | `pnpm build` | 生产模式构建，产出自包含 `dist/index.html` |
 | `pnpm build:dev` | development 模式单次构建（便于调试） |
 | `pnpm watch` | development 模式 + `--watch`，改动即重建 |
+| `pnpm typecheck` | 用 `vue-tsc` 做完整类型检查（0 错误） |
+| `pnpm lint` | 运行 ESLint（0 error；warning 为已知技术债） |
+| `pnpm format` | 用 Prettier 格式化（存量代码未整体格式化，建议只对改动文件运行） |
 
-构建完成后，直接用浏览器打开 `dist/index.html` 即可使用。
+构建完成后，直接用浏览器打开 `dist/index.html` 即可使用。开发规范见 [`CONTRIBUTING.md`](./CONTRIBUTING.md)。
 
 ## 正式入口
 
