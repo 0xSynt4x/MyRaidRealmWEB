@@ -95,12 +95,14 @@ import { storeToRefs } from 'pinia';
 import { computed, ref } from 'vue';
 import { useI18n } from '../../i18n';
 import { useBadgeStore } from '../../stores/badge';
+import { useNotificationStore } from '../../stores/notification';
 import { useStatDataStore } from '../../stores/statData';
 import { useStatDataActions } from '../../stores/statDataActions';
 import { extractGameDate, getQualityLevel } from '../../utils/format';
 
 const statDataStore = useStatDataStore();
 const statDataActions = useStatDataActions();
+const notificationStore = useNotificationStore();
 const { data } = storeToRefs(statDataStore);
 const { t, enumDisplay } = useI18n();
 
@@ -246,7 +248,7 @@ async function handleSignIn() {
     points.数量 += SIGN_IN_REWARD;
   });
 
-  toastr.success(t('shop.signInSuccess', { amount: SIGN_IN_REWARD }));
+  notificationStore.success(t('shop.signInSuccess', { amount: SIGN_IN_REWARD }));
 }
 
 // 调整兑换数量
@@ -267,7 +269,7 @@ async function handleExchange() {
     points.数量 += exchangeAmount.value;
   });
 
-  toastr.success(
+  notificationStore.success(
     t('shop.exchangeSuccess', {
       points: exchangeAmount.value,
       currencyCost: requiredCurrency.value,
@@ -279,7 +281,7 @@ async function handleExchange() {
 // 处理刷新商城
 async function handleRefresh() {
   await statDataActions.updateStatDataAtPath('shop.refresh', '设置.积分系统.商城刷新', true);
-  toastr.info(t('shop.refreshRequested'));
+  notificationStore.info(t('shop.refreshRequested'));
   // 触发变量将在 AI 回复完成后自动重置
 }
 
@@ -326,9 +328,9 @@ async function handleBuy(shopItem: (typeof shopItems.value)[0]) {
   });
 
   if (shopItem.商品类型 === 'item') {
-    toastr.success(t('shop.itemReceived', { name: shopItem.名称, count: shopItem.原始数据.数量 }));
+    notificationStore.success(t('shop.itemReceived', { name: shopItem.名称, count: shopItem.原始数据.数量 }));
   } else {
-    toastr.success(t('shop.skillLearned', { name: shopItem.名称 }));
+    notificationStore.success(t('shop.skillLearned', { name: shopItem.名称 }));
   }
 }
 </script>

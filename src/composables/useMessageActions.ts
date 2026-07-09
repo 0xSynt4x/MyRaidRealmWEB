@@ -9,6 +9,12 @@ import { useSetupStore } from '../stores/setup';
 import { formatMessageContentForDisplay } from '../utils/messageFormatting';
 import { commitStandaloneRuntimeStateFromStores } from '../utils/standaloneRuntime';
 import { loadStandaloneStatData } from '../utils/standaloneStatData';
+import { parseUpdateVariableDetails } from '../utils/taggedReply';
+import { applyVariableUpdatePatch, parseVariableUpdatePatch } from '../utils/variableUpdate';
+import {
+  FRONTEND_AUTHORITATIVE_FIELD_PATHS,
+  preserveFrontendAuthoritativeFields,
+} from '../utils/frontendAuthoritativeState';
 import {
   runStandaloneLocalTurn,
   runStandaloneVariableUpdatePass,
@@ -84,8 +90,12 @@ export function useMessageActions() {
   }
 
   function restoreStandaloneSnapshot(snapshot: ReturnType<typeof Schema.parse>, reason: string) {
+    // 回退到历史楼层旧快照时，剧情类字段跟随旧快照回退，但前端权威字段（商城刷新/签到/积分）
+    // 保留玩家在回退操作前的最新写入，避免刚点的签到/刷新/加积分被旧快照静默抹掉。
+    const liveStatData = Schema.parse(loadStandaloneStatData());
+    const mergedSnapshot = preserveFrontendAuthoritativeFields(snapshot, liveStatData);
     commitStandaloneRuntimeStateFromStores({
-      statData: snapshot,
+      statData: mergedSnapshot,
     });
     statDataStore.refreshData(`${reason}:restore_snapshot`);
   }
@@ -144,10 +154,14 @@ export function useMessageActions() {
       messagesStore.lockMainReplyTarget(latestUserMessage.message_id, reason);
       messagesStore.beginStreamingSession(reason);
 
+      // 记录本回合「开始时」的商城刷新基线值，供收尾对账区分「历史触发」与「回合中途玩家新点击的刷新」。
+      const turnStartStatData = loadStandaloneStatData();
+      const turnStartShopRefresh = Boolean(_.get(turnStartStatData, '设置.积分系统.商城刷新', false));
+
       const outcome = await runStandaloneLocalTurn({
         mainApi: settingsStore.mainApi,
         assistantApis: settingsStore.assistantApis,
-        statData: loadStandaloneStatData(),
+        statData: turnStartStatData,
         messages: messagesStore.messages,
         latestUserMessage,
         worldDifficulty: settingsStore.worldDifficulty,
@@ -186,6 +200,7 @@ export function useMessageActions() {
           reason,
           messageId: appendedAssistantMessage.message_id,
           phaseOutcome: variableUpdateOutcome,
+          turnStartShopRefresh,
         });
       } catch (error) {
         if (isAbortLikeError(error)) {
@@ -243,34 +258,87 @@ export function useMessageActions() {
   }
 
   /**
+   * 将本回合 AI 产出的变量更新补丁重放到「回合收尾时的实时状态」上，复刻酒馆内嵌版 MVU 的
+   * 「增量合并」语义，避免独立版「发送时抓基线 + 整份覆盖 session」导致生成期间前端写入（签到、
+   * 刷新、购买等商城操作）被静默丢弃。
+   *
+   * 独立版原实现里 `phaseOutcome.nextStatData` = 发送时基线 + AI 补丁，会丢掉回合中途的前端写入；
+   * 这里改为把同一份 AI 补丁重新打在收尾时读取的实时 `session.stat_data`（liveStatData）上。
+   * 若补丁缺失或重放失败（例如 AI 补丁的数组索引/路径基于旧基线、与实时结构不符），则安全回退到
+   * 原 `nextStatData`，保证绝不因重放异常而中断收尾。
+   *
+   * @param phaseOutcome 变量更新阶段产出（含 AI 原始补丁与基于旧基线的 nextStatData）
+   * @param liveStatData 回合收尾时读取的实时状态（含生成期间的前端商城写入）
+   */
+  function rebaseVariableUpdateOntoLiveState(
+    phaseOutcome: StandaloneVariableUpdatePhaseOutcome,
+    liveStatData: ReturnType<typeof Schema.parse>,
+  ): ReturnType<typeof Schema.parse> {
+    const { updateJsonPatchText } = parseUpdateVariableDetails(phaseOutcome.assistantMessage.update_content ?? null);
+    if (!updateJsonPatchText) {
+      return phaseOutcome.nextStatData;
+    }
+
+    try {
+      const { patch } = parseVariableUpdatePatch(updateJsonPatchText);
+      return applyVariableUpdatePatch(liveStatData, patch);
+    } catch (error) {
+      console.warn('[useMessageActions] 变量更新补丁重放到实时状态失败，回退到回合基线结果:', error);
+      return phaseOutcome.nextStatData;
+    }
+  }
+
+  /**
    * 回合收尾时对前端权威状态做兜底对账，避免依赖 AI 自觉维护触发标志与前端专属字段。
    *
-   * - Fix 1（商城刷新兜底重置）：`设置.积分系统.商城刷新` 是前端一次性触发开关。仅当本回合商城
-   *   内容确实发生变化（说明 AI 已执行刷新任务）时，前端才把标志归零，杜绝标志悬空导致后续每
-   *   回合反复刷新；若本回合变量更新失败/跳过或 AI 忽略了刷新任务（商城未变），则保留标志，让
-   *   下一回合可以重试刷新，避免刷新请求被静默丢弃。
+   * - Fix 1（商城刷新兜底重置）：`设置.积分系统.商城刷新` 是前端一次性触发开关。它只应清除「本
+   *   回合开始时就已存在的那次刷新请求」，绝不能连带清除「本回合生成期间玩家新点击刷新写入的
+   *   请求」——否则会出现竞态吞请求：上一回合的异步收尾晚于玩家新点的刷新执行，就会把玩家刚写的
+   *   true 覆盖回 false，导致下一回合 AI 收不到刷新任务（表现为商城无刷新内容）。因此这里用
+   *   `turnStartShopRefresh`（回合开始基线值）判断：仅当回合开始时该标志本就为 true，且本回合商城
+   *   内容确实变化（AI 已执行刷新）时才归零；其余情况一律保留 candidate/实时里的最新值，让玩家新
+   *   请求或未完成的刷新得以在下一回合重试。
    * - Fix 2（签到日期前端权威）：`设置.积分系统.上次签到日期` 由前端签到逻辑独占维护。AI 若对
    *   `设置.积分系统` 做粗粒度覆盖会清掉该字段，导致同一天可重复签到。这里回合结束后统一用回合
    *   开始前的权威值覆盖回去，确保 AI 无法改写签到日期。
+   * - Fix 3（积分数量前端权威）：`玩家.货币资源.次级货币.积分.数量` 只由前端签到/兑换/购买增减，
+   *   AI 规则明确「不可更新」。AI 若对货币子树做粗粒度 replace 会误改/抹掉积分，这里回合结束后用
+   *   实时权威值强制回写，确保积分余额不被 AI 覆盖（对应商城点了签到后积分被打回初始的问题）。
    *
-   * @param candidate 回合产出的候选状态（变量更新已应用时为 nextStatData，否则为回合前状态）
-   * @param preTurn 回合开始前的前端权威状态（含本地签到/刷新写入）
+   * @param candidate 回合产出的候选状态（变量更新已应用时为重放到实时状态的结果，否则为回合前状态）
+   * @param preTurn 回合收尾时的前端权威状态（含本地签到/刷新/购买写入）
+   * @param turnStartShopRefresh 本回合「开始时」抓取基线里的商城刷新值，用于区分历史触发与回合中途的新请求
    */
   function reconcileFrontendAuthoritativeState(
     candidate: ReturnType<typeof Schema.parse>,
     preTurn: ReturnType<typeof Schema.parse>,
+    turnStartShopRefresh: boolean,
   ): ReturnType<typeof Schema.parse> {
     const next = _.cloneDeep(candidate);
 
-    // Fix 1：仅在商城内容实际发生变化时归零刷新标志；否则保留标志以便下一回合重试。
-    const shopRefreshRequested = Boolean(_.get(preTurn, '设置.积分系统.商城刷新', false));
+    // Fix 1：仅归零「回合开始时就存在」的刷新请求，且需 AI 本回合确已刷新商城；否则保留 candidate
+    // 里的最新值，避免把玩家在生成期间新点击的刷新请求覆盖掉（竞态吞请求）。
     const shopChanged = !_.isEqual(_.get(candidate, '商城'), _.get(preTurn, '商城'));
-    if (!shopRefreshRequested || shopChanged) {
-      _.set(next, '设置.积分系统.商城刷新', false);
+    if (turnStartShopRefresh && shopChanged) {
+      _.set(next, FRONTEND_AUTHORITATIVE_FIELD_PATHS.shopRefresh, false);
     }
 
     // Fix 2：签到日期为前端权威字段，回合结束后强制回写回合前的值。
-    _.set(next, '设置.积分系统.上次签到日期', _.get(preTurn, '设置.积分系统.上次签到日期', ''));
+    _.set(
+      next,
+      FRONTEND_AUTHORITATIVE_FIELD_PATHS.lastSignInDate,
+      _.get(preTurn, FRONTEND_AUTHORITATIVE_FIELD_PATHS.lastSignInDate, ''),
+    );
+
+    // Fix 3：积分数量为前端权威字段，仅在实时状态里确有该字段时回写，避免破坏尚未初始化的货币结构。
+    if (_.has(preTurn, FRONTEND_AUTHORITATIVE_FIELD_PATHS.pointsAmount)) {
+      _.set(
+        next,
+        FRONTEND_AUTHORITATIVE_FIELD_PATHS.pointsAmount,
+        _.get(preTurn, FRONTEND_AUTHORITATIVE_FIELD_PATHS.pointsAmount),
+      );
+    }
+
     return Schema.parse(next);
   }
 
@@ -278,16 +346,33 @@ export function useMessageActions() {
     reason: string;
     messageId: number;
     phaseOutcome: StandaloneVariableUpdatePhaseOutcome;
+    turnStartShopRefresh: boolean;
+    // 是否把 AI 补丁重放到「当前存档」：
+    // - 正常发送回合：true。基线是发送时快照，重放到当前存档以合并生成期间的前端写入。
+    // - 手动刷新变量：false。phaseOutcome.nextStatData 已是「回复前快照 + 补丁一次」的正确终态，
+    //   若再重放到当前存档（已含上次应用）会重复累加，故直接采用 nextStatData。
+    rebaseOntoLiveState?: boolean;
   }) {
-    const { reason, messageId, phaseOutcome } = input;
+    const { reason, messageId, phaseOutcome, turnStartShopRefresh, rebaseOntoLiveState = true } = input;
 
-    // 回合开始前的前端权威状态（此刻 session 尚未写入本回合变量更新结果，仍保留商城签到/刷新写入）。
+    // 回合收尾时的实时前端权威状态（此刻 session 尚未写入本回合变量更新结果，仍保留生成期间的
+    // 商城签到/刷新/购买写入）。作为「增量合并」的基底与前端权威字段的对账来源。
     const preTurnStatData = Schema.parse(loadStandaloneStatData());
-    // 统一对账后的最终状态：变量更新应用则以 nextStatData 为基底，否则以回合前状态为基底，
-    // 再叠加前端权威字段的兜底修正。无论哪条分支，最终都会提交该状态。
+    // 统一对账后的最终状态：
+    // - 变量更新已应用 + 允许重放：把 AI 补丁重放到实时状态（而非发送时旧基线），复刻酒馆版 MVU 的
+    //   增量合并，避免生成期间的前端商城写入被整份覆盖丢弃；
+    // - 变量更新已应用 + 不重放（手动刷新）：直接采用 nextStatData（回复前快照+补丁一次），避免重复累加；
+    // - 未应用：直接以实时状态为基底。
+    // 再叠加前端权威字段（商城刷新标志、签到日期、积分数量）的兜底修正。无论哪条分支都会提交该状态。
+    const candidateStatData = phaseOutcome.variableUpdateApplied
+      ? rebaseOntoLiveState
+        ? rebaseVariableUpdateOntoLiveState(phaseOutcome, preTurnStatData)
+        : Schema.parse(phaseOutcome.nextStatData)
+      : preTurnStatData;
     const finalStatData = reconcileFrontendAuthoritativeState(
-      phaseOutcome.variableUpdateApplied ? phaseOutcome.nextStatData : preTurnStatData,
+      candidateStatData,
       preTurnStatData,
+      turnStartShopRefresh,
     );
 
     // 第一优先级：无论后续任何副作用是否抛错，都必须完成 busy 复位与消息状态终态化，
@@ -413,11 +498,23 @@ export function useMessageActions() {
         : '正在为最新一条 AI 回复重跑变量更新...',
     );
 
+    // 重跑基线必须取「这条 AI 回复之前的状态」，即对应用户消息的快照，而不是「当前存档」。
+    // 当前存档已包含这条回复上次应用过的变量更新，若以它为基线再打一次补丁，增量类补丁
+    //（金钱+=X、库存-1、数组 push 等）会重复累加导致数值翻倍/物品重复。以「回复前快照」为基线
+    // 可保证变量更新对这条回复只净应用一次；玩家的积分/签到等前端权威字段会在收尾对账时从当前
+    // 存档保留回写，不受影响。
+    const replayBaseStatData = resolveStandaloneSnapshotForMessage(
+      latestUserMessage,
+      `manual-variable-refresh:${targetAssistantMessage.message_id}`,
+    );
+    // 商城刷新触发标志按「当前存档」判定：区分历史触发与重跑期间玩家新点击的刷新。
+    const turnStartShopRefresh = Boolean(_.get(loadStandaloneStatData(), '设置.积分系统.商城刷新', false));
+
     try {
       const phaseOutcome = await runStandaloneVariableUpdatePass({
         mainApi: settingsStore.mainApi,
         assistantApis: settingsStore.assistantApis,
-        statData: loadStandaloneStatData(),
+        statData: replayBaseStatData,
         messages: messagesStore.messages,
         latestUserMessage,
         targetAssistantMessage,
@@ -431,6 +528,9 @@ export function useMessageActions() {
         reason,
         messageId: targetAssistantMessage.message_id,
         phaseOutcome,
+        turnStartShopRefresh,
+        // 手动刷新：基线已是「回复前快照」，补丁只净应用一次，不能再重放到当前存档。
+        rebaseOntoLiveState: false,
       });
       return true;
     } catch (error) {
@@ -784,13 +884,16 @@ export function useMessageActions() {
     syncAfterTimelineChange(`standalone-resend:${message_id}`);
     restoreStandaloneSnapshot(preferredSnapshot, `standalone-resend:${message_id}`);
 
+    // restore 后 session 已是「旧快照 + 前端权威字段（玩家最新签到/刷新/积分）」的合并结果，
+    // 重发用户消息的快照取该 session，保证记录与 session 一致，避免快照仍带旧的前端字段。
+    const resentUserSnapshot = Schema.parse(loadStandaloneStatData());
     const resentUserMessage = messagesStore.appendStandaloneMessage({
       role: 'user',
       raw_content: messageContent,
       content_text: messageContent,
       formatted: formatMessageContentForDisplay(messageContent, 'user', -1),
       action_options: [],
-      stat_data_snapshot: preferredSnapshot,
+      stat_data_snapshot: resentUserSnapshot,
     });
 
     notificationStore.info(tCurrent('messageActions.resending'));

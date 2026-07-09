@@ -12,6 +12,7 @@ import {
   syncStandaloneRuntimeSessionStatDataFromStores,
 } from '../utils/standaloneRuntime';
 import { loadStandaloneStatData } from '../utils/standaloneStatData';
+import { preserveFrontendAuthoritativeFields } from '../utils/frontendAuthoritativeState';
 import { parseStreamingTaggedAssistantReply, parseTaggedAssistantReply } from '../utils/taggedReply';
 
 /**
@@ -230,7 +231,11 @@ export const useMessagesStore = defineStore('messages', () => {
   }
 
   function syncStandaloneStatSnapshotAfterTimelineChange(reason: string) {
-    const nextStatData = resolveRollbackStandaloneStatData();
+    // 回退到剩余楼层的旧快照时，剧情类字段跟随回退，但前端权威字段（商城刷新/签到/积分）保留
+    // 玩家在回退前的最新写入，避免删除/重发/重新生成时把刚点的签到、刷新、加积分静默抹掉。
+    const liveStatData = Schema.parse(loadStandaloneStatData());
+    const rollbackStatData = resolveRollbackStandaloneStatData();
+    const nextStatData = preserveFrontendAuthoritativeFields(rollbackStatData, liveStatData);
     syncStandaloneRuntimeSessionStatDataFromStores(nextStatData);
     console.info(`[MessagesStore] standalone 时间线回退后已恢复本地 stat_data reason=${reason}`);
   }

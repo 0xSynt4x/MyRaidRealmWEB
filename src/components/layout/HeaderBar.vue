@@ -294,10 +294,10 @@ async function handleArchive() {
 
   try {
     await saveCurrentArchive();
-    toastr.success(t('header.archiveSuccess'));
+    notificationStore.success(t('header.archiveSuccess'));
   } catch (error) {
     console.error('[HeaderBar] 存档失败:', error);
-    toastr.error(t('header.archiveFailed', { error: error instanceof Error ? error.message : String(error) }));
+    notificationStore.error(t('header.archiveFailed', { error: error instanceof Error ? error.message : String(error) }));
   } finally {
     isArchiving.value = false;
   }
@@ -328,10 +328,10 @@ async function handleResetGame() {
     messagesStore.clearMessages();
     emit('reset-game');
 
-    toastr.success(t('header.resetGameSuccess'));
+    notificationStore.success(t('header.resetGameSuccess'));
   } catch (error) {
     console.error('[HeaderBar] 重置游戏失败:', error);
-    toastr.error(t('header.resetGameFailed', { error: error instanceof Error ? error.message : String(error) }));
+    notificationStore.error(t('header.resetGameFailed', { error: error instanceof Error ? error.message : String(error) }));
   } finally {
     isResetting.value = false;
   }
@@ -346,7 +346,7 @@ async function handleRefreshApi() {
     await messageActions.refreshLatestAssistantVariableUpdate('header_manual_variable_refresh');
   } catch (error) {
     console.error('[HeaderBar] 刷新失败:', error);
-    toastr.error(t('header.archiveFailed', { error: error instanceof Error ? error.message : String(error) }));
+    notificationStore.error(t('header.archiveFailed', { error: error instanceof Error ? error.message : String(error) }));
   } finally {
     isRefreshing.value = false;
   }
