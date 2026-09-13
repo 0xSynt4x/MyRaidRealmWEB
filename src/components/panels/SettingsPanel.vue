@@ -1054,6 +1054,7 @@ import { useStatDataStore } from '../../stores/statData';
 import { useStatDataActions } from '../../stores/statDataActions';
 import { useSetupStore } from '../../stores/setup';
 import DeclarationModal from './DeclarationModal.vue';
+import { useStandaloneArchiveManager } from '../../composables/useStandaloneArchiveManager';
 
 const currentTab = ref<'ui' | 'mainApi' | 'assistantApi' | 'worldbook' | 'archive'>('ui');
 const showDeclaration = ref(false);
@@ -1134,37 +1135,41 @@ const {
 const statDataStore = useStatDataStore();
 const statDataActions = useStatDataActions();
 const { data } = storeToRefs(statDataStore);
+
+const {
+  isArchiving,
+  isSavingStandaloneArchive,
+  isImportingArchive,
+  isRestoringArchiveId,
+  archiveStatusMessage,
+  archiveStatusTone,
+  archiveInputRef,
+  archiveRefreshTick,
+  standaloneArchives,
+  currentArchiveSession,
+  currentArchiveMessages,
+  currentArchiveMessageIds,
+  currentArchiveMessageCount,
+  currentArchiveVariableSectionCount,
+  currentArchiveMessageIdPreview,
+  setArchiveStatus,
+  refreshStandaloneArchiveList,
+  handleArchiveExport,
+  handleSaveStandaloneArchive,
+  triggerArchiveImport,
+  handleArchiveFileChange,
+  handleRestoreStandaloneArchive,
+  handleDownloadStandaloneArchive,
+  handleDeleteStandaloneArchive,
+} = useStandaloneArchiveManager();
 const expandedSystemAssetId = ref<string | null>(null);
 const selectedEditableEntryIndex = ref(0);
 const editableEntryKeyMap = new WeakMap<LocalContentEntryConfig, string>();
 let editableEntryKeySeed = 0;
-const isArchiving = ref(false);
-const isSavingStandaloneArchive = ref(false);
-const isImportingArchive = ref(false);
-const isRestoringArchiveId = ref<string | null>(null);
-const archiveStatusMessage = ref('');
-const archiveStatusTone = ref<'info' | 'error'>('info');
-const archiveInputRef = ref<HTMLInputElement | null>(null);
-const archiveRefreshTick = ref(0);
 
 const survivalModeFromStatData = computed<SurvivalMode>(() => {
   const mode = data.value.设置?.生存系统模式;
   return mode ?? '关闭';
-});
-
-const standaloneArchives = computed(() => {
-  void archiveRefreshTick.value;
-  return listStandaloneArchives();
-});
-
-const currentArchiveSession = computed(() => {
-  void archiveRefreshTick.value;
-  return loadStandaloneRuntimeSession();
-});
-
-const currentArchiveMessages = computed(() => {
-  void archiveRefreshTick.value;
-  return loadStandaloneRuntimeMessages();
 });
 
 const worldbookEntries = computed(() =>
@@ -1203,26 +1208,6 @@ const editableEntryKeys = computed(() =>
     return nextKey;
   }),
 );
-
-const currentArchiveMessageIds = computed(() =>
-  (currentArchiveMessages.value?.records ?? []).map(record => record.message_id),
-);
-const currentArchiveMessageCount = computed(() => currentArchiveMessageIds.value.length);
-const currentArchiveVariableSectionCount = computed(() => {
-  const statData = currentArchiveSession.value?.stat_data;
-  if (!statData || typeof statData !== 'object' || Array.isArray(statData)) {
-    return 0;
-  }
-
-  return Object.keys(statData as Record<string, unknown>).length;
-});
-const currentArchiveMessageIdPreview = computed(() => {
-  if (currentArchiveMessageIds.value.length === 0) {
-    return t('contentCenter.archive.noMessageIds');
-  }
-
-  return currentArchiveMessageIds.value.join(', ');
-});
 
 // 背景图片相关状态
 const imageUrlInput = ref('');
@@ -1525,184 +1510,6 @@ function toggleAsset(assetId: string, nextEnabled: boolean) {
   }
 
   standaloneLocalContent.value.enabledAssets[assetId] = nextEnabled;
-}
-
-function setArchiveStatus(message: string, tone: 'info' | 'error' = 'info') {
-  archiveStatusMessage.value = message;
-  archiveStatusTone.value = tone;
-}
-
-function refreshStandaloneArchiveList() {
-  archiveRefreshTick.value += 1;
-}
-
-async function handleArchiveExport() {
-  if (isArchiving.value) {
-    return;
-  }
-
-  const confirmed = await notificationStore.confirm({
-    title: t('contentCenter.archive.exportConfirmTitle'),
-    message: t('contentCenter.archive.exportConfirmMessage'),
-    type: 'info',
-    confirmText: t('contentCenter.archive.exportConfirmButton'),
-  });
-
-  if (!confirmed) {
-    return;
-  }
-
-  isArchiving.value = true;
-  try {
-    await saveCurrentArchive();
-    const message = t('contentCenter.archive.exportStandaloneSuccess');
-    setArchiveStatus(message);
-    toastr.success(message);
-  } catch (error) {
-    const message = t('contentCenter.archive.actionFailed', {
-      error: error instanceof Error ? error.message : String(error),
-    });
-    setArchiveStatus(message, 'error');
-    toastr.error(message);
-  } finally {
-    isArchiving.value = false;
-  }
-}
-
-async function handleSaveStandaloneArchive() {
-  if (isSavingStandaloneArchive.value) {
-    return;
-  }
-
-  isSavingStandaloneArchive.value = true;
-  try {
-    const archive = saveStandaloneArchiveSnapshot();
-    refreshStandaloneArchiveList();
-    const message = t('contentCenter.archive.saveStandaloneSuccess', {
-      summary: formatArchiveSummaryForToast(archive.summary),
-    });
-    setArchiveStatus(message);
-    toastr.success(message);
-  } catch (error) {
-    const message = t('contentCenter.archive.actionFailed', {
-      error: error instanceof Error ? error.message : String(error),
-    });
-    setArchiveStatus(message, 'error');
-    toastr.error(message);
-  } finally {
-    isSavingStandaloneArchive.value = false;
-  }
-}
-
-function triggerArchiveImport() {
-  archiveInputRef.value?.click();
-}
-
-async function handleArchiveFileChange(event: Event) {
-  const input = event.target as HTMLInputElement;
-  const file = input.files?.[0];
-  if (!file || isImportingArchive.value) {
-    input.value = '';
-    return;
-  }
-
-  isImportingArchive.value = true;
-  try {
-    const outcome = await importArchiveFile(file);
-    refreshStandaloneArchiveList();
-    const message = t(
-      getStandaloneArchiveFeedbackMessageKey({
-        scope: 'contentCenter',
-        mode: 'import',
-        outcome,
-      }),
-    );
-    setArchiveStatus(message);
-    toastr.success(message);
-  } catch (error) {
-    const message = t('contentCenter.archive.actionFailed', {
-      error: error instanceof Error ? error.message : String(error),
-    });
-    setArchiveStatus(message, 'error');
-    toastr.error(message);
-  } finally {
-    isImportingArchive.value = false;
-    input.value = '';
-  }
-}
-
-async function handleRestoreStandaloneArchive(archiveId: string) {
-  if (isRestoringArchiveId.value) {
-    return;
-  }
-
-  isRestoringArchiveId.value = archiveId;
-  try {
-    const outcome = restoreStandaloneArchiveById(archiveId);
-    refreshStandaloneArchiveList();
-    const restoredArchive = standaloneArchives.value.find(item => item.id === archiveId);
-    const message = t(
-      getStandaloneArchiveFeedbackMessageKey({
-        scope: 'contentCenter',
-        mode: 'restore',
-        outcome,
-      }),
-      {
-        summary: restoredArchive
-          ? formatArchiveSummaryForToast(restoredArchive.summary)
-          : t('contentCenter.archive.restoreStandaloneSuccessFallback'),
-      },
-    );
-    setArchiveStatus(message);
-    toastr.success(message);
-  } catch (error) {
-    const message = t('contentCenter.archive.actionFailed', {
-      error: error instanceof Error ? error.message : String(error),
-    });
-    setArchiveStatus(message, 'error');
-    toastr.error(message);
-  } finally {
-    isRestoringArchiveId.value = null;
-  }
-}
-
-function handleDownloadStandaloneArchive(archiveId: string) {
-  try {
-    downloadStandaloneArchiveById(archiveId);
-    setArchiveStatus(t('contentCenter.archive.exportSavedSuccess'));
-  } catch (error) {
-    const message = t('contentCenter.archive.actionFailed', {
-      error: error instanceof Error ? error.message : String(error),
-    });
-    setArchiveStatus(message, 'error');
-    toastr.error(message);
-  }
-}
-
-async function handleDeleteStandaloneArchive(archiveId: string) {
-  const confirmed = await notificationStore.confirm({
-    title: t('contentCenter.archive.deleteConfirmTitle'),
-    message: t('contentCenter.archive.deleteConfirmMessage'),
-    type: 'danger',
-    confirmText: t('contentCenter.archive.deleteButton'),
-  });
-
-  if (!confirmed) {
-    return;
-  }
-
-  try {
-    deleteStandaloneArchive(archiveId);
-    refreshStandaloneArchiveList();
-    setArchiveStatus(t('contentCenter.archive.deleteSuccess'));
-    toastr.success(t('contentCenter.archive.deleteSuccess'));
-  } catch (error) {
-    const message = t('contentCenter.archive.actionFailed', {
-      error: error instanceof Error ? error.message : String(error),
-    });
-    setArchiveStatus(message, 'error');
-    toastr.error(message);
-  }
 }
 
 function syncTextToImageLocalContent(enabled: boolean) {

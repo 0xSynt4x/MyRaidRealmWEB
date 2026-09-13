@@ -1,3 +1,5 @@
+import { normalizeLineEndings } from './textNormalize';
+
 type InlinePlaceholder = {
   token: string;
   html: string;
@@ -10,10 +12,6 @@ function escapeHtml(text: string): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
-}
-
-function normalizeLineEndings(text: string): string {
-  return text.replace(/\r\n/g, '\n');
 }
 
 function applyInlineFormatting(text: string): string {

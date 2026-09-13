@@ -15,6 +15,7 @@ import {
   type StandaloneLocalContentRenderContext,
 } from './standaloneLocalContentEjs';
 import { applyStandalonePromptMacroReplacements } from '../../runtime/standalonePromptUtils';
+import { normalizeLineEndingsTrimmed as normalizeLineEndings } from './textNormalize';
 
 export type StandaloneLocalContentRoute = 'main' | 'variable_update' | 'shared';
 
@@ -259,10 +260,6 @@ const STANDALONE_LOCAL_CONTENT_MANIFEST: StandaloneLocalContentAsset[] = [
     rawContent: rawVariableUpdateRules,
   },
 ];
-
-function normalizeLineEndings(text: string): string {
-  return text.replace(/\r\n/g, '\n').trim();
-}
 
 function renderStandaloneLocalContentAsset(
   asset: StandaloneLocalContentAsset,

@@ -47,7 +47,7 @@ importers:
         version: 22.20.0
       '@types/toastr':
         specifier: ^2.1.43
-        version: 2.1.43
+        version: 2.1.44
       '@types/webpack':
         specifier: ^5.28.5
         version: 5.28.5(postcss@8.5.16)(webpack-cli@6.0.1)
@@ -78,6 +78,9 @@ importers:
       html-webpack-plugin:
         specifier: ^5.6.6
         version: 5.6.7(webpack@5.108.4)
+      lodash:
+        specifier: ^4.18.1
+        version: 4.18.1
       mini-css-extract-plugin:
         specifier: ^2.10.0
         version: 2.10.2(webpack@5.108.4)
@@ -499,8 +502,8 @@ packages:
   '@types/sizzle@2.3.10':
     resolution: {integrity: sha512-TC0dmN0K8YcWEAEfiPi5gJP14eJe30TTGjkvek3iM/1NdHHsdCA/Td6GvNndMOo/iSnIsZ4HuuhrYPDAmbxzww==}
 
-  '@types/toastr@2.1.43':
-    resolution: {integrity: sha512-sLC2fr2OXeE1iyhUixpQ64wQ2tA26awmLidn4tXTLBz4yP/VhtYUKHpmiIyDtztKkHjucdiTLH8F5uRRyhNi2Q==}
+  '@types/toastr@2.1.44':
+    resolution: {integrity: sha512-V4Qdmba7qvl46XTEjwbXHoT8hLV3ReFZuhvkBBvZdnHcZqafe8JclHnaJQ1PAi1w5IHdnZVrzrjDwB8eWn+DOQ==}
 
   '@types/web-bluetooth@0.0.21':
     resolution: {integrity: sha512-oIQLCGWtcFZy2JW77j9k8nHzAOpqMHLQejDA48XXMWH6tjCQHz5RCFz1bzsmROyL6PUm+LLnUiI4BCn221inxA==}
@@ -2505,7 +2508,7 @@ snapshots:
 
   '@types/sizzle@2.3.10': {}
 
-  '@types/toastr@2.1.43':
+  '@types/toastr@2.1.44':
     dependencies:
       '@types/jquery': 3.5.34
 

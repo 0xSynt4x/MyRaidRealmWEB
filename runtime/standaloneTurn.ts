@@ -32,6 +32,7 @@ import {
   type StandaloneProviderReply,
 } from '../src/utils/standaloneProviderApi';
 import { formatMessageContentForDisplay } from '../src/utils/messageFormatting';
+import { normalizeLineEndingsTrimmed as normalizeLineEndings } from '../src/utils/textNormalize';
 import { applyVariableUpdatePatch, parseVariableUpdatePatch } from '../src/utils/variableUpdate';
 import { buildStandaloneCurrentStatDataBlock } from './standalonePromptUtils';
 
@@ -269,10 +270,6 @@ let activeStandaloneTurnController: AbortController | null = null;
 
 export function isStandaloneLocalTurnActive(): boolean {
   return activeStandaloneTurnController !== null;
-}
-
-function normalizeLineEndings(text: string): string {
-  return text.replace(/\r\n/g, '\n').trim();
 }
 
 function formatNamedPromptBlock(_title: string, content: string): string {
@@ -572,21 +569,6 @@ function resolveConfiguredMainApi(mainApi: ApiConfig): ApiConfig | null {
 
 function resolveConfiguredAssistantApis(assistantApis: ApiConfig[] | undefined): ApiConfig[] {
   return (assistantApis ?? []).filter(api => hasCompleteStandaloneApiConfig(api));
-}
-
-function formatRecentMessages(messages: MessageRecord[]): string {
-  const recentMessages = messages.slice(-RECENT_MESSAGE_LIMIT);
-  if (recentMessages.length === 0) {
-    return '暂无历史消息';
-  }
-
-  return recentMessages
-    .map(message => {
-      const roleLabel = message.role === 'assistant' ? 'AI' : '玩家';
-      const content = (message.content_text || message.raw_content || '').trim();
-      return `${roleLabel}:\n${content || '（空）'}`;
-    })
-    .join('\n\n');
 }
 
 export function buildMainTurnPrompt(input: StandaloneLocalTurnInput): StandalonePromptMessagesBundle {
