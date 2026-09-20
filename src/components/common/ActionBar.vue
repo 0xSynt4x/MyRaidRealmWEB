@@ -58,6 +58,7 @@
 
 <script setup lang="ts">
 import { storeToRefs } from 'pinia';
+import { notify } from '../../utils/notify';
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from '../../i18n';
 import { useMessageActions } from '../../composables/useMessageActions';
@@ -341,14 +342,14 @@ async function preSendAutoSaveEditing(): Promise<boolean> {
     const saved = await messageActions.editMessage(messageId, editingDraftContent.value);
 
     if (!saved) {
-      toastr.error(t('actionBar.editSaveFailed'));
+      notify.error(t('actionBar.editSaveFailed'));
       return false;
     }
 
     return true;
   } catch (error) {
     console.error('[ActionBar] 发送前自动保存编辑内容失败:', error);
-    toastr.error(t('actionBar.editSaveFailed'));
+    notify.error(t('actionBar.editSaveFailed'));
     return false;
   } finally {
     isPreparingSend.value = false;
@@ -387,7 +388,7 @@ async function cancelGeneration() {
   console.info('[ActionBar] 已取消独立页本地生成');
 
   if (inputText.value.trim()) {
-    toastr.info(t('actionBar.generationCancelledCanResend'));
+    notify.info(t('actionBar.generationCancelledCanResend'));
   }
 }
 </script>

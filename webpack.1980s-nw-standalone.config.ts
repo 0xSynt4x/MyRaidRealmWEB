@@ -1,7 +1,6 @@
 import HtmlInlineScriptWebpackPlugin from 'html-inline-script-webpack-plugin';
 import HtmlWebpackPlugin from 'html-webpack-plugin';
 import MiniCssExtractPlugin from 'mini-css-extract-plugin';
-import fs from 'node:fs';
 import path from 'node:path';
 import TerserPlugin from 'terser-webpack-plugin';
 import TsconfigPathsPlugin from 'tsconfig-paths-webpack-plugin';
@@ -35,43 +34,6 @@ const assetFilename = (pathData: { filename?: string }): string => {
   const file = `${name}.[contenthash:8]${ext}`;
   return dir === '.' ? `assets/${file}` : `assets/${dir}/${file}`;
 };
-
-class CdnPreloadPlugin {
-  apply(compiler: webpack.Compiler) {
-    compiler.hooks.compilation.tap('CdnPreloadPlugin', compilation => {
-      HtmlWebpackPlugin.getHooks(compilation).alterAssetTags.tapAsync('CdnPreloadPlugin', (data, cb) => {
-        const script = `
-(function(){
-  var scripts = [
-    'https://testingcf.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js',
-    'https://testingcf.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js',
-  ];
-  var idx = 0;
-  function loadNext() {
-    if (idx >= scripts.length) { return; }
-    var src = scripts[idx++];
-    var s = document.createElement('script');
-    s.src = src;
-    s.onload = loadNext;
-    s.onerror = loadNext;
-    document.head.appendChild(s);
-  }
-  loadNext();
-})();
-`;
-        const preloadScript = {
-          tagName: 'script',
-          voidTag: false,
-          meta: { preload: true },
-          attributes: { type: 'text/javascript' },
-          innerHTML: script,
-        };
-        data.assetTags.scripts.unshift(preloadScript);
-        cb(null, data);
-      });
-    });
-  }
-}
 
 export default (_env: unknown, argv: { mode?: 'development' | 'production' }): webpack.Configuration => ({
   experiments: {
@@ -235,7 +197,6 @@ export default (_env: unknown, argv: { mode?: 'development' | 'production' }): w
       scriptLoading: 'module',
       cache: false,
     }),
-    new CdnPreloadPlugin(),
     new HtmlInlineScriptWebpackPlugin(),
     new MiniCssExtractPlugin(),
     new HTMLInlineCSSWebpackPlugin({
@@ -271,51 +232,17 @@ export default (_env: unknown, argv: { mode?: 'development' | 'production' }): w
           }),
     ],
   },
-  externals: ({ context, request }, callback) => {
-    if (!context || !request) {
-      return callback();
-    }
-
-    if (
-      request.startsWith('-') ||
-      request.startsWith('.') ||
-      request.startsWith('/') ||
-      request.startsWith('!') ||
-      request.startsWith('http') ||
-      request.startsWith('@/') ||
-      request.startsWith('@util/') ||
-      path.isAbsolute(request) ||
-      fs.existsSync(path.join(context, request)) ||
-      fs.existsSync(request)
-    ) {
-      return callback();
-    }
-
-    if (
-      ['vue', 'vue-router'].every(key => request !== key) &&
-      ['pixi', 'react', 'vue'].some(key => request.includes(key))
-    ) {
-      return callback();
-    }
-
-    if (request === 'zod') {
-      return callback();
-    }
-
-    const global: Record<string, string> = {
-      jquery: 'globalThis.$',
-      lodash: 'globalThis._',
-      showdown: 'globalThis.showdown',
-      toastr: 'globalThis.toastr',
-      vue: 'globalThis.Vue',
-      'vue-router': 'globalThis.VueRouter',
-      yaml: 'globalThis.YAML',
-    };
-
-    if (request in global) {
-      return callback(null, 'var ' + global[request]);
-    }
-
-    return callback(null, 'module-import ' + `https://testingcf.jsdelivr.net/npm/${request}/+esm`);
-  },
+  // 不设 externals：所有依赖一律打进产物，产物必须能完全独立运行
+  // （断网可启动、不向任何外部 CDN 取东西）。
+  //
+  // 历史包袱已清掉：
+  // - vue 曾走 globalThis.Vue、pinia / klona 走 jsdelivr 的 `+esm`、
+  //   lodash 走页面预插的 CDN 脚本提供的 globalThis._，
+  //   结果 CDN 一断就白屏且没有任何提示。现在全部内联；
+  //   lodash 这类历史上的全局库改由 src/standalone-globals.ts 显式 import 后挂到 globalThis._。
+  // - jquery / showdown / toastr / vue-router / yaml 的 globalThis 映射是死代码，
+  //   全项目没有一处 import 它们（裸 `toastr.` 调用不经过 webpack），一并删除。
+  //
+  // 副作用是好的：将来若引入解析不到的裸包，构建会直接报错，
+  // 而不是悄悄把产物指向一个外网地址。
 });

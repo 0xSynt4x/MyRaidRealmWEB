@@ -16,6 +16,12 @@ import {
   normalizeStandaloneBuiltinAssetRouteOverrides,
   type StandaloneBuiltinAssetRouteOverrideMap,
 } from '../utils/standaloneLocalContent';
+import {
+  COMFYUI_STYLE_PRESETS,
+  CUSTOM_STYLE_PRESET_ID,
+  NO_STYLE_PRESET_ID,
+  findStylePreset,
+} from '../utils/comfyuiStylePresets';
 
 export type Theme = 'light' | 'dark' | 'steelcool' | 'solarized' | 'everforest1980s' | 'wuxia';
 export type FontFamily = 'yahei' | 'source-han-sans' | 'lxgw-hazy' | 'hanchan' | 'shanggu';
@@ -51,9 +57,91 @@ export interface StandaloneLocalContentSettings {
   builtinAssetRouteOverrides: StandaloneBuiltinAssetRouteOverrideMap;
 }
 
+/** 本地 ComfyUI 生图配置 */
+export interface ComfyUiSettings {
+  /** 功能总开关 */
+  enabled: boolean;
+  /** 服务地址，形如 http://127.0.0.1:8188 */
+  baseUrl: string;
+  /** 玩家粘贴的工作流原文（API 格式或 ComfyUI 界面格式都行） */
+  workflowJson: string;
+  /** 内部用：界面格式转出来的 API 格式，出图时优先用它 */
+  workflowApiJson: string;
+  /** 接收正向提示词的节点 */
+  positiveNodeId: string;
+  /** 接收负向提示词的节点，可为空 */
+  negativeNodeId: string;
+  /** 是否用下面的宽高覆盖工作流里的画布尺寸 */
+  overrideSize: boolean;
+  width: number;
+  height: number;
+  /** 每次出图随机种子 */
+  randomSeed: boolean;
+  /** 画风预置 id：内置预置 / custom（自定义）/ none（不拼画风） */
+  stylePresetId: string;
+  /** 实际拼在提示词前面的画风内容 */
+  stylePrompt: string;
+  /** 负向提示词；留空表示沿用工作流里自带的那个 */
+  negativePrompt: string;
+}
+
+export const DEFAULT_COMFYUI_BASE_URL = 'http://127.0.0.1:8188';
+
+export function createDefaultComfyUiSettings(): ComfyUiSettings {
+  const defaultPreset = COMFYUI_STYLE_PRESETS[0];
+  return {
+    enabled: false,
+    baseUrl: DEFAULT_COMFYUI_BASE_URL,
+    workflowJson: '',
+    workflowApiJson: '',
+    positiveNodeId: '',
+    negativeNodeId: '',
+    overrideSize: false,
+    width: 1024,
+    height: 1024,
+    randomSeed: true,
+    stylePresetId: defaultPreset.id,
+    stylePrompt: defaultPreset.prompt,
+    negativePrompt: '',
+  };
+}
+
+function normalizeComfyUiSize(value: unknown, fallback: number): number {
+  const numeric = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(numeric)) return fallback;
+  return Math.min(4096, Math.max(64, Math.round(numeric)));
+}
+
+export function normalizeComfyUiSettings(input?: Partial<ComfyUiSettings> | null): ComfyUiSettings {
+  const defaults = createDefaultComfyUiSettings();
+  return {
+    enabled: Boolean(input?.enabled ?? defaults.enabled),
+    baseUrl: typeof input?.baseUrl === 'string' && input.baseUrl.trim() ? input.baseUrl.trim() : defaults.baseUrl,
+    workflowJson: typeof input?.workflowJson === 'string' ? input.workflowJson : '',
+    workflowApiJson: typeof input?.workflowApiJson === 'string' ? input.workflowApiJson : '',
+    positiveNodeId: typeof input?.positiveNodeId === 'string' ? input.positiveNodeId : '',
+    negativeNodeId: typeof input?.negativeNodeId === 'string' ? input.negativeNodeId : '',
+    overrideSize: Boolean(input?.overrideSize ?? defaults.overrideSize),
+    width: normalizeComfyUiSize(input?.width, defaults.width),
+    height: normalizeComfyUiSize(input?.height, defaults.height),
+    randomSeed: Boolean(input?.randomSeed ?? defaults.randomSeed),
+    stylePresetId: normalizeStylePresetId(input?.stylePresetId, defaults.stylePresetId),
+    stylePrompt: typeof input?.stylePrompt === 'string' ? input.stylePrompt : defaults.stylePrompt,
+    negativePrompt: typeof input?.negativePrompt === 'string' ? input.negativePrompt : defaults.negativePrompt,
+  };
+}
+
+/** 只认已知的预置 id；旧数据里没有这个字段时落到默认预置 */
+function normalizeStylePresetId(value: unknown, fallback: string): string {
+  if (typeof value !== 'string' || !value) return fallback;
+  if (value === NO_STYLE_PRESET_ID || value === CUSTOM_STYLE_PRESET_ID) return value;
+  return findStylePreset(value) ? value : fallback;
+}
+
 export function resolveStoredStandaloneLocalContentSettings(input: {
   storedSettings?: Partial<StandaloneLocalContentSettings> | null;
-  textToImageEnabled?: boolean;
+  /** 是否让 AI 在正文里写生图提示词（现在由「本地 ComfyUI 生图」开关统一决定） */
+  imagePromptEnabled?: boolean;
   onlineModeEnabled?: boolean;
 }): StandaloneLocalContentSettings {
   let enabledAssets = applyFixedVariableUpdateStandaloneLocalContent({
@@ -61,7 +149,7 @@ export function resolveStoredStandaloneLocalContentSettings(input: {
     ...(input.storedSettings?.enabledAssets || {}),
   });
 
-  enabledAssets = applyTextToImageToStandaloneLocalContent(enabledAssets, input.textToImageEnabled ?? false);
+  enabledAssets = applyTextToImageToStandaloneLocalContent(enabledAssets, input.imagePromptEnabled ?? false);
   enabledAssets = applyOnlineModeToStandaloneLocalContent(enabledAssets, input.onlineModeEnabled ?? false);
   enabledAssets = applyWorldDifficultyToStandaloneLocalContent(enabledAssets);
   const builtinAssetRouteOverrides = normalizeStandaloneBuiltinAssetRouteOverrides(
@@ -168,9 +256,6 @@ export const useSettingsStore = defineStore('settings', () => {
   // 选项点击行为
   const actionOptionBehavior = ref<ActionOptionBehavior>(stored.actionOptionBehavior || 'append');
 
-  // 文生图功能
-  const textToImageEnabled = ref<boolean>(stored.textToImageEnabled ?? false);
-
   const onlineModeEnabled = ref<boolean>(stored.onlineModeEnabled ?? false);
 
   // 世界难度仅作为前端本地设置保存，不直接写入 schema。
@@ -202,10 +287,13 @@ export const useSettingsStore = defineStore('settings', () => {
     ...(stored.backgroundImage || {}),
   });
 
+  // 本地 ComfyUI 生图配置（它的开关同时决定 AI 要不要在正文里写生图提示词）
+  const comfyUi = ref<ComfyUiSettings>(normalizeComfyUiSettings(stored.comfyUi));
+
   const standaloneLocalContent = ref<StandaloneLocalContentSettings>(
     resolveStoredStandaloneLocalContentSettings({
       storedSettings: stored.standaloneLocalContent,
-      textToImageEnabled: textToImageEnabled.value,
+      imagePromptEnabled: comfyUi.value.enabled,
       onlineModeEnabled: onlineModeEnabled.value,
     }),
   );
@@ -241,11 +329,11 @@ export const useSettingsStore = defineStore('settings', () => {
       rightCollapsed: rightCollapsed.value,
       autoScroll: autoScroll.value,
       actionOptionBehavior: actionOptionBehavior.value,
-      textToImageEnabled: textToImageEnabled.value,
       onlineModeEnabled: onlineModeEnabled.value,
       worldDifficulty: worldDifficulty.value,
       backgroundImage: backgroundImage.value,
       standaloneLocalContent: standaloneLocalContent.value,
+      comfyUi: comfyUi.value,
     });
   };
 
@@ -278,15 +366,26 @@ export const useSettingsStore = defineStore('settings', () => {
       rightCollapsed,
       autoScroll,
       actionOptionBehavior,
-      textToImageEnabled,
       onlineModeEnabled,
       worldDifficulty,
       backgroundImage,
       standaloneLocalContent,
+      comfyUi,
     ],
     saveBasicSettingsToStorage,
     {
       deep: true,
+    },
+  );
+
+  // 「本地 ComfyUI 生图」开关一开，AI 就开始在正文里写生图提示词；一关就停
+  watch(
+    () => comfyUi.value.enabled,
+    enabled => {
+      standaloneLocalContent.value = {
+        ...standaloneLocalContent.value,
+        enabledAssets: applyTextToImageToStandaloneLocalContent(standaloneLocalContent.value.enabledAssets, enabled),
+      };
     },
   );
 
@@ -324,13 +423,13 @@ export const useSettingsStore = defineStore('settings', () => {
     rightCollapsed,
     autoScroll,
     actionOptionBehavior,
-    textToImageEnabled,
     onlineModeEnabled,
     worldDifficulty,
     mainApi,
     assistantApis,
     backgroundImage,
     standaloneLocalContent,
+    comfyUi,
     persistMainApi,
     persistAssistantApis,
   };

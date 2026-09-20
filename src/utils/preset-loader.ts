@@ -9,8 +9,10 @@ declare global {
 let loadingPromise: Promise<PresetConfig[]> | null = null;
 const LOCAL_DIST_PRESET_RELATIVE_URL = '../preset-package/index.js';
 const LOCALHOST_DIST_PRESET_URL = 'http://127.0.0.1:5500/dist/1980s/preset-package/index.js';
-const FIXED_VERSION_PRESET_URL =
-  'https://fastly.jsdelivr.net/gh/0xSynt4x/Myriad-Realms-Simulator@main/Release/Presets/index.js';
+// 线上首选自家的 Cloudflare Pages（预设包随 dist 一起部署，见 dist/preset-package/index.js）。
+// 页面部署在根路径时上面的「同级相对」候选会先命中它，这里再显式写一份绝对地址兜底
+// —— 万一将来页面挪到子路径，相对路径会解析错，绝对地址仍然可用。
+const CLOUDFLARE_PRESET_URL = 'https://myraidrealms.cc.cd/preset-package/index.js';
 
 function resolveStandalonePresetBundleUrl() {
   try {
@@ -24,7 +26,10 @@ function resolveStandalonePresetBundleUrl() {
 function getBundleUrlCandidates() {
   const standaloneLocalUrl = resolveStandalonePresetBundleUrl();
 
-  return [standaloneLocalUrl, LOCALHOST_DIST_PRESET_URL, FIXED_VERSION_PRESET_URL].filter(
+  // 预设包只从「自己的产物」里取：同级相对路径 → 本地开发服务器 → 自家 Cloudflare Pages。
+  // 原先还有一档 jsdelivr 读 GitHub 发布仓的兜底，已按「项目完全独立」的要求删除
+  // —— 预设包随 dist 一起部署，不依赖任何外部 CDN。
+  return [standaloneLocalUrl, LOCALHOST_DIST_PRESET_URL, CLOUDFLARE_PRESET_URL].filter(
     (candidate): candidate is string => Boolean(candidate),
   );
 }

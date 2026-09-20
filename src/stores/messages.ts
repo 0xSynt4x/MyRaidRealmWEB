@@ -22,6 +22,14 @@ import { parseStreamingTaggedAssistantReply, parseTaggedAssistantReply } from '.
 /**
  * 消息记录类型
  */
+export interface MessageGeneratedImage {
+  status: 'idle' | 'running' | 'done' | 'error';
+  url?: string;
+  filename?: string;
+  prompt: string;
+  error?: string;
+}
+
 export interface MessageRecord {
   message_id: number;
   role: 'user' | 'assistant';
@@ -39,6 +47,7 @@ export interface MessageRecord {
   variable_update_status?: 'running' | 'success' | 'failed' | 'skipped';
   variable_update_warning?: string | null;
   debug_trace?: StandaloneAssistantDebugTrace;
+  generated_images?: MessageGeneratedImage[];
 }
 
 interface MainReplyStreamingContext {

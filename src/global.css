@@ -291,6 +291,15 @@
   --overlay-highlight: none;
 }
 
+/* 原生下拉弹层跟随主题
+   弹层由浏览器自己绘制，组件里的 .xxx-select 样式管不到它，必须单独给 option 定底色和字色。
+   默认 / 金属 / 古卷 三个主题之前漏了这条 → 深色界面会弹出浅色列表。
+   各主题块里的同名规则优先级更高，仍可覆盖这里。 */
+option {
+  background-color: var(--bg-card-solid);
+  color: var(--text-primary);
+}
+
 /* 暗色主题下拉框修复 */
 [data-theme='dark'] select,
 [data-theme='dark'] option {

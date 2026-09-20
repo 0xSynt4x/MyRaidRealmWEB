@@ -100,6 +100,7 @@
 
 <script setup lang="ts">
 import { storeToRefs } from 'pinia';
+import { notify } from '../../utils/notify';
 import { computed } from 'vue';
 import { useMessageActions } from '../../composables/useMessageActions';
 import { useI18n } from '../../i18n';
@@ -207,9 +208,9 @@ async function handleSingleDraw() {
   });
 
   if (isPity) {
-    toastr.success(t('lottery.triggerPity', { totalDraws, pityCount: newPityCount }));
+    notify.success(t('lottery.triggerPity', { totalDraws, pityCount: newPityCount }));
   } else {
-    toastr.info(t('lottery.drawProgress', { totalDraws, pityCount: newPityCount }));
+    notify.info(t('lottery.drawProgress', { totalDraws, pityCount: newPityCount }));
   }
 
   await messageActions.sendStandaloneUserMessage(promptText, 'lottery_single', {
@@ -256,9 +257,9 @@ async function handleTenDraw() {
   });
 
   if (isPity) {
-    toastr.success(t('lottery.triggerPity', { totalDraws, pityCount: newPityCount }));
+    notify.success(t('lottery.triggerPity', { totalDraws, pityCount: newPityCount }));
   } else {
-    toastr.info(t('lottery.drawProgress', { totalDraws, pityCount: newPityCount }));
+    notify.info(t('lottery.drawProgress', { totalDraws, pityCount: newPityCount }));
   }
 
   await messageActions.sendStandaloneUserMessage(promptText, 'lottery_ten', {

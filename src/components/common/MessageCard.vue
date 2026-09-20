@@ -83,7 +83,16 @@
       </template>
 
       <div v-if="message.is_partial" class="partial-banner">{{ t('messageCard.partialBanner') }}</div>
-      <div class="text-content" v-html="message.formatted"></div>
+      <template v-for="(segment, index) in contentSegments" :key="index">
+        <div v-if="segment.html" class="text-content" v-html="segment.html"></div>
+        <MessageImageSlot
+          v-if="segment.prompt"
+          :prompt="comfyUiImageGeneration.composePrompt(segment.prompt)"
+          :image="message.generated_images?.[segment.imageIndex ?? 0]"
+          :disabled="imageSlotsDisabled"
+          @generate="handleGenerateImage(segment.imageIndex ?? 0, segment.prompt)"
+        />
+      </template>
 
       <template v-if="message.role === 'assistant'">
         <details v-if="summaryFormatted" class="fold-block">
@@ -151,14 +160,17 @@
 
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue';
+import { notify } from '../../utils/notify';
+import { useComfyUiImageGeneration } from '../../composables/useComfyUiImageGeneration';
 import { useMessageActions } from '../../composables/useMessageActions';
 import { useI18n } from '../../i18n';
 import type { MessageRecord } from '../../stores/messages';
 import { useMessagesStore } from '../../stores/messages';
 import { useSettingsStore } from '../../stores/settings';
 import { useStatDataStore } from '../../stores/statData';
-import { formatAuxiliaryContentForDisplay } from '../../utils/messageFormatting';
+import { formatAuxiliaryContentForDisplay, splitMessageContentSegments } from '../../utils/messageFormatting';
 import { parseTaggedAssistantReply } from '../../utils/taggedReply';
+import MessageImageSlot from './MessageImageSlot.vue';
 
 const props = defineProps<{
   message: MessageRecord;
@@ -170,6 +182,15 @@ const statDataStore = useStatDataStore();
 const settingsStore = useSettingsStore();
 const { t } = useI18n();
 const actionsDisabled = computed(() => messagesStore.isStandaloneGenerationLocked);
+const comfyUiImageGeneration = useComfyUiImageGeneration();
+
+// 正文按生图提示词切开，提示词位置换成图片槽
+const contentSegments = computed(() => splitMessageContentSegments(props.message.content_text ?? ''));
+const imageSlotsDisabled = computed(() => actionsDisabled.value || !comfyUiImageGeneration.isReady.value);
+
+function handleGenerateImage(imageIndex: number, prompt: string) {
+  void comfyUiImageGeneration.generateForMessage(props.message.message_id, imageIndex, prompt);
+}
 
 const thinkFormatted = computed(() => {
   if (props.message.role !== 'assistant') return '';
@@ -355,7 +376,7 @@ async function handleResend() {
   if (isEditing.value) {
     const saved = await actions.editMessage(props.message.message_id, editContent.value);
     if (!saved) {
-      toastr.error(t('messageCard.editSaveFailed'));
+      notify.error(t('messageCard.editSaveFailed'));
       return;
     }
   }

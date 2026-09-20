@@ -772,7 +772,7 @@ import { useMessageActions } from '../../../composables/useMessageActions';
 import { useSingleApiEditor } from '../../../composables/useSingleApiEditor';
 import { useI18n } from '../../../i18n';
 import type { LocalContentEntryConfig } from '../../../presets/types';
-import { useNotificationStore } from '../../../stores/notification';
+import { notify } from '../../../utils/notify';
 import { useSettingsStore } from '../../../stores/settings';
 import { useSetupStore } from '../../../stores/setup';
 import { useStatDataStore } from '../../../stores/statData';
@@ -810,38 +810,6 @@ const messageActions = useMessageActions();
 const setupStore = useSetupStore();
 const settingsStore = useSettingsStore();
 const statDataStore = useStatDataStore();
-const notificationStore = useNotificationStore();
-const hostToastr = globalThis.toastr;
-const toastr = {
-  success(message: string) {
-    if (hostToastr?.success) {
-      hostToastr.success(message);
-      return;
-    }
-    notificationStore.success(message);
-  },
-  error(message: string) {
-    if (hostToastr?.error) {
-      hostToastr.error(message);
-      return;
-    }
-    notificationStore.error(message);
-  },
-  warning(message: string) {
-    if (hostToastr?.warning) {
-      hostToastr.warning(message);
-      return;
-    }
-    notificationStore.warning(message);
-  },
-  info(message: string) {
-    if (hostToastr?.info) {
-      hostToastr.info(message);
-      return;
-    }
-    notificationStore.info(message);
-  },
-};
 const { persistMainApi, persistAssistantApis } = settingsStore;
 const { t } = useI18n();
 
@@ -971,7 +939,7 @@ function moveApiUp(index: number) {
   if (!persisted) {
     assistantApis.value = previousApis;
     configError.value = t('settings.apiSaveStorageFailed');
-    toastr.error(configError.value);
+    notify.error(configError.value);
     return;
   }
 
@@ -989,7 +957,7 @@ function moveApiDown(index: number) {
   if (!persisted) {
     assistantApis.value = previousApis;
     configError.value = t('settings.apiSaveStorageFailed');
-    toastr.error(configError.value);
+    notify.error(configError.value);
     return;
   }
 
@@ -1243,16 +1211,16 @@ async function fetchModels(index: number, id: string) {
   try {
     const result = await fetchAvailableModels(index);
     if (result.success) {
-      toastr.success(result.message);
+      notify.success(result.message);
     } else {
       configError.value = result.message;
-      toastr.error(result.message);
+      notify.error(result.message);
     }
   } catch (error) {
     configError.value = t('assistantApi.fetch.failed', {
       error: error instanceof Error ? error.message : String(error),
     });
-    toastr.error(configError.value);
+    notify.error(configError.value);
   } finally {
     isLoadingById.value[id] = false;
   }
@@ -1286,16 +1254,16 @@ async function fetchMainApiModels() {
   try {
     const result = await fetchMainApiAvailableModels();
     if (result.success) {
-      toastr.success(result.message);
+      notify.success(result.message);
     } else {
       configError.value = result.message;
-      toastr.error(result.message);
+      notify.error(result.message);
     }
   } catch (error) {
     configError.value = t('assistantApi.fetch.failed', {
       error: error instanceof Error ? error.message : String(error),
     });
-    toastr.error(configError.value);
+    notify.error(configError.value);
   } finally {
     isLoadingMainApi.value = false;
   }
@@ -1305,19 +1273,19 @@ function saveMainApiCard() {
   const result = markMainApiSaved();
   if (!result.valid) {
     configError.value = result.message;
-    toastr.warning(result.message);
+    notify.warning(result.message);
     return;
   }
 
   const persisted = persistMainApi();
   if (!persisted) {
     configError.value = t('settings.apiSaveStorageFailed');
-    toastr.error(configError.value);
+    notify.error(configError.value);
     return;
   }
 
   configError.value = '';
-  toastr.success(t('settings.mainApiSaved'));
+  notify.success(t('settings.mainApiSaved'));
 }
 
 function saveApiCard(index: number) {
@@ -1325,7 +1293,7 @@ function saveApiCard(index: number) {
   const result = markApiSaved(index);
   if (!result.valid) {
     configError.value = result.message;
-    toastr.warning(result.message);
+    notify.warning(result.message);
     return;
   }
 
@@ -1333,13 +1301,13 @@ function saveApiCard(index: number) {
   if (!persisted) {
     assistantApis.value = previousApis;
     configError.value = t('settings.apiSaveStorageFailed');
-    toastr.error(configError.value);
+    notify.error(configError.value);
     return;
   }
 
   expandNextApi(index);
   configError.value = '';
-  toastr.success(t('settings.assistantApiSaved'));
+  notify.success(t('settings.assistantApiSaved'));
 }
 
 // 验证辅助 API 配置
@@ -1363,7 +1331,7 @@ function validateApiConfig(): boolean {
 // 跳过设置
 async function handleSkip() {
   if (!validateApiConfig()) {
-    toastr.warning(configError.value || t('settings.mainApiRequired'));
+    notify.warning(configError.value || t('settings.mainApiRequired'));
     return;
   }
 
@@ -1398,7 +1366,7 @@ async function startGame() {
       markSetupCompleted();
       statDataStore.refreshData('archive-resume-ready');
       emit('complete');
-      toastr.success(t('setup.standalone.archiveResumeReady'));
+      notify.success(t('setup.standalone.archiveResumeReady'));
       return;
     }
 
@@ -1417,13 +1385,13 @@ async function startGame() {
     const openingTriggered = await messageActions.sendStandaloneUserMessage(openingPrompt, 'setup_start_game_opening');
 
     if (openingTriggered) {
-      toastr.success(t('setup.standalone.setupCompleted'));
+      notify.success(t('setup.standalone.setupCompleted'));
     } else {
-      toastr.warning(t('setup.standalone.openingReplyPending'));
+      notify.warning(t('setup.standalone.openingReplyPending'));
     }
   } catch (error) {
     console.error('开始游戏失败:', error);
-    toastr.error(t('setup.settings.startGameFail'));
+    notify.error(t('setup.settings.startGameFail'));
   } finally {
     isStarting.value = false;
   }

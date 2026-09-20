@@ -8,8 +8,10 @@
     "pnpm": ">=9"
   },
   "scripts": {
-    "build:dev": "webpack --config webpack.1980s-nw-standalone.config.ts --mode development",
-    "build": "webpack --config webpack.1980s-nw-standalone.config.ts --mode production",
+    "build:dev": "webpack --config webpack.1980s-nw-standalone.config.ts --mode development && npm run build:preset:dev",
+    "build": "webpack --config webpack.1980s-nw-standalone.config.ts --mode production && npm run build:preset",
+    "build:preset": "webpack --config webpack.preset-package.config.ts --mode production",
+    "build:preset:dev": "webpack --config webpack.preset-package.config.ts --mode development",
     "watch": "webpack --config webpack.1980s-nw-standalone.config.ts --mode development --watch --progress",
     "typecheck": "vue-tsc --noEmit -p tsconfig.json",
     "lint": "eslint . --ext .ts,.vue",
@@ -19,7 +21,9 @@
     "test": "node scripts/tests/run-standalone-local-content-tests.cjs",
     "check:i18n": "node scripts/i18n/check-i18n.cjs"
   },
-  "browserslist": ["defaults and partially supports es6-module"],
+  "browserslist": [
+    "defaults and partially supports es6-module"
+  ],
   "dependencies": {
     "@vueuse/core": "^13.9.0",
     "ejs": "^5.0.1",

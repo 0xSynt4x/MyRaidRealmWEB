@@ -4,6 +4,9 @@
       <button :class="{ active: currentTab === 'ui' }" @click="currentTab = 'ui'">
         <i class="ti ti-palette"></i> {{ t('settings.tab.ui') }}
       </button>
+      <button :class="{ active: currentTab === 'textToImage' }" @click="currentTab = 'textToImage'">
+        {{ t('settings.tab.textToImage') }}
+      </button>
       <button :class="{ active: currentTab === 'mainApi' }" @click="currentTab = 'mainApi'">
         {{ t('settings.tab.mainApi') }}
       </button>
@@ -194,41 +197,21 @@
           </label>
         </div>
 
-        <!-- 文生图 -->
+        <!-- 在线模式 -->
         <div class="setting-row">
           <span class="row-label">
-            {{ t('settings.textToImage') }}
+            {{ t('settings.onlineMode') }}
             <a
-              href="https://discord.com/channels/1134557553011998840/1463945242301567168/1468540724051181632"
+              href="https://discord.com/channels/1134557553011998840/1460568392317669468"
               target="_blank"
               rel="noopener noreferrer"
               class="help-link"
-              :title="t('settings.textToImageHelp')"
+              :title="t('settings.onlineModeHelp')"
             >
               <i class="ti ti-help-circle"></i>
             </a>
           </span>
-          <label class="toggle-switch">
-            <input
-              :checked="textToImageEnabled"
-              type="checkbox"
-              @change="handleTextToImageToggle(!textToImageEnabled)"
-            />
-            <span class="toggle-track"></span>
-          </label>
           <div class="inline-toggle-group">
-            <span class="row-label">
-              {{ t('settings.onlineMode') }}
-              <a
-                href="https://discord.com/channels/1134557553011998840/1460568392317669468"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="help-link"
-                :title="t('settings.onlineModeHelp')"
-              >
-                <i class="ti ti-help-circle"></i>
-              </a>
-            </span>
             <label class="toggle-switch">
               <input
                 :checked="onlineModeEnabled"
@@ -410,6 +393,11 @@
           </div>
         </template>
       </div>
+    </div>
+
+    <!-- ==================== 文生图标签页 ==================== -->
+    <div v-show="currentTab === 'textToImage'" class="ui-settings">
+      <ComfyUiSettingsCard />
     </div>
 
     <!-- ==================== 辅助 API 配置标签页（保持不变） ==================== -->
@@ -1023,10 +1011,9 @@ import type { LocalContentEntryConfig } from '../../presets/types';
 import { useAssistantApiEditor } from '../../composables/useAssistantApiEditor';
 import { useSingleApiEditor } from '../../composables/useSingleApiEditor';
 import { useI18n } from '../../i18n';
-import { useNotificationStore } from '../../stores/notification';
+import { notify } from '../../utils/notify';
 import {
   applyOnlineModeToStandaloneLocalContent,
-  applyTextToImageToStandaloneLocalContent,
   applyWorldDifficultyToStandaloneLocalContent,
   buildWorldDifficultyStandaloneLocalContent,
   getStandaloneLocalContentManifest,
@@ -1052,46 +1039,15 @@ import { useStatDataStore } from '../../stores/statData';
 import { useStatDataActions } from '../../stores/statDataActions';
 import { useSetupStore } from '../../stores/setup';
 import DeclarationModal from './DeclarationModal.vue';
+import ComfyUiSettingsCard from './ComfyUiSettingsCard.vue';
 import { useStandaloneArchiveManager } from '../../composables/useStandaloneArchiveManager';
 
-const currentTab = ref<'ui' | 'mainApi' | 'assistantApi' | 'worldbook' | 'archive'>('ui');
+const currentTab = ref<'ui' | 'textToImage' | 'mainApi' | 'assistantApi' | 'worldbook' | 'archive'>('ui');
 const showDeclaration = ref(false);
 const { t } = useI18n();
 
 const settingsStore = useSettingsStore();
 const setupStore = useSetupStore();
-const notificationStore = useNotificationStore();
-const hostToastr = globalThis.toastr;
-const toastr = {
-  success(message: string) {
-    if (hostToastr?.success) {
-      hostToastr.success(message);
-      return;
-    }
-    notificationStore.success(message);
-  },
-  error(message: string) {
-    if (hostToastr?.error) {
-      hostToastr.error(message);
-      return;
-    }
-    notificationStore.error(message);
-  },
-  warning(message: string) {
-    if (hostToastr?.warning) {
-      hostToastr.warning(message);
-      return;
-    }
-    notificationStore.warning(message);
-  },
-  info(message: string) {
-    if (hostToastr?.info) {
-      hostToastr.info(message);
-      return;
-    }
-    notificationStore.info(message);
-  },
-};
 const { persistMainApi, persistAssistantApis } = settingsStore;
 const {
   locale,
@@ -1102,7 +1058,6 @@ const {
   lineHeight,
   autoScroll,
   actionOptionBehavior,
-  textToImageEnabled,
   onlineModeEnabled,
   mainApi,
   assistantApis,
@@ -1510,13 +1465,6 @@ function toggleAsset(assetId: string, nextEnabled: boolean) {
   standaloneLocalContent.value.enabledAssets[assetId] = nextEnabled;
 }
 
-function syncTextToImageLocalContent(enabled: boolean) {
-  standaloneLocalContent.value = {
-    ...standaloneLocalContent.value,
-    enabledAssets: applyTextToImageToStandaloneLocalContent(standaloneLocalContent.value.enabledAssets, enabled),
-  };
-}
-
 function syncOnlineModeLocalContent(enabled: boolean) {
   standaloneLocalContent.value = {
     ...standaloneLocalContent.value,
@@ -1539,7 +1487,7 @@ function handleThemeChange(mode: Theme) {
 async function handleSurvivalModeChange(mode: SurvivalMode) {
   try {
     await statDataActions.updateStatDataAtPath('settings.survival-mode', '设置.生存系统模式', mode);
-    toastr.success(t('settings.survivalSwitched', { mode: localizedSurvivalMode(mode) }));
+    notify.success(t('settings.survivalSwitched', { mode: localizedSurvivalMode(mode) }));
   } catch (e) {
     console.warn('[Settings] 同步生存系统模式到本地状态失败:', e);
   }
@@ -1548,14 +1496,7 @@ async function handleSurvivalModeChange(mode: SurvivalMode) {
 function handleWorldDifficultyChange(difficulty: WorldDifficulty) {
   worldDifficulty.value = difficulty;
   syncWorldDifficultyLocalContent();
-  toastr.success(t('settings.worldDifficultySet', { difficulty: localizedDifficulty(difficulty) }));
-}
-
-// 处理文生图功能切换
-async function handleTextToImageToggle(enabled: boolean) {
-  textToImageEnabled.value = enabled;
-  syncTextToImageLocalContent(enabled);
-  toastr.success(t('settings.textToImageLocalRulesToggled', { status: localizedToggleStatus(enabled) }));
+  notify.success(t('settings.worldDifficultySet', { difficulty: localizedDifficulty(difficulty) }));
 }
 
 async function syncOnlineModeFromWorldbook() {
@@ -1565,7 +1506,7 @@ async function syncOnlineModeFromWorldbook() {
 async function handleOnlineModeToggle(enabled: boolean) {
   onlineModeEnabled.value = enabled;
   syncOnlineModeLocalContent(enabled);
-  toastr.success(t('settings.onlineModeLocalRulesToggled', { status: localizedToggleStatus(enabled) }));
+  notify.success(t('settings.onlineModeLocalRulesToggled', { status: localizedToggleStatus(enabled) }));
 }
 
 onMounted(() => {
@@ -1610,7 +1551,7 @@ function moveApiUp(index: number) {
     assistantApis.value = previousApis;
     const message = t('settings.apiSaveStorageFailed');
     saveResult.value = { success: false, message };
-    toastr.error(message);
+    notify.error(message);
     return;
   }
 
@@ -1629,7 +1570,7 @@ function moveApiDown(index: number) {
     assistantApis.value = previousApis;
     const message = t('settings.apiSaveStorageFailed');
     saveResult.value = { success: false, message };
-    toastr.error(message);
+    notify.error(message);
     return;
   }
 
@@ -1648,17 +1589,17 @@ async function fetchModels(index: number, id: string) {
 
     if (result.success) {
       saveResult.value = { success: true, message: result.message };
-      toastr.success(result.message);
+      notify.success(result.message);
     } else {
       saveResult.value = { success: false, message: result.message };
-      toastr.error(result.message);
+      notify.error(result.message);
     }
   } catch (error) {
     const message = t('assistantApi.fetch.failed', {
       error: error instanceof Error ? error.message : String(error),
     });
     saveResult.value = { success: false, message };
-    toastr.error(message);
+    notify.error(message);
   } finally {
     isLoadingById.value[id] = false;
   }
@@ -1672,17 +1613,17 @@ async function fetchMainApiModels() {
 
     if (result.success) {
       saveResult.value = { success: true, message: result.message };
-      toastr.success(result.message);
+      notify.success(result.message);
     } else {
       saveResult.value = { success: false, message: result.message };
-      toastr.error(result.message);
+      notify.error(result.message);
     }
   } catch (error) {
     const message = t('assistantApi.fetch.failed', {
       error: error instanceof Error ? error.message : String(error),
     });
     saveResult.value = { success: false, message };
-    toastr.error(message);
+    notify.error(message);
   } finally {
     isLoadingMainApi.value = false;
   }
@@ -1692,7 +1633,7 @@ function saveMainApiCard() {
   const result = markMainApiSaved();
   if (!result.valid) {
     saveResult.value = { success: false, message: result.message };
-    toastr.warning(result.message);
+    notify.warning(result.message);
     return;
   }
 
@@ -1700,13 +1641,13 @@ function saveMainApiCard() {
   if (!persisted) {
     const message = t('settings.apiSaveStorageFailed');
     saveResult.value = { success: false, message };
-    toastr.error(message);
+    notify.error(message);
     return;
   }
 
   const message = t('settings.mainApiSaved');
   saveResult.value = { success: true, message };
-  toastr.success(message);
+  notify.success(message);
 }
 
 function saveApiCard(index: number) {
@@ -1714,7 +1655,7 @@ function saveApiCard(index: number) {
   const result = markApiSaved(index);
   if (!result.valid) {
     saveResult.value = { success: false, message: result.message };
-    toastr.warning(result.message);
+    notify.warning(result.message);
     return;
   }
 
@@ -1723,14 +1664,14 @@ function saveApiCard(index: number) {
     assistantApis.value = previousApis;
     const message = t('settings.apiSaveStorageFailed');
     saveResult.value = { success: false, message };
-    toastr.error(message);
+    notify.error(message);
     return;
   }
 
   expandNextApi(index);
   const message = t('settings.assistantApiSaved');
   saveResult.value = { success: true, message };
-  toastr.success(message);
+  notify.success(message);
 }
 
 // 背景图片处理函数
@@ -1739,13 +1680,13 @@ function handleUrlInput() {
 
   if (!url) {
     backgroundImage.value.imageUrl = '';
-    toastr.info(t('settings.imageCleared'));
+    notify.info(t('settings.imageCleared'));
     return;
   }
 
   // 验证 URL 格式
   if (!url.startsWith('http://') && !url.startsWith('https://')) {
-    toastr.error(t('settings.imageInvalidUrl'));
+    notify.error(t('settings.imageInvalidUrl'));
     return;
   }
 
@@ -1754,17 +1695,17 @@ function handleUrlInput() {
   const hasImageExt = imageExtensions.some(ext => url.toLowerCase().includes(ext));
 
   if (!hasImageExt && !url.includes('?')) {
-    toastr.warning(t('settings.imageMaybeNotImage'));
+    notify.warning(t('settings.imageMaybeNotImage'));
   }
 
   // 尝试加载图片验证
   const testImg = new Image();
   testImg.onload = () => {
     backgroundImage.value.imageUrl = url;
-    toastr.success(t('settings.imageSet'));
+    notify.success(t('settings.imageSet'));
   };
   testImg.onerror = () => {
-    toastr.error(t('settings.imageLoadFailed'));
+    notify.error(t('settings.imageLoadFailed'));
   };
   testImg.src = url;
 }
@@ -1778,12 +1719,12 @@ async function handleImageUpload(event: Event) {
   const supportedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
 
   if (!supportedTypes.includes(file.type)) {
-    toastr.error(t('settings.imageUnsupportedType'));
+    notify.error(t('settings.imageUnsupportedType'));
     return;
   }
 
   if (file.size > 2 * 1024 * 1024) {
-    toastr.error(t('settings.imageTooLarge'));
+    notify.error(t('settings.imageTooLarge'));
     return;
   }
 
@@ -1791,11 +1732,11 @@ async function handleImageUpload(event: Event) {
   reader.onload = e => {
     const result = e.target?.result as string;
     backgroundImage.value.imageUrl = result;
-    toastr.success(t('settings.imageUploaded'));
+    notify.success(t('settings.imageUploaded'));
     input.value = '';
   };
   reader.onerror = () => {
-    toastr.error(t('settings.imageReadFailed'));
+    notify.error(t('settings.imageReadFailed'));
   };
   reader.readAsDataURL(file);
 }
@@ -1803,7 +1744,7 @@ async function handleImageUpload(event: Event) {
 function removeBackgroundImage() {
   backgroundImage.value.imageUrl = '';
   imageUrlInput.value = '';
-  toastr.info(t('settings.imageRemoved'));
+  notify.info(t('settings.imageRemoved'));
 }
 </script>
 

@@ -383,7 +383,7 @@ function applyStandaloneArchivePayloadToStores(payload: StandaloneArchiveFile): 
   const statDataStore = useStatDataStore();
   const normalizedStandaloneLocalContent = resolveStoredStandaloneLocalContentSettings({
     storedSettings: payload.standaloneLocalContent,
-    textToImageEnabled: settingsStore.textToImageEnabled,
+    imagePromptEnabled: settingsStore.comfyUi.enabled,
     onlineModeEnabled: settingsStore.onlineModeEnabled,
   });
   const restoredSession = StandaloneRuntimeSessionSchema.parse({

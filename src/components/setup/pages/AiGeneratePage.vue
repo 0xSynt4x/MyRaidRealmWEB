@@ -641,6 +641,7 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
+import { notify } from '../../../utils/notify';
 import { Schema } from '../../../../schema/schema';
 import { useI18n } from '../../../i18n';
 import { useSettingsStore } from '../../../stores/settings';
@@ -1047,7 +1048,7 @@ async function handleGenerate(moduleKey: AiGenerateModuleKey) {
     const dependencyState = getModuleDependencyState(moduleKey);
     if (!dependencyState.ready) {
       moduleStates[moduleKey].error = dependencyState.reason;
-      toastr.warning(dependencyState.reason);
+      notify.warning(dependencyState.reason);
     }
     return;
   }
@@ -1056,7 +1057,7 @@ async function handleGenerate(moduleKey: AiGenerateModuleKey) {
   const dependencyState = getModuleDependencyState(moduleKey);
   if (!dependencyState.ready) {
     moduleState.error = dependencyState.reason;
-    toastr.warning(dependencyState.reason);
+    notify.warning(dependencyState.reason);
     return;
   }
 
@@ -1118,7 +1119,7 @@ ${t('setup.aiGenerate.prompt.outputInstruction')}`;
       title: getModuleTitle(moduleKey),
       message,
     });
-    toastr.error(t('setup.aiGenerate.message.moduleGenerationFailed', { title: getModuleTitle(moduleKey), message }));
+    notify.error(t('setup.aiGenerate.message.moduleGenerationFailed', { title: getModuleTitle(moduleKey), message }));
   } finally {
     moduleState.isGenerating = false;
     moduleState.generationId = '';
@@ -2016,9 +2017,9 @@ function handleDownload() {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-    toastr.success(t('setup.aiGenerate.message.jsonDownloaded'));
+    notify.success(t('setup.aiGenerate.message.jsonDownloaded'));
   } catch (error) {
-    toastr.error(t('setup.aiGenerate.message.downloadFailed'));
+    notify.error(t('setup.aiGenerate.message.downloadFailed'));
     console.error('[AiGenerate] 下载失败:', error);
   }
 }

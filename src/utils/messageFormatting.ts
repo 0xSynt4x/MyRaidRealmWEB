@@ -185,3 +185,60 @@ export function formatMessageContentForDisplay(
 export function formatAuxiliaryContentForDisplay(contentText: string, _messageId: number): string {
   return formatStandaloneText(contentText);
 }
+
+/** 正文被生图提示词切开后的一段：html 是正文片段，prompt 有值时表示该段之后要配一张图 */
+export interface MessageContentSegment {
+  html: string;
+  prompt?: string;
+  imageIndex?: number;
+}
+
+/**
+ * 把正文按 image### 生图提示词标记切成片段，顺带去掉 <imgthink> 思考草稿块。
+ * 提示词本身不会出现在 html 里，改由图片槽展示。
+ */
+export function splitMessageContentSegments(contentText: string): MessageContentSegment[] {
+  const cleaned = normalizeLineEndings(contentText).replace(/<imgthink>[\s\S]*?<\/imgthink>/gi, '');
+  const pattern = /image###\s*([\s\S]*?)\s*###/g;
+  const segments: MessageContentSegment[] = [];
+
+  let cursor = 0;
+  let imageIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = pattern.exec(cleaned)) !== null) {
+    const before = cleaned.slice(cursor, match.index);
+    const html = before.trim() ? formatStandaloneText(before) : '';
+    const prompt = match[1].trim();
+
+    if (prompt) {
+      segments.push({ html, prompt, imageIndex });
+      imageIndex += 1;
+    } else if (html) {
+      segments.push({ html });
+    }
+
+    cursor = match.index + match[0].length;
+  }
+
+  const tail = cleaned.slice(cursor);
+  // 流式输出时标记可能还没闭合，先把已经写出来的提示词收走，避免正文里闪出半截标记
+  const unclosedIndex = tail.search(/image###/);
+  if (unclosedIndex >= 0) {
+    const before = tail.slice(0, unclosedIndex);
+    const pendingPrompt = tail.slice(unclosedIndex + 'image###'.length).trim();
+    if (before.trim()) {
+      segments.push({ html: formatStandaloneText(before) });
+    }
+    if (pendingPrompt) {
+      segments.push({ html: '', prompt: pendingPrompt, imageIndex });
+    }
+    return segments;
+  }
+
+  if (tail.trim() || segments.length === 0) {
+    segments.push({ html: formatStandaloneText(tail) });
+  }
+
+  return segments;
+}

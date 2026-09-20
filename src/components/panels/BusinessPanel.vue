@@ -178,6 +178,7 @@
 
 <script setup lang="ts">
 import { storeToRefs } from 'pinia';
+import { notify } from '../../utils/notify';
 import { computed, ref } from 'vue';
 import { useI18n } from '../../i18n';
 import { useDelete } from '../../composables/useDelete';
@@ -253,7 +254,7 @@ async function saveBusinessData(updatedData: any) {
   await statDataActions.mutateStatData('business.save', draft => {
     Object.assign(draft.玩家.经营实体[currentBusinessName.value], updatedData);
   });
-  toastr.success(t('business.saveSuccess'));
+  notify.success(t('business.saveSuccess'));
 }
 
 function toggleInventory() {

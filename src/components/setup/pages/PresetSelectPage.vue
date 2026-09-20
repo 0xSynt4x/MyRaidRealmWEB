@@ -95,6 +95,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
+import { notify } from '../../../utils/notify';
 import { useI18n } from '../../../i18n';
 import type { PresetConfig } from '../../../presets/types';
 import { useSetupStore } from '../../../stores/setup';
@@ -173,7 +174,7 @@ onMounted(async () => {
     console.error('[PresetSelectPage] 加载预设包失败:', error);
     presetLoadError.value = true;
     showErrorOverlay.value = true;
-    toastr.error(t('setup.presetSelect.loadFailedToast'));
+    notify.error(t('setup.presetSelect.loadFailedToast'));
   } finally {
     isLoadingPresets.value = false;
   }

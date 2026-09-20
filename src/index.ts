@@ -1,3 +1,6 @@
+// 🔴 必须排在最前：给 standalone 装全局垫片（lodash 的裸 `_`）。
+// 有模块可能在初始化阶段就用到 `_`，晚一步就炸。见文件内注释。
+import './standalone-globals';
 import { createPinia } from 'pinia';
 import { createApp } from 'vue';
 import App from './App.vue';

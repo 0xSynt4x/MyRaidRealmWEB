@@ -45,6 +45,14 @@
     <!-- 全局确认对话框 -->
     <ConfirmDialog />
 
+    <!--
+      页面内通知的挂载点。
+      原先它挂在游戏正文区（ContentText）里，导致开局向导那几页弹不出提示
+      —— 向导是另一个分支，根本不渲染正文区。挂到根节点后，向导和游戏内都能弹。
+      定位仍是相对 .app-container，所以视觉位置不变。
+    -->
+    <NotificationContainer />
+
     <!-- 模态框挂载点 - 绝对定位覆盖整个 app-container -->
     <div id="modal-container" class="modal-mount"></div>
   </div>
@@ -54,6 +62,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import ActionBar from './components/common/ActionBar.vue';
 import ConfirmDialog from './components/common/ConfirmDialog.vue';
+import NotificationContainer from './components/common/NotificationContainer.vue';
 import CenterContent from './components/layout/CenterContent.vue';
 import HeaderBar from './components/layout/HeaderBar.vue';
 import LeftSidebar from './components/layout/LeftSidebar.vue';

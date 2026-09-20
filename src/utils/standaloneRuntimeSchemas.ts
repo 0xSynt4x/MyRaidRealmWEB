@@ -94,6 +94,15 @@ export const StandaloneRuntimeSessionSchema = z
 
 export const StandaloneRuntimeMessageRoleSchema = z.enum(['user', 'assistant']);
 
+/** 本地 ComfyUI 生成的插图记录，索引与正文里第 N 个生图提示词对应 */
+export const StandaloneRuntimeGeneratedImageSchema = z.object({
+  status: z.enum(['idle', 'running', 'done', 'error']).default('idle'),
+  url: z.string().optional(),
+  filename: z.string().optional(),
+  prompt: z.string().default(''),
+  error: z.string().optional(),
+});
+
 export const StandaloneRuntimeMessageRecordSchema = z.object({
   message_id: z.number().int().nonnegative(),
   role: StandaloneRuntimeMessageRoleSchema,
@@ -110,6 +119,7 @@ export const StandaloneRuntimeMessageRecordSchema = z.object({
   variable_update_status: z.enum(['running', 'success', 'failed', 'skipped']).optional(),
   variable_update_warning: z.string().nullable().optional(),
   debug_trace: StandaloneAssistantDebugTraceSchema,
+  generated_images: z.array(StandaloneRuntimeGeneratedImageSchema).optional(),
   createdAt: z
     .string()
     .min(1)

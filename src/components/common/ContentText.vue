@@ -6,9 +6,6 @@
     <!-- 舞台遮罩：有背景图时压暗，保证正文可读 -->
     <div v-if="backgroundImage?.imageUrl" class="stage-veil"></div>
 
-    <!-- 页面内通知 -->
-    <NotificationContainer />
-
     <!-- 消息历史容器 -->
     <div ref="historyRef" class="message-history">
       <!-- 正文列：限宽居中。滚动条仍贴在窗口边缘，不会被一起收窄。 -->
@@ -48,7 +45,6 @@ import { useI18n } from '../../i18n';
 import { useMessagesStore } from '../../stores/messages';
 import { useSettingsStore } from '../../stores/settings';
 import MessageCard from './MessageCard.vue';
-import NotificationContainer from './NotificationContainer.vue';
 
 const settingsStore = useSettingsStore();
 const { backgroundImage } = storeToRefs(settingsStore);

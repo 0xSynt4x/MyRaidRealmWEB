@@ -24,6 +24,7 @@
 
 <script setup lang="ts">
 import { useI18n } from '../../i18n';
+import { notify } from '../../utils/notify';
 import { useFullscreen } from '../../composables/useFullscreen';
 import { useLayoutStore } from '../../stores/layout';
 import { useSetupStore } from '../../stores/setup';
@@ -64,7 +65,7 @@ async function handleAiGenerateApply() {
 async function handleContinue(file: File) {
   try {
     const outcome = await importArchiveFile(file);
-    toastr.success(
+    notify.success(
       t(
         getStandaloneArchiveFeedbackMessageKey({
           scope: 'setup',
@@ -75,7 +76,7 @@ async function handleContinue(file: File) {
     );
   } catch (error) {
     console.error('[SetupWizard] 读档失败:', error);
-    toastr.error(t('setup.archiveImport.failed', { error: error instanceof Error ? error.message : String(error) }));
+    notify.error(t('setup.archiveImport.failed', { error: error instanceof Error ? error.message : String(error) }));
   }
 }
 

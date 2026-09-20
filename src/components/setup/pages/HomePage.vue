@@ -106,7 +106,8 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue';
+import { nextTick, onMounted, onUnmounted, ref } from 'vue';
+import { notify } from '../../../utils/notify';
 import { useI18n } from '../../../i18n';
 import { useFullscreen } from '../../../composables/useFullscreen';
 import { useCoverBackground } from '../../../composables/useCoverBackground';
@@ -149,11 +150,8 @@ const isLeaving = ref(false);
 /** 起播 / 停播的淡入淡出时长（毫秒） */
 const FADE_IN_MS = 1600;
 const FADE_OUT_MS = 700;
-/** 过场动画时长（毫秒），必须与样式里 cover-leave / cover-core-glow 的时长一致 */
-const LEAVE_MS = 1400;
 
 let fadeTimer = 0;
-let leaveTimer = 0;
 let draggingVolume = false;
 /** 自动播放被拦下后，挂一次性的「首次交互起播」监听 */
 let gestureArmed = false;
@@ -325,25 +323,29 @@ function syncLeaveOrigin() {
   if (y) page.style.setProperty('--leave-y', y);
 }
 
-// 开始游戏：先播过场，动画走完再真正切页面
+// 开始游戏：先把过场类挂上去、动画跑起来，再通知切页。
+// 🔴 通知必须等一个 tick —— 同步通知会让父组件在同一批更新里卸载本组件，
+//    过场类还没生效就被丢弃，动画整个被跳过。
+// 切页机制会读元素上的 animation-duration（= cover-leave 的 1.4s）自己等动画走完，
+// 所以这里也不能再延时 —— 那会白等一个动画时长，屏幕全空。
 function handleStart() {
   if (isLeaving.value) return;
   isLeaving.value = true;
   syncLeaveOrigin();
   stopMusic(); // 音乐跟着一起收，别在切场景那一刻硬断
-  leaveTimer = window.setTimeout(() => emit('start'), LEAVE_MS);
+  void nextTick(() => emit('start'));
 }
 
 function handleContinueClick() {
   const latestArchive = listStandaloneArchives()[0];
   if (!latestArchive) {
-    toastr.info(t('setup.standalone.archiveEmpty'));
+    notify.info(t('setup.standalone.archiveEmpty'));
     return;
   }
 
   try {
     const outcome = restoreStandaloneArchiveById(latestArchive.id);
-    toastr.success(
+    notify.success(
       t(
         getStandaloneArchiveFeedbackMessageKey({
           scope: 'setup',
@@ -355,7 +357,7 @@ function handleContinueClick() {
     );
   } catch (error) {
     console.error('[HomePage] 恢复独立模式存档失败:', error);
-    toastr.error(
+    notify.error(
       t('setup.standalone.archiveRestoreFailed', { error: error instanceof Error ? error.message : String(error) }),
     );
   }
@@ -388,7 +390,6 @@ onMounted(() => {
 onUnmounted(() => {
   disarmGesture();
   window.clearInterval(fadeTimer);
-  window.clearTimeout(leaveTimer);
   const el = bgmRef.value;
   if (el) {
     el.pause();
@@ -1136,7 +1137,8 @@ onUnmounted(() => {
 }
 
 /* 极光：比底图晚一拍铺开。
-   漂移动画必须一起写上 —— 只写 animation 会把原来的漂移冲掉，极光就定住了 */
+   漂移动画必须一起写上 —— 只写 animation 会把原来的漂移冲掉，极光就定住了。
+   这里的 opacity: 0 是入场起点，终点由 cover-fade-in 的 to 负责，别指望自动取原值 */
 .home-page .bg-aurora {
   opacity: 0;
 }
@@ -1153,10 +1155,14 @@ onUnmounted(() => {
     cover-fade-in 1.3s ease-out 0.82s forwards;
 }
 
-/* 只写 from：终点自动取元素原本的值，不会把 0.8 不透明度的装饰线刷成 1 */
+/* 终点必须写死：极光的基础值被下面压成了 0（见 .home-page .bg-aurora），
+   缺 to 时浏览器会取那个 0 当终点 → 动画 0→0 → 极光整层不可见 */
 @keyframes cover-fade-in {
   from {
     opacity: 0;
+  }
+  to {
+    opacity: 1;
   }
 }
 
@@ -1254,6 +1260,9 @@ onUnmounted(() => {
   );
 }
 
+/* 🔴 这里的 1.4s 不只是动画时长，也是「切页要等多久」：
+   切页机制会读元素上的 animation-duration，取它和过渡时长的最大值来等。
+   所以改这个数字 = 改整个过场的时长，两处一起看（脚本里不再单独计时）。 */
 .home-page.is-leaving {
   transform-origin: var(--leave-x) var(--leave-y);
   animation: cover-leave 1.4s cubic-bezier(0.45, 0, 0.65, 0.55) forwards;

@@ -4,6 +4,7 @@
  */
 
 import { klona } from 'klona';
+import { notify } from '../utils/notify';
 import { defineStore } from 'pinia';
 import { reactive, ref, watch } from 'vue';
 import { Schema } from '../../schema/schema';
@@ -143,7 +144,7 @@ export const useSetupStore = defineStore('setup', () => {
       return;
     }
 
-    toastr.warning(
+    notify.warning(
       tCurrent('setup.presetImport.legacyWorldbookEntriesPartial', { names: unresolvedEntries.join('、') }),
     );
   }
@@ -242,11 +243,11 @@ export const useSetupStore = defineStore('setup', () => {
         notifyLegacyMigrationWarnings(selectedPreset.value.legacyMigrationWarnings);
       }
 
-      toastr.success(tCurrent('setup.aiGenerate.applied'));
+      notify.success(tCurrent('setup.aiGenerate.applied'));
       return true;
     } catch (error) {
       console.error('[Setup] 应用AI生成配置失败:', error);
-      toastr.error(
+      notify.error(
         tCurrent('setup.aiGenerate.invalidJson', { error: error instanceof Error ? error.message : String(error) }),
       );
       return false;
@@ -379,7 +380,7 @@ export const useSetupStore = defineStore('setup', () => {
 
       // 验证数据结构
       if (!data.config) {
-        toastr.error(tCurrent('setup.presetImport.invalidFileMissingConfig'));
+        notify.error(tCurrent('setup.presetImport.invalidFileMissingConfig'));
         return false;
       }
 
@@ -411,11 +412,11 @@ export const useSetupStore = defineStore('setup', () => {
 
       // 选择导入的预设
       selectPreset(importedPreset);
-      toastr.success(tCurrent('setup.presetImport.success', { name: importedPreset.name }));
+      notify.success(tCurrent('setup.presetImport.success', { name: importedPreset.name }));
       return true;
     } catch (error) {
       console.error('[Setup] 导入预设失败:', error);
-      toastr.error(tCurrent('setup.presetImport.failed'));
+      notify.error(tCurrent('setup.presetImport.failed'));
       return false;
     }
   }

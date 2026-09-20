@@ -65,6 +65,7 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
+import { notify } from '../../utils/notify';
 import { Schema } from '../../../schema/schema';
 import { useMessageActions } from '../../composables/useMessageActions';
 import { useFullscreen } from '../../composables/useFullscreen';
@@ -136,7 +137,7 @@ function syncSelectedPresetMeta(preset: PresetConfig) {
     syncSelectedPresetMeta(defaultPreset);
   } catch (error) {
     console.error('[WorldConfigDashboard] 加载预设包失败:', error);
-    toastr.error(t('dashboard.loadPresetFailed'));
+    notify.error(t('dashboard.loadPresetFailed'));
   }
 })();
 
@@ -165,7 +166,7 @@ function loadPreset(preset: PresetConfig) {
   expanded.player = true;
   expanded.factions = false;
   expanded.business = false;
-  toastr.success(t('dashboard.loadedPreset', { name: preset.name }));
+  notify.success(t('dashboard.loadedPreset', { name: preset.name }));
 }
 
 // 将当前配置同步到开局草稿；正式写回只发生在明确开始游戏时
@@ -196,7 +197,7 @@ async function startGame() {
   try {
     // 验证玩家姓名是否已填写
     if (!config.玩家.姓名 || config.玩家.姓名.trim() === '') {
-      toastr.warning(t('dashboard.playerNameRequired'));
+      notify.warning(t('dashboard.playerNameRequired'));
       // 自动展开玩家设定区块
       expanded.player = true;
       return;
@@ -237,11 +238,11 @@ async function startGame() {
     );
 
     if (!openingTriggered) {
-      toastr.warning(t('setup.standalone.openingReplyPending'));
+      notify.warning(t('setup.standalone.openingReplyPending'));
     }
   } catch (error) {
     console.error('开始游戏失败:', error);
-    toastr.error(t('dashboard.startGameFailed'));
+    notify.error(t('dashboard.startGameFailed'));
   } finally {
     isStarting.value = false;
   }

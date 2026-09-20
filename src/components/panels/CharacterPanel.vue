@@ -584,8 +584,8 @@
 </template>
 
 <script setup lang="ts">
-import _ from 'lodash';
 import { storeToRefs } from 'pinia';
+import { notify } from '../../utils/notify';
 import { computed, nextTick, ref, watch, watchEffect } from 'vue';
 import { useI18n } from '../../i18n';
 import { useDelete } from '../../composables/useDelete';
@@ -669,11 +669,12 @@ const nameInputFocused = ref(false);
 
 const sortedCharacters = computed(() => {
   const npcRecords = (data.value.人物档案 || {}) as NpcRecord;
-  return _(npcRecords)
-    .entries()
+  // 按好感度从高到低。原来用 lodash 链式写（entries/map/sortBy），
+  // 但全项目只此一处用到 lodash，而它被当成启动就预加载的 CDN 脚本，
+  // 为这点功能拖慢启动不划算 —— 换成原生写法后 lodash 整个移除。
+  return Object.entries(npcRecords)
     .map(([id, npc]) => ({ id, ...npc }))
-    .sortBy(npc => -(npc.关系数据?.好感度 || 0))
-    .value();
+    .sort((a, b) => (b.关系数据?.好感度 || 0) - (a.关系数据?.好感度 || 0));
 });
 
 function getFavorPercent(favor: number): number {
@@ -806,7 +807,7 @@ async function saveNPC() {
   };
 
   await statDataActions.updateStatDataAtPath('npc.save', `人物档案.${npcId}`, nextNpc);
-  toastr.success(t('character.saveSuccess'));
+  notify.success(t('character.saveSuccess'));
   closeDialog();
 }
 
@@ -872,7 +873,7 @@ async function recruitNPC() {
   });
 
   await statDataActions.updateStatDataAtPath('npc.recruit', `人物档案.${npcId}`, nextNpc);
-  toastr.success(t('character.addedCharacter', { name }));
+  notify.success(t('character.addedCharacter', { name }));
   closeRecruitDialog();
 }
 

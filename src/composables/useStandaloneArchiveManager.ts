@@ -1,4 +1,5 @@
 import { computed, ref } from 'vue';
+import { notify } from '../utils/notify';
 import { tCurrent } from '../i18n';
 import { useNotificationStore } from '../stores/notification';
 import {
@@ -93,13 +94,13 @@ export function useStandaloneArchiveManager() {
       await saveCurrentArchive();
       const message = tCurrent('contentCenter.archive.exportStandaloneSuccess');
       setArchiveStatus(message);
-      toastr.success(message);
+      notify.success(message);
     } catch (error) {
       const message = tCurrent('contentCenter.archive.actionFailed', {
         error: error instanceof Error ? error.message : String(error),
       });
       setArchiveStatus(message, 'error');
-      toastr.error(message);
+      notify.error(message);
     } finally {
       isArchiving.value = false;
     }
@@ -118,13 +119,13 @@ export function useStandaloneArchiveManager() {
         summary: formatArchiveSummaryForToast(archive.summary),
       });
       setArchiveStatus(message);
-      toastr.success(message);
+      notify.success(message);
     } catch (error) {
       const message = tCurrent('contentCenter.archive.actionFailed', {
         error: error instanceof Error ? error.message : String(error),
       });
       setArchiveStatus(message, 'error');
-      toastr.error(message);
+      notify.error(message);
     } finally {
       isSavingStandaloneArchive.value = false;
     }
@@ -154,13 +155,13 @@ export function useStandaloneArchiveManager() {
         }),
       );
       setArchiveStatus(message);
-      toastr.success(message);
+      notify.success(message);
     } catch (error) {
       const message = tCurrent('contentCenter.archive.actionFailed', {
         error: error instanceof Error ? error.message : String(error),
       });
       setArchiveStatus(message, 'error');
-      toastr.error(message);
+      notify.error(message);
     } finally {
       isImportingArchive.value = false;
       input.value = '';
@@ -190,13 +191,13 @@ export function useStandaloneArchiveManager() {
         },
       );
       setArchiveStatus(message);
-      toastr.success(message);
+      notify.success(message);
     } catch (error) {
       const message = tCurrent('contentCenter.archive.actionFailed', {
         error: error instanceof Error ? error.message : String(error),
       });
       setArchiveStatus(message, 'error');
-      toastr.error(message);
+      notify.error(message);
     } finally {
       isRestoringArchiveId.value = null;
     }
@@ -211,7 +212,7 @@ export function useStandaloneArchiveManager() {
         error: error instanceof Error ? error.message : String(error),
       });
       setArchiveStatus(message, 'error');
-      toastr.error(message);
+      notify.error(message);
     }
   }
 
@@ -231,13 +232,13 @@ export function useStandaloneArchiveManager() {
       deleteStandaloneArchive(archiveId);
       refreshStandaloneArchiveList();
       setArchiveStatus(tCurrent('contentCenter.archive.deleteSuccess'));
-      toastr.success(tCurrent('contentCenter.archive.deleteSuccess'));
+      notify.success(tCurrent('contentCenter.archive.deleteSuccess'));
     } catch (error) {
       const message = tCurrent('contentCenter.archive.actionFailed', {
         error: error instanceof Error ? error.message : String(error),
       });
       setArchiveStatus(message, 'error');
-      toastr.error(message);
+      notify.error(message);
     }
   }
 

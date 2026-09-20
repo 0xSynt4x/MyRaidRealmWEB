@@ -1,4 +1,5 @@
 import { nextTick } from 'vue';
+import { notify } from './notify';
 import { tCurrent } from '../i18n';
 import { useNotificationStore } from '../stores/notification';
 
@@ -45,7 +46,7 @@ export async function confirmDelete(options: DeleteOptions): Promise<boolean> {
 
   if (showToast) {
     nextTick(() => {
-      toastr.success(tCurrent('common.deleteSuccess', { name: displayName }));
+      notify.success(tCurrent('common.deleteSuccess', { name: displayName }));
       onSuccess?.();
     });
   } else {
