@@ -30,15 +30,34 @@
 
     <!-- 顶部控制按钮 -->
     <div class="top-controls">
-      <button
-        v-if="hasBgMusic"
-        class="control-btn"
-        :title="isMusicPlaying ? t('setup.home.pauseMusic') : t('setup.home.playMusic')"
-        :aria-label="isMusicPlaying ? t('setup.home.pauseMusic') : t('setup.home.playMusic')"
-        @click="toggleMusic"
-      >
-        <i :class="isMusicPlaying ? 'ti ti-volume' : 'ti ti-volume-off'"></i>
-      </button>
+      <div v-if="hasBgMusic" ref="musicCtlRef" class="music-ctl">
+        <button
+          class="control-btn"
+          :title="isMusicPlaying ? t('setup.home.pauseMusic') : t('setup.home.playMusic')"
+          :aria-label="isMusicPlaying ? t('setup.home.pauseMusic') : t('setup.home.playMusic')"
+          @click="toggleMusic"
+        >
+          <i :class="isMusicPlaying ? 'ti ti-volume' : 'ti ti-volume-off'"></i>
+        </button>
+        <!-- 音量条：视觉只有 2px，可点区域靠 ::before 上下撑开，否则鼠标根本压不着 -->
+        <div
+          ref="volumeBarRef"
+          class="volume-bar"
+          role="slider"
+          tabindex="0"
+          :aria-label="t('setup.home.volume')"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          :aria-valuenow="Math.round(volume * 100)"
+          @pointerdown="onVolumePointerDown"
+          @pointermove="onVolumePointerMove"
+          @pointerup="onVolumePointerUp"
+          @pointercancel="onVolumePointerUp"
+          @keydown="onVolumeKeydown"
+        >
+          <div class="volume-fill" :style="{ width: `${Math.round(volume * 100)}%` }"></div>
+        </div>
+      </div>
       <button
         class="control-btn"
         :title="isFullscreen ? t('setup.home.exitFullscreen') : t('setup.home.enterFullscreen')"
@@ -79,15 +98,19 @@
       </button>
     </div>
 
+    <!-- 封面背景音乐：外置音频文件，不进 HTML（详见 webpack 的 assetFilename） -->
+    <audio ref="bgmRef" class="bgm-audio" :src="bgmUrl" loop preload="auto"></audio>
+
     <input ref="archiveInput" type="file" accept=".json,application/json" hidden @change="handleArchiveFileChange" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { onUnmounted, ref } from 'vue';
+import { onMounted, onUnmounted, ref } from 'vue';
 import { useI18n } from '../../../i18n';
 import { useFullscreen } from '../../../composables/useFullscreen';
 import { useCoverBackground } from '../../../composables/useCoverBackground';
+import bgmUrl from '../../../assets/audio/beyond-the-marble-gate.mp3?url';
 import {
   formatArchiveSummaryForToast,
   getStandaloneArchiveFeedbackMessageKey,
@@ -108,114 +131,177 @@ const { t } = useI18n();
 const { stageRef, debrisRef, emberRef, flashRef, plateSrc, auroraA, auroraB, glowVar, syncLayout } =
   useCoverBackground();
 
-// 背景音乐：程序化合成环境音（无需外部音频文件，保持单文件离线可用）
+// 背景音乐：外置音频文件（`src/assets/audio/`），打包时落到 dist/assets/audio/，不进 HTML
 const hasBgMusic = ref(true);
 const isMusicPlaying = ref(false);
+/** 目标音量（0~1）。拖音量条改的就是它，暂停时也保留 */
+const volume = ref(0.5);
 
 const archiveInput = ref<HTMLInputElement | null>(null);
+const bgmRef = ref<HTMLAudioElement | null>(null);
+const musicCtlRef = ref<HTMLElement | null>(null);
+const volumeBarRef = ref<HTMLElement | null>(null);
 
-let audioCtx: AudioContext | null = null;
-let masterGain: GainNode | null = null;
-let musicOscillators: OscillatorNode[] = [];
+/** 起播 / 停播的淡入淡出时长（毫秒） */
+const FADE_IN_MS = 1600;
+const FADE_OUT_MS = 700;
 
-// 构建并启动环境音：低频空灵和弦 + 缓慢滤波扫动 + 呼吸式音量起伏
-function startMusic() {
-  if (audioCtx) return;
-  const Ctor: typeof AudioContext | undefined =
-    window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-  if (!Ctor) return;
+let fadeTimer = 0;
+let draggingVolume = false;
+/** 自动播放被拦下后，挂一次性的「首次交互起播」监听 */
+let gestureArmed = false;
 
-  const ctx = new Ctor();
-  audioCtx = ctx;
-
-  // 总音量（用于淡入淡出）
-  const master = ctx.createGain();
-  master.gain.value = 0;
-  master.connect(ctx.destination);
-  masterGain = master;
-
-  // 呼吸式音量起伏
-  const swell = ctx.createGain();
-  swell.gain.value = 0.75;
-  swell.connect(master);
-  const swellLfo = ctx.createOscillator();
-  swellLfo.frequency.value = 0.04;
-  const swellDepth = ctx.createGain();
-  swellDepth.gain.value = 0.25;
-  swellLfo.connect(swellDepth);
-  swellDepth.connect(swell.gain);
-  swellLfo.start();
-  musicOscillators.push(swellLfo);
-
-  // 低通滤波 + 缓慢扫动（营造空间感）
-  const filter = ctx.createBiquadFilter();
-  filter.type = 'lowpass';
-  filter.frequency.value = 820;
-  filter.Q.value = 0.7;
-  filter.connect(swell);
-  const sweep = ctx.createOscillator();
-  sweep.frequency.value = 0.045;
-  const sweepDepth = ctx.createGain();
-  sweepDepth.gain.value = 300;
-  sweep.connect(sweepDepth);
-  sweepDepth.connect(filter.frequency);
-  sweep.start();
-  musicOscillators.push(sweep);
-
-  // A 小调和弦，低八度铺底
-  const chord: Array<{ freq: number; level: number; type: OscillatorType }> = [
-    { freq: 110, level: 0.5, type: 'sine' },
-    { freq: 164.81, level: 0.3, type: 'sine' },
-    { freq: 220, level: 0.22, type: 'triangle' },
-    { freq: 329.63, level: 0.1, type: 'sine' },
-  ];
-  for (const { freq, level, type } of chord) {
-    const osc = ctx.createOscillator();
-    osc.type = type;
-    osc.frequency.value = freq;
-    osc.detune.value = freq > 200 ? 5 : -5;
-    const gain = ctx.createGain();
-    gain.gain.value = level;
-    osc.connect(gain);
-    gain.connect(filter);
-    osc.start();
-    musicOscillators.push(osc);
+/**
+ * 音量渐变：<audio> 的 volume 不是 AudioParam，没法像 GainNode 那样定时值，
+ * 只能自己按帧推。起播淡入、停播淡出都走这里，免得进出时"啪"一声。
+ */
+function fadeVolume(target: number, duration: number, onDone?: () => void) {
+  const el = bgmRef.value;
+  if (!el) return;
+  window.clearInterval(fadeTimer);
+  const from = el.volume;
+  if (duration <= 0 || Math.abs(from - target) < 0.001) {
+    el.volume = target;
+    onDone?.();
+    return;
   }
-
-  master.gain.setTargetAtTime(0.09, ctx.currentTime, 1.2);
-}
-
-function stopMusic() {
-  const ctx = audioCtx;
-  const master = masterGain;
-  const oscillators = musicOscillators;
-  audioCtx = null;
-  masterGain = null;
-  musicOscillators = [];
-  if (!ctx || !master) return;
-
-  master.gain.setTargetAtTime(0, ctx.currentTime, 0.4);
-  window.setTimeout(() => {
-    for (const osc of oscillators) {
-      try {
-        osc.stop();
-      } catch {
-        /* 已停止则忽略 */
-      }
+  const started = performance.now();
+  fadeTimer = window.setInterval(() => {
+    const t = Math.min(1, (performance.now() - started) / duration);
+    el.volume = from + (target - from) * t;
+    if (t >= 1) {
+      window.clearInterval(fadeTimer);
+      onDone?.();
     }
-    void ctx.close();
-  }, 1800);
+  }, 40);
 }
 
-// 音乐控制
+/** 用户直接调音量时先掐掉正在跑的渐变，否则两边抢同一个值会抖 */
+function commitVolume() {
+  const el = bgmRef.value;
+  if (!el) return;
+  window.clearInterval(fadeTimer);
+  if (isMusicPlaying.value) el.volume = volume.value;
+}
+
+/** 首次交互兜底：自动播放被拦时，用户点/按键盘任意处就把音乐带起来 */
+function onFirstGesture(event: Event) {
+  // 落在音乐控件自己身上就不抢 —— 按钮和音量条各有各的处理
+  const target = event.target as Node | null;
+  if (target && musicCtlRef.value?.contains(target)) return;
+  disarmGesture();
+  startMusic();
+}
+
+function armGesture() {
+  if (gestureArmed) return;
+  gestureArmed = true;
+  window.addEventListener('pointerdown', onFirstGesture);
+  window.addEventListener('keydown', onFirstGesture);
+}
+
+function disarmGesture() {
+  if (!gestureArmed) return;
+  gestureArmed = false;
+  window.removeEventListener('pointerdown', onFirstGesture);
+  window.removeEventListener('keydown', onFirstGesture);
+}
+
+/** 用户主动起播（点按钮 / 首次交互兜底）。这条路径不会被自动播放策略拦，无需 catch */
+function startMusic() {
+  const el = bgmRef.value;
+  if (!el || isMusicPlaying.value) return;
+  disarmGesture();
+  el.volume = 0;
+  void el.play();
+  isMusicPlaying.value = true;
+  fadeVolume(volume.value, FADE_IN_MS);
+}
+
+/** 停播：先淡到 0 再真暂停，别把音量停在中途 */
+function stopMusic() {
+  const el = bgmRef.value;
+  if (!el || !isMusicPlaying.value) return;
+  isMusicPlaying.value = false;
+  fadeVolume(0, FADE_OUT_MS, () => {
+    el.pause();
+    el.volume = volume.value;
+  });
+}
+
 function toggleMusic() {
-  if (isMusicPlaying.value) {
-    stopMusic();
-    isMusicPlaying.value = false;
-  } else {
-    startMusic();
+  disarmGesture();
+  if (isMusicPlaying.value) stopMusic();
+  else startMusic();
+}
+
+/**
+ * 挂载后先试自动播。浏览器只在「与该站点有过交互」时才放行，
+ * 所以首次访问必定被拒 —— 被拒就退回静音待命，等用户第一次点击。
+ */
+function attemptAutoplay() {
+  const el = bgmRef.value;
+  if (!el) return;
+  el.volume = 0;
+  const played = el.play();
+  if (!played || typeof played.then !== 'function') {
     isMusicPlaying.value = true;
+    fadeVolume(volume.value, FADE_IN_MS);
+    return;
   }
+  played
+    .then(() => {
+      isMusicPlaying.value = true;
+      fadeVolume(volume.value, FADE_IN_MS);
+    })
+    .catch(() => {
+      isMusicPlaying.value = false;
+      el.volume = volume.value;
+      armGesture();
+    });
+}
+
+/** 把音量条上的横坐标换算成 0~1 音量 */
+function setVolumeFromClientX(clientX: number) {
+  const bar = volumeBarRef.value;
+  if (!bar) return;
+  const rect = bar.getBoundingClientRect();
+  if (rect.width <= 0) return;
+  volume.value = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+  commitVolume();
+}
+
+function onVolumePointerDown(event: PointerEvent) {
+  draggingVolume = true;
+  const bar = event.currentTarget as HTMLElement;
+  bar.setPointerCapture(event.pointerId);
+  setVolumeFromClientX(event.clientX);
+}
+
+function onVolumePointerMove(event: PointerEvent) {
+  if (!draggingVolume) return;
+  setVolumeFromClientX(event.clientX);
+}
+
+function onVolumePointerUp(event: PointerEvent) {
+  if (!draggingVolume) return;
+  draggingVolume = false;
+  const bar = event.currentTarget as HTMLElement;
+  if (bar.hasPointerCapture(event.pointerId)) bar.releasePointerCapture(event.pointerId);
+}
+
+/** 键盘调音量：方向键 ±5%，Home / End 到两端 */
+function onVolumeKeydown(event: KeyboardEvent) {
+  const step = 0.05;
+  let next: number | null = null;
+  if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') next = volume.value - step;
+  else if (event.key === 'ArrowRight' || event.key === 'ArrowUp') next = volume.value + step;
+  else if (event.key === 'Home') next = 0;
+  else if (event.key === 'End') next = 1;
+  if (next === null) return;
+  event.preventDefault();
+  volume.value = Math.min(1, Math.max(0, Number(next.toFixed(2))));
+  commitVolume();
 }
 
 // 开始游戏
@@ -270,8 +356,18 @@ function handleArchiveFileChange(event: Event) {
 }
 
 // 生命周期
+onMounted(() => {
+  attemptAutoplay();
+});
+
 onUnmounted(() => {
-  stopMusic();
+  disarmGesture();
+  window.clearInterval(fadeTimer);
+  const el = bgmRef.value;
+  if (el) {
+    el.pause();
+    el.currentTime = 0;
+  }
   isMusicPlaying.value = false;
 });
 </script>
@@ -760,6 +856,8 @@ onUnmounted(() => {
   top: 16px;
   right: 16px;
   display: flex;
+  /* 音乐控件比按钮高一截（下面挂了音量条），顶部对齐，别把全屏按钮拉高 */
+  align-items: flex-start;
   gap: 10px;
   z-index: 3;
 }
@@ -786,6 +884,58 @@ onUnmounted(() => {
   border-color: rgba(var(--cover-gold-rgb), 0.6);
   color: var(--cover-gold);
   background: rgba(var(--cover-gold-rgb), 0.1);
+}
+
+/* 音乐按钮 + 音量条：竖着叠，条子挂在按钮正下方 */
+.music-ctl {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+/*
+ * 音量条本体只有 2px（按需求），命中区靠 ::before 上下各撑 7px 补到 16px，
+ * 否则鼠标得瞄得像素级准才拖得动。::before 不带背景，视觉上仍是一条细线。
+ */
+.volume-bar {
+  position: relative;
+  width: 40px;
+  height: 2px;
+  background: rgba(237, 231, 217, 0.2);
+  cursor: pointer;
+  /* 触屏上把拖拽手势留给自己，别被页面滚动抢走 */
+  touch-action: none;
+}
+
+.volume-bar::before {
+  content: '';
+  position: absolute;
+  inset: -7px -6px;
+}
+
+.volume-bar:hover {
+  background: rgba(237, 231, 217, 0.34);
+}
+
+.volume-bar:focus-visible {
+  outline: 1px solid rgba(var(--cover-gold-rgb), 0.85);
+  outline-offset: 3px;
+}
+
+.volume-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  background: var(--cover-gold);
+  pointer-events: none;
+  transition: width 90ms ease-out;
+}
+
+/* 音频元素只出声，不占位 */
+.bgm-audio {
+  display: none;
 }
 
 /* 标题区 */
@@ -932,6 +1082,11 @@ onUnmounted(() => {
     width: 38px;
     height: 38px;
     font-size: calc(14px * var(--ui-font-scale));
+  }
+
+  /* 音量条跟着按钮一起缩，保持同宽 */
+  .volume-bar {
+    width: 38px;
   }
 
   .top-controls {
