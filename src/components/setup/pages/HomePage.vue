@@ -1,5 +1,5 @@
 <template>
-  <div class="home-page">
+  <div ref="pageRef" class="home-page" :class="{ 'is-leaving': isLeaving }">
     <!-- 动态封面背景：写实概念图打底 + 分层动效（详见 useCoverBackground） -->
     <div ref="stageRef" class="bg-cover" :style="{ '--glow': glowVar }" aria-hidden="true">
       <!-- 世界层：底图 + 两层漂移极光 + 与底图锁定的发光层 -->
@@ -110,7 +110,7 @@ import { onMounted, onUnmounted, ref } from 'vue';
 import { useI18n } from '../../../i18n';
 import { useFullscreen } from '../../../composables/useFullscreen';
 import { useCoverBackground } from '../../../composables/useCoverBackground';
-import bgmUrl from '../../../assets/audio/beyond-the-marble-gate.mp3?url';
+import bgmUrl from '../../../assets/audio/where-giants-sleep.mp3?url';
 import {
   formatArchiveSummaryForToast,
   getStandaloneArchiveFeedbackMessageKey,
@@ -138,15 +138,22 @@ const isMusicPlaying = ref(false);
 const volume = ref(0.5);
 
 const archiveInput = ref<HTMLInputElement | null>(null);
+const pageRef = ref<HTMLElement | null>(null);
 const bgmRef = ref<HTMLAudioElement | null>(null);
 const musicCtlRef = ref<HTMLElement | null>(null);
 const volumeBarRef = ref<HTMLElement | null>(null);
 
+/** 过场进行中：挡住重复触发 */
+const isLeaving = ref(false);
+
 /** 起播 / 停播的淡入淡出时长（毫秒） */
 const FADE_IN_MS = 1600;
 const FADE_OUT_MS = 700;
+/** 过场动画时长（毫秒），必须与样式里 cover-leave / cover-core-glow 的时长一致 */
+const LEAVE_MS = 1400;
 
 let fadeTimer = 0;
+let leaveTimer = 0;
 let draggingVolume = false;
 /** 自动播放被拦下后，挂一次性的「首次交互起播」监听 */
 let gestureArmed = false;
@@ -304,9 +311,27 @@ function onVolumeKeydown(event: KeyboardEvent) {
   commitVolume();
 }
 
-// 开始游戏
+/**
+ * 把传送门圆心的像素坐标从背景舞台抄到根元素上。
+ * --core-* 写在舞台元素上、不会向上继承，而根元素要拿它当过场缩放的圆心。
+ */
+function syncLeaveOrigin() {
+  const page = pageRef.value;
+  const stage = stageRef.value;
+  if (!page || !stage) return;
+  const x = stage.style.getPropertyValue('--core-x').trim();
+  const y = stage.style.getPropertyValue('--core-y').trim();
+  if (x) page.style.setProperty('--leave-x', x);
+  if (y) page.style.setProperty('--leave-y', y);
+}
+
+// 开始游戏：先播过场，动画走完再真正切页面
 function handleStart() {
-  emit('start');
+  if (isLeaving.value) return;
+  isLeaving.value = true;
+  syncLeaveOrigin();
+  stopMusic(); // 音乐跟着一起收，别在切场景那一刻硬断
+  leaveTimer = window.setTimeout(() => emit('start'), LEAVE_MS);
 }
 
 function handleContinueClick() {
@@ -363,6 +388,7 @@ onMounted(() => {
 onUnmounted(() => {
   disarmGesture();
   window.clearInterval(fadeTimer);
+  window.clearTimeout(leaveTimer);
   const el = bgmRef.value;
   if (el) {
     el.pause();
@@ -380,6 +406,9 @@ onUnmounted(() => {
   --cover-gold-bright: #f4d190;
   --cover-gold-rgb: 230, 180, 85;
   --cover-ink: rgba(237, 231, 217, 0.82);
+  /* 过场缩放的圆心（= 传送门中心）。这里只是兜底，真实像素坐标由脚本从背景舞台抄进来 */
+  --leave-x: 50%;
+  --leave-y: 45%;
 
   width: 100%;
   height: 100%;
@@ -1063,6 +1092,238 @@ onUnmounted(() => {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+/* ===================== 入场动画（封面挂载时播一次） ===================== */
+
+/*
+ * 黑幕：盖在最上层，从全黑淡出。
+ * 用 both 而不是 forwards —— 延迟的那 0.35s 必须显示起始帧（全黑）；
+ * 只写 forwards 的话延迟期间会退回基础值 opacity:0，开头就没有黑幕了。
+ */
+.home-page::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  background: #05070c;
+  pointer-events: none;
+  opacity: 0;
+  animation: cover-curtain 1.25s ease-out 0.35s both;
+}
+
+@keyframes cover-curtain {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* 底图：从暗里亮起来，同时缓缓收进 */
+.home-page .bg-cover {
+  animation: cover-bg-in 1.5s ease-out 0.3s backwards;
+}
+
+@keyframes cover-bg-in {
+  from {
+    opacity: 0;
+    filter: brightness(0.22) saturate(0.4);
+    transform: scale(1.06);
+  }
+}
+
+/* 极光：比底图晚一拍铺开。
+   漂移动画必须一起写上 —— 只写 animation 会把原来的漂移冲掉，极光就定住了 */
+.home-page .bg-aurora {
+  opacity: 0;
+}
+
+.home-page .bg-aurora.a {
+  animation:
+    bg-aurora-drift-a 22s ease-in-out infinite alternate,
+    cover-fade-in 1.3s ease-out 0.62s forwards;
+}
+
+.home-page .bg-aurora.b {
+  animation:
+    bg-aurora-drift-b 32s ease-in-out infinite alternate,
+    cover-fade-in 1.3s ease-out 0.82s forwards;
+}
+
+/* 只写 from：终点自动取元素原本的值，不会把 0.8 不透明度的装饰线刷成 1 */
+@keyframes cover-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* 标题：整体从下方浮上来 */
+.home-page .title-section {
+  animation: cover-title-rise 1s cubic-bezier(0.16, 1, 0.3, 1) 1s backwards;
+}
+
+@keyframes cover-title-rise {
+  from {
+    opacity: 0;
+    transform: translateY(26px);
+  }
+}
+
+/* 标题下那道装饰线：从中间往两边拉开 */
+.home-page .title-decoration {
+  animation: cover-line-grow 0.9s cubic-bezier(0.16, 1, 0.3, 1) 1.32s backwards;
+}
+
+@keyframes cover-line-grow {
+  from {
+    opacity: 0;
+    transform: scaleX(0);
+  }
+}
+
+/* 四个按钮依次落下。
+   用 backwards 而不是 both：动画结束后交还给普通样式，否则 hover 的位移会被压住 */
+.home-page .action-btn {
+  animation: cover-btn-drop 0.85s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+.home-page .action-section .action-btn:nth-child(1) {
+  animation-delay: 1.6s;
+}
+
+.home-page .action-section .action-btn:nth-child(2) {
+  animation-delay: 1.72s;
+}
+
+.home-page .action-section .action-btn:nth-child(3) {
+  animation-delay: 1.84s;
+}
+
+.home-page .action-section .action-btn:nth-child(4) {
+  animation-delay: 1.96s;
+}
+
+@keyframes cover-btn-drop {
+  from {
+    opacity: 0;
+    transform: translateY(26px);
+  }
+}
+
+/* 顶部控制按钮：从上方落下 */
+.home-page .top-controls {
+  animation: cover-ctl-drop 0.8s cubic-bezier(0.16, 1, 0.3, 1) 1.8s backwards;
+}
+
+@keyframes cover-ctl-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-18px);
+  }
+}
+
+/* ===================== 「开始游戏」过场 ===================== */
+
+/*
+ * 传送门中心的爆发光：一圈以传送门为圆心的径向渐变，越靠中心越亮，
+ * 随镜头推近由暗到亮，最后把整个画面吞掉。
+ *
+ * 圆心跟着 --leave-* 走，而 .home-page 的 transform-origin 也是它 ——
+ * 所以缩放时传送门在屏幕上原地不动，光心始终咬在门上；
+ * 遮罩本身也被一起放大，等于光晕随推近同步扩张，正好是要的效果。
+ */
+.home-page::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 55;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(
+    circle at var(--leave-x) var(--leave-y),
+    #ffffff 0%,
+    #fff8e8 5%,
+    rgba(255, 226, 170, 0.92) 11%,
+    rgba(255, 186, 96, 0.6) 20%,
+    rgba(226, 140, 50, 0.3) 34%,
+    rgba(150, 90, 30, 0.1) 52%,
+    rgba(0, 0, 0, 0) 72%
+  );
+}
+
+.home-page.is-leaving {
+  transform-origin: var(--leave-x) var(--leave-y);
+  animation: cover-leave 1.4s cubic-bezier(0.45, 0, 0.65, 0.55) forwards;
+  /* 过场期间不再接受任何点击 */
+  pointer-events: none;
+}
+
+.home-page.is-leaving::before {
+  animation: cover-core-glow 1.4s cubic-bezier(0.45, 0, 0.65, 0.55) forwards;
+}
+
+/*
+ * 🔴 亮度和缩放只给首尾两帧，中间一帧都不插 ——
+ * 这样它们各自只有一段插值，节奏 100% 由缓动曲线决定，物理上不可能出现台阶。
+ * 别在中间加 brightness 关键帧做「起势」：试过在 10% 处塞 1.6，
+ * 等于 140ms 内亮度跳涨 60%，观感就是「先突然一亮，然后继续亮」。
+ */
+@keyframes cover-leave {
+  0% {
+    transform: scale(1);
+    filter: brightness(1);
+    opacity: 1;
+  }
+  /* 这一帧只写 opacity：在 78% 前把画面钉成全不透明，免得提前变淡、抵消掉变亮。
+     transform / filter 不受它影响，照旧 0% → 100% 单段插值 */
+  78% {
+    opacity: 1;
+  }
+  100% {
+    transform: scale(3.1);
+    filter: brightness(3.2);
+    opacity: 0;
+  }
+}
+
+/* 光同样只给首尾，跟缩放 / 亮度同一条曲线，三者完全同步 */
+@keyframes cover-core-glow {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+/*
+ * 系统开了「减少动态效果」就整个跳过入场与过场。
+ * 🔴 必须写在上面这些动画之后 —— 媒体查询不加特异性，只能靠源码顺序压过去。
+ */
+@media (prefers-reduced-motion: reduce) {
+  .home-page::before,
+  .home-page::after,
+  .home-page .bg-cover,
+  .home-page .bg-aurora.a,
+  .home-page .bg-aurora.b,
+  .home-page .title-section,
+  .home-page .title-decoration,
+  .home-page .action-btn,
+  .home-page .top-controls,
+  .home-page.is-leaving {
+    animation: none;
+  }
+
+  /* 动画关掉后这些属性会停在起始值上，得手工还原 */
+  .home-page .bg-aurora {
+    opacity: 1;
+  }
+
+  .home-page::after {
+    display: none;
   }
 }
 
