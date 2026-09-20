@@ -3,6 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <!--
+      浏览器标签页标题。模板原来没有 title，浏览器只能拿网址顶上。
+      这里写的是 JS 执行前的兜底值（默认中文）；语言确定后由 syncDocumentLocale 改成对应语言的名字
+      —— 中文「诸界穿越模拟器」/ 英文「MyRaid Realms」，见 src/i18n/index.ts 的 setup.home.gameTitle。
+    -->
+    <title>诸界穿越模拟器</title>
+    <!--
       布局视口声明：不加这一行，手机浏览器会按 980px 的虚拟宽度排版再整体缩放，
       后果是 innerWidth 永远返回 980 —— 按屏宽分支的逻辑（如封面的竖版底图）在真机上永不触发。
     -->

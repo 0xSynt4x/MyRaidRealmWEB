@@ -101,7 +101,9 @@ const zhLeft = [];
 for (const p of pairs) {
   for (let i = p.en.start + 1; i <= p.en.end; i++) {
     const l = lines[i];
-    if (/^\s*\/\*/.test(l)) continue; // 注释不算
+    // 注释不算。原来只跳过了 /* */ 块注释，// 行注释会被误报成「英文块残留中文」。
+    // 必须用 ^ 锚定，否则值里的 http:// 这类会被误当成注释跳掉。
+    if (/^\s*(\/\*|\/\/)/.test(l)) continue;
     const colon = l.indexOf(':');
     const tail = colon >= 0 ? l.slice(colon + 1) : l;
     if (CJK.test(tail)) zhLeft.push(`${p.name}\tline ${i + 1}\t${l.trim()}`);

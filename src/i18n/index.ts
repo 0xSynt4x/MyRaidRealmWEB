@@ -2036,7 +2036,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'setup.special.aiGenerate.description': 'Let AI build a custom world for you',
     'setup.special.workshop.title': 'Workshop',
     'setup.special.workshop.description': 'Browse community starts and apply one instantly',
-    'setup.home.gameTitle': 'MyRaid Realm',
+    'setup.home.gameTitle': 'MyRaid Realms',
     'setup.home.gameSubtitle': 'AI-Powered Infinite Worlds',
     'setup.home.enterFullscreen': 'Enter fullscreen',
     'setup.home.exitFullscreen': 'Exit fullscreen',
@@ -3022,6 +3022,10 @@ export function fieldMetaCurrent(
 export function syncDocumentLocale(locale: Locale) {
   setCurrentLocale(locale);
   document.documentElement.lang = locale;
+  // 浏览器标签页标题跟着界面语言走。
+  // 模板 index.html 里那条静态 title 只作 JS 执行前的兜底（不然会先闪一下网址），
+  // 切语言后必须再刷一次，否则标签页还停在切换前的那个名字。
+  document.title = translate(locale, 'setup.home.gameTitle');
 }
 
 export function useI18n() {
