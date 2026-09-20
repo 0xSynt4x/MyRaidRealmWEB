@@ -15,6 +15,27 @@ const entryScript = path.join(projectRoot, 'src/index.ts');
 const entryHtml = path.join(projectRoot, 'src/index.html');
 const outputDirectory = path.join(projectRoot, 'dist');
 
+/**
+ * `?url` 导入的资源（图片 / 音频 / 字体）的输出路径。
+ *
+ * 资源不再 base64 内联进 HTML，而是落到 `dist/assets/<源目录>/`；
+ * 目录名沿用 `src/assets/` 下的原名（banner / home / ornaments，以及将来新增的立绘 / 按钮 / 装饰 / 背景……），
+ * 这样打开产物目录一眼能看出某个文件属于哪类素材。
+ * 文件名带 8 位内容哈希：换素材后 URL 跟着变，浏览器不会拿旧缓存。
+ */
+const assetFilename = (pathData: { filename?: string }): string => {
+  const rel = (pathData.filename ?? '').replace(/\\/g, '/');
+  const marker = 'src/assets/';
+  const at = rel.indexOf(marker);
+  // pathData.filename 带着 `?url` 这类查询后缀，必须剥掉，否则产出的文件名会拖一条 `?url` 尾巴
+  const inner = (at >= 0 ? rel.slice(at + marker.length) : path.posix.basename(rel)).split('?')[0].split('#')[0];
+  const dir = path.posix.dirname(inner);
+  const ext = path.posix.extname(inner);
+  const name = path.posix.basename(inner, ext);
+  const file = `${name}.[contenthash:8]${ext}`;
+  return dir === '.' ? `assets/${file}` : `assets/${dir}/${file}`;
+};
+
 class CdnPreloadPlugin {
   apply(compiler: webpack.Compiler) {
     compiler.hooks.compilation.tap('CdnPreloadPlugin', compilation => {
@@ -133,26 +154,30 @@ export default (_env: unknown, argv: { mode?: 'development' | 'production' }): w
               },
             },
             resourceQuery: /url/,
-            type: 'asset/inline',
+            type: 'asset/resource',
+            generator: { filename: assetFilename },
             exclude: /node_modules/,
           },
           {
             test: /\.(sa|sc)ss$/,
             use: ['postcss-loader', 'sass-loader'],
             resourceQuery: /url/,
-            type: 'asset/inline',
+            type: 'asset/resource',
+            generator: { filename: assetFilename },
             exclude: /node_modules/,
           },
           {
             test: /\.css$/,
             use: ['postcss-loader'],
             resourceQuery: /url/,
-            type: 'asset/inline',
+            type: 'asset/resource',
+            generator: { filename: assetFilename },
             exclude: /node_modules/,
           },
           {
             resourceQuery: /url/,
-            type: 'asset/inline',
+            type: 'asset/resource',
+            generator: { filename: assetFilename },
             exclude: /node_modules/,
           },
           {
