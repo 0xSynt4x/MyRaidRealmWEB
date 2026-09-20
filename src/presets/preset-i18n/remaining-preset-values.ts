@@ -247,7 +247,7 @@ const remainingPresetValueTranslations: Record<string, Record<string, string>> =
     护额: 'Forehead Protector',
     在忍者学校成长并通过毕业考核: 'Grow at the ninja academy and pass the graduation exam',
   },
-  'default': {
+  default: {
     默认预设: 'Default Preset',
     普通世界: 'Ordinary World',
     起始地点: 'Starting Location',
@@ -457,7 +457,7 @@ const remainingPresetValueTranslations: Record<string, Record<string, string>> =
     魔药: 'Potion',
     图书馆: 'Library',
     课程: 'Course',
-    '在魔法学院学习并解开校园秘密': 'Study at the magic academy and uncover campus secrets',
+    在魔法学院学习并解开校园秘密: 'Study at the magic academy and uncover campus secrets',
   },
   'adventurer-guild': {
     冒险者公会: 'Adventurer Guild',

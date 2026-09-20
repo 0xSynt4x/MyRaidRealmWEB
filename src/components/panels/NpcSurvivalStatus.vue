@@ -9,10 +9,10 @@
     >
       <!-- 第1行：姓名 + 位置 -->
       <div class="npc-header">
-        <span class="follow-star">⭐</span>
+        <i class="ti ti-star follow-star"></i>
         <span class="npc-name">{{ npc.姓名 }}</span>
         <span class="npc-location" :title="npc.个人信息?.当前位置 || t('common.unknown')">
-          · 📍{{ npc.个人信息?.当前位置 || t('common.unknown') }}
+          · <i class="ti ti-map-pin"></i>{{ npc.个人信息?.当前位置 || t('common.unknown') }}
         </span>
       </div>
 
@@ -20,7 +20,7 @@
       <div v-if="survivalMode !== '关闭'" class="survival-mini-row">
         <!-- 血量 - 始终显示 -->
         <div class="mini-bar" :title="`${t('survival.health')}: ${npc.生存状态?.血量 ?? 100}`">
-          <span class="mini-icon">❤️</span>
+          <i class="ti ti-heart mini-icon"></i>
           <div class="mini-progress">
             <div class="mini-fill health" :style="{ width: `${npc.生存状态?.血量 ?? 100}%` }"></div>
           </div>
@@ -28,7 +28,7 @@
 
         <!-- 体力 - 始终显示 -->
         <div class="mini-bar" :title="`${t('survival.stamina')}: ${npc.生存状态?.体力值 ?? 100}`">
-          <span class="mini-icon">⚡</span>
+          <i class="ti ti-bolt mini-icon"></i>
           <div class="mini-progress">
             <div class="mini-fill stamina" :style="{ width: `${npc.生存状态?.体力值 ?? 100}%` }"></div>
           </div>
@@ -40,7 +40,7 @@
           class="mini-bar"
           :title="`${t('survival.hunger')}: ${npc.生存状态?.饥饿值 ?? 100}`"
         >
-          <span class="mini-icon">🍖</span>
+          <i class="ti ti-meat mini-icon"></i>
           <div class="mini-progress">
             <div class="mini-fill hunger" :style="{ width: `${npc.生存状态?.饥饿值 ?? 100}%` }"></div>
           </div>
@@ -52,7 +52,7 @@
           class="mini-bar"
           :title="`${t('survival.thirst')}: ${npc.生存状态?.口渴值 ?? 100}`"
         >
-          <span class="mini-icon">💧</span>
+          <i class="ti ti-droplet mini-icon"></i>
           <div class="mini-progress">
             <div class="mini-fill thirst" :style="{ width: `${npc.生存状态?.口渴值 ?? 100}%` }"></div>
           </div>
@@ -62,13 +62,13 @@
       <!-- 第3行：好感/信任 + 状态（状态占用更多空间） -->
       <div class="npc-info-row">
         <span class="info-item" :class="getFavorClass(npc.关系数据?.好感度 || 0)">
-          💕{{ npc.关系数据?.好感度 || 0 }}
+          <i class="ti ti-heart"></i>{{ npc.关系数据?.好感度 || 0 }}
         </span>
         <span class="info-item" :class="getTrustClass(npc.关系数据?.信任度 || 0)">
-          🤝{{ npc.关系数据?.信任度 || 0 }}
+          <i class="ti ti-heart-handshake"></i>{{ npc.关系数据?.信任度 || 0 }}
         </span>
         <span class="info-item status" :title="npc.个人信息?.当前状态 || t('common.normal')">
-          💬{{ npc.个人信息?.当前状态 || t('common.normal') }}
+          <i class="ti ti-message"></i>{{ npc.个人信息?.当前状态 || t('common.normal') }}
         </span>
       </div>
     </button>
@@ -105,20 +105,21 @@ const followedNpcs = computed(() => {
 .npc-follow-container {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 0;
 }
 
 .npc-compact-card {
-  background: var(--card-bg);
-  border-radius: var(--radius-sm);
-  padding: 6px 8px;
-  box-shadow: var(--card-shadow);
-  border: 1px solid var(--card-border);
+  background: transparent;
+  border-radius: 0;
+  padding: 8px 10px;
+  box-shadow: none;
+  border: 0;
   border-left: 2px solid #fbbf24;
-  transition:
-    box-shadow var(--motion-fast),
-    border-color var(--motion-fast),
-    transform var(--motion-fast);
+  transition: background var(--motion-fast);
+}
+
+.npc-compact-card + .npc-compact-card {
+  border-top: 1px solid var(--ui-line-soft);
 }
 
 .npc-compact-btn {
@@ -129,9 +130,7 @@ const followedNpcs = computed(() => {
 }
 
 .npc-compact-btn:hover {
-  box-shadow: var(--card-shadow-hover);
-  border-color: rgba(var(--accent-primary-rgb), 0.16);
-  transform: translateY(-1px);
+  background: var(--ui-accent-soft);
 }
 
 /* 第1行：姓名 */
@@ -263,7 +262,7 @@ const followedNpcs = computed(() => {
 }
 @media (max-width: 768px) {
   .npc-follow-container {
-    gap: 6px;
+    gap: 0;
   }
 
   .npc-compact-card {

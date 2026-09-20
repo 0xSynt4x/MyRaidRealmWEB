@@ -9,11 +9,11 @@
           @input="handleRuleInput(index, $event)"
         />
         <button :disabled="modelValue.length === 1" class="remove-btn" type="button" @click="removeRule(index)">
-          <i class="fa-solid fa-xmark"></i>
+          <i class="ti ti-x"></i>
         </button>
       </div>
-      <button v-if="modelValue.length < 5" class="add-rule-btn" type="button" @click="addRule">
-        <i class="fa-solid fa-plus"></i> {{ t('setup.worldRulesInput.add') }}
+      <button v-if="modelValue.length < 10" class="add-rule-btn" type="button" @click="addRule">
+        <i class="ti ti-plus"></i> {{ t('setup.worldRulesInput.add') }}
       </button>
     </div>
   </div>
@@ -41,7 +41,7 @@ function handleRuleInput(index: number, event: Event) {
 }
 
 function addRule() {
-  if (props.modelValue.length < 5) {
+  if (props.modelValue.length < 10) {
     emit('update:modelValue', [...props.modelValue, '']);
   }
 }
@@ -78,7 +78,7 @@ function removeRule(index: number) {
   border-radius: 8px;
   background: var(--bg-card);
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale));
   transition: border-color 0.2s ease;
 }
 
@@ -123,7 +123,7 @@ function removeRule(index: number) {
   border-radius: 8px;
   background: transparent;
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale));
   cursor: pointer;
   transition: all 0.2s ease;
 }

@@ -1,6 +1,6 @@
 <template>
   <button class="collapse-btn" :class="[positionClass, directionClass]" :title="title" @click="$emit('click')">
-    <i class="fa-solid" :class="iconClass"></i>
+    <i class="ti" :class="iconClass"></i>
   </button>
 </template>
 
@@ -24,7 +24,7 @@ defineEmits<{
 
 // 图标类名
 const iconClass = computed(() => {
-  return props.direction === 'left' ? 'fa-chevron-left' : 'fa-chevron-right';
+  return props.direction === 'left' ? 'ti-chevron-left' : 'ti-chevron-right';
 });
 
 // 位置类名
@@ -74,7 +74,7 @@ const title = computed(() => {
   transition: all 200ms ease;
   z-index: 5;
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale));
 
   &:hover {
     opacity: 1;

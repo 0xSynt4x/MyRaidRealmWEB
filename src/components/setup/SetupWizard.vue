@@ -16,7 +16,6 @@
         key="aiGenerate"
         @apply="handleAiGenerateApply"
       />
-      <CustomWizardContainer v-else-if="setupStore.currentPage === 'custom'" key="custom" @next="handleGoToSettings" />
       <SettingsPage v-else-if="setupStore.currentPage === 'settings'" key="settings" @complete="handleComplete" />
       <WorkshopPage v-else-if="setupStore.currentPage === 'workshop'" key="workshop" />
     </Transition>
@@ -29,7 +28,6 @@ import { useFullscreen } from '../../composables/useFullscreen';
 import { useLayoutStore } from '../../stores/layout';
 import { useSetupStore } from '../../stores/setup';
 import AiGeneratePage from './pages/AiGeneratePage.vue';
-import CustomWizardContainer from './pages/CustomWizard/CustomWizardContainer.vue';
 import HomePage from './pages/HomePage.vue';
 import PlayerInfoPage from './pages/PlayerInfoPage.vue';
 import PresetSelectPage from './pages/PresetSelectPage.vue';

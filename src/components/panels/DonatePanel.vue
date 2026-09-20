@@ -3,7 +3,7 @@
     <!-- 感谢语 -->
     <section class="thanks-section">
       <div class="thanks-icon">
-        <i class="fa-solid fa-heart"></i>
+        <i class="ti ti-heart"></i>
       </div>
       <h3 class="thanks-title">{{ t('donate.title') }}</h3>
       <p class="thanks-text">{{ t('donate.text') }}</p>
@@ -57,7 +57,7 @@ const { t } = useI18n();
 }
 
 .thanks-icon i {
-  font-size: 28px;
+  font-size: calc(28px * var(--ui-font-scale));
   color: white;
 }
 

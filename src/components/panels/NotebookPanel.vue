@@ -3,15 +3,15 @@
     <!-- 标签按钮栏 -->
     <div class="notebook-tabs">
       <button :class="{ active: currentTab === 'crisis' }" @click="currentTab = 'crisis'">
-        <i class="fa-solid fa-triangle-exclamation"></i>
+        <i class="ti ti-alert-triangle"></i>
         {{ t('notebook.tabCrisis') }} ({{ crisisCount }})
       </button>
       <button :class="{ active: currentTab === 'opportunity' }" @click="currentTab = 'opportunity'">
-        <i class="fa-regular fa-lightbulb"></i>
+        <i class="ti ti-bulb"></i>
         {{ t('notebook.tabOpportunity') }} ({{ opportunityCount }})
       </button>
       <button :class="{ active: currentTab === 'todo' }" @click="currentTab = 'todo'">
-        <i class="fa-regular fa-square-check"></i>
+        <i class="ti ti-checkbox"></i>
         {{ t('notebook.tabTodo') }} ({{ todoCount }})
       </button>
     </div>
@@ -78,7 +78,7 @@
             ×
           </button>
           <div class="card-title-row">
-            <span class="icon">💚</span>
+            <i class="ti ti-notebook icon"></i>
             <span class="title">{{ key }}</span>
           </div>
           <div class="card-badge-row">
@@ -310,7 +310,7 @@ watch(
 }
 
 .notebook-tabs button i {
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale));
 }
 
 /* 内容区域 */
@@ -467,7 +467,7 @@ watch(
 }
 
 .card-title-row .icon {
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale));
   flex-shrink: 0;
 }
 
@@ -536,7 +536,7 @@ watch(
 }
 
 .card-header .icon {
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale));
   flex-shrink: 0;
 }
 

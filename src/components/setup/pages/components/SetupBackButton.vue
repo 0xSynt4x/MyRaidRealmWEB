@@ -6,7 +6,7 @@
     type="button"
     @click="$emit('click')"
   >
-    <i class="fa-solid fa-arrow-left"></i>
+    <i class="ti ti-arrow-left"></i>
   </button>
 </template>
 

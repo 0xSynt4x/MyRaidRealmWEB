@@ -7,7 +7,7 @@
           <div class="dashboard-header">
             <div class="header-left">
               <div class="business-avatar">
-                <span class="avatar-icon">{{ businessIcon }}</span>
+                <span class="avatar-icon"><i class="ti" :class="businessIcon"></i></span>
               </div>
               <div class="header-info">
                 <h3 class="business-title">{{ businessName }}</h3>
@@ -31,12 +31,14 @@
                     }}
                   </span>
                   <span v-if="editedBusiness.位置" class="detail-header-tag detail-header-tag--location">
-                    📍 {{ editedBusiness.位置 }}
+                    <i class="ti ti-map-pin"></i> {{ editedBusiness.位置 }}
                   </span>
                 </div>
               </div>
             </div>
-            <button class="dialog-close" :title="t('business.detail.close')" @click="handleClose">✕</button>
+            <button class="dialog-close" :title="t('business.detail.close')" @click="handleClose">
+              <i class="ti ti-x"></i>
+            </button>
           </div>
 
           <!-- 主体内容 - 紧凑型多列布局 -->
@@ -44,21 +46,21 @@
             <!-- 财务仪表盘 - 最重要的信息放在顶部 -->
             <div class="info-section">
               <div class="section-title">
-                <span class="section-icon">💰</span>
+                <i class="ti ti-coins section-icon"></i>
                 <span>{{ t('business.detail.financeOverview') }}</span>
               </div>
               <div class="finance-grid">
                 <div class="finance-stats compact">
                   <div class="finance-row revenue">
                     <div class="row-left">
-                      <span class="stat-icon">📈</span>
+                      <i class="ti ti-trending-up stat-icon"></i>
                       <span class="stat-label">{{ t('business.detail.income') }}</span>
                     </div>
                     <input v-model.number="editedBusiness.财务.收入" type="number" class="stat-input revenue" min="0" />
                   </div>
                   <div class="finance-row expense">
                     <div class="row-left">
-                      <span class="stat-icon">📉</span>
+                      <i class="ti ti-trending-down stat-icon"></i>
                       <span class="stat-label">{{ t('business.detail.expense') }}</span>
                     </div>
                     <input v-model.number="editedBusiness.财务.支出" type="number" class="stat-input expense" min="0" />
@@ -66,7 +68,9 @@
                 </div>
 
                 <div class="profit-card" :class="{ positive: netProfit >= 0, negative: netProfit < 0 }">
-                  <div class="profit-icon">{{ netProfit >= 0 ? '💹' : '⚠️' }}</div>
+                  <div class="profit-icon">
+                    <i class="ti" :class="netProfit >= 0 ? 'ti-trending-up' : 'ti-alert-triangle'"></i>
+                  </div>
                   <div class="profit-content">
                     <div class="profit-label">{{ t('business.detail.netProfit') }}</div>
                     <div class="profit-value">{{ netProfit >= 0 ? '+' : '' }}{{ netProfit }}</div>
@@ -76,12 +80,12 @@
                 <!-- 资产负债 - 两列布局 -->
                 <div class="asset-grid">
                   <div class="asset-item">
-                    <span class="asset-icon">🏦</span>
+                    <i class="ti ti-building-bank asset-icon"></i>
                     <span class="asset-label">{{ t('business.detail.assets') }}</span>
                     <input v-model.number="editedBusiness.财务.资产价值" type="number" class="asset-input" min="0" />
                   </div>
                   <div class="asset-item debt">
-                    <span class="asset-icon">💳</span>
+                    <i class="ti ti-credit-card asset-icon"></i>
                     <span class="asset-label">{{ t('business.detail.liabilities') }}</span>
                     <input v-model.number="editedBusiness.财务.负债" type="number" class="asset-input" min="0" />
                   </div>
@@ -94,17 +98,17 @@
               <!-- 运营管理 -->
               <div class="info-section compact">
                 <div class="section-title">
-                  <span class="section-icon">⚙️</span>
+                  <i class="ti ti-settings section-icon"></i>
                   <span>{{ t('business.detail.operations') }}</span>
                 </div>
                 <div class="compact-grid">
                   <div class="compact-item">
-                    <span class="compact-icon">👥</span>
+                    <i class="ti ti-users compact-icon"></i>
                     <span class="compact-label">{{ t('business.detail.staff') }}</span>
                     <input v-model.number="editedBusiness.运营.人员数量" type="number" class="compact-input" min="0" />
                   </div>
                   <div class="compact-item full">
-                    <span class="compact-icon">🔄</span>
+                    <i class="ti ti-refresh compact-icon"></i>
                     <span class="compact-label">{{ t('business.detail.status') }}</span>
                     <input v-model="editedBusiness.运营.运营状态" type="text" class="compact-input" />
                   </div>
@@ -114,22 +118,22 @@
               <!-- 基本信息 -->
               <div class="info-section compact">
                 <div class="section-title">
-                  <span class="section-icon">📋</span>
+                  <i class="ti ti-clipboard-list section-icon"></i>
                   <span>{{ t('business.detail.basics') }}</span>
                 </div>
                 <div class="compact-grid">
                   <div class="compact-item">
-                    <span class="compact-icon">🏷️</span>
+                    <i class="ti ti-tag compact-icon"></i>
                     <span class="compact-label">{{ t('business.detail.type') }}</span>
                     <input v-model="editedBusiness.类型" type="text" class="compact-input" />
                   </div>
                   <div class="compact-item">
-                    <span class="compact-icon">📍</span>
+                    <i class="ti ti-map-pin compact-icon"></i>
                     <span class="compact-label">{{ t('business.detail.location') }}</span>
                     <input v-model="editedBusiness.位置" type="text" class="compact-input" />
                   </div>
                   <div class="compact-item full">
-                    <span class="compact-icon">🏛️</span>
+                    <i class="ti ti-building-monument compact-icon"></i>
                     <span class="compact-label">{{ t('business.detail.appearance') }}</span>
                     <input
                       v-model="editedBusiness.外观"
@@ -145,7 +149,7 @@
             <!-- 重要设施 -->
             <div class="info-section">
               <div class="section-title">
-                <span class="section-icon">🔧</span>
+                <i class="ti ti-tool section-icon"></i>
                 <span>{{ t('business.detail.facilities') }}</span>
               </div>
               <div class="facilities-container">
@@ -162,7 +166,7 @@
                   </button>
                 </div>
                 <button class="facility-add-btn" @click="addFacility">
-                  <i class="fa-solid fa-plus"></i>
+                  <i class="ti ti-plus"></i>
                   {{ t('business.detail.addFacility') }}
                 </button>
               </div>
@@ -171,13 +175,13 @@
             <!-- 市场表现 - 紧凑型文本域 -->
             <div class="info-section">
               <div class="section-title">
-                <span class="section-icon">📊</span>
+                <i class="ti ti-chart-bar section-icon"></i>
                 <span>{{ t('business.detail.marketPerformance') }}</span>
               </div>
               <div class="market-grid">
                 <div class="market-item">
                   <div class="market-header">
-                    <span class="market-icon">👥</span>
+                    <i class="ti ti-users market-icon"></i>
                     <span class="market-label">{{ t('business.detail.customerBase') }}</span>
                   </div>
                   <textarea
@@ -189,7 +193,7 @@
                 </div>
                 <div class="market-item">
                   <div class="market-header">
-                    <span class="market-icon">⚔️</span>
+                    <i class="ti ti-swords market-icon"></i>
                     <span class="market-label">{{ t('business.detail.competition') }}</span>
                   </div>
                   <textarea
@@ -201,7 +205,7 @@
                 </div>
                 <div class="market-item">
                   <div class="market-header">
-                    <span class="market-icon">✨</span>
+                    <i class="ti ti-sparkles market-icon"></i>
                     <span class="market-label">{{ t('business.detail.uniqueAdvantage') }}</span>
                   </div>
                   <textarea
@@ -218,7 +222,7 @@
             <div class="dual-section">
               <div class="info-section compact">
                 <div class="section-title">
-                  <span class="section-icon">⚠️</span>
+                  <i class="ti ti-alert-triangle section-icon"></i>
                   <span>{{ t('business.detail.currentIssues') }}</span>
                 </div>
                 <textarea
@@ -231,7 +235,7 @@
 
               <div class="info-section compact">
                 <div class="section-title">
-                  <span class="section-icon">🎯</span>
+                  <i class="ti ti-target section-icon"></i>
                   <span>{{ t('business.detail.growthPotential') }}</span>
                 </div>
                 <textarea
@@ -246,7 +250,7 @@
             <!-- 备注 -->
             <div class="info-section">
               <div class="section-title">
-                <span class="section-icon">📝</span>
+                <i class="ti ti-pencil section-icon"></i>
                 <span>{{ t('business.detail.notes') }}</span>
               </div>
               <textarea
@@ -261,11 +265,11 @@
           <!-- 底部操作栏 -->
           <div class="dialog-footer">
             <button class="footer-btn cancel" :title="t('business.detail.cancelEdit')" @click="handleClose">
-              <i class="fa-solid fa-xmark"></i>
+              <i class="ti ti-x"></i>
               <span>{{ t('business.detail.cancelEdit') }}</span>
             </button>
             <button class="footer-btn save" :title="t('business.detail.saveChanges')" @click="handleSave">
-              <i class="fa-solid fa-check"></i>
+              <i class="ti ti-check"></i>
               <span>{{ t('business.detail.saveChanges') }}</span>
             </button>
           </div>
@@ -372,16 +376,16 @@ watch(
 
 const businessIcon = computed(() => {
   const iconMap: Record<string, string> = {
-    商铺: '🏪',
-    工坊: '🏭',
-    公司: '🏢',
-    运输: '🚚',
-    飞船: '🚀',
-    灵田: '🌾',
-    据点: '🏰',
-    其他: '📦',
+    商铺: 'ti-building-store',
+    工坊: 'ti-building-factory',
+    公司: 'ti-building',
+    运输: 'ti-truck',
+    飞船: 'ti-rocket',
+    灵田: 'ti-plant',
+    据点: 'ti-building-castle',
+    其他: 'ti-package',
   };
-  return iconMap[editedBusiness.value.类型] || '🏢';
+  return iconMap[editedBusiness.value.类型] || 'ti-building';
 });
 
 const netProfit = computed(() => {
@@ -506,7 +510,7 @@ watch(
     inset 0 1px 0 rgba(255, 255, 255, 0.18),
     0 4px 10px rgba(15, 23, 42, 0.12);
   color: rgba(255, 255, 255, 0.98);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   font-weight: 700;
   line-height: 1;
   letter-spacing: 0.01em;
@@ -584,7 +588,7 @@ watch(
 }
 
 .stat-icon {
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale));
   flex-shrink: 0;
 }
 
@@ -644,7 +648,7 @@ watch(
 }
 
 .profit-icon {
-  font-size: 20px;
+  font-size: calc(20px * var(--ui-font-scale));
 }
 
 .profit-content {
@@ -689,7 +693,7 @@ watch(
 }
 
 .asset-icon {
-  font-size: 16px;
+  font-size: calc(16px * var(--ui-font-scale));
 }
 
 .asset-label {
@@ -747,7 +751,7 @@ watch(
 }
 
 .compact-icon {
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale));
   flex-shrink: 0;
 }
 
@@ -796,7 +800,7 @@ watch(
 }
 
 .market-icon {
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale));
 }
 
 .market-label {
@@ -904,7 +908,7 @@ watch(
   color: white;
   border-radius: 3px;
   cursor: pointer;
-  font-size: 16px;
+  font-size: calc(16px * var(--ui-font-scale));
   line-height: 1;
   transition: all 200ms ease;
   flex-shrink: 0;
@@ -960,7 +964,7 @@ watch(
   .detail-header-tag {
     min-height: 24px;
     padding: 0 9px;
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale));
   }
 
   .info-section {

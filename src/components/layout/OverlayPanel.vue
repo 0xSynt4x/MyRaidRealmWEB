@@ -11,7 +11,7 @@
           :aria-label="t('overlay.closePanel')"
           @click="closePanel"
         >
-          <i class="fa-solid fa-xmark"></i>
+          <i class="ti ti-x"></i>
         </button>
         <div class="panel-header">
           <h3 class="panel-title">{{ panelTitle }}</h3>
@@ -25,7 +25,7 @@
               <template #fallback>
                 <div class="loading-state">
                   <div class="loading-spinner">
-                    <i class="fa-solid fa-spinner fa-spin"></i>
+                    <i class="ti ti-loader-2 ti-spin"></i>
                   </div>
                   <p class="loading-text">{{ t('overlay.loading') }}</p>
                 </div>
@@ -55,7 +55,7 @@ const PlayerProfile = defineAsyncComponent({
   errorComponent: {
     template: `
       <div class="error-state">
-        <i class="fa-solid fa-exclamation-triangle"></i>
+        <i class="ti ti-alert-triangle"></i>
         <p>${t('overlay.loadFailedRetry')}</p>
       </div>
     `,
@@ -126,7 +126,7 @@ const DonatePanel = defineAsyncComponent({
 const PlaceholderPanel = {
   template: `
     <div class="placeholder-panel">
-      <i class="fa-solid fa-hammer"></i>
+      <i class="ti ti-hammer"></i>
       <p>${t('overlay.inDevelopment')}</p>
     </div>
   `,
@@ -284,7 +284,7 @@ function closePanel() {
 }
 
 .placeholder-panel i {
-  font-size: 48px;
+  font-size: calc(48px * var(--ui-font-scale));
   opacity: 0.4;
   background: var(--gradient-primary);
   -webkit-background-clip: text;
@@ -310,7 +310,7 @@ function closePanel() {
 }
 
 .loading-spinner i {
-  font-size: 40px;
+  font-size: calc(40px * var(--ui-font-scale));
   background: var(--gradient-primary);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -336,7 +336,7 @@ function closePanel() {
 }
 
 .error-state i {
-  font-size: 48px;
+  font-size: calc(48px * var(--ui-font-scale));
   opacity: 0.8;
   filter: drop-shadow(0 0 8px rgba(var(--accent-danger-rgb, 239, 68, 68), 0.3));
 }

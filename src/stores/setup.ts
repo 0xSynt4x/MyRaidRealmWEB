@@ -5,16 +5,15 @@
 
 import { klona } from 'klona';
 import { defineStore } from 'pinia';
-import { computed, reactive, ref, watch } from 'vue';
+import { reactive, ref, watch } from 'vue';
 import { Schema } from '../../schema/schema';
 import { tCurrent } from '../i18n';
-import type { LocalContentEntryConfig, PresetConfig, PresetMigrationWarning } from '../presets/types';
+import type { PresetConfig, PresetMigrationWarning } from '../presets/types';
 import { rehydratePresetWithRegisteredWorldbooks } from '../assets/worldbook-registry';
 import { getSafeCurrentChatId } from '../utils/hostEnvironment';
 import { migrateLegacyPresetLocalContent } from '../utils/legacyPresetCompat';
-import { normalizeLocalContentEntriesInput } from '../utils/standaloneLocalContent';
 
-export type SetupPage = 'home' | 'presets' | 'playerInfo' | 'custom' | 'settings' | 'aiGenerate' | 'workshop';
+export type SetupPage = 'home' | 'presets' | 'playerInfo' | 'settings' | 'aiGenerate' | 'workshop';
 
 const SELECTED_PRESET_STORAGE_KEY_PREFIX = 'th1980s:selected-preset';
 
@@ -76,13 +75,8 @@ export const useSetupStore = defineStore('setup', () => {
   const currentPage = ref<SetupPage>('home');
   const slideDirection = ref<'slide-left' | 'slide-right'>('slide-left');
 
-  // ===== 自定义向导状态 =====
-  const customStep = ref(1);
-  const totalSteps = 6; // 删除了 Step4Attributes，从7步变为6步
-
   // ===== 预设状态 =====
   const selectedPreset = ref<PresetConfig | null>(loadStoredSelectedPreset());
-  const isCustomMode = ref(false);
 
   // ===== AI生成状态 =====
   const aiGeneratedConfig = ref<string>('');
@@ -105,11 +99,6 @@ export const useSetupStore = defineStore('setup', () => {
       persistSelectedPreset(null);
     }
   }
-
-  // ===== 计算属性 =====
-  const isFirstStep = computed(() => customStep.value === 1);
-  const isLastStep = computed(() => customStep.value === totalSteps);
-  const stepProgress = computed(() => `${customStep.value}/${totalSteps}`);
 
   // ===== 页面导航 =====
   function goToPage(page: SetupPage, direction: 'forward' | 'back' = 'forward') {
@@ -138,42 +127,8 @@ export const useSetupStore = defineStore('setup', () => {
         goToPage('presets', 'back');
         break;
       case 'settings':
-        // 根据之前的路径返回
-        if (isCustomMode.value) {
-          goToPage('custom', 'back');
-        } else {
-          goToPage('playerInfo', 'back');
-        }
+        goToPage('playerInfo', 'back');
         break;
-      case 'custom':
-        if (customStep.value > 1) {
-          prevStep();
-        } else {
-          goToPage('presets', 'back');
-        }
-        break;
-    }
-  }
-
-  // ===== 自定义向导导航 =====
-  function nextStep() {
-    if (customStep.value < totalSteps) {
-      slideDirection.value = 'slide-left';
-      customStep.value++;
-    }
-  }
-
-  function prevStep() {
-    if (customStep.value > 1) {
-      slideDirection.value = 'slide-right';
-      customStep.value--;
-    }
-  }
-
-  function goToStep(step: number) {
-    if (step >= 1 && step <= totalSteps) {
-      slideDirection.value = step > customStep.value ? 'slide-left' : 'slide-right';
-      customStep.value = step;
     }
   }
 
@@ -196,7 +151,6 @@ export const useSetupStore = defineStore('setup', () => {
   function selectPreset(preset: PresetConfig) {
     const rehydratedPreset = rehydratePresetWithRegisteredWorldbooks(preset);
     selectedPreset.value = rehydratedPreset;
-    isCustomMode.value = false;
     // 向前兼容：移除旧版本字段
     const cleanedConfig = removeDeprecatedFields(klona(rehydratedPreset.config));
     // 加载预设配置
@@ -208,48 +162,9 @@ export const useSetupStore = defineStore('setup', () => {
     goToPage('playerInfo', 'forward');
   }
 
-  function startCustomMode() {
-    selectedPreset.value = null;
-    isCustomMode.value = true;
-    customStep.value = 1;
-    // 重置为空白配置（覆盖 schema 默认值）
-    const emptyConfig = {
-      世界: {
-        时间系统: { 当前时间: '', 纪元名称: '' },
-        空间定位: { 当前位置: '', 区域特征: '' },
-        社会环境: { 权力结构: '', 社会氛围: '', 主流价值观: '' },
-        力量体系: '',
-        玩法侧重: '',
-        运行规则: [],
-        叙事玩法: '',
-        信息层级: { 全局重大事件: '', 势力动态: '', 区域事件: '', 本地消息: '', 圈内传闻: '' },
-        势力网络: {},
-      },
-      玩家: {
-        姓名: '',
-        年龄: '',
-        性别: '',
-        当前目标: '',
-        身份信息: { 职业: '', 阶层: '', 所属组织: '', 特殊身份: '', 背景信息: '' },
-        技能系统: {},
-        势力关系: {},
-        货币资源: { 主货币: { 名称: '', 数量: 0 }, 次级货币: {} },
-        物品栏: {},
-        商业情报: {},
-        库存详情: {},
-        经营实体: {},
-        记事本: { 潜在危机: {}, 当前机遇: {}, 待办事项: {} },
-      },
-      人物档案: {},
-    };
-    Object.assign(config, Schema.parse(emptyConfig));
-    goToPage('custom', 'forward');
-  }
-
   // ===== AI生成开局 =====
   function startAiGenerate() {
     selectedPreset.value = null;
-    isCustomMode.value = false;
     // 不清空 aiGeneratedConfig，保留之前的生成结果
     isGenerating.value = false;
     clearGenerationState();
@@ -505,33 +420,6 @@ export const useSetupStore = defineStore('setup', () => {
     }
   }
 
-  function exportPreset() {
-    const presetData: PresetConfig = {
-      id: `custom-${Date.now()}`,
-      name: config.玩家?.姓名
-        ? tCurrent('setup.presetExport.namedPreset', { name: config.玩家.姓名 })
-        : tCurrent('setup.presetExport.defaultName'),
-      icon: '✨',
-      category: tCurrent('setup.presetExport.category'),
-      tags: [tCurrent('setup.presetExport.tag'), config.世界?.力量体系 || tCurrent('common.unknown')],
-      description: tCurrent('setup.presetExport.description', { date: new Date().toLocaleDateString() }),
-      config: klona(config),
-      localContentEntries: normalizeLocalContentEntriesInput(
-        ((selectedPreset.value?.localContentEntries ?? []) as LocalContentEntryConfig[]).map(entry => ({ ...entry })),
-      ),
-    };
-
-    const blob = new Blob([JSON.stringify(presetData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `preset-${presetData.id}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-
-    toastr.success(tCurrent('setup.presetExport.success'));
-  }
-
   // ===== 表单验证 =====
   function validatePlayerInfo(): { valid: boolean; errors: string[] } {
     const errors: string[] = [];
@@ -541,26 +429,10 @@ export const useSetupStore = defineStore('setup', () => {
     return { valid: errors.length === 0, errors };
   }
 
-  function validateCurrentStep(): { valid: boolean; errors: string[] } {
-    const errors: string[] = [];
-
-    switch (customStep.value) {
-      case 3: // 玩家身份
-        if (!config.玩家?.姓名?.trim()) {
-          errors.push(tCurrent('setup.validation.characterNameRequired'));
-        }
-        break;
-    }
-
-    return { valid: errors.length === 0, errors };
-  }
-
   // ===== 重置状态 =====
   function reset() {
     currentPage.value = 'home';
-    customStep.value = 1;
     selectedPreset.value = null;
-    isCustomMode.value = false;
     aiGeneratedConfig.value = '';
     isGenerating.value = false;
     clearGenerationState();
@@ -580,10 +452,7 @@ export const useSetupStore = defineStore('setup', () => {
     // 状态
     currentPage,
     slideDirection,
-    customStep,
-    totalSteps,
     selectedPreset,
-    isCustomMode,
     config,
     aiGeneratedConfig,
     isGenerating,
@@ -591,25 +460,13 @@ export const useSetupStore = defineStore('setup', () => {
     currentGenerationId,
     cameFromAiGenerate,
 
-    // 计算属性
-    isFirstStep,
-    isLastStep,
-    stepProgress,
-
     // 页面导航
     goToPage,
     goBack,
 
-    // 自定义向导
-    nextStep,
-    prevStep,
-    goToStep,
-
     // 预设操作
     selectPreset,
-    startCustomMode,
     importPreset,
-    exportPreset,
 
     // AI生成开局
     startAiGenerate,
@@ -623,7 +480,6 @@ export const useSetupStore = defineStore('setup', () => {
 
     // 验证
     validatePlayerInfo,
-    validateCurrentStep,
 
     // 重置
     reset,

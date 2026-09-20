@@ -3,22 +3,22 @@
     <!-- 💼 势力概览统计栏 -->
     <div class="stats-bar">
       <div class="stat-item">
-        <i class="fa-solid fa-globe"></i>
+        <i class="ti ti-world"></i>
         <span class="stat-label">{{ t('faction.statsFactions') }}</span>
         <span class="stat-value">{{ totalFactions }}{{ t('faction.countUnit') }}</span>
       </div>
       <div class="stat-item">
-        <i class="fa-solid fa-users"></i>
+        <i class="ti ti-users"></i>
         <span class="stat-label">{{ t('faction.statsPopulation') }}</span>
         <span class="stat-value">{{ totalPopulation }}</span>
       </div>
       <div class="stat-item">
-        <i class="fa-solid fa-handshake"></i>
+        <i class="ti ti-heart-handshake"></i>
         <span class="stat-label">{{ t('faction.statsAllies') }}</span>
         <span class="stat-value positive">{{ allyCount }}{{ t('faction.countUnit') }}</span>
       </div>
       <div class="stat-item">
-        <i class="fa-solid fa-skull-crossbones"></i>
+        <i class="ti ti-skull"></i>
         <span class="stat-label">{{ t('faction.statsEnemies') }}</span>
         <span class="stat-value negative">{{ enemyCount }}{{ t('faction.countUnit') }}</span>
       </div>
@@ -28,7 +28,7 @@
     <div class="graph-area">
       <div v-if="hasData" ref="graphContainer" class="faction-graph"></div>
       <div v-else class="empty-state">
-        <i class="fa-solid fa-globe"></i>
+        <i class="ti ti-world"></i>
         <h3>{{ t('faction.emptyTitle') }}</h3>
         <p>{{ t('faction.emptyDescription') }}</p>
       </div>
@@ -463,7 +463,7 @@ watch([hasData, factionRelations, worldNetwork, theme], debouncedInitNetwork, { 
 }
 
 .empty-state i {
-  font-size: 64px;
+  font-size: calc(64px * var(--ui-font-scale));
   opacity: 0.3;
 }
 
@@ -507,7 +507,7 @@ watch([hasData, factionRelations, worldNetwork, theme], debouncedInitNetwork, { 
   }
 
   .empty-state i {
-    font-size: 44px;
+    font-size: calc(44px * var(--ui-font-scale));
   }
 
   .empty-state h3 {

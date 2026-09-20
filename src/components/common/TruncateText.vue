@@ -86,7 +86,7 @@ const handleClick = (e: MouseEvent) => {
 
 @media (max-width: 480px) {
   .truncate-tooltip {
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale));
     padding: 8px 10px;
     max-height: min(52vh, 240px);
   }

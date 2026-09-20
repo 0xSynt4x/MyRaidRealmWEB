@@ -10,7 +10,7 @@
           :class="{ active: worldType === type.value }"
           @click="selectWorldType(type.value)"
         >
-          {{ type.icon }}{{ type.label }}
+          <i class="ti" :class="type.icon"></i>{{ type.label }}
         </button>
       </div>
     </div>
@@ -98,8 +98,8 @@
           />
           <button class="rule-remove" @click="config.世界.运行规则.splice(index, 1)">×</button>
         </div>
-        <button v-if="(config.世界.运行规则?.length || 0) < 5" class="add-mini" @click="config.世界.运行规则.push('')">
-          {{ t('config.world.addRule') }}
+        <button v-if="(config.世界.运行规则?.length || 0) < 10" class="add-mini" @click="config.世界.运行规则.push('')">
+          <i class="ti ti-plus"></i> {{ t('config.world.addRule') }}
         </button>
       </div>
     </div>
@@ -115,15 +115,15 @@
       <div class="checkbox-inline">
         <label class="checkbox-mini">
           <input v-model="specialSystems.magic" type="checkbox" />
-          🔮{{ enumDisplay('world.specialSystem', '魔法') }}
+          <i class="ti ti-crystal-ball"></i>{{ enumDisplay('world.specialSystem', '魔法') }}
         </label>
         <label class="checkbox-mini">
           <input v-model="specialSystems.tech" type="checkbox" />
-          😺{{ enumDisplay('world.specialSystem', '科技') }}
+          <i class="ti ti-robot"></i>{{ enumDisplay('world.specialSystem', '科技') }}
         </label>
         <label class="checkbox-mini">
           <input v-model="specialSystems.special_ability" type="checkbox" />
-          ✨{{ enumDisplay('world.specialSystem', '能力') }}
+          <i class="ti ti-sparkles"></i>{{ enumDisplay('world.specialSystem', '能力') }}
         </label>
       </div>
     </div>
@@ -134,19 +134,19 @@
       <div class="checkbox-inline">
         <label class="checkbox-mini">
           <input v-model="businessFocus" type="checkbox" value="贸易" />
-          💰{{ enumDisplay('world.businessFocus', '贸易') }}
+          <i class="ti ti-coins"></i>{{ enumDisplay('world.businessFocus', '贸易') }}
         </label>
         <label class="checkbox-mini">
           <input v-model="businessFocus" type="checkbox" value="生产" />
-          🏭{{ enumDisplay('world.businessFocus', '生产') }}
+          <i class="ti ti-building-factory"></i>{{ enumDisplay('world.businessFocus', '生产') }}
         </label>
         <label class="checkbox-mini">
           <input v-model="businessFocus" type="checkbox" value="服务" />
-          🤝{{ enumDisplay('world.businessFocus', '服务') }}
+          <i class="ti ti-heart-handshake"></i>{{ enumDisplay('world.businessFocus', '服务') }}
         </label>
         <label class="checkbox-mini">
           <input v-model="businessFocus" type="checkbox" value="探险" />
-          ⚔️{{ enumDisplay('world.businessFocus', '探险') }}
+          <i class="ti ti-swords"></i>{{ enumDisplay('world.businessFocus', '探险') }}
         </label>
       </div>
     </div>
@@ -165,11 +165,11 @@ function field(path: string) {
 }
 
 const worldTypes = computed(() => [
-  { value: '历史', label: enumDisplay('world.type', '历史'), icon: '🏛️' },
-  { value: '现代', label: enumDisplay('world.type', '现代'), icon: '🏙️' },
-  { value: '奇幻', label: enumDisplay('world.type', '奇幻'), icon: '🔮' },
-  { value: '科幻', label: enumDisplay('world.type', '科幻'), icon: '🚀' },
-  { value: '自定义', label: enumDisplay('world.type', '自定义'), icon: '⚙️' },
+  { value: '历史', label: enumDisplay('world.type', '历史'), icon: 'ti-building-monument' },
+  { value: '现代', label: enumDisplay('world.type', '现代'), icon: 'ti-building-skyscraper' },
+  { value: '奇幻', label: enumDisplay('world.type', '奇幻'), icon: 'ti-crystal-ball' },
+  { value: '科幻', label: enumDisplay('world.type', '科幻'), icon: 'ti-rocket' },
+  { value: '自定义', label: enumDisplay('world.type', '自定义'), icon: 'ti-settings' },
 ]);
 
 // 从力量体系推断世界类型
@@ -289,7 +289,7 @@ function selectWorldType(type: string) {
 }
 
 .input-group > label {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   color: var(--text-secondary);
   min-width: 40px;
   font-weight: 500;
@@ -308,7 +308,7 @@ function selectWorldType(type: string) {
   border: 1px solid var(--border-light);
   background: transparent;
   border-radius: 12px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   cursor: pointer;
   transition: all 150ms;
   color: var(--text-primary);
@@ -334,7 +334,7 @@ function selectWorldType(type: string) {
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   color: var(--text-primary);
   cursor: pointer;
   user-select: none;
@@ -363,7 +363,7 @@ function selectWorldType(type: string) {
   border: none;
   background: transparent;
   cursor: pointer;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale));
   border-radius: 4px;
   transition: all 150ms;
   flex-shrink: 0;
@@ -394,26 +394,26 @@ function selectWorldType(type: string) {
 
   .input-group > label,
   .input-row label {
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale));
     min-width: 36px;
   }
 
   .underline-input,
   .underline-select {
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale));
   }
 
   .underline-input::placeholder {
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale));
   }
 
   .type-chips button {
     padding: 3px 8px;
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale));
   }
 
   .checkbox-mini {
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale));
     gap: 3px;
   }
 }
@@ -432,18 +432,18 @@ function selectWorldType(type: string) {
 
   .input-group > label,
   .input-row label {
-    font-size: 10px;
+    font-size: calc(10px * var(--ui-font-scale));
     min-width: 32px;
   }
 
   .underline-input,
   .underline-select {
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale));
     padding: 1px 2px;
   }
 
   .underline-input::placeholder {
-    font-size: 10px;
+    font-size: calc(10px * var(--ui-font-scale));
   }
 
   .type-chips {
@@ -452,7 +452,7 @@ function selectWorldType(type: string) {
 
   .type-chips button {
     padding: 2px 6px;
-    font-size: 10px;
+    font-size: calc(10px * var(--ui-font-scale));
     border-radius: 10px;
   }
 
@@ -461,7 +461,7 @@ function selectWorldType(type: string) {
   }
 
   .checkbox-mini {
-    font-size: 10px;
+    font-size: calc(10px * var(--ui-font-scale));
     gap: 2px;
   }
 }

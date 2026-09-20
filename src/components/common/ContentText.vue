@@ -3,26 +3,41 @@
     <!-- 背景图层 -->
     <div v-if="backgroundImage?.imageUrl" class="background-layer" :style="backgroundLayerStyle"></div>
 
+    <!-- 舞台遮罩：有背景图时压暗，保证正文可读 -->
+    <div v-if="backgroundImage?.imageUrl" class="stage-veil"></div>
+
     <!-- 页面内通知 -->
     <NotificationContainer />
 
     <!-- 消息历史容器 -->
     <div ref="historyRef" class="message-history">
-      <!-- 加载状态 -->
-      <div v-if="messagesStore.isLoading" class="loading-state">
-        <i class="fa fa-spinner fa-spin"></i>
-        <p>{{ t('common.loading') }}</p>
-      </div>
+      <!-- 正文列：限宽居中。滚动条仍贴在窗口边缘，不会被一起收窄。 -->
+      <div class="reading-column">
+        <!-- 加载状态 -->
+        <div v-if="messagesStore.isLoading" class="loading-state">
+          <i class="ti ti-loader-2 ti-spin"></i>
+          <p>{{ t('common.loading') }}</p>
+        </div>
 
-      <!-- 消息列表 -->
-      <MessageCard v-for="message in messagesStore.visibleMessages" :key="message.message_id" :message="message" />
+        <!-- 消息列表 -->
+        <MessageCard v-for="message in messagesStore.visibleMessages" :key="message.message_id" :message="message" />
 
-      <!-- 空状态 -->
-      <div v-if="messagesStore.isEmpty && !messagesStore.isLoading" class="empty-content">
-        <i class="fa-regular fa-file-lines"></i>
-        <p>{{ t('common.emptyContent') }}</p>
+        <!-- 空状态 -->
+        <div v-if="messagesStore.isEmpty && !messagesStore.isLoading" class="empty-content">
+          <i class="ti ti-file-text"></i>
+          <p>{{ t('common.emptyContent') }}</p>
+        </div>
       </div>
     </div>
+
+    <!-- 底部渐变遮罩：正文滚到底时淡出，不是硬切 -->
+    <div class="reading-fade" aria-hidden="true"></div>
+
+    <!-- 暗角：把视觉焦点收到中间 -->
+    <div class="orn-vignette" aria-hidden="true"></div>
+
+    <!-- 全屏噪点：0.07 的纯颗粒，压在最上层 -->
+    <div class="orn-noise" aria-hidden="true"></div>
   </div>
 </template>
 
@@ -258,14 +273,59 @@ onBeforeUnmount(() => {
   pointer-events: none;
 }
 
+/* 舞台遮罩：字压在画上时靠它撑住可读性 */
+.stage-veil {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(21, 18, 13, 0.42) 0%,
+    rgba(21, 18, 13, 0.58) 52%,
+    rgba(21, 18, 13, 0.86) 100%
+  );
+}
+
 .message-history {
   position: relative;
-  z-index: 1;
+  z-index: 2;
   width: 100%;
   height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 16px;
+  padding: 18px 0 72px; /* 底部留白给渐变遮罩 */
+}
+
+/* 正文列：最宽 750px（走令牌），居中 */
+.reading-column {
+  max-width: var(--ui-reading-w, 750px);
+  margin: 0 auto;
+  padding: 0 18px;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 底部渐变遮罩：文字滚到底部时淡出，不是硬切 */
+.reading-fade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 72px;
+  z-index: 3;
+  pointer-events: none;
+  background: linear-gradient(180deg, transparent 0%, var(--bg-primary) 94%);
+}
+
+/* 暗角与噪点压在文字上方；0.07 的噪点只给颗粒感，不糊字 */
+.orn-vignette {
+  z-index: 4;
+}
+
+.orn-noise {
+  z-index: 5;
 }
 
 /* 加载状态 */
@@ -274,14 +334,14 @@ onBeforeUnmount(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 100%;
+  flex: 1;
   min-height: 200px;
   color: var(--text-secondary);
   gap: 16px;
 }
 
 .loading-state i {
-  font-size: 32px;
+  font-size: calc(32px * var(--ui-font-scale));
 }
 
 /* 空状态 */
@@ -290,14 +350,14 @@ onBeforeUnmount(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 100%;
+  flex: 1;
   min-height: 200px;
   color: var(--text-secondary);
   gap: 16px;
 }
 
 .empty-content i {
-  font-size: 48px;
+  font-size: calc(48px * var(--ui-font-scale));
   opacity: 0.5;
 }
 
@@ -319,15 +379,39 @@ onBeforeUnmount(() => {
   background: var(--text-secondary);
 }
 
+/* 平板档原来没有覆盖，留白还是 18px，而横幅 .banner-slot 在 1023 断点已经收到 14px ——
+   正文比横幅宽 6px，边缘对不齐。补上这一档，和横幅 / 输入栏统一。 */
+@media (max-width: 1023px) {
+  .reading-column {
+    padding: 0 14px;
+  }
+}
+
 @media (max-width: 768px) {
   .message-history {
-    padding: 10px;
+    padding: 12px 0 64px;
+  }
+
+  .reading-column {
+    padding: 0 12px;
+  }
+
+  .reading-fade {
+    height: 64px;
   }
 }
 
 @media (max-width: 480px) {
   .message-history {
-    padding: 8px;
+    padding: 10px 0 56px;
+  }
+
+  .reading-column {
+    padding: 0 10px;
+  }
+
+  .reading-fade {
+    height: 56px;
   }
 }
 </style>

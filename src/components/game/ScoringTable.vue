@@ -9,49 +9,49 @@
       </thead>
       <tbody>
         <tr>
-          <td><span class="combo-icon">⚀</span> {{ t('dice.scoringTable.singleOne') }}</td>
+          <td><i class="ti ti-dice-1 combo-icon"></i> {{ t('dice.scoringTable.singleOne') }}</td>
           <td class="score-col">100</td>
         </tr>
         <tr>
-          <td><span class="combo-icon">⚄</span> {{ t('dice.scoringTable.singleFive') }}</td>
+          <td><i class="ti ti-dice-5 combo-icon"></i> {{ t('dice.scoringTable.singleFive') }}</td>
           <td class="score-col">50</td>
         </tr>
         <tr class="separator">
           <td colspan="2"></td>
         </tr>
         <tr>
-          <td><span class="combo-icon">🎯</span> {{ t('dice.scoringTable.threeOnes') }}</td>
+          <td><i class="ti ti-target combo-icon"></i> {{ t('dice.scoringTable.threeOnes') }}</td>
           <td class="score-col">1000</td>
         </tr>
         <tr>
-          <td><span class="combo-icon">🎲</span> {{ t('dice.scoringTable.threeOfKind') }}</td>
+          <td><i class="ti ti-dice combo-icon"></i> {{ t('dice.scoringTable.threeOfKind') }}</td>
           <td class="score-col">X × 100</td>
         </tr>
         <tr>
-          <td><span class="combo-icon">🎲</span> {{ t('dice.scoringTable.fourOfKind') }}</td>
+          <td><i class="ti ti-dice combo-icon"></i> {{ t('dice.scoringTable.fourOfKind') }}</td>
           <td class="score-col">{{ t('dice.scoringTable.threeOfKindTimes2') }}</td>
         </tr>
         <tr>
-          <td><span class="combo-icon">🎲</span> {{ t('dice.scoringTable.fiveOfKind') }}</td>
+          <td><i class="ti ti-dice combo-icon"></i> {{ t('dice.scoringTable.fiveOfKind') }}</td>
           <td class="score-col">{{ t('dice.scoringTable.threeOfKindTimes4') }}</td>
         </tr>
         <tr>
-          <td><span class="combo-icon">🎲</span> {{ t('dice.scoringTable.sixOfKind') }}</td>
+          <td><i class="ti ti-dice combo-icon"></i> {{ t('dice.scoringTable.sixOfKind') }}</td>
           <td class="score-col">{{ t('dice.scoringTable.threeOfKindTimes8') }}</td>
         </tr>
         <tr class="separator">
           <td colspan="2"></td>
         </tr>
         <tr class="special-row">
-          <td><span class="combo-icon">🌈</span> {{ t('dice.scoringTable.straight') }}</td>
+          <td><i class="ti ti-rainbow combo-icon"></i> {{ t('dice.scoringTable.straight') }}</td>
           <td class="score-col">1500</td>
         </tr>
         <tr class="special-row">
-          <td><span class="combo-icon">👯</span> {{ t('dice.scoringTable.threePairs') }}</td>
+          <td><i class="ti ti-users combo-icon"></i> {{ t('dice.scoringTable.threePairs') }}</td>
           <td class="score-col">1500</td>
         </tr>
         <tr class="special-row">
-          <td><span class="combo-icon">🏆</span> {{ t('dice.scoringTable.twoTriplets') }}</td>
+          <td><i class="ti ti-trophy combo-icon"></i> {{ t('dice.scoringTable.twoTriplets') }}</td>
           <td class="score-col">2500</td>
         </tr>
       </tbody>

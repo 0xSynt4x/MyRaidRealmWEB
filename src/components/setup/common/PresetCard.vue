@@ -111,20 +111,20 @@ defineEmits<{
 }
 
 .card-icon {
-  font-size: 40px;
+  font-size: calc(40px * var(--ui-font-scale));
   line-height: 1;
 }
 
 .card-title {
   margin: 0;
-  font-size: 15px;
+  font-size: calc(15px * var(--ui-font-scale));
   font-weight: 600;
   color: var(--text-primary);
 }
 
 .card-desc {
   margin: 0 0 6px 0;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   color: var(--text-secondary);
   line-height: 1.4;
 }
@@ -143,7 +143,7 @@ defineEmits<{
   min-height: 32px;
   padding: 5px 10px;
   border-radius: 999px;
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
   cursor: pointer;
   box-shadow: var(--control-shadow);
   transition: all var(--motion-fast);
@@ -171,7 +171,7 @@ defineEmits<{
 
 .author-link {
   color: var(--accent-primary);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   font-weight: 600;
 }
 
@@ -189,15 +189,15 @@ defineEmits<{
   }
 
   .card-icon {
-    font-size: 36px;
+    font-size: calc(36px * var(--ui-font-scale));
   }
 
   .card-title {
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale));
   }
 
   .card-desc {
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale));
   }
 }
 
@@ -210,24 +210,24 @@ defineEmits<{
   .favorite-btn {
     min-width: 60px;
     padding: 0 8px;
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale));
   }
 
   .card-icon {
-    font-size: 32px;
+    font-size: calc(32px * var(--ui-font-scale));
   }
 
   .card-title {
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale));
   }
 
   .card-desc {
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale));
     margin-bottom: 4px;
   }
 
   .card-tags .tag {
-    font-size: 10px;
+    font-size: calc(10px * var(--ui-font-scale));
     min-height: 30px;
     padding: 4px 9px;
   }

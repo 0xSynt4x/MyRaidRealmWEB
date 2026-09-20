@@ -11,7 +11,7 @@ The build output is a **self-contained single file** `dist/index.html` (with JS/
 - **Standalone**: A single HTML file — double-click to open. No backend, no framework injection required.
 - **Built-in API configuration**: Fill in an OpenAI-compatible endpoint (URL / Key / model) in-page to drive both narration and variable updates.
 - **Rich starting presets**: About 38 world-setting presets + 21 Workshop world packs (apocalypse, cultivation, officialdom, Game of Thrones, Marvel, Naruto, Gaokao simulator, and more).
-- **Custom setup wizard**: Step-by-step configuration of world time, society, identity, currency, factions, business, etc., or generate a world with AI in one click.
+- **AI opening setup**: Fill in the key details of your world and character, then let AI generate the opening setup in one click.
 - **Variable-driven simulation**: Maintains structured state for characters, NPCs, business, and factions via a local `stat_data` + `<JSONPatch>`, independent of MVU.
 - **Local supplementary content / worldbooks**: Inject rules and world material by target (narration model / variable model / both).
 - **Built-in mini-game**: A dice (Farkle) gameplay panel.
@@ -45,14 +45,14 @@ pnpm watch
 
 Available scripts (see `package.json`):
 
-| Command | Description |
-| --- | --- |
-| `pnpm build` | Production build; produces the self-contained `dist/index.html` |
-| `pnpm build:dev` | One-off development-mode build (for debugging) |
-| `pnpm watch` | Development mode + `--watch`; rebuilds on change |
-| `pnpm typecheck` | Full type check via `vue-tsc` (0 errors) |
-| `pnpm lint` | Run ESLint (0 errors; warnings are known tech debt) |
-| `pnpm format` | Format with Prettier (existing code is not fully formatted; prefer running only on changed files) |
+| Command          | Description                                                                                       |
+| ---------------- | ------------------------------------------------------------------------------------------------- |
+| `pnpm build`     | Production build; produces the self-contained `dist/index.html`                                   |
+| `pnpm build:dev` | One-off development-mode build (for debugging)                                                    |
+| `pnpm watch`     | Development mode + `--watch`; rebuilds on change                                                  |
+| `pnpm typecheck` | Full type check via `vue-tsc` (0 errors)                                                          |
+| `pnpm lint`      | Run ESLint (0 errors; warnings are known tech debt)                                               |
+| `pnpm format`    | Format with Prettier (existing code is not fully formatted; prefer running only on changed files) |
 
 After the build, open `dist/index.html` in a browser to use it. See [`CONTRIBUTING.md`](./CONTRIBUTING.md) for the development workflow.
 
@@ -77,7 +77,7 @@ The built `dist/index.html` is the standalone web page users open. Within the pa
 │  ├─ components/           # UI components
 │  │  ├─ layout/            # Layout (Header, sidebars, main area, panels)
 │  │  ├─ panels/            # Feature panels (character, business, faction, lottery, settings…)
-│  │  ├─ setup/             # Setup wizard (preset select, custom wizard, AI generate)
+│  │  ├─ setup/             # Setup wizard (preset select, workshop, AI generate)
 │  │  ├─ config/            # World/player/business/faction config
 │  │  ├─ game/              # Dice mini-game components
 │  │  └─ common/            # Shared components

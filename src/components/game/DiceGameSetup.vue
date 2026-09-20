@@ -3,7 +3,7 @@
     <!-- 标题区 -->
     <div class="setup-header">
       <div class="header-icon">
-        <i class="fa-solid fa-dice"></i>
+        <i class="ti ti-dice"></i>
       </div>
       <h2 class="header-title">{{ t('dice.setup.title') }}</h2>
       <p class="header-subtitle">FARKLE</p>
@@ -12,12 +12,12 @@
     <!-- 第一步: 选择对手 -->
     <div class="setup-section">
       <div class="section-title">
-        <i class="fa-solid fa-user-group section-icon"></i>
+        <i class="ti ti-users section-icon"></i>
         <span>{{ t('dice.setup.selectOpponent') }}</span>
       </div>
 
       <div v-if="availableNpcs.length === 0" class="empty-state">
-        <i class="fa-solid fa-user-slash"></i>
+        <i class="ti ti-user-off"></i>
         <p>{{ t('dice.setup.noOpponent') }}</p>
       </div>
 
@@ -35,19 +35,19 @@
             <span class="npc-name">{{ npcItem.name }}</span>
             <div class="npc-stats">
               <span class="stat favor" :class="favorClass(npcItem.favor)">
-                <i class="fa-solid fa-heart"></i> {{ npcItem.favor }}
+                <i class="ti ti-heart"></i> {{ npcItem.favor }}
               </span>
               <span class="stat trust" :class="trustClass(npcItem.trust)">
-                <i class="fa-solid fa-handshake"></i> {{ npcItem.trust }}
+                <i class="ti ti-heart-handshake"></i> {{ npcItem.trust }}
               </span>
             </div>
           </div>
           <div class="npc-status">
             <span v-if="!canGamble(npcItem).canGamble" class="status-badge rejected">
-              <i class="fa-solid fa-ban"></i>
+              <i class="ti ti-ban"></i>
             </span>
             <span v-else-if="selectedNpc?.id === npcItem.id" class="status-badge checked">
-              <i class="fa-solid fa-check"></i>
+              <i class="ti ti-check"></i>
             </span>
           </div>
         </button>
@@ -58,7 +58,7 @@
     <Transition name="slide-fade">
       <div v-if="selectedNpc && diceAssignment" class="setup-section dice-intel">
         <div class="section-title">
-          <i class="fa-solid fa-magnifying-glass section-icon"></i>
+          <i class="ti ti-search section-icon"></i>
           <span>{{ t('dice.setup.diceIntel') }}</span>
           <span class="intel-badge" :class="intelLevel">{{ intelLevelText }}</span>
         </div>
@@ -88,7 +88,7 @@
         </div>
 
         <div class="trust-hint">
-          <i class="fa-solid fa-circle-info"></i>
+          <i class="ti ti-info-circle"></i>
           <span>{{ t('dice.setup.trustHint', { trust: selectedNpc.trust, description: trustDescription }) }}</span>
         </div>
       </div>
@@ -98,19 +98,19 @@
     <Transition name="slide-fade">
       <div v-if="selectedNpc" class="setup-section">
         <div class="section-title">
-          <i class="fa-solid fa-coins section-icon"></i>
+          <i class="ti ti-coins section-icon"></i>
           <span>{{ t('dice.setup.placeBets') }}</span>
         </div>
 
         <!-- 货币赌注 -->
         <div class="bet-row">
           <div class="bet-label">
-            <i class="fa-solid fa-coins"></i>
+            <i class="ti ti-coins"></i>
             <span>{{ playerCurrency.name }}</span>
           </div>
           <div class="bet-control">
             <button class="adj-btn" :disabled="bets.currency === 0" @click="adjustBet('currency', -10)">
-              <i class="fa-solid fa-minus"></i>
+              <i class="ti ti-minus"></i>
             </button>
             <input
               v-model.number="bets.currency"
@@ -124,7 +124,7 @@
               :disabled="bets.currency >= betLimits.currency.max"
               @click="adjustBet('currency', 10)"
             >
-              <i class="fa-solid fa-plus"></i>
+              <i class="ti ti-plus"></i>
             </button>
           </div>
           <span class="bet-range">0 ~ {{ betLimits.currency.max }}</span>
@@ -133,16 +133,16 @@
         <!-- 好感度赌注 -->
         <div class="bet-row">
           <div class="bet-label">
-            <i class="fa-solid fa-heart"></i>
+            <i class="ti ti-heart"></i>
             <span>{{ t('dice.setup.favor') }}</span>
           </div>
           <div class="bet-control">
             <button class="adj-btn" :disabled="bets.favor === 0" @click="adjustBet('favor', -1)">
-              <i class="fa-solid fa-minus"></i>
+              <i class="ti ti-minus"></i>
             </button>
             <input v-model.number="bets.favor" type="number" :min="0" :max="betLimits.favor.max" class="bet-input" />
             <button class="adj-btn" :disabled="bets.favor >= betLimits.favor.max" @click="adjustBet('favor', 1)">
-              <i class="fa-solid fa-plus"></i>
+              <i class="ti ti-plus"></i>
             </button>
           </div>
           <span class="bet-range">0 ~ {{ betLimits.favor.max }}</span>
@@ -151,23 +151,23 @@
         <!-- 信任度赌注 -->
         <div class="bet-row">
           <div class="bet-label">
-            <i class="fa-solid fa-handshake"></i>
+            <i class="ti ti-heart-handshake"></i>
             <span>{{ t('dice.setup.trust') }}</span>
           </div>
           <div class="bet-control">
             <button class="adj-btn" :disabled="bets.trust === 0" @click="adjustBet('trust', -1)">
-              <i class="fa-solid fa-minus"></i>
+              <i class="ti ti-minus"></i>
             </button>
             <input v-model.number="bets.trust" type="number" :min="0" :max="betLimits.trust.max" class="bet-input" />
             <button class="adj-btn" :disabled="bets.trust >= betLimits.trust.max" @click="adjustBet('trust', 1)">
-              <i class="fa-solid fa-plus"></i>
+              <i class="ti ti-plus"></i>
             </button>
           </div>
           <span class="bet-range">0 ~ {{ betLimits.trust.max }}</span>
         </div>
 
         <div v-if="hasBets" class="bet-summary">
-          <i class="fa-solid fa-scale-balanced"></i>
+          <i class="ti ti-scale"></i>
           <span
             >{{ t('dice.setup.betSummary') }}
             <template v-if="bets.currency > 0"> {{ bets.currency }} {{ playerCurrency.name }}</template>
@@ -182,7 +182,7 @@
     <Transition name="slide-fade">
       <div v-if="selectedNpc" class="setup-actions">
         <button class="start-btn" :disabled="!canStart" @click="handleStart">
-          <i class="fa-solid fa-play"></i>
+          <i class="ti ti-player-play"></i>
           <span>{{ t('dice.setup.startGame') }}</span>
         </button>
       </div>
@@ -191,44 +191,44 @@
     <!-- 游戏规则说明 -->
     <div class="setup-section rules-section">
       <button class="section-title rules-toggle" @click="showRules = !showRules">
-        <i class="fa-solid fa-book-open section-icon"></i>
+        <i class="ti ti-book section-icon"></i>
         <span>{{ t('dice.setup.rules') }}</span>
-        <i :class="['toggle-icon fa-solid', showRules ? 'fa-chevron-up' : 'fa-chevron-down']"></i>
+        <i :class="['toggle-icon ti', showRules ? 'ti-chevron-up' : 'ti-chevron-down']"></i>
       </button>
 
       <Transition name="collapse">
         <div v-if="showRules" class="rules-content">
           <div class="rules-summary">
             <div class="rule-item">
-              <i class="fa-solid fa-bullseye rule-icon"></i>
+              <i class="ti ti-target rule-icon"></i>
               <div>
                 <strong>{{ t('dice.setup.rule.targetTitle') }}</strong>
                 <span>{{ t('dice.setup.rule.targetDesc', { score: GAME_CONSTANTS.TARGET_SCORE }) }}</span>
               </div>
             </div>
             <div class="rule-item">
-              <i class="fa-solid fa-dice rule-icon"></i>
+              <i class="ti ti-dice rule-icon"></i>
               <div>
                 <strong>{{ t('dice.setup.rule.rollTitle') }}</strong>
                 <span>{{ t('dice.setup.rule.rollDesc') }}</span>
               </div>
             </div>
             <div class="rule-item">
-              <i class="fa-solid fa-arrows-split-up-and-left rule-icon"></i>
+              <i class="ti ti-arrows-split rule-icon"></i>
               <div>
                 <strong>{{ t('dice.setup.rule.chooseTitle') }}</strong>
                 <span>{{ t('dice.setup.rule.chooseDesc') }}</span>
               </div>
             </div>
             <div class="rule-item rule-danger">
-              <i class="fa-solid fa-skull-crossbones rule-icon"></i>
+              <i class="ti ti-skull rule-icon"></i>
               <div>
                 <strong>{{ t('dice.setup.rule.farkleTitle') }}</strong>
                 <span>{{ t('dice.setup.rule.farkleDesc') }}</span>
               </div>
             </div>
             <div class="rule-item rule-special">
-              <i class="fa-solid fa-fire rule-icon"></i>
+              <i class="ti ti-flame rule-icon"></i>
               <div>
                 <strong>{{ t('dice.setup.rule.hotDiceTitle') }}</strong>
                 <span>{{ t('dice.setup.rule.hotDiceDesc') }}</span>
@@ -238,7 +238,7 @@
 
           <div class="scoring-table-wrapper">
             <div class="scoring-table-title">
-              <i class="fa-solid fa-star"></i>
+              <i class="ti ti-star"></i>
               <span>{{ t('dice.scoringTable.title') }}</span>
             </div>
             <ScoringTable />

@@ -60,7 +60,7 @@ export const presetI18nEn: Record<string, PresetI18nText> = {
   'marvel-awakened': preset_marvel_awakened,
   'naruto-ninja-academy': preset_naruto_ninja_academy,
   'officialdom-jiangcheng': preset_officialdom_jiangcheng,
-  'default': preset_default_preset,
+  default: preset_default_preset,
   'record-of-unusual-creatures': preset_record_of_unusual_creatures,
   'scp-foundation': preset_scp_foundation,
   'song-dynasty-spiritual-testing': preset_song_dynasty_spiritual_testing,

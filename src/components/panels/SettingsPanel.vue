@@ -1,7 +1,9 @@
 <template>
   <div class="settings-panel">
     <div class="settings-tabs">
-      <button :class="{ active: currentTab === 'ui' }" @click="currentTab = 'ui'">{{ t('settings.tab.ui') }}</button>
+      <button :class="{ active: currentTab === 'ui' }" @click="currentTab = 'ui'">
+        <i class="ti ti-palette"></i> {{ t('settings.tab.ui') }}
+      </button>
       <button :class="{ active: currentTab === 'mainApi' }" @click="currentTab = 'mainApi'">
         {{ t('settings.tab.mainApi') }}
       </button>
@@ -15,7 +17,7 @@
         {{ t('settings.tab.archiveManager') }}
       </button>
       <button class="declaration-tab-btn" :title="t('settings.tab.declaration')" @click="showDeclaration = true">
-        <i class="fa-solid fa-scroll"></i>
+        <i class="ti ti-certificate"></i>
       </button>
     </div>
 
@@ -26,13 +28,13 @@
     <div v-show="currentTab === 'ui'" class="ui-settings">
       <!-- ─── 外观 ─── -->
       <div class="setting-card">
-        <h3 class="card-title"><i class="fa-solid fa-palette"></i>{{ t('settings.card.appearance') }}</h3>
+        <h3 class="card-title"><i class="ti ti-palette"></i>{{ t('settings.card.appearance') }}</h3>
 
         <div class="language-spotlight">
           <div class="language-spotlight-head">
             <div class="language-spotlight-title-row">
               <span class="language-spotlight-title">
-                <i class="fa-solid fa-language"></i>
+                <i class="ti ti-language"></i>
                 {{ t('settings.languageSectionTitle') }}
               </span>
             </div>
@@ -58,7 +60,7 @@
               :aria-label="t('settings.theme.light')"
               @click.stop="handleThemeChange('light')"
             >
-              <i class="fa-solid fa-sun"></i>
+              <i class="ti ti-sun"></i>
             </button>
             <button
               type="button"
@@ -67,7 +69,7 @@
               :aria-label="t('settings.theme.dark')"
               @click.stop="handleThemeChange('dark')"
             >
-              <i class="fa-solid fa-moon"></i>
+              <i class="ti ti-moon"></i>
             </button>
             <button
               type="button"
@@ -76,7 +78,7 @@
               :aria-label="t('settings.theme.steelcool')"
               @click.stop="handleThemeChange('steelcool')"
             >
-              <i class="fa-solid fa-cubes"></i>
+              <i class="ti ti-cube"></i>
             </button>
             <button
               type="button"
@@ -85,7 +87,7 @@
               :aria-label="t('settings.theme.solarized')"
               @click.stop="handleThemeChange('solarized')"
             >
-              <i class="fa-solid fa-solar-panel"></i>
+              <i class="ti ti-solar-panel"></i>
             </button>
             <button
               type="button"
@@ -94,7 +96,7 @@
               :aria-label="t('settings.theme.everforest1980s')"
               @click.stop="handleThemeChange('everforest1980s')"
             >
-              <i class="fa-solid fa-seedling"></i>
+              <i class="ti ti-seedling"></i>
             </button>
             <button
               type="button"
@@ -103,7 +105,7 @@
               :aria-label="t('settings.theme.wuxia')"
               @click.stop="handleThemeChange('wuxia')"
             >
-              <i class="fa-solid fa-scroll"></i>
+              <i class="ti ti-certificate"></i>
             </button>
           </div>
         </div>
@@ -152,7 +154,7 @@
 
       <!-- ─── 排版 ─── -->
       <div class="setting-card">
-        <h3 class="card-title"><i class="fa-solid fa-text-height"></i>{{ t('settings.card.typography') }}</h3>
+        <h3 class="card-title"><i class="ti ti-text-size"></i>{{ t('settings.card.typography') }}</h3>
 
         <div class="setting-row slider-row">
           <span class="row-label">{{ t('settings.uiFont') }}</span>
@@ -181,7 +183,7 @@
 
       <!-- ─── 功能 ─── -->
       <div class="setting-card">
-        <h3 class="card-title"><i class="fa-solid fa-sliders"></i>{{ t('settings.card.features') }}</h3>
+        <h3 class="card-title"><i class="ti ti-adjustments"></i>{{ t('settings.card.features') }}</h3>
 
         <!-- 自动滚动 -->
         <div class="setting-row">
@@ -203,7 +205,7 @@
               class="help-link"
               :title="t('settings.textToImageHelp')"
             >
-              <i class="fa-solid fa-circle-question"></i>
+              <i class="ti ti-help-circle"></i>
             </a>
           </span>
           <label class="toggle-switch">
@@ -224,7 +226,7 @@
                 class="help-link"
                 :title="t('settings.onlineModeHelp')"
               >
-                <i class="fa-solid fa-circle-question"></i>
+                <i class="ti ti-help-circle"></i>
               </a>
             </span>
             <label class="toggle-switch">
@@ -272,9 +274,9 @@
             <span class="seg-indicator"></span>
           </div>
           <span class="row-value status">{{
-              survivalModeFromStatData === '关闭'
+            survivalModeFromStatData === '关闭'
               ? t('settings.survival.summary.off')
-                : survivalModeFromStatData === '基础模式'
+              : survivalModeFromStatData === '基础模式'
                 ? t('settings.survival.summary.basic')
                 : t('settings.survival.summary.full')
           }}</span>
@@ -331,7 +333,7 @@
 
       <!-- ─── 背景图 ─── -->
       <div class="setting-card">
-        <h3 class="card-title"><i class="fa-solid fa-image"></i>{{ t('settings.card.backgroundImage') }}</h3>
+        <h3 class="card-title"><i class="ti ti-photo"></i>{{ t('settings.card.backgroundImage') }}</h3>
 
         <!-- 已有图片 -->
         <template v-if="backgroundImage.imageUrl">
@@ -339,7 +341,7 @@
             <div class="bg-thumb">
               <img :src="backgroundImage.imageUrl" :alt="t('settings.backgroundPreviewAlt')" />
               <button class="bg-remove-btn" :title="t('settings.removeBackgroundImage')" @click="removeBackgroundImage">
-                <i class="fa-solid fa-xmark"></i>
+                <i class="ti ti-x"></i>
               </button>
             </div>
             <div class="bg-controls">
@@ -385,7 +387,7 @@
         <template v-else>
           <div class="bg-upload-row">
             <label class="upload-btn">
-              <i class="fa-solid fa-upload"></i>
+              <i class="ti ti-upload"></i>
               <span>{{ t('settings.upload') }}</span>
               <input
                 type="file"
@@ -402,7 +404,7 @@
                 @keyup.enter="handleUrlInput"
               />
               <button class="url-confirm-btn" :disabled="!imageUrlInput.trim()" @click="handleUrlInput">
-                <i class="fa-solid fa-check"></i>
+                <i class="ti ti-check"></i>
               </button>
             </div>
           </div>
@@ -414,7 +416,7 @@
     <div v-show="currentTab === 'mainApi'" class="api-dashboard">
       <div class="dash-card compact">
         <div class="card-header">
-          <i class="fa-solid fa-brain"></i>
+          <i class="ti ti-brain"></i>
           <span>{{ t('settings.mainApiTitle') }}</span>
         </div>
         <p class="api-header-desc">{{ t('settings.mainApiDesc') }}</p>
@@ -423,7 +425,7 @@
           <div class="api-item">
             <div class="api-item-head">
               <div class="api-item-title static-title">
-                <i class="fa-solid fa-comment-dots"></i>
+                <i class="ti ti-message-dots"></i>
                 <span>{{ t('settings.mainApiCardTitle') }}</span>
                 <small v-if="mainApi.model">{{ mainApi.model }}</small>
               </div>
@@ -432,24 +434,24 @@
             <div class="api-item-body">
               <div class="config-grid">
                 <div class="config-row">
-                  <label><i class="fa-solid fa-cloud"></i></label>
+                  <label><i class="ti ti-cloud"></i></label>
                   <select v-model="mainApi.source" @change="handleMainApiSourceChange">
                     <option value="openai_compatible">OpenAI</option>
                   </select>
                 </div>
 
                 <div class="config-row full">
-                  <label><i class="fa-solid fa-link"></i></label>
+                  <label><i class="ti ti-link"></i></label>
                   <input v-model="mainApi.apiurl" type="text" :placeholder="t('settings.apiUrlPlaceholder')" />
                 </div>
 
                 <div class="config-row full">
-                  <label><i class="fa-solid fa-key"></i></label>
+                  <label><i class="ti ti-key"></i></label>
                   <input v-model="mainApi.key" type="password" :placeholder="t('settings.apiKeyPlaceholder')" />
                 </div>
 
                 <div class="config-row full">
-                  <label><i class="fa-solid fa-microchip"></i></label>
+                  <label><i class="ti ti-cpu"></i></label>
                   <select v-if="mainApi.availableModels.length > 0" v-model="mainApi.model" class="model-select">
                     <option value="" disabled>{{ t('settings.selectModel') }}</option>
                     <option v-for="model in mainApi.availableModels" :key="model" :value="model">{{ model }}</option>
@@ -462,14 +464,14 @@
                     class="model-select"
                   />
                   <button class="inline-icon-btn" :disabled="isLoadingMainApi" @click="fetchMainApiModels">
-                    <i :class="['fa-solid', isLoadingMainApi ? 'fa-spinner fa-spin' : 'fa-download']"></i>
+                    <i :class="['ti', isLoadingMainApi ? 'ti-loader-2 ti-spin' : 'ti-download']"></i>
                   </button>
                 </div>
               </div>
 
               <div class="action-row-combined">
                 <button class="icon-btn primary save-btn-inline" @click="saveMainApiCard">
-                  <i class="fa-solid fa-check"></i>
+                  <i class="ti ti-check"></i>
                   <span>{{ t('settings.saveThisApi') }}</span>
                 </button>
               </div>
@@ -478,7 +480,7 @@
         </div>
 
         <div v-if="saveResult" :class="['result-bar', saveResult.success ? 'success' : 'error']">
-          <i :class="['fa-solid', saveResult.success ? 'fa-check-circle' : 'fa-times-circle']"></i>
+          <i :class="['ti', saveResult.success ? 'ti-circle-check' : 'ti-circle-x']"></i>
           <span>{{ saveResult.message }}</span>
         </div>
       </div>
@@ -487,10 +489,10 @@
     <div v-show="currentTab === 'assistantApi'" class="api-dashboard">
       <div class="dash-card compact">
         <div class="card-header">
-          <i class="fa-solid fa-server"></i>
+          <i class="ti ti-server"></i>
           <span>{{ t('settings.apiList') }}</span>
           <button class="inline-icon-btn" @click="handleAddApi">
-            <i class="fa-solid fa-plus"></i>
+            <i class="ti ti-plus"></i>
           </button>
         </div>
         <p class="api-header-desc">{{ t('settings.apiListDesc') }}</p>
@@ -499,23 +501,23 @@
           <div v-for="(api, index) in assistantApis" :key="api.id" class="api-item">
             <div class="api-item-head">
               <button class="api-item-title" @click="toggleCollapse(index)">
-                <i :class="['fa-solid', api.collapsed ? 'fa-chevron-right' : 'fa-chevron-down']"></i>
+                <i :class="['ti', api.collapsed ? 'ti-chevron-right' : 'ti-chevron-down']"></i>
                 <span>{{ t('settings.apiCardTitle', { index: index + 1 }) }}</span>
                 <small v-if="api.model">{{ api.model }}</small>
               </button>
               <div class="api-item-actions">
                 <button class="inline-icon-btn" :disabled="index === 0" @click="moveApiUp(index)">
-                  <i class="fa-solid fa-arrow-up"></i>
+                  <i class="ti ti-arrow-up"></i>
                 </button>
                 <button
                   class="inline-icon-btn"
                   :disabled="index === assistantApis.length - 1"
                   @click="moveApiDown(index)"
                 >
-                  <i class="fa-solid fa-arrow-down"></i>
+                  <i class="ti ti-arrow-down"></i>
                 </button>
                 <button class="inline-icon-btn danger" :disabled="assistantApis.length <= 1" @click="removeApi(index)">
-                  <i class="fa-solid fa-trash"></i>
+                  <i class="ti ti-trash"></i>
                 </button>
               </div>
             </div>
@@ -523,24 +525,24 @@
             <div v-if="!api.collapsed" class="api-item-body">
               <div class="config-grid">
                 <div class="config-row">
-                  <label><i class="fa-solid fa-cloud"></i></label>
+                  <label><i class="ti ti-cloud"></i></label>
                   <select v-model="api.source" @change="handleCardSourceChange(index)">
                     <option value="openai_compatible">OpenAI</option>
                   </select>
                 </div>
 
                 <div class="config-row full">
-                  <label><i class="fa-solid fa-link"></i></label>
+                  <label><i class="ti ti-link"></i></label>
                   <input v-model="api.apiurl" type="text" :placeholder="t('settings.apiUrlPlaceholder')" />
                 </div>
 
                 <div class="config-row full">
-                  <label><i class="fa-solid fa-key"></i></label>
+                  <label><i class="ti ti-key"></i></label>
                   <input v-model="api.key" type="password" :placeholder="t('settings.apiKeyPlaceholder')" />
                 </div>
 
                 <div class="config-row full">
-                  <label><i class="fa-solid fa-microchip"></i></label>
+                  <label><i class="ti ti-cpu"></i></label>
                   <select v-if="api.availableModels.length > 0" v-model="api.model" class="model-select">
                     <option value="" disabled>{{ t('settings.selectModel') }}</option>
                     <option v-for="model in api.availableModels" :key="model" :value="model">{{ model }}</option>
@@ -553,14 +555,14 @@
                     class="model-select"
                   />
                   <button class="inline-icon-btn" :disabled="isLoadingById[api.id]" @click="fetchModels(index, api.id)">
-                    <i :class="['fa-solid', isLoadingById[api.id] ? 'fa-spinner fa-spin' : 'fa-download']"></i>
+                    <i :class="['ti', isLoadingById[api.id] ? 'ti-loader-2 ti-spin' : 'ti-download']"></i>
                   </button>
                 </div>
               </div>
 
               <div class="action-row-combined">
                 <button class="icon-btn primary save-btn-inline" @click="saveApiCard(index)">
-                  <i class="fa-solid fa-check"></i>
+                  <i class="ti ti-check"></i>
                   <span>{{ t('settings.saveThisApi') }}</span>
                 </button>
               </div>
@@ -569,7 +571,7 @@
         </div>
 
         <div v-if="saveResult" :class="['result-bar', saveResult.success ? 'success' : 'error']">
-          <i :class="['fa-solid', saveResult.success ? 'fa-check-circle' : 'fa-times-circle']"></i>
+          <i :class="['ti', saveResult.success ? 'ti-circle-check' : 'ti-circle-x']"></i>
           <span>{{ saveResult.message }}</span>
         </div>
       </div>
@@ -590,7 +592,7 @@
                 :disabled="!canEditWorldbookEntries"
                 @click="addEditableEntry"
               >
-                <i class="fa-solid fa-plus"></i>
+                <i class="ti ti-plus"></i>
                 {{ t('contentCenter.worldbook.addEntry') }}
               </button>
             </div>
@@ -641,8 +643,8 @@
                     </div>
                     <i
                       :class="[
-                        'fa-solid',
-                        isEditableEntryExpanded(index) ? 'fa-chevron-up' : 'fa-chevron-down',
+                        'ti',
+                        isEditableEntryExpanded(index) ? 'ti-chevron-up' : 'ti-chevron-down',
                         'compact-worldbook-chevron',
                       ]"
                     ></i>
@@ -665,7 +667,7 @@
                       :title="t('settings.moveUp')"
                       @click="moveEditableEntryUp(index)"
                     >
-                      <i class="fa-solid fa-arrow-up"></i>
+                      <i class="ti ti-arrow-up"></i>
                     </button>
                     <button
                       class="ghost-btn icon-only-btn compact-icon-btn"
@@ -674,7 +676,7 @@
                       :title="t('settings.moveDown')"
                       @click="moveEditableEntryDown(index)"
                     >
-                      <i class="fa-solid fa-arrow-down"></i>
+                      <i class="ti ti-arrow-down"></i>
                     </button>
                     <button
                       class="ghost-btn icon-only-btn compact-icon-btn danger-btn"
@@ -682,7 +684,7 @@
                       :title="t('settings.delete')"
                       @click="deleteEditableEntry(index)"
                     >
-                      <i class="fa-solid fa-trash"></i>
+                      <i class="ti ti-trash"></i>
                     </button>
                   </div>
                 </div>
@@ -752,7 +754,7 @@
                   </div>
 
                   <div class="preset-detail-note-card worldbook-editor-note compact-worldbook-note">
-                    <i class="fa-solid fa-pen-to-square"></i>
+                    <i class="ti ti-edit"></i>
                     <p>{{ t('contentCenter.worldbook.editorHint') }}</p>
                   </div>
 
@@ -814,8 +816,8 @@
                   </div>
                   <i
                     :class="[
-                      'fa-solid',
-                      isSystemAssetExpanded(asset.id) ? 'fa-chevron-up' : 'fa-chevron-down',
+                      'ti',
+                      isSystemAssetExpanded(asset.id) ? 'ti-chevron-up' : 'ti-chevron-down',
                       'compact-worldbook-chevron',
                     ]"
                   ></i>
@@ -876,7 +878,7 @@
                   </span>
                 </div>
                 <div class="preset-detail-note-card worldbook-editor-note compact-worldbook-note">
-                  <i class="fa-solid fa-circle-info"></i>
+                  <i class="ti ti-info-circle"></i>
                   <p>
                     {{
                       isSystemAssetRouteLocked(asset.id)
@@ -927,11 +929,11 @@
             <span class="summary-label">{{ t('contentCenter.archive.saveStatus') }}</span>
             <div class="button-group-wrap">
               <button class="primary-btn" :disabled="isArchiving" @click="handleArchiveExport">
-                <i :class="isArchiving ? 'fa-solid fa-spinner fa-spin' : 'fa-solid fa-download'"></i>
+                <i :class="isArchiving ? 'ti ti-loader-2 ti-spin' : 'ti ti-download'"></i>
                 {{ t('contentCenter.archive.downloadButton') }}
               </button>
               <button class="ghost-btn" :disabled="isSavingStandaloneArchive" @click="handleSaveStandaloneArchive">
-                <i :class="isSavingStandaloneArchive ? 'fa-solid fa-spinner fa-spin' : 'fa-solid fa-floppy-disk'"></i>
+                <i :class="isSavingStandaloneArchive ? 'ti ti-loader-2 ti-spin' : 'ti ti-device-floppy'"></i>
                 {{ t('contentCenter.archive.saveLocalButton') }}
               </button>
             </div>
@@ -941,7 +943,7 @@
             <span class="summary-label">{{ t('contentCenter.archive.importStatus') }}</span>
             <div class="button-group-wrap">
               <button class="ghost-btn" :disabled="isImportingArchive" @click="triggerArchiveImport">
-                <i :class="isImportingArchive ? 'fa-solid fa-spinner fa-spin' : 'fa-solid fa-file-import'"></i>
+                <i :class="isImportingArchive ? 'ti ti-loader-2 ti-spin' : 'ti ti-file-import'"></i>
                 {{ t('contentCenter.archive.importButton') }}
               </button>
             </div>
@@ -981,19 +983,15 @@
                 :disabled="isRestoringArchiveId === archive.id"
                 @click="handleRestoreStandaloneArchive(archive.id)"
               >
-                <i
-                  :class="
-                    isRestoringArchiveId === archive.id ? 'fa-solid fa-spinner fa-spin' : 'fa-solid fa-rotate-left'
-                  "
-                ></i>
+                <i :class="isRestoringArchiveId === archive.id ? 'ti ti-loader-2 ti-spin' : 'ti ti-rotate'"></i>
                 {{ t('contentCenter.archive.restoreButton') }}
               </button>
               <button class="ghost-btn" @click="handleDownloadStandaloneArchive(archive.id)">
-                <i class="fa-solid fa-file-arrow-down"></i>
+                <i class="ti ti-file-download"></i>
                 {{ t('contentCenter.archive.exportSavedButton') }}
               </button>
               <button class="ghost-btn danger-btn" @click="handleDeleteStandaloneArchive(archive.id)">
-                <i class="fa-solid fa-trash"></i>
+                <i class="ti ti-trash"></i>
                 {{ t('contentCenter.archive.deleteButton') }}
               </button>
             </div>
@@ -1885,7 +1883,7 @@ function removeBackgroundImage() {
   background: var(--glass-bg) !important;
   border: 1px solid var(--glass-border) !important;
   color: hsl(260, 55%, 65%) !important;
-  font-size: 14px !important;
+  font-size: calc(14px * var(--ui-font-scale)) !important;
   transition: all var(--transition-normal) var(--ease-out-expo) !important;
   flex-shrink: 0;
   backdrop-filter: blur(8px);
@@ -1951,7 +1949,7 @@ function removeBackgroundImage() {
 }
 
 .card-title i {
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale));
   /* icon 也需要渐变色，但 icon 用 background-clip 比较复杂，使用 inherit */
   background: var(--gradient-primary);
   -webkit-background-clip: text;
@@ -2007,7 +2005,7 @@ function removeBackgroundImage() {
   border-radius: 999px;
   border: 1px solid color-mix(in srgb, var(--accent-primary) 30%, var(--card-border));
   background: color-mix(in srgb, var(--accent-primary) 12%, var(--control-bg));
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
   font-weight: 600;
   color: var(--accent-primary);
 }
@@ -2087,7 +2085,7 @@ function removeBackgroundImage() {
 }
 
 .local-content-route {
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
   color: var(--accent-primary);
 }
 
@@ -2104,7 +2102,7 @@ function removeBackgroundImage() {
 }
 
 .row-label.sm {
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
   font-weight: 500;
   min-width: 42px;
 }
@@ -2112,7 +2110,7 @@ function removeBackgroundImage() {
 /* 帮助链接 */
 .help-link {
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale));
   transition: color var(--transition-fast) ease;
 }
 
@@ -2192,14 +2190,14 @@ function removeBackgroundImage() {
 }
 
 .chip i {
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale));
 }
 
 /* Mini chip（背景图选项） */
 .chip.mini {
   flex: 0 1 auto;
   padding: 3px 10px;
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
   border-radius: 4px;
   gap: 0;
 }
@@ -2356,7 +2354,7 @@ function removeBackgroundImage() {
   position: relative;
   z-index: 1;
   padding: 2px 10px;
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
   font-weight: 500;
   color: var(--text-secondary);
   cursor: pointer;
@@ -2456,7 +2454,7 @@ function removeBackgroundImage() {
   border-radius: 50%;
   background: rgba(239, 68, 68, 0.85);
   color: white;
-  font-size: 10px;
+  font-size: calc(10px * var(--ui-font-scale));
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -2490,7 +2488,7 @@ function removeBackgroundImage() {
 }
 
 .bg-ctrl-label {
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
   color: var(--text-secondary);
   white-space: nowrap;
   min-width: 36px;
@@ -2498,7 +2496,7 @@ function removeBackgroundImage() {
 }
 
 .bg-ctrl-val {
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
   color: var(--accent-primary);
   font-weight: 600;
   min-width: 32px;
@@ -2589,7 +2587,7 @@ function removeBackgroundImage() {
   border-radius: var(--radius-sm);
   background: var(--gradient-primary);
   color: white;
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -2644,7 +2642,7 @@ function removeBackgroundImage() {
 }
 
 .card-header i {
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale));
   background: var(--gradient-primary);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -2967,14 +2965,14 @@ function removeBackgroundImage() {
   margin: 0;
   color: var(--text-secondary);
   line-height: 1.6;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
 }
 
 .settings-management-panel .summary-label,
 .settings-management-panel .asset-meta,
 .settings-management-panel .status-hint {
   color: var(--text-tertiary);
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
   line-height: 1.45;
   letter-spacing: 0.04em;
 }
@@ -2987,7 +2985,7 @@ function removeBackgroundImage() {
   gap: 6px;
   padding: 6px 10px;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   line-height: 1;
 }
 
@@ -3155,7 +3153,7 @@ function removeBackgroundImage() {
 .settings-management-panel .compact-summary-item dt {
   margin: 0;
   color: var(--text-tertiary);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   line-height: 1.45;
 }
 
@@ -3199,7 +3197,7 @@ function removeBackgroundImage() {
 
 .settings-management-panel .archive-message-preview {
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   line-height: 1.7;
 }
 
@@ -3312,7 +3310,7 @@ function removeBackgroundImage() {
   min-width: 44px;
   padding-top: 2px;
   color: var(--accent-primary);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   font-weight: 700;
 }
 
@@ -3323,7 +3321,7 @@ function removeBackgroundImage() {
 
 .settings-management-panel .system-order {
   min-width: 30px;
-  font-size: 10px;
+  font-size: calc(10px * var(--ui-font-scale));
 }
 
 .settings-management-panel .worldbook-entry-copy {
@@ -3348,7 +3346,7 @@ function removeBackgroundImage() {
 
 .settings-management-panel .compact-worldbook-title-line strong {
   color: var(--text-primary);
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--ui-font-scale));
   line-height: 1.28;
   letter-spacing: 0.01em;
   min-width: 0;
@@ -3361,14 +3359,14 @@ function removeBackgroundImage() {
   justify-content: center;
   padding: 5px 10px;
   border-radius: 999px;
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
   line-height: 1;
   font-weight: 700;
 }
 
 .settings-management-panel .compact-badge {
   padding: 4px 8px;
-  font-size: 10px;
+  font-size: calc(10px * var(--ui-font-scale));
 }
 
 .settings-management-panel .entry-enabled-badge.enabled {
@@ -3383,13 +3381,13 @@ function removeBackgroundImage() {
 
 .settings-management-panel .compact-tag {
   padding: 3px 7px;
-  font-size: 10px;
+  font-size: calc(10px * var(--ui-font-scale));
 }
 
 .settings-management-panel .compact-worldbook-preview {
   min-width: 0;
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
   line-height: 1.3;
   flex: 1 1 180px;
   overflow: hidden;
@@ -3401,7 +3399,7 @@ function removeBackgroundImage() {
 .settings-management-panel .compact-worldbook-chevron {
   margin-top: 4px;
   color: var(--text-tertiary);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   flex-shrink: 0;
 }
 
@@ -3593,7 +3591,7 @@ function removeBackgroundImage() {
   background: transparent;
   color: var(--text-secondary);
   font: inherit;
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
   font-weight: 600;
   cursor: pointer;
   transition:
@@ -3628,7 +3626,7 @@ function removeBackgroundImage() {
 .settings-management-panel .compact-system-toggle {
   min-height: 32px;
   padding: 6px 10px;
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
 }
 
 .settings-management-panel .compact-system-meta-line {
@@ -3636,7 +3634,7 @@ function removeBackgroundImage() {
   flex-direction: column;
   gap: 4px;
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
   line-height: 1.45;
   padding-inline: 2px;
 }
@@ -3755,18 +3753,18 @@ function removeBackgroundImage() {
     flex: 0 1 calc(33.333% - 4px);
     min-width: 0;
     padding: 5px 4px;
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale));
   }
 
   /* 滑条行：标签固定宽度缩小 */
   .setting-row.slider-row .row-label {
     min-width: 56px;
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale));
   }
 
   .setting-row.slider-row .row-value {
     min-width: 30px;
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale));
   }
 
   /* 背景图缩略图缩小 */
@@ -3778,21 +3776,21 @@ function removeBackgroundImage() {
   /* API 标签页：缩小字体防止溢出 */
   .config-row input,
   .config-row select {
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale));
     padding: 6px 8px;
   }
 
   .model-select {
-    font-size: 11px !important;
+    font-size: calc(11px * var(--ui-font-scale)) !important;
   }
 
   .card-hint-inline {
-    font-size: 10px;
+    font-size: calc(10px * var(--ui-font-scale));
   }
 
   .mode-btn-horizontal span,
   .toggle-btn span {
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale));
   }
 
   .config-row label {

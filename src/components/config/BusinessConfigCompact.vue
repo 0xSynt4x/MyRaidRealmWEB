@@ -17,7 +17,7 @@
             <option value="据点">{{ enumDisplay('business.entityType', '据点') }}</option>
             <option value="其他">{{ enumDisplay('business.entityType', '其他') }}</option>
           </select>
-          <button class="delete-btn" @click="deleteEntity(name)">🗑️</button>
+          <button class="delete-btn" @click="deleteEntity(name)"><i class="ti ti-trash"></i></button>
         </div>
 
         <div class="input-row multiline-input-row">
@@ -162,7 +162,7 @@
       </div>
     </div>
 
-    <button class="add-mini" @click="addEntity">{{ t('config.business.addEntity') }}</button>
+    <button class="add-mini" @click="addEntity"><i class="ti ti-plus"></i> {{ t('config.business.addEntity') }}</button>
   </div>
 </template>
 
@@ -363,7 +363,7 @@ onMounted(() => {
   border: none;
   background: transparent;
   cursor: pointer;
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale));
   border-radius: 4px;
   transition: all 150ms;
   flex-shrink: 0;
@@ -435,7 +435,7 @@ onMounted(() => {
   .delete-btn {
     width: 26px;
     height: 26px;
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale));
   }
 
   .add-mini {
@@ -493,7 +493,7 @@ onMounted(() => {
   .delete-btn {
     width: 24px;
     height: 24px;
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale));
   }
 
   .add-mini {

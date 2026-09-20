@@ -2,16 +2,17 @@
   <div class="config-dashboard">
     <!-- 顶部工具栏 -->
     <div class="toolbar">
-      <h2>{{ t('dashboard.worldConfig') }}</h2>
+      <h2><i class="ti ti-world"></i> {{ t('dashboard.worldConfig') }}</h2>
       <div class="toolbar-actions">
         <button
           class="icon-btn primary fullscreen-btn"
           :title="isFullscreen ? t('dashboard.exitFullscreen') : t('dashboard.enterFullscreen')"
           @click="toggleFullscreen"
         >
-          <i :class="isFullscreen ? 'fa-solid fa-compress' : 'fa-solid fa-expand'"></i>
+          <i :class="isFullscreen ? 'ti ti-arrows-minimize' : 'ti ti-arrows-maximize'"></i>
         </button>
         <button class="start-game-btn" :disabled="isStarting" @click="startGame">
+          <i class="ti ti-device-gamepad"></i>
           {{ isStarting ? t('dashboard.starting') : t('dashboard.startGame') }}
         </button>
       </div>
@@ -19,7 +20,7 @@
 
     <!-- 预设条(始终显示) -->
     <div class="presets-bar">
-      <span class="preset-hint">{{ t('dashboard.presetHint') }}</span>
+      <span class="preset-hint"><i class="ti ti-bulb"></i> {{ t('dashboard.presetHint') }}</span>
       <button
         v-for="preset in presets"
         :key="preset.id"
@@ -33,21 +34,26 @@
 
     <!-- 配置区块 -->
     <div class="sections">
-      <ConfigSection v-model:expanded="expanded.player" icon="👤" title="dashboard.playerSetup" :hint="playerHint">
+      <ConfigSection v-model:expanded="expanded.player" icon="ti-user" title="dashboard.playerSetup" :hint="playerHint">
         <PlayerConfigCompact v-model:config="config" />
       </ConfigSection>
 
-      <ConfigSection v-model:expanded="expanded.world" icon="🌍" title="dashboard.worldview" :hint="worldHint">
+      <ConfigSection v-model:expanded="expanded.world" icon="ti-world" title="dashboard.worldview" :hint="worldHint">
         <WorldConfigCompact v-model:config="config" />
       </ConfigSection>
 
-      <ConfigSection v-model:expanded="expanded.factions" icon="🤝" title="dashboard.factions" :hint="factionsHint">
+      <ConfigSection
+        v-model:expanded="expanded.factions"
+        icon="ti-heart-handshake"
+        title="dashboard.factions"
+        :hint="factionsHint"
+      >
         <FactionsConfigCompact :config="config" />
       </ConfigSection>
 
       <ConfigSection
         v-model:expanded="expanded.business"
-        icon="🏪"
+        icon="ti-building-store"
         title="dashboard.businessAssets"
         :hint="businessHint"
       >
@@ -276,12 +282,12 @@ async function startGame() {
 }
 
 .fullscreen-btn i {
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale));
 }
 
 .toolbar h2 {
   margin: 0;
-  font-size: 16px;
+  font-size: calc(16px * var(--ui-font-scale));
   font-weight: 600;
   color: var(--text-primary);
 }
@@ -292,7 +298,7 @@ async function startGame() {
   background: var(--accent-success);
   color: white;
   border-radius: 6px;
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale));
   font-weight: 500;
   cursor: pointer;
   transition: all 150ms;
@@ -330,7 +336,7 @@ async function startGame() {
   border: 1px solid var(--border-light);
   background: transparent;
   border-radius: 8px;
-  font-size: 20px;
+  font-size: calc(20px * var(--ui-font-scale));
   cursor: pointer;
   transition: all 150ms;
   padding: 0 8px;
@@ -338,7 +344,7 @@ async function startGame() {
 }
 
 .preset-hint {
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale));
   color: var(--text-secondary);
   white-space: nowrap;
   padding: 0 8px;
@@ -368,12 +374,12 @@ async function startGame() {
 
 @media (max-width: 1023px) {
   .toolbar h2 {
-    font-size: 15px;
+    font-size: calc(15px * var(--ui-font-scale));
   }
 
   .start-game-btn {
     padding: 5px 12px;
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale));
   }
 
   .fullscreen-btn {
@@ -383,7 +389,7 @@ async function startGame() {
   }
 
   .fullscreen-btn i {
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale));
   }
 
   .presets-bar {
@@ -391,13 +397,13 @@ async function startGame() {
   }
 
   .preset-hint {
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale));
   }
 
   .presets-bar button {
     height: 32px;
     min-width: 32px;
-    font-size: 18px;
+    font-size: calc(18px * var(--ui-font-scale));
   }
 }
 
@@ -407,7 +413,7 @@ async function startGame() {
   }
 
   .toolbar h2 {
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale));
     flex: 1;
     min-width: 120px;
   }
@@ -418,7 +424,7 @@ async function startGame() {
 
   .start-game-btn {
     padding: 4px 10px;
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale));
   }
 
   .fullscreen-btn {
@@ -428,7 +434,7 @@ async function startGame() {
   }
 
   .fullscreen-btn i {
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale));
   }
 
   .presets-bar {
@@ -437,7 +443,7 @@ async function startGame() {
   }
 
   .preset-hint {
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale));
     padding: 0 4px;
   }
 
@@ -445,7 +451,7 @@ async function startGame() {
     height: 30px;
     min-width: 30px;
     padding: 0 6px;
-    font-size: 16px;
+    font-size: calc(16px * var(--ui-font-scale));
   }
 
   .sections {
@@ -459,12 +465,12 @@ async function startGame() {
   }
 
   .toolbar h2 {
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale));
   }
 
   .start-game-btn {
     padding: 4px 8px;
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale));
   }
 
   .fullscreen-btn {
@@ -474,7 +480,7 @@ async function startGame() {
   }
 
   .fullscreen-btn i {
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale));
   }
 
   .presets-bar {
@@ -483,7 +489,7 @@ async function startGame() {
   }
 
   .preset-hint {
-    font-size: 10px;
+    font-size: calc(10px * var(--ui-font-scale));
     padding: 0 2px;
   }
 
@@ -491,7 +497,7 @@ async function startGame() {
     height: 28px;
     min-width: 28px;
     padding: 0 4px;
-    font-size: 15px;
+    font-size: calc(15px * var(--ui-font-scale));
   }
 }
 </style>

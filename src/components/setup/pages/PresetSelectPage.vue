@@ -16,29 +16,7 @@
 
     <!-- 预设卡片网格 -->
     <div class="preset-grid">
-      <section v-for="group in presetGroups" :key="group.key" class="preset-group-section">
-        <header class="preset-group-header">
-          <div>
-            <span class="preset-group-kicker">{{ group.kicker }}</span>
-            <h3>{{ group.title }}</h3>
-          </div>
-          <span class="preset-group-count">{{ t('setup.presetSelect.groupCount', { count: group.items.length }) }}</span>
-        </header>
-
-        <div class="preset-group-grid">
-          <PresetCard
-            v-for="preset in group.items"
-            :key="preset.id"
-            :preset="preset"
-            :active-tags="selectedTags"
-            :is-favorite="favoritePresetIds.has(preset.id)"
-            @select="handleSelectPreset(preset)"
-            @tag-click="toggleTag"
-            @toggle-favorite="handleToggleFavorite(preset.id)"
-          />
-        </div>
-      </section>
-
+      <!-- 工具入口：导入 / AI 生成 / 创意工坊 -->
       <section class="preset-group-section special-group-section">
         <header class="preset-group-header">
           <div>
@@ -55,15 +33,40 @@
               @toggle-favorite="handleToggleFavorite(item.id)"
               @import="handleImport"
               @ai-generate="handleAiGenerate"
-              @custom="handleCustom"
               @workshop="handleWorkshop"
             />
           </template>
         </div>
       </section>
 
+      <!-- 内置预设 -->
+      <section v-if="builtInPresets.length > 0" class="preset-group-section">
+        <header class="preset-group-header">
+          <div>
+            <span class="preset-group-kicker">{{ t('setup.presetSelect.builtInGroupKicker') }}</span>
+            <h3>{{ t('setup.presetSelect.builtInGroupTitle') }}</h3>
+          </div>
+          <span class="preset-group-count">{{
+            t('setup.presetSelect.groupCount', { count: builtInPresets.length })
+          }}</span>
+        </header>
+
+        <div class="preset-group-grid">
+          <PresetCard
+            v-for="preset in builtInPresets"
+            :key="preset.id"
+            :preset="preset"
+            :active-tags="selectedTags"
+            :is-favorite="favoritePresetIds.has(preset.id)"
+            @select="handleSelectPreset(preset)"
+            @tag-click="toggleTag"
+            @toggle-favorite="handleToggleFavorite(preset.id)"
+          />
+        </div>
+      </section>
+
       <!-- 无筛选结果提示 -->
-      <div v-if="sortedFilteredPresets.length === 0" class="empty-filter-card dash-card">
+      <div v-if="builtInPresets.length === 0" class="empty-filter-card dash-card">
         <div class="empty-title">{{ t('setup.presetSelect.noResultsTitle') }}</div>
         <div class="empty-desc">{{ t('setup.presetSelect.noResultsDesc') }}</div>
       </div>
@@ -96,7 +99,7 @@ import { useI18n } from '../../../i18n';
 import type { PresetConfig } from '../../../presets/types';
 import { useSetupStore } from '../../../stores/setup';
 import { loadPresetFavorites, savePresetFavorites, togglePresetFavorite } from '../../../utils/preset-favorites';
-import { getBuiltInPresets, getWorkshopPresets } from '../../../utils/preset-groups';
+import { getBuiltInPresets } from '../../../utils/preset-groups';
 import { loadPresetsBundle } from '../../../utils/preset-loader';
 import PresetCard from '../common/PresetCard.vue';
 import SpecialCard from '../common/SpecialCard.vue';
@@ -106,15 +109,9 @@ const setupStore = useSetupStore();
 const { t } = useI18n();
 const presets = ref<PresetConfig[]>([]);
 
-type SpecialCardType = 'import' | 'custom' | 'ai-generate' | 'workshop';
-type PresetDisplayGroup = {
-  key: 'builtin' | 'workshop';
-  title: string;
-  kicker: string;
-  items: PresetConfig[];
-};
+type SpecialCardType = 'import' | 'ai-generate' | 'workshop';
 
-const specialCardTypes: SpecialCardType[] = ['import', 'ai-generate', 'custom', 'workshop'];
+const specialCardTypes: SpecialCardType[] = ['import', 'ai-generate', 'workshop'];
 
 const selectedTags = ref<string[]>([]);
 
@@ -161,25 +158,7 @@ const sortedSpecialItems = computed(() => {
   });
 });
 
-const presetGroups = computed<PresetDisplayGroup[]>(() => {
-  const builtInPresets = getBuiltInPresets(sortedFilteredPresets.value);
-  const workshopItems = getWorkshopPresets(sortedFilteredPresets.value);
-
-  return [
-    {
-      key: 'builtin' as const,
-      title: t('setup.presetSelect.builtInGroupTitle'),
-      kicker: t('setup.presetSelect.builtInGroupKicker'),
-      items: builtInPresets,
-    },
-    {
-      key: 'workshop' as const,
-      title: t('setup.presetSelect.workshopGroupTitle'),
-      kicker: t('setup.presetSelect.workshopGroupKicker'),
-      items: workshopItems,
-    },
-  ].filter(group => group.items.length > 0);
-});
+const builtInPresets = computed(() => getBuiltInPresets(sortedFilteredPresets.value));
 
 const isLoadingPresets = ref(true);
 const presetLoadError = ref(false);
@@ -238,10 +217,6 @@ function handleAiGenerate() {
   setupStore.startAiGenerate();
 }
 
-function handleCustom() {
-  setupStore.startCustomMode();
-}
-
 function handleWorkshop() {
   setupStore.startWorkshop();
 }
@@ -279,7 +254,7 @@ function handleOverlayClick() {
 
 .page-subtitle {
   margin: 0;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale));
   color: var(--text-secondary);
 }
 
@@ -310,13 +285,13 @@ function handleOverlayClick() {
 .preset-group-header h3 {
   margin: 2px 0 0;
   color: var(--text-primary);
-  font-size: 17px;
+  font-size: calc(17px * var(--ui-font-scale));
 }
 
 .preset-group-kicker,
 .preset-group-count {
   color: var(--text-tertiary);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
 }
 
 .preset-group-grid {
@@ -336,7 +311,7 @@ function handleOverlayClick() {
 }
 
 .filter-text {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   color: var(--text-secondary);
 }
 
@@ -355,13 +330,13 @@ function handleOverlayClick() {
 }
 
 .empty-title {
-  font-size: 15px;
+  font-size: calc(15px * var(--ui-font-scale));
   color: var(--text-primary);
   font-weight: 600;
 }
 
 .empty-desc {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   color: var(--text-tertiary);
 }
 
@@ -395,13 +370,13 @@ function handleOverlayClick() {
 }
 
 .status-title {
-  font-size: 16px;
+  font-size: calc(16px * var(--ui-font-scale));
   font-weight: 700;
   letter-spacing: 0.02em;
 }
 
 .status-subtitle {
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale));
   color: var(--text-secondary);
 }
 
@@ -425,11 +400,11 @@ function handleOverlayClick() {
   }
 
   .page-title {
-    font-size: 22px;
+    font-size: calc(22px * var(--ui-font-scale));
   }
 
   .page-subtitle {
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale));
   }
 
   .preset-grid {
@@ -453,11 +428,11 @@ function handleOverlayClick() {
   }
 
   .page-title {
-    font-size: 19px;
+    font-size: calc(19px * var(--ui-font-scale));
   }
 
   .page-subtitle {
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale));
   }
 
   .preset-grid {

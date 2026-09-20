@@ -8,13 +8,13 @@
 
           <!-- 关闭按钮 -->
           <button class="close-btn" @click="$emit('close')">
-            <i class="fa-solid fa-xmark"></i>
+            <i class="ti ti-x"></i>
           </button>
 
           <!-- 标题区 -->
           <div class="modal-header">
             <div class="header-icon">
-              <i class="fa-solid fa-scroll"></i>
+              <i class="ti ti-certificate"></i>
             </div>
             <h2 class="header-title">DECLARATION</h2>
             <p class="header-subtitle">{{ t('declaration.subtitle') }}</p>
@@ -24,7 +24,7 @@
           <div class="info-cards">
             <div class="info-card">
               <div class="info-card-icon">
-                <i class="fa-solid fa-feather-pointed"></i>
+                <i class="ti ti-feather"></i>
               </div>
               <div class="info-card-content">
                 <span class="info-label">{{ t('declaration.author') }}</span>
@@ -33,7 +33,7 @@
             </div>
             <div class="info-card">
               <div class="info-card-icon">
-                <i class="fa-solid fa-tower-broadcast"></i>
+                <i class="ti ti-broadcast"></i>
               </div>
               <div class="info-card-content">
                 <span class="info-label">{{ t('declaration.platform') }}</span>
@@ -45,7 +45,7 @@
           <!-- 免费声明徽章 -->
           <div class="free-badge">
             <div class="badge-glow"></div>
-            <i class="fa-solid fa-gift"></i>
+            <i class="ti ti-gift"></i>
             <div class="badge-text">
               <span class="badge-main">{{ t('declaration.freeMain') }}</span>
               <span class="badge-sub">{{ t('declaration.freeSub') }}</span>
@@ -62,7 +62,7 @@
             <div class="license-terms">
               <div class="term-card">
                 <div class="term-icon by">
-                  <i class="fa-solid fa-user-pen"></i>
+                  <i class="ti ti-user-edit"></i>
                 </div>
                 <div class="term-content">
                   <span class="term-label">Attribution</span>
@@ -71,7 +71,7 @@
               </div>
               <div class="term-card">
                 <div class="term-icon nc">
-                  <i class="fa-solid fa-ban"></i>
+                  <i class="ti ti-ban"></i>
                 </div>
                 <div class="term-content">
                   <span class="term-label">NonCommercial</span>
@@ -80,7 +80,7 @@
               </div>
               <div class="term-card">
                 <div class="term-icon sa">
-                  <i class="fa-solid fa-share-nodes"></i>
+                  <i class="ti ti-share"></i>
                 </div>
                 <div class="term-content">
                   <span class="term-label">ShareAlike</span>
@@ -98,12 +98,12 @@
             class="license-link"
           >
             <span>{{ t('declaration.viewFullLicense') }}</span>
-            <i class="fa-solid fa-arrow-up-right-from-square"></i>
+            <i class="ti ti-external-link"></i>
           </a>
 
           <!-- 底部提示 -->
           <p class="footer-note">
-            <i class="fa-solid fa-circle-info"></i>
+            <i class="ti ti-info-circle"></i>
             {{ t('declaration.footerNote') }}
           </p>
         </div>
@@ -230,7 +230,7 @@ defineEmits<{
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.06);
   color: var(--text-secondary, #888);
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale));
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -264,7 +264,7 @@ defineEmits<{
   border-radius: 14px;
   background: linear-gradient(135deg, hsl(280, 60%, 50%), hsl(220, 70%, 55%));
   color: white;
-  font-size: 20px;
+  font-size: calc(20px * var(--ui-font-scale));
   margin-bottom: 12px;
   box-shadow: 0 8px 24px rgba(120, 80, 200, 0.3);
   animation: iconFloat 3s ease-in-out infinite;
@@ -282,7 +282,7 @@ defineEmits<{
 
 .header-title {
   margin: 0;
-  font-size: 20px;
+  font-size: calc(20px * var(--ui-font-scale));
   font-weight: 700;
   letter-spacing: 4px;
   background: linear-gradient(135deg, hsl(280, 65%, 65%), hsl(220, 80%, 70%), hsl(180, 60%, 60%));
@@ -293,7 +293,7 @@ defineEmits<{
 
 .header-subtitle {
   margin: 4px 0 0;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale));
   color: var(--text-secondary, #888);
   letter-spacing: 8px;
   font-weight: 300;
@@ -331,7 +331,7 @@ defineEmits<{
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale));
   flex-shrink: 0;
 }
 
@@ -353,14 +353,14 @@ defineEmits<{
 }
 
 .info-label {
-  font-size: 10px;
+  font-size: calc(10px * var(--ui-font-scale));
   color: var(--text-secondary, #888);
   text-transform: uppercase;
   letter-spacing: 1px;
 }
 
 .info-value {
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale));
   font-weight: 600;
   color: var(--text-primary, #eee);
   white-space: nowrap;
@@ -394,7 +394,7 @@ defineEmits<{
 }
 
 .free-badge > i {
-  font-size: 20px;
+  font-size: calc(20px * var(--ui-font-scale));
   color: hsl(160, 60%, 55%);
   flex-shrink: 0;
 }
@@ -406,13 +406,13 @@ defineEmits<{
 }
 
 .badge-main {
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale));
   font-weight: 600;
   color: hsl(160, 55%, 60%);
 }
 
 .badge-sub {
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
   color: hsl(160, 30%, 50%);
 }
 
@@ -434,14 +434,14 @@ defineEmits<{
   border-radius: 6px;
   background: linear-gradient(135deg, hsl(220, 60%, 50%), hsl(260, 55%, 50%));
   color: white;
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
   font-weight: 700;
   letter-spacing: 0.5px;
   box-shadow: 0 4px 12px rgba(100, 80, 200, 0.25);
 }
 
 .license-name {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   color: var(--text-secondary, #888);
   font-weight: 500;
 }
@@ -478,7 +478,7 @@ defineEmits<{
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale));
   flex-shrink: 0;
 }
 
@@ -504,14 +504,14 @@ defineEmits<{
 }
 
 .term-label {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   font-weight: 600;
   color: var(--text-primary, #eee);
   letter-spacing: 0.3px;
 }
 
 .term-desc {
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
   color: var(--text-secondary, #888);
 }
 
@@ -527,7 +527,7 @@ defineEmits<{
   background: linear-gradient(135deg, rgba(120, 80, 200, 0.1), rgba(80, 120, 220, 0.08));
   border: 1px solid rgba(120, 80, 200, 0.2);
   color: hsl(260, 60%, 70%);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale));
   font-weight: 500;
   text-decoration: none;
   transition: all 300ms ease;
@@ -547,7 +547,7 @@ defineEmits<{
 }
 
 .license-link i {
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
   transition: transform 250ms ease;
 }
 
@@ -565,14 +565,14 @@ defineEmits<{
   padding: 10px;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.02);
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
   color: var(--text-secondary, #666);
   text-align: center;
   line-height: 1.4;
 }
 
 .footer-note i {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   opacity: 0.6;
   flex-shrink: 0;
 }
@@ -598,17 +598,17 @@ defineEmits<{
   .header-icon {
     width: 40px;
     height: 40px;
-    font-size: 18px;
+    font-size: calc(18px * var(--ui-font-scale));
     border-radius: 12px;
   }
 
   .header-title {
-    font-size: 18px;
+    font-size: calc(18px * var(--ui-font-scale));
     letter-spacing: 3px;
   }
 
   .header-subtitle {
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale));
     letter-spacing: 6px;
   }
 

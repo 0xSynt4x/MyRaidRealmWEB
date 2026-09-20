@@ -16,7 +16,8 @@
     "lint:fix": "eslint . --ext .ts,.vue --fix",
     "format": "prettier --write \"**/*.{ts,vue,css,scss,json,md}\"",
     "format:check": "prettier --check \"**/*.{ts,vue,css,scss,json,md}\"",
-    "test": "node scripts/tests/run-standalone-local-content-tests.cjs"
+    "test": "node scripts/tests/run-standalone-local-content-tests.cjs",
+    "check:i18n": "node scripts/i18n/check-i18n.cjs"
   },
   "browserslist": ["defaults and partially supports es6-module"],
   "dependencies": {

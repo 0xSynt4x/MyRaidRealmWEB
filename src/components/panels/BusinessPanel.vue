@@ -11,22 +11,22 @@
     <!-- 💼 商业概览统计栏 -->
     <div class="stats-bar">
       <div class="stat-item">
-        <i class="fa-solid fa-box"></i>
+        <i class="ti ti-box"></i>
         <span class="stat-label">{{ t('business.statsInventory') }}</span>
         <span class="stat-value">{{ t('business.typeCount', inventoryStats) }}</span>
       </div>
       <div class="stat-item">
-        <i class="fa-solid fa-building"></i>
+        <i class="ti ti-building"></i>
         <span class="stat-label">{{ t('business.statsEntities') }}</span>
         <span class="stat-value">{{ t('business.entityCount', { count: enterpriseCount }) }}</span>
       </div>
       <div class="stat-item">
-        <i class="fa-solid fa-chart-line"></i>
+        <i class="ti ti-chart-line"></i>
         <span class="stat-label">{{ t('business.statsRevenue') }}</span>
         <span class="stat-value revenue">¥{{ formatMoney(totalRevenue) }}</span>
       </div>
       <div class="stat-item">
-        <i class="fa-solid fa-chart-line-down"></i>
+        <i class="ti ti-trending-down"></i>
         <span class="stat-label">{{ t('business.statsCost') }}</span>
         <span class="stat-value cost">¥{{ formatMoney(totalCost) }}</span>
       </div>
@@ -37,9 +37,9 @@
       <!-- 📦 库存详情 -->
       <div class="section">
         <div class="section-title" @click="toggleInventory">
-          <i class="fa-solid fa-box"></i>
+          <i class="ti ti-box"></i>
           {{ t('business.inventoryDetails') }}
-          <i :class="['toggle-icon', 'fa-solid', isInventoryExpanded ? 'fa-chevron-up' : 'fa-chevron-down']"></i>
+          <i :class="['toggle-icon', 'ti', isInventoryExpanded ? 'ti-chevron-up' : 'ti-chevron-down']"></i>
         </div>
         <div v-show="isInventoryExpanded" class="section-body">
           <div v-if="hasInventory" class="inventory-table-wrapper">
@@ -82,9 +82,9 @@
       <!-- 🏢 实体资产 -->
       <div class="section">
         <div class="section-title" @click="toggleEnterprise">
-          <i class="fa-solid fa-building"></i>
+          <i class="ti ti-building"></i>
           {{ t('business.entityAssets') }}
-          <i :class="['toggle-icon', 'fa-solid', isEnterpriseExpanded ? 'fa-chevron-up' : 'fa-chevron-down']"></i>
+          <i :class="['toggle-icon', 'ti', isEnterpriseExpanded ? 'ti-chevron-up' : 'ti-chevron-down']"></i>
         </div>
         <div v-show="isEnterpriseExpanded" class="section-body">
           <div v-if="hasEnterprises" class="enterprise-grid">
@@ -104,8 +104,8 @@
                 <span class="compact-item">{{ enterprise.位置 }}</span>
                 <span class="compact-divider">|</span>
                 <span class="compact-item"
-                  >{{ getStatusIcon(enterprise.运营?.运营状态)
-                  }}{{
+                  ><i class="ti" :class="getStatusIconClass(enterprise.运营?.运营状态)"></i
+                  >{{
                     enumDisplay('business.operationStatus', enterprise.运营?.运营状态, enterprise.运营?.运营状态)
                   }}</span
                 >
@@ -122,10 +122,10 @@
                 <span class="compact-item">{{ enterprise.运营?.人员数量 || 0 }}</span>
               </div>
               <div v-if="enterprise.外观" class="enterprise-field appearance">
-                🏛️ {{ t('business.appearance') }}: {{ enterprise.外观 }}
+                <i class="ti ti-building-monument"></i> {{ t('business.appearance') }}: {{ enterprise.外观 }}
               </div>
               <div v-if="enterprise.重要设施 && enterprise.重要设施.length" class="enterprise-field facilities">
-                🔧 {{ t('business.facilities') }}: {{ enterprise.重要设施.join(' / ') }}
+                <i class="ti ti-tool"></i> {{ t('business.facilities') }}: {{ enterprise.重要设施.join(' / ') }}
               </div>
               <div v-if="enterprise.备注" class="enterprise-field note">{{ enterprise.备注 }}</div>
             </div>
@@ -137,9 +137,9 @@
       <!-- 📰 商业情报 -->
       <div class="section">
         <div class="section-title" @click="toggleIntel">
-          <i class="fa-solid fa-newspaper"></i>
+          <i class="ti ti-news"></i>
           {{ t('business.intel') }}
-          <i :class="['toggle-icon', 'fa-solid', isIntelExpanded ? 'fa-chevron-up' : 'fa-chevron-down']"></i>
+          <i :class="['toggle-icon', 'ti', isIntelExpanded ? 'ti-chevron-up' : 'ti-chevron-down']"></i>
         </div>
         <div v-show="isIntelExpanded" class="section-body">
           <div v-if="hasIntel" class="intel-list">
@@ -156,7 +156,9 @@
               </button>
               <div class="intel-header">
                 <div class="intel-main-line">
-                  <span class="intel-stars">{{ getReliabilityStars(intel.可靠度) }}</span>
+                  <span class="intel-stars"
+                    ><i v-for="n in getReliabilityLevel(intel.可靠度)" :key="n" class="ti ti-star"></i
+                  ></span>
                   <span class="intel-title">{{ key }}</span>
                 </div>
                 <div class="intel-meta-line">
@@ -309,23 +311,23 @@ const totalCost = computed(() => {
     .sumBy(e => e.财务?.支出 || 0);
 });
 
-function getReliabilityStars(reliability: string): string {
-  const starMap: Record<string, string> = {
-    高: '[⭐⭐⭐]',
-    较高: '[⭐⭐⭐]',
-    中等: '[⭐⭐]',
-    较低: '[⭐]',
-    低: '[⭐]',
-    未知: '[⭐]',
+function getReliabilityLevel(reliability: string): number {
+  const levelMap: Record<string, number> = {
+    高: 3,
+    较高: 3,
+    中等: 2,
+    较低: 1,
+    低: 1,
+    未知: 1,
   };
-  return starMap[reliability] || '[⭐⭐]';
+  return levelMap[reliability] || 2;
 }
 
-function getStatusIcon(status: string): string {
-  if (status.includes('正常') || status.includes('营业')) return '✅';
-  if (status.includes('停业') || status.includes('整顿')) return '⚠️';
-  if (status.includes('亏损') || status.includes('困难')) return '❌';
-  return '●';
+function getStatusIconClass(status: string): string {
+  if (status.includes('正常') || status.includes('营业')) return 'ti-circle-check';
+  if (status.includes('停业') || status.includes('整顿')) return 'ti-alert-triangle';
+  if (status.includes('亏损') || status.includes('困难')) return 'ti-circle-x';
+  return 'ti-circle';
 }
 
 // formatMoney 已从 utils/format 导入
@@ -386,7 +388,7 @@ function openDeleteIntel(key: string) {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale));
 }
 
 .stat-label {
@@ -459,7 +461,7 @@ function openDeleteIntel(key: string) {
 
 .toggle-icon {
   margin-left: auto;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   color: var(--text-secondary);
   transition: transform 300ms var(--ease-out-expo);
 }
@@ -497,7 +499,7 @@ function openDeleteIntel(key: string) {
   border: none;
   border-bottom: 2px solid var(--glass-border);
   white-space: nowrap;
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -554,7 +556,7 @@ function openDeleteIntel(key: string) {
 }
 
 .col-note {
-  font-size: 10px;
+  font-size: calc(10px * var(--ui-font-scale));
   font-style: italic;
   color: var(--text-secondary);
   white-space: nowrap;
@@ -687,7 +689,7 @@ function openDeleteIntel(key: string) {
   right: -6px;
   width: 16px;
   height: 16px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   z-index: 3;
 }
 
@@ -747,7 +749,7 @@ function openDeleteIntel(key: string) {
 
 .intel-stars {
   color: hsl(38, 92%, 50%);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   flex-shrink: 0;
 }
 
@@ -881,17 +883,17 @@ function openDeleteIntel(key: string) {
   }
 
   .intel-stars {
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale));
   }
 
   .intel-title {
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale));
   }
 
   .intel-time,
   .intel-timeliness,
   .intel-content {
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale));
   }
 
   .intel-content {

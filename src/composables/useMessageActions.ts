@@ -369,11 +369,7 @@ export function useMessageActions() {
         ? rebaseVariableUpdateOntoLiveState(phaseOutcome, preTurnStatData)
         : Schema.parse(phaseOutcome.nextStatData)
       : preTurnStatData;
-    const finalStatData = reconcileFrontendAuthoritativeState(
-      candidateStatData,
-      preTurnStatData,
-      turnStartShopRefresh,
-    );
+    const finalStatData = reconcileFrontendAuthoritativeState(candidateStatData, preTurnStatData, turnStartShopRefresh);
 
     // 第一优先级：无论后续任何副作用是否抛错，都必须完成 busy 复位与消息状态终态化，
     // 否则发送按钮会永久卡在忙碌态。因此这两步单独包在 try/finally 里，且复位放 finally。

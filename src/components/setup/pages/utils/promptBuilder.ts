@@ -89,7 +89,7 @@ function buildWorldPrompt(moduleData: WorldModuleFormData): string {
   sections.push('- 世界.社会环境必须是对象，里面只放：权力结构、社会氛围、主流价值观。');
   sections.push('- 世界.力量体系是字符串。');
   sections.push('- 世界.玩法侧重是字符串。');
-  sections.push('- 世界.运行规则必须是字符串数组，最多 6 条，每条单独成句，不能写成对象，不能写成一整段说明。');
+  sections.push('- 世界.运行规则必须是字符串数组，最多 10 条，每条单独成句，不能写成对象，不能写成一整段说明。');
   sections.push('- 世界.叙事玩法是字符串。');
   sections.push(
     '- 世界.信息层级必须是对象，且必须保留五个固定槽位：全局重大事件、势力动态、区域事件、本地消息、圈内传闻；每个槽位的值都必须是字符串。',

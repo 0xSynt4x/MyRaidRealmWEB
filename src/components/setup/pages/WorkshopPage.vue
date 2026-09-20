@@ -159,7 +159,7 @@ function getAuthorName(preset: PresetConfig): string {
 
 .page-subtitle {
   margin: 0;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale));
   color: var(--text-secondary);
 }
 
@@ -171,13 +171,13 @@ function getAuthorName(preset: PresetConfig): string {
 
 .guide-title {
   margin: 0 0 6px 0;
-  font-size: 16px;
+  font-size: calc(16px * var(--ui-font-scale));
   color: var(--text-primary);
 }
 
 .guide-text {
   margin: 0;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale));
   line-height: 1.6;
   color: var(--text-secondary);
 }
@@ -198,12 +198,12 @@ function getAuthorName(preset: PresetConfig): string {
 
 .list-header h3 {
   margin: 0;
-  font-size: 16px;
+  font-size: calc(16px * var(--ui-font-scale));
   color: var(--text-primary);
 }
 
 .count {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   color: var(--text-tertiary);
 }
 
@@ -216,7 +216,7 @@ function getAuthorName(preset: PresetConfig): string {
 }
 
 .filter-text {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   color: var(--text-secondary);
 }
 
@@ -240,13 +240,13 @@ function getAuthorName(preset: PresetConfig): string {
 }
 
 .empty-title {
-  font-size: 15px;
+  font-size: calc(15px * var(--ui-font-scale));
   color: var(--text-primary);
   font-weight: 600;
 }
 
 .empty-desc {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   color: var(--text-tertiary);
 }
 
@@ -260,7 +260,7 @@ function getAuthorName(preset: PresetConfig): string {
   }
 
   .page-title {
-    font-size: 22px;
+    font-size: calc(22px * var(--ui-font-scale));
   }
 
   .guide-section {
@@ -288,7 +288,7 @@ function getAuthorName(preset: PresetConfig): string {
   }
 
   .page-title {
-    font-size: 19px;
+    font-size: calc(19px * var(--ui-font-scale));
   }
 
   .preset-grid {

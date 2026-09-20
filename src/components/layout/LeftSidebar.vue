@@ -28,7 +28,7 @@
         :title="t('nav.donate')"
         @click="handleNavClick('donate')"
       >
-        <i class="fa-solid fa-heart"></i>
+        <i class="ti ti-heart"></i>
       </button>
       <!-- 设置按钮 -->
       <button
@@ -36,7 +36,7 @@
         :title="t('nav.settings')"
         @click="handleNavClick('settings')"
       >
-        <i class="fa-solid fa-gear"></i>
+        <i class="ti ti-settings"></i>
       </button>
     </div>
   </div>
@@ -61,15 +61,15 @@ const { t } = useI18n();
 
 // 导航项定义
 const navItems = computed<NavItem[]>(() => [
-  { id: 'profile', label: t('nav.profile'), icon: 'fa-regular fa-id-card' },
-  { id: 'faction', label: t('nav.faction'), icon: 'fa-solid fa-sitemap' },
-  { id: 'business', label: t('nav.business'), icon: 'fa-solid fa-briefcase' },
-  { id: 'notebook', label: t('nav.notebook'), icon: 'fa-regular fa-note-sticky' },
-  { id: 'content', label: t('nav.contentCenter'), icon: 'fa-solid fa-book-open-reader' },
-  { id: 'characters', label: t('nav.characters'), icon: 'fa-solid fa-users' },
-  { id: 'shop', label: t('nav.shop'), icon: 'fa-solid fa-store' },
-  { id: 'lottery', label: t('nav.lottery'), icon: 'fa-solid fa-gift' },
-  { id: 'dicegame', label: t('nav.dicegame'), icon: 'fa-solid fa-dice' },
+  { id: 'profile', label: t('nav.profile'), icon: 'ti ti-id' },
+  { id: 'faction', label: t('nav.faction'), icon: 'ti ti-sitemap' },
+  { id: 'business', label: t('nav.business'), icon: 'ti ti-briefcase' },
+  { id: 'notebook', label: t('nav.notebook'), icon: 'ti ti-note' },
+  { id: 'content', label: t('nav.contentCenter'), icon: 'ti ti-book-2' },
+  { id: 'characters', label: t('nav.characters'), icon: 'ti ti-users' },
+  { id: 'shop', label: t('nav.shop'), icon: 'ti ti-building-store' },
+  { id: 'lottery', label: t('nav.lottery'), icon: 'ti ti-gift' },
+  { id: 'dicegame', label: t('nav.dicegame'), icon: 'ti ti-dice' },
 ]);
 
 // 当前展开的 overlay 面板
@@ -153,15 +153,16 @@ function getBadgeDisplay(tabId: TabType): string {
   padding: 1px 0;
   min-height: 42px;
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: var(--ui-radius-sm);
   cursor: pointer;
   transition: all var(--transition-normal);
-  color: var(--text-tertiary);
+  color: var(--ui-dim);
   background: transparent;
   width: 100%;
   position: relative;
   overflow: hidden;
 
+  /* 选中标记：方向 A 收成一个 3px 小圆点（原来是 3px 宽 × 60% 高的长条） */
   &::before {
     content: '';
     position: absolute;
@@ -169,15 +170,17 @@ function getBadgeDisplay(tabId: TabType): string {
     top: 50%;
     transform: translateY(-50%) scaleY(0);
     width: 3px;
-    height: 60%;
-    border-radius: 0 3px 3px 0;
-    background: var(--gradient-primary);
+    height: 3px;
+    border-radius: 50%;
+    background: var(--ui-accent);
     transition: transform var(--transition-spring);
   }
 
+  /* 悬停走中性色：选中态已经不带底色了，
+     悬停再染强调色的话，看起来会比真正选中的那一项更「选中」 */
   &:hover {
-    background: rgba(var(--accent-primary-rgb), 0.06);
-    color: var(--accent-primary);
+    background: var(--ui-surface-2);
+    color: var(--ui-text);
 
     i {
       transform: scale(1.15);
@@ -185,16 +188,11 @@ function getBadgeDisplay(tabId: TabType): string {
   }
 
   &.active {
-    background: rgba(var(--accent-primary-rgb), 0.1);
-    color: var(--accent-primary);
-    box-shadow: inset 0 0 0 1px rgba(var(--accent-primary-rgb), 0.12);
+    background: transparent;
+    color: var(--ui-accent);
 
     &::before {
       transform: translateY(-50%) scaleY(1);
-    }
-
-    i {
-      filter: drop-shadow(0 0 6px rgba(var(--accent-primary-rgb), 0.3));
     }
   }
 
@@ -203,7 +201,7 @@ function getBadgeDisplay(tabId: TabType): string {
   }
 
   i {
-    font-size: 18px;
+    font-size: calc(18px * var(--ui-font-scale));
     width: auto;
     text-align: center;
     flex-shrink: 0;
@@ -221,7 +219,7 @@ function getBadgeDisplay(tabId: TabType): string {
     border-radius: 999px;
     background: #ff3b30;
     color: #fff;
-    font-size: 10px;
+    font-size: calc(10px * var(--ui-font-scale));
     font-weight: 700;
     line-height: 16px;
     text-align: center;
@@ -300,7 +298,7 @@ function getBadgeDisplay(tabId: TabType): string {
     padding: 10px 0;
 
     i {
-      font-size: 16px;
+      font-size: calc(16px * var(--ui-font-scale));
     }
   }
 }

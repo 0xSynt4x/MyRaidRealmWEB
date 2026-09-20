@@ -12,7 +12,7 @@
     </button>
 
     <div v-if="showRightHint" class="right-scroll-hint" aria-hidden="true">
-      <i class="fa-solid fa-chevron-right"></i>
+      <i class="ti ti-chevron-right"></i>
     </div>
   </nav>
 </template>
@@ -32,17 +32,17 @@ const layoutStore = useLayoutStore();
 const { t } = useI18n();
 
 const navItems = computed<NavItem[]>(() => [
-  { id: 'profile', label: t('nav.profile'), icon: 'fa-regular fa-id-card' },
-  { id: 'faction', label: t('nav.faction'), icon: 'fa-solid fa-sitemap' },
-  { id: 'business', label: t('nav.business'), icon: 'fa-solid fa-briefcase' },
-  { id: 'notebook', label: t('nav.notebook'), icon: 'fa-regular fa-note-sticky' },
-  { id: 'content', label: t('nav.contentCenter'), icon: 'fa-solid fa-book-open-reader' },
-  { id: 'characters', label: t('nav.characters'), icon: 'fa-solid fa-users' },
-  { id: 'shop', label: t('nav.shop'), icon: 'fa-solid fa-store' },
-  { id: 'lottery', label: t('nav.lottery'), icon: 'fa-solid fa-gift' },
-  { id: 'dicegame', label: t('nav.dicegame'), icon: 'fa-solid fa-dice' },
-  { id: 'settings', label: t('nav.settings'), icon: 'fa-solid fa-gear' },
-  { id: 'donate', label: t('nav.donate'), icon: 'fa-solid fa-heart' },
+  { id: 'profile', label: t('nav.profile'), icon: 'ti ti-id' },
+  { id: 'faction', label: t('nav.faction'), icon: 'ti ti-sitemap' },
+  { id: 'business', label: t('nav.business'), icon: 'ti ti-briefcase' },
+  { id: 'notebook', label: t('nav.notebook'), icon: 'ti ti-note' },
+  { id: 'content', label: t('nav.contentCenter'), icon: 'ti ti-book-2' },
+  { id: 'characters', label: t('nav.characters'), icon: 'ti ti-users' },
+  { id: 'shop', label: t('nav.shop'), icon: 'ti ti-building-store' },
+  { id: 'lottery', label: t('nav.lottery'), icon: 'ti ti-gift' },
+  { id: 'dicegame', label: t('nav.dicegame'), icon: 'ti ti-dice' },
+  { id: 'settings', label: t('nav.settings'), icon: 'ti ti-settings' },
+  { id: 'donate', label: t('nav.donate'), icon: 'ti ti-heart' },
 ]);
 
 const overlayPanel = computed(() => layoutStore.overlayPanel);
@@ -123,11 +123,11 @@ function handleNavClick(tabId: TabType) {
 }
 
 .nav-item i {
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale));
 }
 
 .nav-item span {
-  font-size: 10px;
+  font-size: calc(10px * var(--ui-font-scale));
   line-height: 1;
 }
 
@@ -153,7 +153,7 @@ function handleNavClick(tabId: TabType) {
 }
 
 .right-scroll-hint i {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   color: var(--text-tertiary);
   opacity: 0.9;
 }

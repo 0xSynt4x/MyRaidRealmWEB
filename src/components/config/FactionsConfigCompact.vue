@@ -9,22 +9,25 @@
         :class="getRelationClass(config.玩家.势力关系?.[name]?.声望值 || 0)"
         @click="editingName = String(name)"
       >
-        {{ getFactionEmoji(config.玩家.势力关系?.[name]?.声望值 || 0) }}{{ name || t('config.factions.unnamed') }}
+        <i class="ti" :class="getFactionEmojiClass(config.玩家.势力关系?.[name]?.声望值 || 0)"></i
+        >{{ name || t('config.factions.unnamed') }}
         <span class="faction-stats-mini">
-          <span class="influence-mini" :title="t('config.factions.influenceTitle')">💪{{ faction.影响力 || 0 }}</span>
+          <span class="influence-mini" :title="t('config.factions.influenceTitle')"
+            ><i class="ti ti-barbell"></i>{{ faction.影响力 || 0 }}</span
+          >
           <span class="population-mini" :title="t('config.factions.populationTitle')"
-            >👥{{ formatPopulation(faction.人数 || 0) }}</span
+            ><i class="ti ti-users"></i>{{ formatPopulation(faction.人数 || 0) }}</span
           >
         </span>
       </button>
-      <button class="add-tag" @click="addFaction">➕</button>
+      <button class="add-tag" @click="addFaction"><i class="ti ti-plus"></i></button>
     </div>
 
     <!-- 编辑面板 -->
     <div v-if="editingName !== null && editingFaction" class="edit-panel">
       <div class="panel-header">
         <span>{{ t('config.factions.editFaction', { name: editingName }) }}</span>
-        <button @click="editingName = null">✕</button>
+        <button @click="editingName = null"><i class="ti ti-x"></i></button>
       </div>
 
       <div class="input-row">
@@ -66,8 +69,12 @@
       </div>
 
       <div class="panel-actions">
-        <button class="btn-danger" @click="removeFaction(editingName)">{{ t('config.factions.delete') }}</button>
-        <button class="btn-primary" @click="editingName = null">{{ t('config.factions.done') }}</button>
+        <button class="btn-danger" @click="removeFaction(editingName)">
+          <i class="ti ti-trash"></i> {{ t('config.factions.delete') }}
+        </button>
+        <button class="btn-primary" @click="editingName = null">
+          <i class="ti ti-check"></i> {{ t('config.factions.done') }}
+        </button>
       </div>
     </div>
 
@@ -227,12 +234,12 @@ function setRelationValue(nameA: string, nameB: string, value: number) {
   config.value.世界.势力网络[nameA].关系[nameB].关系值 = Math.max(-100, Math.min(100, value));
 }
 
-function getFactionEmoji(relation: number): string {
-  if (relation >= 60) return '😊';
-  if (relation >= 20) return '🙂';
-  if (relation >= -20) return '😐';
-  if (relation >= -60) return '🙁';
-  return '😠';
+function getFactionEmojiClass(relation: number): string {
+  if (relation >= 60) return 'ti-mood-happy';
+  if (relation >= 20) return 'ti-mood-smile';
+  if (relation >= -20) return 'ti-mood-neutral';
+  if (relation >= -60) return 'ti-mood-sad';
+  return 'ti-mood-angry';
 }
 
 function getRelationText(value: number): string {
@@ -274,7 +281,7 @@ function getRelationClass(value: number): string {
   border: 1px solid var(--border-light);
   background: var(--bg-primary);
   border-radius: 12px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   cursor: pointer;
   transition: all 150ms;
   color: var(--text-primary);
@@ -303,7 +310,7 @@ function getRelationClass(value: number): string {
 .faction-stats-mini {
   display: flex;
   gap: 4px;
-  font-size: 10px;
+  font-size: calc(10px * var(--ui-font-scale));
   margin-left: 4px;
 }
 
@@ -327,7 +334,7 @@ function getRelationClass(value: number): string {
   border: 1px dashed var(--border-light);
   background: transparent;
   border-radius: 12px;
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale));
   cursor: pointer;
   transition: all 150ms;
   color: var(--text-secondary);
@@ -353,7 +360,7 @@ function getRelationClass(value: number): string {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 8px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   font-weight: 600;
   color: var(--text-primary);
 }
@@ -365,7 +372,7 @@ function getRelationClass(value: number): string {
   background: transparent;
   cursor: pointer;
   border-radius: 4px;
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale));
   transition: all 150ms;
 }
 
@@ -385,7 +392,7 @@ function getRelationClass(value: number): string {
   border: none;
   border-bottom: 1px solid var(--border-light);
   padding: 2px 4px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   background: transparent;
   color: var(--text-primary);
   transition: border-color 150ms;
@@ -406,7 +413,7 @@ function getRelationClass(value: number): string {
   border: none;
   border-bottom: 1px solid var(--border-light);
   padding: 2px 4px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   text-align: center;
   background: transparent;
   color: var(--text-primary);
@@ -415,7 +422,7 @@ function getRelationClass(value: number): string {
 .relation-badge {
   padding: 2px 8px;
   border-radius: 10px;
-  font-size: 10px;
+  font-size: calc(10px * var(--ui-font-scale));
   font-weight: 600;
   color: white;
 }
@@ -452,7 +459,7 @@ function getRelationClass(value: number): string {
   padding: 4px 8px;
   border: none;
   border-radius: 4px;
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
   cursor: pointer;
   transition: all 150ms;
 }
@@ -478,7 +485,7 @@ function getRelationClass(value: number): string {
 }
 
 .section-label {
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
   color: var(--text-secondary);
   margin-bottom: 6px;
   font-weight: 500;
@@ -497,7 +504,7 @@ function getRelationClass(value: number): string {
 }
 
 .row-label {
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
   color: var(--text-secondary);
   min-width: 60px;
   max-width: 60px;
@@ -521,7 +528,7 @@ function getRelationClass(value: number): string {
   border: none;
   border-bottom: 1px solid var(--border-light);
   padding: 2px 4px;
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
   text-align: center;
   background: transparent;
   color: var(--text-primary);
@@ -535,7 +542,7 @@ function getRelationClass(value: number): string {
 .relation-self {
   display: block;
   text-align: center;
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
   color: var(--text-tertiary);
 }
 
@@ -548,18 +555,18 @@ function getRelationClass(value: number): string {
 
   .faction-tag {
     padding: 3px 6px;
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale));
   }
 
   .faction-stats-mini {
-    font-size: 9px;
+    font-size: calc(9px * var(--ui-font-scale));
     gap: 3px;
   }
 
   .add-tag {
     width: 26px;
     height: 26px;
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale));
   }
 
   .edit-panel {
@@ -567,7 +574,7 @@ function getRelationClass(value: number): string {
   }
 
   .panel-header {
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale));
     margin-bottom: 6px;
   }
 
@@ -577,43 +584,43 @@ function getRelationClass(value: number): string {
   }
 
   .input-row label {
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale));
     min-width: 36px;
   }
 
   .underline-input,
   .select-input {
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale));
   }
 
   .number-input {
     width: 46px;
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale));
   }
 
   .relation-badge {
     padding: 2px 6px;
-    font-size: 9px;
+    font-size: calc(9px * var(--ui-font-scale));
   }
 
   .btn-danger,
   .btn-primary {
     padding: 3px 6px;
-    font-size: 10px;
+    font-size: calc(10px * var(--ui-font-scale));
   }
 
   .section-label {
-    font-size: 10px;
+    font-size: calc(10px * var(--ui-font-scale));
   }
 
   .row-label {
-    font-size: 10px;
+    font-size: calc(10px * var(--ui-font-scale));
     min-width: 54px;
     max-width: 54px;
   }
 
   .relation-input {
-    font-size: 10px;
+    font-size: calc(10px * var(--ui-font-scale));
   }
 }
 
@@ -625,12 +632,12 @@ function getRelationClass(value: number): string {
 
   .faction-tag {
     padding: 2px 5px;
-    font-size: 10px;
+    font-size: calc(10px * var(--ui-font-scale));
     border-radius: 10px;
   }
 
   .faction-stats-mini {
-    font-size: 8px;
+    font-size: calc(8px * var(--ui-font-scale));
     gap: 2px;
     margin-left: 2px;
   }
@@ -638,7 +645,7 @@ function getRelationClass(value: number): string {
   .add-tag {
     width: 24px;
     height: 24px;
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale));
     border-radius: 10px;
   }
 
@@ -647,14 +654,14 @@ function getRelationClass(value: number): string {
   }
 
   .panel-header {
-    font-size: 10px;
+    font-size: calc(10px * var(--ui-font-scale));
     margin-bottom: 4px;
   }
 
   .panel-header button {
     width: 18px;
     height: 18px;
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale));
   }
 
   .input-row {
@@ -663,25 +670,25 @@ function getRelationClass(value: number): string {
   }
 
   .input-row label {
-    font-size: 10px;
+    font-size: calc(10px * var(--ui-font-scale));
     min-width: 32px;
   }
 
   .underline-input,
   .select-input {
-    font-size: 10px;
+    font-size: calc(10px * var(--ui-font-scale));
     padding: 1px 2px;
   }
 
   .number-input {
     width: 42px;
-    font-size: 10px;
+    font-size: calc(10px * var(--ui-font-scale));
     padding: 1px 2px;
   }
 
   .relation-badge {
     padding: 1px 4px;
-    font-size: 8px;
+    font-size: calc(8px * var(--ui-font-scale));
   }
 
   .panel-actions {
@@ -692,11 +699,11 @@ function getRelationClass(value: number): string {
   .btn-danger,
   .btn-primary {
     padding: 3px 5px;
-    font-size: 9px;
+    font-size: calc(9px * var(--ui-font-scale));
   }
 
   .section-label {
-    font-size: 9px;
+    font-size: calc(9px * var(--ui-font-scale));
     margin-bottom: 4px;
   }
 
@@ -709,7 +716,7 @@ function getRelationClass(value: number): string {
   }
 
   .row-label {
-    font-size: 9px;
+    font-size: calc(9px * var(--ui-font-scale));
     min-width: 48px;
     max-width: 48px;
   }
@@ -719,12 +726,12 @@ function getRelationClass(value: number): string {
   }
 
   .relation-input {
-    font-size: 9px;
+    font-size: calc(9px * var(--ui-font-scale));
     padding: 1px 2px;
   }
 
   .relation-self {
-    font-size: 9px;
+    font-size: calc(9px * var(--ui-font-scale));
   }
 }
 </style>

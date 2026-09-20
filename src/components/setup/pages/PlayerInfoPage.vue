@@ -21,7 +21,7 @@
       <div class="form-section">
         <!-- 📋 基本信息 -->
         <div class="section-group">
-          <h4 class="section-label">{{ t('setup.playerInfo.basicInfo') }}</h4>
+          <h4 class="section-label"><i class="ti ti-clipboard-list"></i> {{ t('setup.playerInfo.basicInfo') }}</h4>
           <div class="input-row">
             <label>
               {{ nameField.label }}
@@ -71,7 +71,7 @@
 
         <!-- 🎭 身份信息 -->
         <div class="section-group">
-          <h4 class="section-label">{{ t('setup.playerInfo.identityInfo') }}</h4>
+          <h4 class="section-label"><i class="ti ti-masks-theater"></i> {{ t('setup.playerInfo.identityInfo') }}</h4>
           <div class="input-row">
             <label>{{ occupationField.label }}</label>
             <input
@@ -124,7 +124,7 @@
       <div class="action-area">
         <button class="next-btn" :disabled="!canProceed" @click="handleNext">
           <span>{{ t('setup.playerInfo.next') }}</span>
-          <i class="fa-solid fa-arrow-right"></i>
+          <i class="ti ti-arrow-right"></i>
         </button>
       </div>
     </div>
@@ -231,11 +231,11 @@ function handleNext() {
 }
 
 .preset-icon {
-  font-size: 24px;
+  font-size: calc(24px * var(--ui-font-scale));
 }
 
 .preset-name {
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale));
   font-weight: 500;
   color: var(--text-primary);
 }
@@ -248,14 +248,14 @@ function handleNext() {
 
 .page-title {
   margin: 0 0 8px 0;
-  font-size: 24px;
+  font-size: calc(24px * var(--ui-font-scale));
   font-weight: 700;
   color: var(--text-primary);
 }
 
 .page-subtitle {
   margin: 0;
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale));
   color: var(--text-secondary);
 }
 
@@ -277,7 +277,7 @@ function handleNext() {
 
 .section-label {
   margin: 0;
-  font-size: 15px;
+  font-size: calc(15px * var(--ui-font-scale));
   font-weight: 600;
   color: var(--text-primary);
   display: flex;
@@ -294,7 +294,7 @@ function handleNext() {
 
 .input-row label {
   min-width: 80px;
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale));
   font-weight: 500;
   color: var(--text-secondary);
   display: flex;
@@ -308,7 +308,7 @@ function handleNext() {
   border: none;
   border-bottom: 1px solid var(--border-light);
   padding: 8px 4px;
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale));
   background: transparent;
   color: var(--text-primary);
 }
@@ -326,7 +326,7 @@ function handleNext() {
 }
 
 .error-hint {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   color: var(--accent-danger);
   margin-top: -8px;
 }
@@ -353,7 +353,7 @@ function handleNext() {
   border: none;
   border-bottom: 1px solid var(--border-light);
   padding: 6px 4px;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale));
   background: transparent;
   color: var(--text-primary);
 }
@@ -373,7 +373,7 @@ function handleNext() {
 }
 
 .next-btn i {
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale));
 }
 
 /* 响应式 */
@@ -383,7 +383,7 @@ function handleNext() {
   }
 
   .page-title {
-    font-size: 22px;
+    font-size: calc(22px * var(--ui-font-scale));
   }
 
   .section-group {
@@ -415,7 +415,7 @@ function handleNext() {
 
   .gender-select button {
     padding: 5px 12px;
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale));
   }
 }
 
@@ -430,19 +430,19 @@ function handleNext() {
   }
 
   .preset-icon {
-    font-size: 20px;
+    font-size: calc(20px * var(--ui-font-scale));
   }
 
   .preset-name {
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale));
   }
 
   .page-title {
-    font-size: 20px;
+    font-size: calc(20px * var(--ui-font-scale));
   }
 
   .page-subtitle {
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale));
   }
 
   .form-section {
@@ -456,15 +456,15 @@ function handleNext() {
   }
 
   .section-label {
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale));
   }
 
   .input-row label {
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale));
   }
 
   .underline-input {
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale));
     padding: 6px 4px;
   }
 
@@ -474,7 +474,7 @@ function handleNext() {
 
   .gender-select button {
     padding: 5px 14px;
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale));
   }
 
   .gender-input {
@@ -484,7 +484,7 @@ function handleNext() {
 
   .next-btn {
     padding: 12px 36px;
-    font-size: 15px;
+    font-size: calc(15px * var(--ui-font-scale));
   }
 }
 </style>

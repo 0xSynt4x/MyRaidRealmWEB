@@ -27,7 +27,8 @@
           <LeftSidebar />
         </template>
         <template #center>
-          <CenterContent />
+          <!-- 重置游戏：顶栏隐藏后，入口在场景横幅的三点菜单里，事件从这里传上来 -->
+          <CenterContent @reset-game="handleResetGame" />
         </template>
         <template #right>
           <RightPanel />
@@ -390,7 +391,7 @@ const fullscreenStyles = computed(() => {
   align-self: flex-start;
   padding: 6px 10px;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--accent-primary);
@@ -400,14 +401,14 @@ const fullscreenStyles = computed(() => {
 
 .standalone-complete-card h2 {
   margin: 0;
-  font-size: 28px;
+  font-size: calc(28px * var(--ui-font-scale));
   line-height: 1.25;
   color: var(--text-primary);
 }
 
 .standalone-complete-card p {
   margin: 0;
-  font-size: 15px;
+  font-size: calc(15px * var(--ui-font-scale));
   line-height: 1.7;
   color: var(--text-secondary);
 }
@@ -420,7 +421,7 @@ const fullscreenStyles = computed(() => {
   border: 1px solid color-mix(in srgb, var(--accent-primary) 32%, var(--card-border));
   background: color-mix(in srgb, var(--accent-primary) 14%, var(--control-bg));
   color: var(--accent-primary);
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale));
   font-weight: 600;
   cursor: pointer;
   transition:

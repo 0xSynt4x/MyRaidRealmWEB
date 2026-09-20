@@ -14,26 +14,26 @@
       <div class="compare-player" :class="{ winner: isPlayerWin }">
         <span class="compare-label">{{ t('dice.board.you') }}</span>
         <span class="compare-score">{{ result.playerScore }}</span>
-        <span v-if="isPlayerWin" class="crown"><i class="fa-solid fa-crown"></i></span>
+        <span v-if="isPlayerWin" class="crown"><i class="ti ti-crown"></i></span>
       </div>
       <div class="compare-vs">VS</div>
       <div class="compare-npc" :class="{ winner: !isPlayerWin && !isDraw }">
         <span class="compare-label">{{ result.npcName }}</span>
         <span class="compare-score">{{ result.npcScore }}</span>
-        <span v-if="!isPlayerWin && !isDraw" class="crown"><i class="fa-solid fa-crown"></i></span>
+        <span v-if="!isPlayerWin && !isDraw" class="crown"><i class="ti ti-crown"></i></span>
       </div>
     </div>
 
     <!-- 赌注结果 -->
     <div v-if="hasChanges" class="settlement-section">
       <div class="section-title">
-        <i class="fa-solid fa-receipt section-icon"></i>
+        <i class="ti ti-receipt section-icon"></i>
         <span>{{ t('dice.result.settlement') }}</span>
       </div>
 
       <div v-if="result.currencyChange !== 0" class="settle-row">
         <div class="settle-label">
-          <i class="fa-solid fa-coins"></i>
+          <i class="ti ti-coins"></i>
           <span>{{ currencyName }}</span>
         </div>
         <span :class="['settle-value', result.currencyChange > 0 ? 'positive' : 'negative']">
@@ -43,7 +43,7 @@
 
       <div v-if="result.favorChange !== 0" class="settle-row">
         <div class="settle-label">
-          <i class="fa-solid fa-heart"></i>
+          <i class="ti ti-heart"></i>
           <span>{{ t('dice.setup.favor') }}</span>
         </div>
         <span :class="['settle-value', result.favorChange > 0 ? 'positive' : 'negative']">
@@ -53,7 +53,7 @@
 
       <div v-if="result.trustChange !== 0" class="settle-row">
         <div class="settle-label">
-          <i class="fa-solid fa-handshake"></i>
+          <i class="ti ti-heart-handshake"></i>
           <span>{{ t('dice.setup.trust') }}</span>
         </div>
         <span :class="['settle-value', result.trustChange > 0 ? 'positive' : 'negative']">
@@ -63,18 +63,18 @@
     </div>
 
     <div v-else class="no-bet-hint">
-      <i class="fa-solid fa-circle-info"></i>
+      <i class="ti ti-info-circle"></i>
       <span>{{ isDraw ? t('dice.result.drawRefund') : t('dice.result.noBets') }}</span>
     </div>
 
     <!-- 操作按钮 -->
     <div class="result-actions">
       <button class="action-btn again-btn" @click="store.playAgain()">
-        <i class="fa-solid fa-rotate-right"></i>
+        <i class="ti ti-rotate-clockwise"></i>
         <span>{{ t('dice.result.playAgain') }}</span>
       </button>
       <button class="action-btn quit-btn" @click="handleQuit">
-        <i class="fa-solid fa-door-open"></i>
+        <i class="ti ti-door-enter"></i>
         <span>{{ t('dice.result.leave') }}</span>
       </button>
     </div>
@@ -124,8 +124,8 @@ const resultSubtitle = computed(() => {
 });
 
 const resultIcon = computed(() => {
-  if (isDraw.value) return 'fa-solid fa-handshake';
-  return isPlayerWin.value ? 'fa-solid fa-trophy' : 'fa-solid fa-face-sad-tear';
+  if (isDraw.value) return 'ti ti-heart-handshake';
+  return isPlayerWin.value ? 'ti ti-trophy' : 'ti ti-mood-sad';
 });
 </script>
 

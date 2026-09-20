@@ -28,11 +28,7 @@
     </section>
 
     <div class="content-tab-stats" aria-hidden="true">
-      <span
-        v-for="metric in activeTabMetrics"
-        :key="metric.label"
-        class="content-stat-chip"
-      >
+      <span v-for="metric in activeTabMetrics" :key="metric.label" class="content-stat-chip">
         <span class="content-stat-label">{{ metric.label }}</span>
         <strong class="content-stat-value">{{ metric.value }}</strong>
       </span>
@@ -53,7 +49,7 @@
           </div>
           <div class="button-group-wrap preset-import-actions">
             <button class="primary-btn compact-action-btn" type="button" @click="triggerTavernPresetImport">
-              <i class="fa-solid fa-file-import"></i>
+              <i class="ti ti-file-import"></i>
               {{ t('contentCenter.presets.importButton') }}
             </button>
           </div>
@@ -86,7 +82,11 @@
                       activeTavernPresetId === preset.id ? 'enabled' : 'disabled',
                     ]"
                   >
-                    {{ activeTavernPresetId === preset.id ? t('contentCenter.presets.activePresetBadge') : t('contentCenter.presets.availablePresetBadge') }}
+                    {{
+                      activeTavernPresetId === preset.id
+                        ? t('contentCenter.presets.activePresetBadge')
+                        : t('contentCenter.presets.availablePresetBadge')
+                    }}
                   </span>
                 </span>
                 <span class="preset-entry-preview">
@@ -101,7 +101,7 @@
               :title="t('settings.delete')"
               @click="handleDeleteTavernPreset(preset.id)"
             >
-              <i class="fa-solid fa-trash"></i>
+              <i class="ti ti-trash"></i>
             </button>
           </article>
         </div>
@@ -172,10 +172,7 @@
               class="preset-entry-stack-item"
               role="listitem"
             >
-              <button
-                type="button"
-                class="preset-entry-item preset-send-preview-item"
-              >
+              <button type="button" class="preset-entry-item preset-send-preview-item">
                 <div class="preset-entry-order">#{{ entry.orderIndex + 1 }}</div>
                 <div class="preset-entry-copy">
                   <div class="preset-entry-title-row">
@@ -193,7 +190,10 @@
           </div>
           <div v-else class="empty-state compact-empty">{{ t('contentCenter.presets.emptyMainChain') }}</div>
 
-          <section class="preset-secondary-section preset-editor-section" :aria-label="t('contentCenter.presets.editorTitle')">
+          <section
+            class="preset-secondary-section preset-editor-section"
+            :aria-label="t('contentCenter.presets.editorTitle')"
+          >
             <div class="preset-reference-divider"></div>
 
             <div class="preset-browser-head preset-browser-head-secondary">
@@ -210,22 +210,21 @@
                   type="button"
                   @click="handleDuplicateActivePresetForEditing"
                 >
-                  <i class="fa-solid fa-copy"></i>
+                  <i class="ti ti-copy"></i>
                   {{ t('contentCenter.presets.duplicateForEditButton') }}
                 </button>
-                <button
-                  v-else
-                  class="ghost-btn compact-action-btn"
-                  type="button"
-                  @click="handleAddTavernPrompt"
-                >
-                  <i class="fa-solid fa-plus"></i>
+                <button v-else class="ghost-btn compact-action-btn" type="button" @click="handleAddTavernPrompt">
+                  <i class="ti ti-plus"></i>
                   {{ t('contentCenter.presets.addPromptButton') }}
                 </button>
               </div>
             </div>
 
-            <div v-if="tavernPresetPromptViews.length > 0" class="preset-entry-list preset-editor-accordion" role="list">
+            <div
+              v-if="tavernPresetPromptViews.length > 0"
+              class="preset-entry-list preset-editor-accordion"
+              role="list"
+            >
               <article
                 v-for="entry in tavernPresetPromptViews"
                 :key="entry.identifier"
@@ -234,7 +233,11 @@
               >
                 <button
                   type="button"
-                  :class="['preset-entry-item', 'secondary', { active: selectedTavernPromptIdentifier === entry.identifier }]"
+                  :class="[
+                    'preset-entry-item',
+                    'secondary',
+                    { active: selectedTavernPromptIdentifier === entry.identifier },
+                  ]"
                   :aria-expanded="selectedTavernPromptIdentifier === entry.identifier"
                   @click="selectTavernPromptForEditing(entry.identifier)"
                 >
@@ -249,27 +252,35 @@
                   </div>
                   <i
                     :class="[
-                      'fa-solid',
-                      selectedTavernPromptIdentifier === entry.identifier ? 'fa-chevron-up' : 'fa-chevron-down',
+                      'ti',
+                      selectedTavernPromptIdentifier === entry.identifier ? 'ti-chevron-up' : 'ti-chevron-down',
                       'preset-editor-chevron',
                     ]"
                   ></i>
                 </button>
 
                 <form
-                  v-if="selectedTavernPromptIdentifier === entry.identifier && hasSelectedTavernPromptDraft && tavernPresetPromptDraft"
+                  v-if="
+                    selectedTavernPromptIdentifier === entry.identifier &&
+                    hasSelectedTavernPromptDraft &&
+                    tavernPresetPromptDraft
+                  "
                   class="preset-editor-form"
                   @submit.prevent="handleSaveTavernPromptDraft"
                 >
                   <div v-if="!activeTavernPresetEditable" class="preset-detail-note-card secondary-note-card">
-                    <i class="fa-solid fa-lock"></i>
+                    <i class="ti ti-lock"></i>
                     <p>{{ t('contentCenter.presets.builtinEditHint') }}</p>
                   </div>
 
                   <div class="worldbook-editor-grid compact-worldbook-editor-grid preset-editor-fields">
                     <label class="worldbook-field compact-field">
                       <span class="summary-label">{{ t('contentCenter.presets.identifierLabel') }}</span>
-                      <input v-model="tavernPresetPromptDraft.identifier" class="worldbook-input compact-worldbook-input" disabled />
+                      <input
+                        v-model="tavernPresetPromptDraft.identifier"
+                        class="worldbook-input compact-worldbook-input"
+                        disabled
+                      />
                     </label>
                     <label class="worldbook-field compact-field">
                       <span class="summary-label">{{ t('contentCenter.presets.roleLabel') }}</span>
@@ -310,8 +321,12 @@
                   </div>
 
                   <div class="button-group-wrap preset-import-actions">
-                    <button class="primary-btn compact-action-btn" type="submit" :disabled="!activeTavernPresetEditable">
-                      <i class="fa-solid fa-floppy-disk"></i>
+                    <button
+                      class="primary-btn compact-action-btn"
+                      type="submit"
+                      :disabled="!activeTavernPresetEditable"
+                    >
+                      <i class="ti ti-device-floppy"></i>
                       {{ t('contentCenter.presets.savePromptButton') }}
                     </button>
                   </div>
@@ -361,8 +376,8 @@
                   </strong>
                   <i
                     :class="[
-                      'fa-solid',
-                      selectedDebugMessage?.message_id === message.message_id ? 'fa-chevron-up' : 'fa-chevron-down',
+                      'ti',
+                      selectedDebugMessage?.message_id === message.message_id ? 'ti-chevron-up' : 'ti-chevron-down',
                       'ai-debug-stack-chevron',
                     ]"
                   ></i>
@@ -377,7 +392,7 @@
                       message.debug_trace?.main_pass ? 'main' : 'missing',
                     ]"
                   >
-                    <i class="fa-solid fa-paper-plane"></i>
+                    <i class="ti ti-send"></i>
                     {{ t('contentCenter.aiDebug.passMainTitle') }}
                   </span>
                   <span
@@ -388,7 +403,7 @@
                       resolvePreferredVariableDebugPass(message.debug_trace) ? 'variable' : 'missing',
                     ]"
                   >
-                    <i class="fa-solid fa-arrows-rotate"></i>
+                    <i class="ti ti-refresh"></i>
                     {{ t('contentCenter.aiDebug.passVariableUpdateTitle') }}
                   </span>
                 </div>
@@ -400,7 +415,7 @@
               <section class="debug-collapsible-card ai-debug-pass-card" :class="{ expanded: debugMainPassExpanded }">
                 <button type="button" class="debug-collapsible-header" @click="toggleDebugMainPass">
                   <div class="debug-collapsible-title-row">
-                    <span class="debug-pass-icon main"><i class="fa-solid fa-paper-plane"></i></span>
+                    <span class="debug-pass-icon main"><i class="ti ti-send"></i></span>
                     <span class="debug-collapsible-title">{{ t('contentCenter.aiDebug.passMainTitle') }}</span>
                     <span
                       v-if="selectedDebugTrace?.main_pass"
@@ -414,8 +429,8 @@
                   </div>
                   <i
                     :class="[
-                      'fa-solid',
-                      debugMainPassExpanded ? 'fa-chevron-up' : 'fa-chevron-down',
+                      'ti',
+                      debugMainPassExpanded ? 'ti-chevron-up' : 'ti-chevron-down',
                       'debug-collapsible-chevron',
                     ]"
                   ></i>
@@ -443,8 +458,8 @@
                     <button type="button" class="debug-sub-toggle" @click.stop="toggleDebugMainSub('requestMessages')">
                       <i
                         :class="[
-                          'fa-solid',
-                          isDebugMainSubExpanded('requestMessages') ? 'fa-chevron-down' : 'fa-chevron-right',
+                          'ti',
+                          isDebugMainSubExpanded('requestMessages') ? 'ti-chevron-down' : 'ti-chevron-right',
                         ]"
                       ></i>
                       <span>{{ t('contentCenter.aiDebug.requestMessagesTitle') }}</span>
@@ -484,10 +499,7 @@
 
                     <button type="button" class="debug-sub-toggle" @click.stop="toggleDebugMainSub('requestBody')">
                       <i
-                        :class="[
-                          'fa-solid',
-                          isDebugMainSubExpanded('requestBody') ? 'fa-chevron-down' : 'fa-chevron-right',
-                        ]"
+                        :class="['ti', isDebugMainSubExpanded('requestBody') ? 'ti-chevron-down' : 'ti-chevron-right']"
                       ></i>
                       <span>{{ t('contentCenter.aiDebug.requestBodyTitle') }}</span>
                     </button>
@@ -535,10 +547,7 @@
 
                     <button type="button" class="debug-sub-toggle" @click.stop="toggleDebugMainSub('rawResponse')">
                       <i
-                        :class="[
-                          'fa-solid',
-                          isDebugMainSubExpanded('rawResponse') ? 'fa-chevron-down' : 'fa-chevron-right',
-                        ]"
+                        :class="['ti', isDebugMainSubExpanded('rawResponse') ? 'ti-chevron-down' : 'ti-chevron-right']"
                       ></i>
                       <span>{{ t('contentCenter.aiDebug.rawResponseTitle') }}</span>
                     </button>
@@ -559,7 +568,7 @@
               <section class="debug-collapsible-card ai-debug-pass-card" :class="{ expanded: debugVarPassExpanded }">
                 <button type="button" class="debug-collapsible-header" @click="toggleDebugVarPass">
                   <div class="debug-collapsible-title-row">
-                    <span class="debug-pass-icon variable"><i class="fa-solid fa-arrows-rotate"></i></span>
+                    <span class="debug-pass-icon variable"><i class="ti ti-refresh"></i></span>
                     <span class="debug-collapsible-title">{{
                       t('contentCenter.aiDebug.passVariableUpdateTitle')
                     }}</span>
@@ -575,8 +584,8 @@
                   </div>
                   <i
                     :class="[
-                      'fa-solid',
-                      debugVarPassExpanded ? 'fa-chevron-up' : 'fa-chevron-down',
+                      'ti',
+                      debugVarPassExpanded ? 'ti-chevron-up' : 'ti-chevron-down',
                       'debug-collapsible-chevron',
                     ]"
                   ></i>
@@ -606,8 +615,8 @@
                     <button type="button" class="debug-sub-toggle" @click.stop="toggleDebugVarSub('requestMessages')">
                       <i
                         :class="[
-                          'fa-solid',
-                          isDebugVarSubExpanded('requestMessages') ? 'fa-chevron-down' : 'fa-chevron-right',
+                          'ti',
+                          isDebugVarSubExpanded('requestMessages') ? 'ti-chevron-down' : 'ti-chevron-right',
                         ]"
                       ></i>
                       <span>{{ t('contentCenter.aiDebug.requestMessagesTitle') }}</span>
@@ -651,10 +660,7 @@
 
                     <button type="button" class="debug-sub-toggle" @click.stop="toggleDebugVarSub('requestBody')">
                       <i
-                        :class="[
-                          'fa-solid',
-                          isDebugVarSubExpanded('requestBody') ? 'fa-chevron-down' : 'fa-chevron-right',
-                        ]"
+                        :class="['ti', isDebugVarSubExpanded('requestBody') ? 'ti-chevron-down' : 'ti-chevron-right']"
                       ></i>
                       <span>{{ t('contentCenter.aiDebug.requestBodyTitle') }}</span>
                     </button>
@@ -705,10 +711,7 @@
 
                     <button type="button" class="debug-sub-toggle" @click.stop="toggleDebugVarSub('rawResponse')">
                       <i
-                        :class="[
-                          'fa-solid',
-                          isDebugVarSubExpanded('rawResponse') ? 'fa-chevron-down' : 'fa-chevron-right',
-                        ]"
+                        :class="['ti', isDebugVarSubExpanded('rawResponse') ? 'ti-chevron-down' : 'ti-chevron-right']"
                       ></i>
                       <span>{{ t('contentCenter.aiDebug.rawResponseTitle') }}</span>
                     </button>
@@ -727,9 +730,7 @@
                         class="debug-sub-toggle debug-sub-toggle-error"
                         @click.stop="toggleDebugVarSub('error')"
                       >
-                        <i
-                          :class="['fa-solid', isDebugVarSubExpanded('error') ? 'fa-chevron-down' : 'fa-chevron-right']"
-                        ></i>
+                        <i :class="['ti', isDebugVarSubExpanded('error') ? 'ti-chevron-down' : 'ti-chevron-right']"></i>
                         <span>{{ t('contentCenter.aiDebug.errorLabel') }}</span>
                       </button>
                       <section
@@ -750,13 +751,13 @@
               <section class="debug-collapsible-card ai-debug-pass-card" :class="{ expanded: debugFinalRawExpanded }">
                 <button type="button" class="debug-collapsible-header" @click="toggleDebugFinalRaw">
                   <div class="debug-collapsible-title-row">
-                    <span class="debug-pass-icon final"><i class="fa-solid fa-file-lines"></i></span>
+                    <span class="debug-pass-icon final"><i class="ti ti-file-text"></i></span>
                     <span class="debug-collapsible-title">{{ t('contentCenter.aiDebug.finalRawContentTitle') }}</span>
                   </div>
                   <i
                     :class="[
-                      'fa-solid',
-                      debugFinalRawExpanded ? 'fa-chevron-up' : 'fa-chevron-down',
+                      'ti',
+                      debugFinalRawExpanded ? 'ti-chevron-up' : 'ti-chevron-down',
                       'debug-collapsible-chevron',
                     ]"
                   ></i>
@@ -787,10 +788,7 @@ import {
   type StandaloneAiDebugPassTrace,
   type StandaloneAssistantDebugTrace,
 } from '../../utils/standaloneAiDebug';
-import {
-  inspectStandaloneMainChainView,
-  type StandaloneMainChainViewEntry,
-} from '../../utils/standaloneLocalTurn';
+import { inspectStandaloneMainChainView, type StandaloneMainChainViewEntry } from '../../utils/standaloneLocalTurn';
 import { getStandaloneRuntimeContentContext } from '../../utils/standaloneRuntime';
 import {
   deleteImportedStandaloneTavernPreset,
@@ -956,7 +954,7 @@ const contentSelectorCards = computed(() => {
   }> = [
     {
       tab: 'presets',
-      icon: 'fa-solid fa-layer-group',
+      icon: 'ti ti-stack',
       title: t('contentCenter.tab.presets'),
       description: t('contentCenter.overview.presets'),
       summaryLabel: t('contentCenter.presets.activePresetSourceLabel'),
@@ -979,7 +977,7 @@ const contentSelectorCards = computed(() => {
     },
     {
       tab: 'aiDebug',
-      icon: 'fa-solid fa-bug',
+      icon: 'ti ti-bug',
       title: t('contentCenter.tab.aiDebug'),
       description: t('contentCenter.overview.aiDebug'),
       summaryLabel: t('contentCenter.aiDebug.selectedMessageLabel'),
@@ -1164,7 +1162,9 @@ function handleSaveTavernPromptDraft() {
   refreshTavernPresetState();
   selectedTavernPromptIdentifier.value = draft.identifier;
   syncTavernPromptDraftFromSelection();
-  tavernPresetImportStatus.value = t('contentCenter.presets.savePromptSuccess', { name: draft.name || draft.identifier });
+  tavernPresetImportStatus.value = t('contentCenter.presets.savePromptSuccess', {
+    name: draft.name || draft.identifier,
+  });
 }
 
 function handleAddTavernPrompt() {
@@ -1442,7 +1442,7 @@ onActivated(() => {
   justify-content: center;
   border-radius: 11px;
   flex-shrink: 0;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale));
 }
 
 .content-tab-icon.presets {
@@ -1464,7 +1464,7 @@ onActivated(() => {
 
 .content-tab-title {
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale));
   font-weight: 600;
   line-height: 1.2;
 }
@@ -1475,7 +1475,7 @@ onActivated(() => {
 
 .content-tab-desc {
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
   line-height: 1.4;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1500,13 +1500,13 @@ onActivated(() => {
 
 .content-stat-label {
   color: var(--text-tertiary);
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
   line-height: 1.2;
 }
 
 .content-stat-value {
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   font-weight: 700;
   line-height: 1.2;
   overflow-wrap: anywhere;
@@ -1629,7 +1629,7 @@ onActivated(() => {
   gap: 6px;
   padding: 6px 10px;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   line-height: 1;
 }
 
@@ -1695,7 +1695,7 @@ onActivated(() => {
 .compact-summary-item dt {
   margin: 0;
   color: var(--text-tertiary);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   line-height: 1.45;
 }
 
@@ -1717,7 +1717,7 @@ onActivated(() => {
 .preset-category,
 .status-hint {
   color: var(--text-tertiary);
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
   line-height: 1.45;
   letter-spacing: 0.04em;
 }
@@ -1810,7 +1810,7 @@ onActivated(() => {
   border: 1px solid rgba(var(--accent-primary-rgb), 0.1);
   background: rgba(var(--accent-primary-rgb), 0.055);
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   line-height: 1.5;
 }
 
@@ -1835,7 +1835,7 @@ onActivated(() => {
 .preset-editor-chevron {
   align-self: center;
   color: var(--text-tertiary);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
 }
 
 .preset-editor-form {
@@ -1847,8 +1847,7 @@ onActivated(() => {
   border-radius: 16px;
   border: 1px solid rgba(var(--accent-primary-rgb), 0.1);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent 28%),
-    rgba(var(--accent-primary-rgb), 0.045);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent 28%), rgba(var(--accent-primary-rgb), 0.045);
 }
 
 .preset-editor-fields {
@@ -1860,7 +1859,7 @@ onActivated(() => {
   align-items: center;
   gap: 8px;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
 }
 
 .preset-editor-textarea {
@@ -1961,7 +1960,7 @@ onActivated(() => {
   flex: 1;
   min-width: 0;
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale));
   font-weight: 600;
   line-height: 1.35;
   overflow: hidden;
@@ -1972,7 +1971,7 @@ onActivated(() => {
 .ai-debug-stack-chevron {
   margin-top: 2px;
   color: var(--text-tertiary);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   flex-shrink: 0;
 }
 
@@ -2002,7 +2001,7 @@ onActivated(() => {
 .ai-debug-overview-preview {
   margin: 0;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   line-height: 1.58;
   word-break: break-word;
 }
@@ -2160,7 +2159,7 @@ onActivated(() => {
 .preset-section-note {
   margin: 0;
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
   line-height: 1.55;
 }
 
@@ -2271,7 +2270,7 @@ onActivated(() => {
   min-width: 44px;
   padding-top: 2px;
   color: var(--accent-primary);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   font-weight: 700;
 }
 
@@ -2328,7 +2327,7 @@ onActivated(() => {
 
 .system-order {
   min-width: 30px;
-  font-size: 10px;
+  font-size: calc(10px * var(--ui-font-scale));
 }
 
 .compact-worldbook-title-line {
@@ -2341,7 +2340,7 @@ onActivated(() => {
 
 .compact-worldbook-title-line strong {
   color: var(--text-primary);
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--ui-font-scale));
   line-height: 1.28;
   letter-spacing: 0.01em;
   min-width: 0;
@@ -2350,7 +2349,7 @@ onActivated(() => {
 
 .compact-badge {
   padding: 4px 8px;
-  font-size: 10px;
+  font-size: calc(10px * var(--ui-font-scale));
 }
 
 .compact-worldbook-meta-line {
@@ -2363,13 +2362,13 @@ onActivated(() => {
 
 .compact-tag {
   padding: 3px 7px;
-  font-size: 10px;
+  font-size: calc(10px * var(--ui-font-scale));
 }
 
 .compact-worldbook-preview {
   min-width: 0;
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
   line-height: 1.3;
   flex: 1 1 180px;
   overflow: hidden;
@@ -2381,7 +2380,7 @@ onActivated(() => {
 .compact-worldbook-chevron {
   margin-top: 4px;
   color: var(--text-tertiary);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   flex-shrink: 0;
 }
 
@@ -2396,7 +2395,7 @@ onActivated(() => {
 
 .preset-entry-title-row strong {
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale));
   line-height: 1.32;
 }
 
@@ -2406,7 +2405,7 @@ onActivated(() => {
   justify-content: center;
   padding: 5px 10px;
   border-radius: 999px;
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
   line-height: 1;
   font-weight: 700;
 }
@@ -2428,13 +2427,13 @@ onActivated(() => {
 
 .preset-entry-identifier {
   color: var(--text-tertiary);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
 }
 
 .preset-entry-preview {
   margin: 0;
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
   line-height: 1.55;
 }
 
@@ -2471,7 +2470,7 @@ onActivated(() => {
 .preset-detail-note-card p {
   margin: 0;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   line-height: 1.55;
 }
 
@@ -2637,12 +2636,12 @@ onActivated(() => {
 .workspace-help-text {
   margin: 0;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   line-height: 1.6;
 }
 
 .workspace-help-text--compact {
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
   line-height: 1.5;
 }
 
@@ -2664,7 +2663,7 @@ onActivated(() => {
   background: transparent;
   color: var(--text-secondary);
   font: inherit;
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
   font-weight: 600;
   cursor: pointer;
   transition:
@@ -2721,7 +2720,7 @@ onActivated(() => {
 .compact-system-toggle {
   min-height: 32px;
   padding: 6px 10px;
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
 }
 
 .compact-system-meta-line {
@@ -2729,7 +2728,7 @@ onActivated(() => {
   flex-direction: column;
   gap: 4px;
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
   line-height: 1.45;
   padding-inline: 2px;
 }
@@ -2767,7 +2766,7 @@ onActivated(() => {
   background: rgba(var(--accent-primary-rgb), 0.045);
   border: 1px solid rgba(var(--accent-primary-rgb), 0.08);
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   line-height: 1.68;
   white-space: pre-wrap;
   word-break: break-word;
@@ -2828,7 +2827,7 @@ onActivated(() => {
   margin: 0;
   color: color-mix(in srgb, var(--text-primary) 94%, white);
   font-family: 'Georgia', 'Times New Roman', 'Noto Serif SC', serif;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale));
   line-height: 1.9;
   letter-spacing: 0.01em;
   white-space: pre-wrap;
@@ -2904,7 +2903,7 @@ onActivated(() => {
   gap: 6px;
   padding: 5px 10px;
   border-radius: 999px;
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
   line-height: 1.2;
 }
 
@@ -3000,7 +2999,7 @@ onActivated(() => {
 }
 
 .debug-request-stat .summary-value {
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale));
   line-height: 1.5;
 }
 
@@ -3030,14 +3029,14 @@ onActivated(() => {
   background: rgba(var(--accent-primary-rgb), 0.045);
   border: 1px solid rgba(var(--accent-primary-rgb), 0.08);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   line-height: 1.72;
   letter-spacing: 0;
 }
 
 .debug-pre {
   font-family: ui-monospace, SFMono-Regular, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   line-height: 1.68;
 }
 
@@ -3050,7 +3049,7 @@ onActivated(() => {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
   color: color-mix(in srgb, var(--text-primary) 92%, var(--text-secondary));
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   line-height: 1.72;
   letter-spacing: 0;
   white-space: pre-wrap;
@@ -3071,7 +3070,7 @@ onActivated(() => {
     0 8px 18px rgba(15, 23, 42, 0.08);
   color: color-mix(in srgb, var(--text-primary) 94%, white);
   font-family: 'Georgia', 'Times New Roman', 'Noto Serif SC', serif;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale));
   line-height: 1.9;
   letter-spacing: 0.01em;
   white-space: pre-wrap;
@@ -3139,7 +3138,7 @@ onActivated(() => {
   flex: 1 1 120px;
   min-width: 0;
   font-weight: 600;
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale));
   line-height: 1.3;
   color: var(--text-primary);
   white-space: normal;
@@ -3164,7 +3163,7 @@ onActivated(() => {
 
 .debug-collapsible-chevron {
   color: var(--text-tertiary);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   flex-shrink: 0;
   margin-left: auto;
   transition: transform var(--transition-fast);
@@ -3187,7 +3186,7 @@ onActivated(() => {
   justify-content: center;
   border-radius: 10px;
   flex-shrink: 0;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
 }
 
 .debug-pass-icon.main {
@@ -3216,7 +3215,7 @@ onActivated(() => {
   background: rgba(var(--accent-primary-rgb), 0.03);
   color: var(--text-secondary);
   font: inherit;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   font-weight: 600;
   cursor: pointer;
   text-align: left;
@@ -3233,7 +3232,7 @@ onActivated(() => {
 }
 
 .debug-sub-toggle i {
-  font-size: 10px;
+  font-size: calc(10px * var(--ui-font-scale));
   width: 14px;
   text-align: center;
   color: var(--text-tertiary);
@@ -3328,7 +3327,7 @@ onActivated(() => {
   align-items: center;
   justify-content: center;
   background: rgba(var(--accent-primary-rgb), 0.1);
-  font-size: 20px;
+  font-size: calc(20px * var(--ui-font-scale));
 }
 
 .empty-state {
@@ -3514,7 +3513,7 @@ onActivated(() => {
   .route-segment-btn {
     min-height: 32px;
     padding: 6px;
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale));
   }
 
   .compact-worldbook-textarea {

@@ -4,7 +4,7 @@
     <section class="header-section">
       <!-- 左侧：积分显示 -->
       <div class="points-display">
-        <span class="icon">🎫</span>
+        <i class="ti ti-ticket icon"></i>
         <span class="label">{{ t('shop.points') }}</span>
         <span class="amount">{{ formatNumber(currentPoints) }}</span>
       </div>
@@ -12,11 +12,11 @@
       <!-- 右侧：操作按钮组 -->
       <div class="action-buttons">
         <button :class="['sign-in-btn', { disabled: hasSignedToday }]" :disabled="hasSignedToday" @click="handleSignIn">
-          <i class="fa-solid fa-calendar-check"></i>
+          <i class="ti ti-calendar-check"></i>
           <span>{{ hasSignedToday ? t('shop.signedIn') : t('shop.signInReward') }}</span>
         </button>
         <button class="refresh-btn" :title="t('shop.refresh')" @click="handleRefresh">
-          <i class="fa-solid fa-rotate"></i>
+          <i class="ti ti-rotate"></i>
         </button>
       </div>
     </section>
@@ -36,7 +36,7 @@
       </button>
     </section>
     <section v-else class="exchange-section disabled">
-      <i class="fa-solid fa-ban"></i>
+      <i class="ti ti-ban"></i>
       <span>{{ t('shop.noCurrencySystem') }}</span>
     </section>
 
@@ -62,12 +62,12 @@
           </div>
           <p class="item-desc">{{ item.描述 || t('shop.noDescription') }}</p>
           <p v-if="item.效果" class="item-effect">
-            <i class="fa-solid fa-sparkles"></i>
+            <i class="ti ti-sparkles"></i>
             {{ item.效果 }}
           </p>
           <div class="item-footer">
             <span class="price">
-              <i class="fa-solid fa-ticket"></i>
+              <i class="ti ti-ticket"></i>
               {{ item.价格 }}
             </span>
             <span v-if="item.库存 !== -1" class="stock"> {{ t('shop.stock', { count: item.库存 }) }} </span>
@@ -82,7 +82,7 @@
         </div>
       </div>
       <div v-else class="empty-hint">
-        <i class="fa-solid fa-box-open"></i>
+        <i class="ti ti-package"></i>
         <p>{{ t('shop.noItems') }}</p>
         <p class="hint-sub">{{ t('shop.refreshHint') }}</p>
       </div>
@@ -361,7 +361,7 @@ async function handleBuy(shopItem: (typeof shopItems.value)[0]) {
 }
 
 .points-display .icon {
-  font-size: 24px;
+  font-size: calc(24px * var(--ui-font-scale));
 }
 
 .points-display .label {
@@ -456,7 +456,7 @@ async function handleBuy(shopItem: (typeof shopItems.value)[0]) {
   background: var(--accent-primary);
   border-radius: 50%;
   color: white;
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale));
   font-weight: bold;
   cursor: pointer;
   transition: all 150ms ease;
@@ -618,7 +618,7 @@ async function handleBuy(shopItem: (typeof shopItems.value)[0]) {
 .rarity-badge {
   padding: 2px 8px;
   border-radius: 10px;
-  font-size: 10px;
+  font-size: calc(10px * var(--ui-font-scale));
   font-weight: 500;
   color: white;
   white-space: nowrap;
@@ -716,7 +716,7 @@ async function handleBuy(shopItem: (typeof shopItems.value)[0]) {
 }
 
 .empty-hint i {
-  font-size: 48px;
+  font-size: calc(48px * var(--ui-font-scale));
   opacity: 0.3;
   margin-bottom: 12px;
 }

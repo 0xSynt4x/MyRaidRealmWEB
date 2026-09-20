@@ -1,8 +1,10 @@
 <template>
   <div class="config-section" :class="{ collapsed: !isExpanded }">
     <div class="section-header" @click="toggle">
-      <span class="toggle-icon">{{ isExpanded ? '▼' : '▶' }}</span>
-      <span class="section-title">{{ icon }} {{ displayTitle }}</span>
+      <span class="toggle-icon">
+        <i class="ti" :class="isExpanded ? 'ti-chevron-down' : 'ti-chevron-right'"></i>
+      </span>
+      <span class="section-title"><i class="ti" :class="icon"></i> {{ displayTitle }}</span>
       <span v-if="displayHint" class="section-hint">{{ displayHint }}</span>
     </div>
     <div v-show="isExpanded" class="section-body">
@@ -65,20 +67,20 @@ function toggle() {
 }
 
 .toggle-icon {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   color: var(--text-secondary);
   transition: transform 150ms;
 }
 
 .section-title {
   font-weight: 600;
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale));
   color: var(--text-primary);
 }
 
 .section-hint {
   margin-left: auto;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   color: var(--text-secondary);
 }
 
@@ -95,15 +97,15 @@ function toggle() {
   }
 
   .toggle-icon {
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale));
   }
 
   .section-title {
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale));
   }
 
   .section-hint {
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale));
   }
 
   .section-body {
@@ -118,15 +120,15 @@ function toggle() {
   }
 
   .toggle-icon {
-    font-size: 10px;
+    font-size: calc(10px * var(--ui-font-scale));
   }
 
   .section-title {
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale));
   }
 
   .section-hint {
-    font-size: 10px;
+    font-size: calc(10px * var(--ui-font-scale));
   }
 
   .section-body {

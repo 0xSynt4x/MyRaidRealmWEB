@@ -6,7 +6,7 @@
         <span class="score-label">{{ t('dice.board.you') }}</span>
         <span class="score-value">{{ player.totalScore }}</span>
         <div v-if="!isNpcTurn" class="turn-indicator">
-          <i class="fa-solid fa-caret-down"></i>
+          <i class="ti ti-caret-down"></i>
         </div>
       </div>
 
@@ -19,7 +19,7 @@
           <span>{{ t('dice.board.round', { turn: turnNumber }) }}</span>
         </div>
         <div v-if="isLastRound" class="last-round-badge">
-          <i class="fa-solid fa-exclamation-triangle"></i>
+          <i class="ti ti-alert-triangle"></i>
           <span>{{ t('dice.board.lastRound') }}</span>
         </div>
         <!-- 帮助按钮 -->
@@ -28,7 +28,7 @@
           :title="t('dice.board.viewScoringTable')"
           @click="showScoringRef = !showScoringRef"
         >
-          <i class="fa-solid fa-circle-question"></i>
+          <i class="ti ti-help-circle"></i>
         </button>
       </div>
 
@@ -36,7 +36,7 @@
         <span class="score-label">{{ npc.name }}</span>
         <span class="score-value">{{ npc.totalScore }}</span>
         <div v-if="isNpcTurn" class="turn-indicator">
-          <i class="fa-solid fa-caret-down"></i>
+          <i class="ti ti-caret-down"></i>
         </div>
       </div>
     </div>
@@ -45,10 +45,10 @@
     <Transition name="slide-fade">
       <div v-if="showScoringRef" class="inline-scoring-panel">
         <div class="inline-scoring-header">
-          <i class="fa-solid fa-star"></i>
+          <i class="ti ti-star"></i>
           <span>{{ t('dice.scoringTable.title') }}</span>
           <button class="inline-close" @click="showScoringRef = false">
-            <i class="fa-solid fa-xmark"></i>
+            <i class="ti ti-x"></i>
           </button>
         </div>
         <ScoringTable />
@@ -74,7 +74,7 @@
     <!-- NPC 状态提示 -->
     <div v-if="isNpcTurn && npcActionText" class="npc-status-bar">
       <div class="npc-thinking">
-        <i class="fa-solid fa-brain"></i>
+        <i class="ti ti-brain"></i>
         <span>{{ npcActionText }}</span>
       </div>
     </div>
@@ -85,7 +85,7 @@
         <!-- Farkle 状态 -->
         <template v-if="isFarkled">
           <button class="action-btn farkle-btn" @click="store.endFarkledTurn()">
-            <i class="fa-solid fa-forward"></i>
+            <i class="ti ti-player-skip-forward"></i>
             <span>{{ t('dice.board.farkleEndTurn') }}</span>
           </button>
         </template>
@@ -93,7 +93,7 @@
         <!-- 可掷骰 -->
         <template v-else-if="canRoll">
           <button class="action-btn roll-btn" @click="store.playerRoll()">
-            <i class="fa-solid fa-dice"></i>
+            <i class="ti ti-dice"></i>
             <span>{{ t('dice.board.roll') }}</span>
           </button>
         </template>
@@ -101,11 +101,11 @@
         <!-- 选择中 -->
         <template v-else-if="canSelectDice">
           <button class="action-btn continue-btn" :disabled="!hasNewSelection" @click="store.playerContinue()">
-            <i class="fa-solid fa-forward"></i>
+            <i class="ti ti-player-skip-forward"></i>
             <span>{{ t('dice.board.rollAgain') }}</span>
           </button>
           <button class="action-btn bank-btn" @click="store.playerBank()">
-            <i class="fa-solid fa-piggy-bank"></i>
+            <i class="ti ti-pig"></i>
             <span>{{ t('dice.board.bank') }}</span>
           </button>
         </template>
@@ -114,7 +114,7 @@
       <!-- NPC 回合 -->
       <template v-else>
         <div class="npc-turn-hint">
-          <i class="fa-solid fa-hourglass-half fa-spin"></i>
+          <i class="ti ti-hourglass ti-spin"></i>
           <span>{{ t('dice.board.npcTurn') }}</span>
         </div>
       </template>
@@ -123,7 +123,7 @@
     <!-- 游戏日志 -->
     <div class="game-log">
       <div class="log-header">
-        <i class="fa-solid fa-scroll"></i>
+        <i class="ti ti-certificate"></i>
         <span>{{ t('dice.board.battleLog') }}</span>
       </div>
       <div ref="logListRef" class="log-list">

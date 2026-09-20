@@ -3,7 +3,7 @@
     <!-- 顶部：积分显示 + 抽奖次数 -->
     <section class="header-section">
       <div class="points-display">
-        <span class="icon">🎫</span>
+        <i class="ti ti-ticket icon"></i>
         <span class="label">{{ t('shop.points') }}</span>
         <span class="amount">{{ formatNumber(currentPoints) }}</span>
       </div>
@@ -26,7 +26,7 @@
         <div class="pity-fill" :style="{ width: pityProgress + '%' }"></div>
       </div>
       <p class="pity-hint">
-        <i class="fa-solid fa-star"></i>
+        <i class="ti ti-star"></i>
         {{ t('lottery.pityHint', { count: PITY_THRESHOLD }) }}
       </p>
     </section>
@@ -40,22 +40,22 @@
           @click="handleSingleDraw"
         >
           <div class="btn-content">
-            <i class="fa-solid fa-dice-one"></i>
+            <i class="ti ti-dice-1"></i>
             <span class="btn-label">{{ t('lottery.singleDraw') }}</span>
           </div>
           <span class="btn-price">
-            <i class="fa-solid fa-ticket"></i>
+            <i class="ti ti-ticket"></i>
             {{ SINGLE_PRICE }}
           </span>
         </button>
 
         <button :class="['lottery-btn ten', { disabled: !canTenDraw }]" :disabled="!canTenDraw" @click="handleTenDraw">
           <div class="btn-content">
-            <i class="fa-solid fa-dice"></i>
+            <i class="ti ti-dice"></i>
             <span class="btn-label">{{ t('lottery.tenDraw') }}</span>
           </div>
           <span class="btn-price">
-            <i class="fa-solid fa-ticket"></i>
+            <i class="ti ti-ticket"></i>
             {{ TEN_PRICE }}
             <span class="discount">{{ t('lottery.saveDiscount', { amount: SINGLE_PRICE * 10 - TEN_PRICE }) }}</span>
           </span>
@@ -338,7 +338,7 @@ async function handleTenDraw() {
 }
 
 .points-display .icon {
-  font-size: 26px;
+  font-size: calc(26px * var(--ui-font-scale));
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
 }
 
@@ -544,7 +544,7 @@ async function handleTenDraw() {
 }
 
 .btn-content i {
-  font-size: 26px;
+  font-size: calc(26px * var(--ui-font-scale));
   filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.2));
 }
 
@@ -570,7 +570,7 @@ async function handleTenDraw() {
   -webkit-backdrop-filter: blur(4px);
   padding: 2px 8px;
   border-radius: 8px;
-  font-size: 10px;
+  font-size: calc(10px * var(--ui-font-scale));
   font-weight: 600;
   border: 1px solid rgba(255, 255, 255, 0.15);
 }

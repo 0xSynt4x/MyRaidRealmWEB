@@ -20,9 +20,7 @@ export const FRONTEND_AUTHORITATIVE_FIELD_PATHS = {
   pointsAmount: '玩家.货币资源.次级货币.积分.数量',
 } as const;
 
-export const FRONTEND_AUTHORITATIVE_PATHS = Object.values(
-  FRONTEND_AUTHORITATIVE_FIELD_PATHS,
-) as readonly string[];
+export const FRONTEND_AUTHORITATIVE_PATHS = Object.values(FRONTEND_AUTHORITATIVE_FIELD_PATHS) as readonly string[];
 
 /**
  * 把「实时 session（live）」里的前端权威字段合并进「回退后的快照（base）」。

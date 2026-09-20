@@ -1,26 +1,51 @@
 <template>
   <div class="right-panel">
     <div class="panel-content">
-      <!-- 玩家生存状态 -->
-      <SurvivalStatus v-if="survivalMode !== '关闭'" />
+      <!-- 生存状态 + 关注角色（合并为一张卡，默认折叠） -->
+      <section v-if="survivalMode !== '关闭' || hasFollowedNpc" class="info-card" :class="{ open: isSurvivalExpanded }">
+        <button
+          :class="['card-title', 'card-title-button']"
+          type="button"
+          :aria-expanded="isSurvivalExpanded"
+          @click="toggleSurvivalExpanded"
+        >
+          <span class="card-title-main">
+            <i class="ti ti-heartbeat icon-heart"></i>
+            {{ t('survival.title') }}
+          </span>
+          <i class="ti ti-chevron-down chevron" :class="{ expanded: isSurvivalExpanded }"></i>
+        </button>
+        <div v-show="isSurvivalExpanded" class="card-body">
+          <SurvivalStatus v-if="survivalMode !== '关闭'" />
+          <div v-if="hasFollowedNpc" class="merged-npc-wrap">
+            <NpcSurvivalStatus @npc-click="handleNpcClick" />
+          </div>
+        </div>
+      </section>
 
-      <!-- 被关注 NPC 的生存状态 -->
-      <NpcSurvivalStatus @npc-click="handleNpcClick" />
-
-      <!-- 玩家当前目标 -->
-      <section v-if="data.玩家?.当前目标" class="info-card info-card-group-target">
-        <div class="info-grid">
+      <!-- 玩家当前目标（默认折叠） -->
+      <section v-if="data.玩家?.当前目标" class="info-card info-card-group-target" :class="{ open: isGoalExpanded }">
+        <button
+          :class="['card-title', 'card-title-button']"
+          type="button"
+          :aria-expanded="isGoalExpanded"
+          @click="toggleGoalExpanded"
+        >
+          <span class="card-title-main">
+            <i class="ti ti-target"></i>
+            {{ t('rightPanel.currentGoal') }}
+          </span>
+          <i class="ti ti-chevron-down chevron" :class="{ expanded: isGoalExpanded }"></i>
+        </button>
+        <div v-show="isGoalExpanded" class="info-grid card-body">
           <div class="info-row">
-            <span class="info-item">
-              <span class="label target">{{ t('rightPanel.currentGoal') }}:</span>
-              <span class="value full-text">{{ data.玩家?.当前目标 || '' }}</span>
-            </span>
+            <span class="value full-text">{{ data.玩家?.当前目标 || '' }}</span>
           </div>
         </div>
       </section>
 
       <!-- 待办速览（默认折叠） -->
-      <section class="info-card info-card-group-summary">
+      <section class="info-card info-card-group-summary" :class="{ open: isTodoSummaryExpanded }">
         <button
           :class="['card-title', 'card-title-button', { pulsing: isTabPulsing('todoSummary') }]"
           type="button"
@@ -29,7 +54,7 @@
           @click="toggleTodoSummaryExpanded"
         >
           <span class="card-title-main">
-            <i class="fa-regular fa-square-check"></i>
+            <i class="ti ti-checkbox"></i>
             {{ t('rightPanel.todoSummary') }}
             <span
               v-if="getBadgeDisplay('todoSummary')"
@@ -37,9 +62,9 @@
               >{{ getBadgeDisplay('todoSummary') }}</span
             >
           </span>
-          <i class="fa-solid fa-chevron-down chevron" :class="{ expanded: isTodoSummaryExpanded }"></i>
+          <i class="ti ti-chevron-down chevron" :class="{ expanded: isTodoSummaryExpanded }"></i>
         </button>
-        <div v-show="isTodoSummaryExpanded" class="info-grid">
+        <div v-show="isTodoSummaryExpanded" class="info-grid card-body">
           <div v-if="todoTopThree.length === 0" class="info-row">
             <span class="value full-text">{{ t('rightPanel.noTodos') }}</span>
           </div>
@@ -72,7 +97,7 @@
       </section>
 
       <!-- 危机机遇提醒（默认折叠） -->
-      <section class="info-card info-card-group-detail">
+      <section class="info-card info-card-group-detail" :class="{ open: isRiskOpportunityExpanded }">
         <button
           :class="['card-title', 'card-title-button', { pulsing: isTabPulsing('riskOpportunity') }]"
           type="button"
@@ -81,7 +106,7 @@
           @click="toggleRiskOpportunityExpanded"
         >
           <span class="card-title-main">
-            <i class="fa-solid fa-triangle-exclamation"></i>
+            <i class="ti ti-alert-triangle"></i>
             {{ t('rightPanel.riskOpportunity') }}
             <span
               v-if="getBadgeDisplay('riskOpportunity')"
@@ -89,9 +114,9 @@
               >{{ getBadgeDisplay('riskOpportunity') }}</span
             >
           </span>
-          <i class="fa-solid fa-chevron-down chevron" :class="{ expanded: isRiskOpportunityExpanded }"></i>
+          <i class="ti ti-chevron-down chevron" :class="{ expanded: isRiskOpportunityExpanded }"></i>
         </button>
-        <div v-show="isRiskOpportunityExpanded" class="info-grid">
+        <div v-show="isRiskOpportunityExpanded" class="info-grid card-body">
           <button
             type="button"
             :class="[
@@ -135,7 +160,7 @@
       </section>
 
       <!-- 世界状态 -->
-      <section class="info-card info-card-group-detail">
+      <section class="info-card info-card-group-detail" :class="{ open: isWorldExpanded }">
         <button
           :class="['card-title', 'card-title-button', { pulsing: isTabPulsing('world') }]"
           type="button"
@@ -144,15 +169,15 @@
           @click="toggleWorldExpanded"
         >
           <span class="card-title-main">
-            <i class="fa-solid fa-globe"></i>
+            <i class="ti ti-world"></i>
             {{ t('rightPanel.worldState') }}
             <span v-if="getBadgeDisplay('world')" :class="['right-badge', { pulsing: isTabPulsing('world') }]">{{
               getBadgeDisplay('world')
             }}</span>
           </span>
-          <i class="fa-solid fa-chevron-down chevron" :class="{ expanded: isWorldExpanded }"></i>
+          <i class="ti ti-chevron-down chevron" :class="{ expanded: isWorldExpanded }"></i>
         </button>
-        <div v-show="isWorldExpanded" class="info-grid">
+        <div v-show="isWorldExpanded" class="info-grid card-body">
           <div
             :class="['info-row', { pulsing: isWorldChanged('力量体系') }]"
             @mouseenter="dismissWorldChanged('力量体系')"
@@ -239,7 +264,7 @@
       </section>
 
       <!-- 舆情信息 -->
-      <section class="info-card info-card-group-detail">
+      <section class="info-card info-card-group-detail" :class="{ open: isPublicOpinionExpanded }">
         <button
           :class="['card-title', 'card-title-button', { pulsing: isTabPulsing('publicOpinion') }]"
           type="button"
@@ -248,7 +273,7 @@
           @click="togglePublicOpinionExpanded"
         >
           <span class="card-title-main">
-            <i class="fa-solid fa-layer-group"></i>
+            <i class="ti ti-stack"></i>
             {{ t('rightPanel.publicOpinion') }}
             <span
               v-if="getBadgeDisplay('publicOpinion')"
@@ -256,9 +281,9 @@
               >{{ getBadgeDisplay('publicOpinion') }}</span
             >
           </span>
-          <i class="fa-solid fa-chevron-down chevron" :class="{ expanded: isPublicOpinionExpanded }"></i>
+          <i class="ti ti-chevron-down chevron" :class="{ expanded: isPublicOpinionExpanded }"></i>
         </button>
-        <div v-show="isPublicOpinionExpanded" class="info-grid">
+        <div v-show="isPublicOpinionExpanded" class="info-grid card-body">
           <div
             :class="['info-row', { pulsing: isPublicOpinionChanged('全局重大事件') }]"
             @mouseenter="dismissPublicOpinionChanged('全局重大事件')"
@@ -331,11 +356,27 @@ const layoutStore = useLayoutStore();
 
 const badgeStore = useBadgeStore();
 
-// 默认折叠：待办速览、危机机遇、世界状态、舆情信息
+// 是否存在被关注的角色（决定「关注角色」整块显不显示）
+const hasFollowedNpc = computed(() => {
+  const archive = (data.value.人物档案 ?? {}) as Record<string, { _关注?: boolean } | undefined>;
+  return Object.values(archive).some(npc => npc?._关注 === true);
+});
+
+// 默认全部折叠：一屏能放下所有标题，点哪块展开哪块
+const isSurvivalExpanded = ref(false);
+const isGoalExpanded = ref(false);
 const isTodoSummaryExpanded = ref(false);
 const isRiskOpportunityExpanded = ref(false);
 const isWorldExpanded = ref(false);
 const isPublicOpinionExpanded = ref(false);
+
+function toggleSurvivalExpanded() {
+  isSurvivalExpanded.value = !isSurvivalExpanded.value;
+}
+
+function toggleGoalExpanded() {
+  isGoalExpanded.value = !isGoalExpanded.value;
+}
 
 const todoPriorityWeight: Record<string, number> = {
   紧急: 4,
@@ -581,10 +622,11 @@ function handleNpcClick(npcId: string) {
 .panel-content {
   flex: 1;
   overflow-y: auto;
-  padding: 6px;
+  /* 卡叠式：卡片之间不用间距堆叠，靠 1px 细线分隔 */
+  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 0;
 }
 
 .panel-content::-webkit-scrollbar {
@@ -604,59 +646,63 @@ function handleNpcClick(npcId: string) {
   background: rgba(var(--accent-primary-rgb), 0.3);
 }
 
-/* 卡片通用样式 - 玻璃拟态 */
+/* 分组：方向 A 只靠留白分隔，不画线。
+   （原来用 border-bottom + 三类分组各一种边色来区分；现在统一靠标题文字区分。
+     想把线加回来：把下面 border-top 的颜色换成 var(--ui-hairline) 即可。） */
 .info-card {
-  background: var(--card-bg);
-  backdrop-filter: var(--glass-blur-light);
-  -webkit-backdrop-filter: var(--glass-blur-light);
-  border: 1px solid var(--card-border);
-  border-radius: var(--radius-md);
-  padding: 8px 10px;
-  box-shadow: var(--card-shadow);
-  transition:
-    box-shadow var(--motion-normal),
-    border-color var(--motion-normal),
-    transform var(--motion-normal);
+  background: transparent;
+  border: 0;
+  border-top: 1px solid transparent;
+  border-radius: 0;
+  padding: 0 12px;
+  padding-top: var(--ui-space-5);
+  margin-top: var(--ui-space-5);
+  box-shadow: none;
+  transition: background var(--motion-normal);
+}
+
+.info-card:first-of-type {
+  padding-top: 0;
+  margin-top: 0;
+  border-top: 0;
+}
+
+/* 收起时整体收紧 —— 六块全收起时一屏塞得下所有标题 */
+.info-card:not(.open):not(:first-of-type) {
+  padding-top: var(--ui-space-3);
+  margin-top: var(--ui-space-3);
 }
 
 .info-card:hover {
-  box-shadow: var(--card-shadow-hover);
-  border-color: rgba(var(--accent-primary-rgb), 0.14);
-  transform: translateY(-1px);
+  background: var(--ui-surface-2);
 }
 
-.info-card-group-target {
-  border-color: color-mix(in srgb, var(--accent-success) 42%, var(--card-border));
-}
-
-.info-card-group-summary {
-  border-color: color-mix(in srgb, var(--accent-primary) 46%, var(--card-border));
-}
-
-.info-card-group-detail {
-  border-color: color-mix(in srgb, var(--accent-secondary) 44%, var(--card-border));
-}
-
-.info-card-group-target:hover {
-  border-color: color-mix(in srgb, var(--accent-success) 64%, var(--card-border));
-}
-
-.info-card-group-summary:hover {
-  border-color: color-mix(in srgb, var(--accent-primary) 66%, var(--card-border));
-}
-
-.info-card-group-detail:hover {
-  border-color: color-mix(in srgb, var(--accent-secondary) 64%, var(--card-border));
-}
-
+/* 分组标题：方向 A 弱化 —— 小号、弱化色、轻微字距，不再用强调金抢戏 */
 .card-title {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin: 0 0 8px 0;
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--accent-primary);
+  gap: var(--ui-space-2);
+  margin: 0 0 var(--ui-space-3);
+  font-size: calc(var(--ui-fs-label) * var(--ui-font-scale));
+  font-weight: 500;
+  /* 0.2em 是按英文标题取的，中文各字之间会被撑得太开 —— 收到 0.08em 只是「略微松一点」 */
+  letter-spacing: 0.08em;
+  color: var(--ui-dim);
+}
+
+/* 收起时标题行不留多余的下间距 */
+.info-card:not(.open) .card-title {
+  margin-bottom: 0;
+}
+
+/* 展开后的内容区：折叠时 display:none，不占位也不产生外边距 */
+.card-body {
+  margin-top: 8px;
+}
+
+/* 合并卡内：玩家迷你条 与 关注角色列表 之间的分隔 */
+.merged-npc-wrap {
+  margin-top: 8px;
 }
 
 .card-title-main {
@@ -672,7 +718,7 @@ function handleNpcClick(npcId: string) {
   border-radius: 999px;
   background: rgba(var(--accent-danger-rgb), 0.92);
   color: var(--bg-card-solid);
-  font-size: 10px;
+  font-size: calc(10px * var(--ui-font-scale));
   font-weight: 700;
   line-height: 16px;
   text-align: center;
@@ -704,18 +750,44 @@ function handleNpcClick(npcId: string) {
   animation: titleHeartbeat 1.15s ease-in-out infinite;
 }
 
-.card-title i {
-  font-size: 13px;
-  background: var(--gradient-primary);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+/* 只命中标题图标（.card-title-main 里那个），
+   不用 .card-title i —— 那样会连右侧折叠箭头一起染上强调色 */
+.card-title-main i {
+  font-size: calc(var(--ui-fs-meta) * var(--ui-font-scale));
+  color: var(--ui-accent);
+  opacity: 0.8;
+}
+
+/* 生存状态标题的心跳图标：沿用红色 + 脉动 */
+.card-title-main i.icon-heart {
+  color: hsl(0, 84%, 60%);
+  opacity: 1;
+  animation: pulse-heart 2s ease-in-out infinite;
+}
+
+@keyframes pulse-heart {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.15);
+  }
 }
 
 .chevron {
-  font-size: 11px;
-  color: var(--text-secondary);
-  transition: transform var(--motion-fast);
+  margin-left: auto;
+  flex: 0 0 auto;
+  font-size: calc(var(--ui-fs-meta) * var(--ui-font-scale));
+  color: var(--ui-dim);
+  transition:
+    transform var(--motion-fast),
+    color var(--motion-fast);
+}
+
+/* 悬停整行时箭头点亮，提示这一行可以点开 */
+.card-title-button:hover .chevron {
+  color: var(--ui-accent);
 }
 
 .chevron.expanded {
@@ -735,7 +807,7 @@ function handleNpcClick(npcId: string) {
   padding: 5px 6px;
   font-size: var(--text-xs);
   line-height: 1.5;
-  border-radius: var(--radius-sm);
+  border-radius: var(--ui-radius-sm);
   transition: background var(--motion-fast);
 }
 
@@ -931,7 +1003,7 @@ function handleNpcClick(npcId: string) {
 
 .todo-meta,
 .todo-deadline {
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
   color: var(--text-secondary);
 }
 
@@ -1022,7 +1094,7 @@ function handleNpcClick(npcId: string) {
   gap: 3px;
   padding: 0 6px;
   border-radius: 999px;
-  font-size: 10px;
+  font-size: calc(10px * var(--ui-font-scale));
 }
 
 .summary-severity-1 {
@@ -1118,6 +1190,7 @@ function handleNpcClick(npcId: string) {
 
 @media (prefers-reduced-motion: reduce) {
   .card-title-button.pulsing,
+  .card-title i.icon-heart,
   .right-badge.pulsing,
   .info-row.pulsing {
     animation: none !important;
@@ -1126,8 +1199,8 @@ function handleNpcClick(npcId: string) {
 
 @media (max-width: 768px) {
   .panel-content {
-    padding: 8px;
-    gap: 8px;
+    padding: 0;
+    gap: 0;
   }
 
   .info-card {
@@ -1172,7 +1245,7 @@ function handleNpcClick(npcId: string) {
     min-width: 14px;
     height: 14px;
     line-height: 14px;
-    font-size: 9px;
+    font-size: calc(9px * var(--ui-font-scale));
     padding: 0 3px;
   }
 
@@ -1187,11 +1260,11 @@ function handleNpcClick(npcId: string) {
   .label {
     width: 58px;
     min-width: 58px;
-    font-size: 10px;
+    font-size: calc(10px * var(--ui-font-scale));
   }
 
   .value {
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale));
     line-height: 1.45;
   }
 }

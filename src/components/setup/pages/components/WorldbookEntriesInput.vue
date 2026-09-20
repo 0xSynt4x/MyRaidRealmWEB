@@ -35,11 +35,11 @@
           :title="t('setup.localContentEntries.removeTitle')"
           @click="removeEntry(index)"
         >
-          <i class="fa-solid fa-xmark"></i>
+          <i class="ti ti-x"></i>
         </button>
       </div>
       <button class="add-entry-btn" type="button" @click="addEntry">
-        <i class="fa-solid fa-plus"></i> {{ t('setup.localContentEntries.add') }}
+        <i class="ti ti-plus"></i> {{ t('setup.localContentEntries.add') }}
       </button>
     </div>
   </div>
@@ -139,7 +139,7 @@ function removeEntry(index: number) {
   border-radius: 6px;
   background: var(--bg-primary);
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale));
   transition: border-color 0.2s ease;
 }
 
@@ -158,7 +158,7 @@ function removeEntry(index: number) {
   border-radius: 6px;
   background: var(--bg-primary);
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale));
 }
 
 .entry-content {
@@ -168,7 +168,7 @@ function removeEntry(index: number) {
   border-radius: 6px;
   background: var(--bg-primary);
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale));
   font-family: inherit;
   line-height: 1.5;
   resize: vertical;
@@ -213,7 +213,7 @@ function removeEntry(index: number) {
   border-radius: 8px;
   background: transparent;
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale));
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;

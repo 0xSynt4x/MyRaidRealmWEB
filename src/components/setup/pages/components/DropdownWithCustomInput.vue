@@ -108,7 +108,7 @@ watch(
   border-radius: 8px;
   background: var(--bg-card);
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale));
   transition: border-color 0.2s ease;
 }
 

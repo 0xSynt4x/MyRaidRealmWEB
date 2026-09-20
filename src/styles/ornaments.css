@@ -1,0 +1,175 @@
+/* ============================================================
+   界面装饰零件 · 阶段 1
+   ------------------------------------------------------------
+   原理：纹样以 mask-image 形式只提供「形状」，颜色由 background-color 给。
+   颜色取自皮肤变量层（ui-tokens.css），所以换主题时纹样自动跟着变色，
+   不需要重新生成素材、也不需要出第二套图。
+
+   形状一律用中性几何（细线 / 菱形 / 圆点 / 直角钩），
+   不用任何具象图案——因为本项目没有固定主题。
+
+   全部受 --ui-orn-opacity 控制；根节点加 .no-orn 可整体关掉。
+
+   形状来源：手写 SVG，URL 编码内联。改形状直接改下面的 path 即可。
+   ============================================================ */
+
+/* 想单独改某个零件的颜色：给那个元素挂 --ui-orn-ink 覆盖即可，例如
+   <div class="orn-rail-x" style="--ui-orn-ink: var(--ui-muted)"></div>
+   —— 变量本身在 ui-tokens.css 里，从 .app-container 继承下来，
+      所以零件不需要额外挂任何类。 */
+
+/* —— 1. 横向饰条：做面板上下边 —— */
+.orn-rail-x {
+  height: 12px;
+  background-color: var(--ui-orn-ink);
+  opacity: var(--ui-orn-opacity);
+  pointer-events: none;
+  -webkit-mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 72 12' width='72' height='12'><path d='M0 6H72' fill='none' stroke='%23000' stroke-width='1'/><g fill='%23000'><path d='M36 2.6L39.4 6L36 9.4L32.6 6Z'/><path d='M0 2.6L3.4 6L0 9.4Z'/><path d='M72 2.6L68.6 6L72 9.4Z'/><circle cx='18' cy='6' r='0.95'/><circle cx='54' cy='6' r='0.95'/></g></svg>");
+  mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 72 12' width='72' height='12'><path d='M0 6H72' fill='none' stroke='%23000' stroke-width='1'/><g fill='%23000'><path d='M36 2.6L39.4 6L36 9.4L32.6 6Z'/><path d='M0 2.6L3.4 6L0 9.4Z'/><path d='M72 2.6L68.6 6L72 9.4Z'/><circle cx='18' cy='6' r='0.95'/><circle cx='54' cy='6' r='0.95'/></g></svg>");
+  -webkit-mask-repeat: repeat-x;
+  mask-repeat: repeat-x;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: auto 100%;
+  mask-size: auto 100%;
+}
+
+/* —— 2. 纵向饰条：做面板左右边 —— */
+.orn-rail-y {
+  width: 12px;
+  background-color: var(--ui-orn-ink);
+  opacity: var(--ui-orn-opacity);
+  pointer-events: none;
+  -webkit-mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 72' width='12' height='72'><path d='M6 0V72' fill='none' stroke='%23000' stroke-width='1'/><g fill='%23000'><path d='M2.6 36L6 32.6L9.4 36L6 39.4Z'/><path d='M2.6 0L6 3.4L9.4 0Z'/><path d='M2.6 72L6 68.6L9.4 72Z'/><circle cx='6' cy='18' r='0.95'/><circle cx='6' cy='54' r='0.95'/></g></svg>");
+  mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 72' width='12' height='72'><path d='M6 0V72' fill='none' stroke='%23000' stroke-width='1'/><g fill='%23000'><path d='M2.6 36L6 32.6L9.4 36L6 39.4Z'/><path d='M2.6 0L6 3.4L9.4 0Z'/><path d='M2.6 72L6 68.6L9.4 72Z'/><circle cx='6' cy='18' r='0.95'/><circle cx='6' cy='54' r='0.95'/></g></svg>");
+  -webkit-mask-repeat: repeat-y;
+  mask-repeat: repeat-y;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: 100% auto;
+  mask-size: 100% auto;
+}
+
+/* —— 3. 分隔线：区块之间 —— */
+.orn-divider {
+  width: 100%;
+  height: 16px;
+  background-color: var(--ui-orn-ink);
+  opacity: calc(var(--ui-orn-opacity) * 0.8);
+  pointer-events: none;
+  -webkit-mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 16' width='240' height='16'><g fill='none' stroke='%23000' stroke-width='1'><path d='M28 8H102'/><path d='M138 8H212'/><path d='M14 8h8'/><path d='M218 8h8'/></g><g fill='%23000'><path d='M120 1.6L126.4 8L120 14.4L113.6 8Z'/><path d='M102 5.8L106.2 8L102 10.2L97.8 8Z'/><path d='M138 5.8L142.2 8L138 10.2L133.8 8Z'/><circle cx='8' cy='8' r='1.8'/><circle cx='232' cy='8' r='1.8'/></g></svg>");
+  mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 16' width='240' height='16'><g fill='none' stroke='%23000' stroke-width='1'><path d='M28 8H102'/><path d='M138 8H212'/><path d='M14 8h8'/><path d='M218 8h8'/></g><g fill='%23000'><path d='M120 1.6L126.4 8L120 14.4L113.6 8Z'/><path d='M102 5.8L106.2 8L102 10.2L97.8 8Z'/><path d='M138 5.8L142.2 8L138 10.2L133.8 8Z'/><circle cx='8' cy='8' r='1.8'/><circle cx='232' cy='8' r='1.8'/></g></svg>");
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+}
+
+/* —— 4. 角饰：面板四角。父元素需 position: relative —— */
+.orn-corner {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  background-color: var(--ui-orn-ink);
+  opacity: var(--ui-orn-opacity);
+  pointer-events: none;
+  -webkit-mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 26 26' width='26' height='26'><g fill='none' stroke='%23000'><path d='M0.5 26V0.5H26' stroke-width='1'/><path d='M5.5 26V5.5H26' stroke-width='0.75'/></g><g fill='%23000'><path d='M5.5 1.8L9.2 5.5L5.5 9.2L1.8 5.5Z'/><circle cx='14' cy='5.5' r='1.1'/><circle cx='5.5' cy='14' r='1.1'/></g></svg>");
+  mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 26 26' width='26' height='26'><g fill='none' stroke='%23000'><path d='M0.5 26V0.5H26' stroke-width='1'/><path d='M5.5 26V5.5H26' stroke-width='0.75'/></g><g fill='%23000'><path d='M5.5 1.8L9.2 5.5L5.5 9.2L1.8 5.5Z'/><circle cx='14' cy='5.5' r='1.1'/><circle cx='5.5' cy='14' r='1.1'/></g></svg>");
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+.orn-corner.tl {
+  top: 0;
+  left: 0;
+}
+.orn-corner.tr {
+  top: 0;
+  right: 0;
+  transform: scaleX(-1);
+}
+.orn-corner.bl {
+  bottom: 0;
+  left: 0;
+  transform: scaleY(-1);
+}
+.orn-corner.br {
+  bottom: 0;
+  right: 0;
+  transform: scale(-1, -1);
+}
+
+/* —— 5. 底纹：当肌理铺满整块。父元素需 position: relative —— */
+.orn-tile {
+  position: absolute;
+  inset: 0;
+  background-color: var(--ui-orn-ink);
+  opacity: var(--ui-orn-tile-opacity);
+  pointer-events: none;
+  -webkit-mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 44' width='44' height='44'><path d='M22 13.5L30.5 22L22 30.5L13.5 22Z' fill='none' stroke='%23000' stroke-width='0.7'/><g fill='%23000'><circle cx='0' cy='0' r='1.1'/><circle cx='44' cy='0' r='1.1'/><circle cx='0' cy='44' r='1.1'/><circle cx='44' cy='44' r='1.1'/><circle cx='22' cy='22' r='1.1'/></g></svg>");
+  mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 44' width='44' height='44'><path d='M22 13.5L30.5 22L22 30.5L13.5 22Z' fill='none' stroke='%23000' stroke-width='0.7'/><g fill='%23000'><circle cx='0' cy='0' r='1.1'/><circle cx='44' cy='0' r='1.1'/><circle cx='0' cy='44' r='1.1'/><circle cx='44' cy='44' r='1.1'/><circle cx='22' cy='22' r='1.1'/></g></svg>");
+  -webkit-mask-repeat: repeat;
+  mask-repeat: repeat;
+  -webkit-mask-size: 44px 44px;
+  mask-size: 44px 44px;
+}
+
+/* —— 6. 细线：最克制的一种分隔，纯 CSS 不用 SVG —— */
+.orn-rule {
+  height: 1px;
+  border: 0;
+  margin: 0;
+  background: var(--ui-line-soft);
+  opacity: var(--ui-orn-opacity);
+  pointer-events: none;
+}
+
+/* —— 7. 竖标签：屏幕左右边缘的竖排小字，纯装饰 —— */
+.orn-vlabel {
+  writing-mode: vertical-rl;
+  font-family: var(--font-mono);
+  font-size: calc(9px * var(--ui-font-scale));
+  letter-spacing: 0.42em;
+  text-indent: 0.42em;
+  color: var(--ui-muted);
+  opacity: calc(var(--ui-orn-opacity) * 0.9);
+  user-select: none;
+  pointer-events: none;
+  white-space: nowrap;
+}
+/* 左侧那条要倒过来读（自下而上） */
+.orn-vlabel.flip {
+  transform: rotate(180deg);
+}
+
+/* —— 8. 噪点：全屏一层极淡颗粒，把界面从「网页」推到「画面」——
+   父元素需 position: relative。用 overlay 混合：
+   深色主题上提亮、浅色主题上压暗，两边都不显脏。 */
+.orn-noise {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: var(--ui-noise-opacity);
+  mix-blend-mode: var(--ui-noise-blend);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='170' height='170'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='3'/></filter><rect width='170' height='170' filter='url(%23n)'/></svg>");
+  background-size: 170px 170px;
+  background-repeat: repeat;
+}
+
+/* —— 9. 暗角：把视觉焦点收到中间。父元素需 position: relative —— */
+.orn-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: var(--ui-orn-opacity);
+  /* 暗角一律「压暗」，所以用中性黑 + 主题强度令牌。
+     不能用底色混色——浅色主题里底色混出来还是浅色，等于没效果。 */
+  background: radial-gradient(
+    ellipse 90% 80% at 50% 42%,
+    transparent 62%,
+    rgba(0, 0, 0, var(--ui-vignette-strength, 0.18)) 100%
+  );
+}

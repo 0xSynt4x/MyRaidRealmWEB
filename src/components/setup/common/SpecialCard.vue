@@ -18,7 +18,7 @@
       {{ isFavorite ? t('setup.favorite.on') : t('setup.favorite.off') }}
     </button>
 
-    <div class="card-icon">{{ icon }}</div>
+    <div class="card-icon"><i class="ti" :class="icon"></i></div>
     <h3 class="card-title">{{ title }}</h3>
     <p class="card-desc">{{ description }}</p>
 
@@ -39,14 +39,13 @@ import { computed, ref } from 'vue';
 import { useI18n } from '../../../i18n';
 
 const props = defineProps<{
-  type: 'import' | 'custom' | 'ai-generate' | 'workshop';
+  type: 'import' | 'ai-generate' | 'workshop';
   isFavorite?: boolean;
 }>();
 const { t } = useI18n();
 
 const emit = defineEmits<{
   import: [file: File];
-  custom: [];
   'ai-generate': [];
   workshop: [];
   toggleFavorite: [];
@@ -57,13 +56,11 @@ const fileInput = ref<HTMLInputElement | null>(null);
 const icon = computed(() => {
   switch (props.type) {
     case 'import':
-      return '📥';
+      return 'ti-download';
     case 'ai-generate':
-      return '😺';
-    case 'workshop':
-      return '🛠️';
+      return 'ti-robot';
     default:
-      return '✨';
+      return 'ti-tools';
   }
 });
 
@@ -73,10 +70,8 @@ const title = computed(() => {
       return t('setup.special.import.title');
     case 'ai-generate':
       return t('setup.special.aiGenerate.title');
-    case 'workshop':
-      return t('setup.special.workshop.title');
     default:
-      return t('setup.special.custom.title');
+      return t('setup.special.workshop.title');
   }
 });
 
@@ -86,10 +81,8 @@ const description = computed(() => {
       return t('setup.special.import.description');
     case 'ai-generate':
       return t('setup.special.aiGenerate.description');
-    case 'workshop':
-      return t('setup.special.workshop.description');
     default:
-      return t('setup.special.custom.description');
+      return t('setup.special.workshop.description');
   }
 });
 
@@ -109,10 +102,8 @@ function handleClick() {
     input.click();
   } else if (props.type === 'ai-generate') {
     emit('ai-generate');
-  } else if (props.type === 'workshop') {
-    emit('workshop');
   } else {
-    emit('custom');
+    emit('workshop');
   }
 }
 
@@ -172,14 +163,6 @@ function handleFileChange(event: Event) {
   background: color-mix(in srgb, var(--accent-success) 7%, var(--card-bg-strong));
 }
 
-.special-card.custom {
-  border-color: var(--accent-primary);
-}
-
-.special-card.custom:hover {
-  background: color-mix(in srgb, var(--accent-primary) 7%, var(--card-bg-strong));
-}
-
 .special-card.ai-generate {
   border-color: #9333ea;
 }
@@ -197,20 +180,20 @@ function handleFileChange(event: Event) {
 }
 
 .card-icon {
-  font-size: 40px;
+  font-size: calc(40px * var(--ui-font-scale));
   line-height: 1;
 }
 
 .card-title {
   margin: 0;
-  font-size: 15px;
+  font-size: calc(15px * var(--ui-font-scale));
   font-weight: 600;
   color: var(--text-primary);
 }
 
 .card-desc {
   margin: 0;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   color: var(--text-secondary);
   line-height: 1.4;
 }
@@ -229,15 +212,15 @@ function handleFileChange(event: Event) {
   }
 
   .card-icon {
-    font-size: 36px;
+    font-size: calc(36px * var(--ui-font-scale));
   }
 
   .card-title {
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale));
   }
 
   .card-desc {
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale));
   }
 }
 
@@ -250,19 +233,19 @@ function handleFileChange(event: Event) {
   .favorite-btn {
     min-width: 60px;
     padding: 0 8px;
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale));
   }
 
   .card-icon {
-    font-size: 32px;
+    font-size: calc(32px * var(--ui-font-scale));
   }
 
   .card-title {
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale));
   }
 
   .card-desc {
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale));
   }
 }
 </style>

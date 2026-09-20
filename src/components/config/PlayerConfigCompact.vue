@@ -111,11 +111,13 @@
             :placeholder="t('config.player.secondaryCurrencyRate')"
             class="list-input sm"
           />
-          <button @click="deleteSecondaryCurrency(name)">🗑️</button>
+          <button @click="deleteSecondaryCurrency(name)"><i class="ti ti-trash"></i></button>
         </div>
       </div>
     </div>
-    <button class="add-mini" @click="addCurrency">{{ t('config.player.addSecondaryCurrency') }}</button>
+    <button class="add-mini" @click="addCurrency">
+      <i class="ti ti-plus"></i> {{ t('config.player.addSecondaryCurrency') }}
+    </button>
 
     <!-- 初始物品 -->
     <div v-if="initialItems.length > 0" class="input-group">
@@ -144,11 +146,13 @@
             <option value="史诗">{{ enumDisplay('player.itemQuality', '史诗') }}</option>
             <option value="传说">{{ enumDisplay('player.itemQuality', '传说') }}</option>
           </select>
-          <button @click="deleteItem(name)">🗑️</button>
+          <button @click="deleteItem(name)"><i class="ti ti-trash"></i></button>
         </div>
       </div>
     </div>
-    <button class="add-mini" @click="addItem">{{ t('config.player.addInitialItem') }}</button>
+    <button class="add-mini" @click="addItem">
+      <i class="ti ti-plus"></i> {{ t('config.player.addInitialItem') }}
+    </button>
 
     <!-- 库存货物 -->
     <div v-if="inventoryItems.length > 0" class="input-group">
@@ -178,11 +182,13 @@
             class="list-input xs"
             min="0"
           />
-          <button @click="deleteInventory(name)">🗑️</button>
+          <button @click="deleteInventory(name)"><i class="ti ti-trash"></i></button>
         </div>
       </div>
     </div>
-    <button class="add-mini" @click="addInventory">{{ t('config.player.addInventory') }}</button>
+    <button class="add-mini" @click="addInventory">
+      <i class="ti ti-plus"></i> {{ t('config.player.addInventory') }}
+    </button>
   </div>
 </template>
 
@@ -280,7 +286,7 @@ function deleteInventory(name: string | number) {
 }
 
 .input-group > label {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   color: var(--text-secondary);
   min-width: 40px;
   font-weight: 500;
@@ -295,12 +301,12 @@ function deleteInventory(name: string | number) {
 }
 
 .symbol {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   color: var(--text-secondary);
 }
 
 .exchange-hint {
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
   color: var(--text-secondary);
   white-space: nowrap;
 }
@@ -325,7 +331,7 @@ function deleteInventory(name: string | number) {
   border: none;
   border-bottom: 1px solid var(--border-light);
   padding: 2px 4px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   background: transparent;
   color: var(--text-primary);
 }
@@ -347,7 +353,7 @@ function deleteInventory(name: string | number) {
 
 .list-input::placeholder {
   color: var(--text-tertiary);
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
 }
 
 .list-row button {
@@ -356,7 +362,7 @@ function deleteInventory(name: string | number) {
   border: none;
   background: transparent;
   cursor: pointer;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale));
   border-radius: 4px;
   transition: all 150ms;
   flex-shrink: 0;
@@ -387,13 +393,13 @@ function deleteInventory(name: string | number) {
 
   .input-group > label,
   .input-row label {
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale));
     min-width: 36px;
   }
 
   .underline-input,
   .underline-select {
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale));
   }
 
   .underline-input.short,
@@ -403,7 +409,7 @@ function deleteInventory(name: string | number) {
 
   .list-input,
   .list-select {
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale));
   }
 
   .list-input.xs {
@@ -416,7 +422,7 @@ function deleteInventory(name: string | number) {
   }
 
   .add-mini {
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale));
     margin-left: 36px;
   }
 }
@@ -435,13 +441,13 @@ function deleteInventory(name: string | number) {
 
   .input-group > label,
   .input-row label {
-    font-size: 10px;
+    font-size: calc(10px * var(--ui-font-scale));
     min-width: 32px;
   }
 
   .underline-input,
   .underline-select {
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale));
     padding: 1px 2px;
   }
 
@@ -451,12 +457,12 @@ function deleteInventory(name: string | number) {
   }
 
   .symbol {
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale));
   }
 
   .list-input,
   .list-select {
-    font-size: 10px;
+    font-size: calc(10px * var(--ui-font-scale));
     padding: 1px 2px;
   }
 
@@ -472,12 +478,12 @@ function deleteInventory(name: string | number) {
   .list-row button {
     width: 22px;
     height: 22px;
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale));
   }
 
   .add-mini {
     padding: 3px 6px;
-    font-size: 10px;
+    font-size: calc(10px * var(--ui-font-scale));
     margin-left: 32px;
   }
 }

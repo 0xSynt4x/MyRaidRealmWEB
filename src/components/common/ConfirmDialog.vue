@@ -16,7 +16,7 @@
               :aria-label="confirmButtonText"
               @click="handleConfirm"
             >
-              <i class="fa fa-check"></i>
+              <i class="ti ti-check"></i>
             </button>
             <button
               class="action-btn cancel"
@@ -24,7 +24,7 @@
               :aria-label="t('dialog.cancel')"
               @click="handleCancel"
             >
-              <i class="fa fa-times"></i>
+              <i class="ti ti-x"></i>
             </button>
           </div>
         </div>
@@ -51,12 +51,12 @@ const { t } = useI18n();
 const iconClass = computed(() => {
   switch (confirmDialog.value.options.type) {
     case 'danger':
-      return 'fa fa-exclamation-circle';
+      return 'ti ti-alert-circle';
     case 'warning':
-      return 'fa fa-exclamation-triangle';
+      return 'ti ti-alert-triangle';
     case 'info':
     default:
-      return 'fa fa-question-circle';
+      return 'ti ti-help-circle';
   }
 });
 
@@ -158,7 +158,7 @@ function handleCancel() {
 }
 
 .header-icon i {
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale));
 }
 
 /* 图标类型颜色 */
@@ -226,7 +226,7 @@ function handleCancel() {
 }
 
 .action-btn i {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
 }
 
 .action-btn:hover {
@@ -386,11 +386,11 @@ function handleCancel() {
   }
 
   .header-icon i {
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale));
   }
 
   .header-title {
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale));
   }
 
   .header-actions {
@@ -403,7 +403,7 @@ function handleCancel() {
   }
 
   .action-btn i {
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale));
   }
 
   .dialog-body {

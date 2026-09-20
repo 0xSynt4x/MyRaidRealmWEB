@@ -16,7 +16,6 @@
         >
           ×
         </button>
-        <span class="card-gender-emoji">{{ getGenderEmoji(npc.性别) }}</span>
         <div class="npc-name-row">
           <!-- 关注按钮 -->
           <button
@@ -25,9 +24,10 @@
             :title="npc._关注 ? t('character.unfollow') : t('character.follow')"
             @click.stop="toggleFollow(npc.id)"
           >
-            {{ npc._关注 ? '⭐' : '☆' }}
+            <i class="ti ti-star"></i>
           </button>
           <div class="npc-name">{{ npc.姓名 }}</div>
+          <GenderIcon class="npc-gender" :gender="npc.性别" />
         </div>
         <div class="npc-job-row">
           <div class="npc-job">{{ npc.社会身份?.职业 || '' }}</div>
@@ -35,25 +35,27 @@
         <div class="npc-unit">{{ npc.社会身份?.所属势力 || '' }}</div>
         <div class="npc-favor-container">
           <div :class="['npc-favor-text', getFavorClass(npc.关系数据?.好感度 || 0)]">
-            ❤️ {{ npc.关系数据?.好感度 || 0 }}
+            <i class="ti ti-heart"></i> {{ npc.关系数据?.好感度 || 0 }}
           </div>
           <div class="npc-favor-bar">
-            <div class="favor-fill" :style="{ width: getFavorPercent(npc.关系数据?.好感度 || 0) + '%' }"></div>
+            <div class="favor-gradient"></div>
+            <div class="favor-mask" :style="{ left: getFavorPercent(npc.关系数据?.好感度 || 0) + '%' }"></div>
           </div>
         </div>
         <div class="npc-trust-container">
           <div :class="['npc-trust-text', getTrustClass(npc.关系数据?.信任度 || 0)]">
-            🤝 {{ npc.关系数据?.信任度 || 0 }}
+            <i class="ti ti-heart-handshake"></i> {{ npc.关系数据?.信任度 || 0 }}
           </div>
           <div class="npc-trust-bar">
-            <div class="trust-fill" :style="{ width: getTrustPercent(npc.关系数据?.信任度 || 0) + '%' }"></div>
+            <div class="trust-gradient"></div>
+            <div class="trust-mask" :style="{ left: getTrustPercent(npc.关系数据?.信任度 || 0) + '%' }"></div>
           </div>
         </div>
       </div>
 
       <!-- 招聘按钮卡片 -->
       <div class="npc-card recruit-card" @click="openRecruitDialog">
-        <span class="recruit-icon">➕</span>
+        <i class="ti ti-plus recruit-icon"></i>
         <div class="recruit-text">{{ t('character.recruitCharacter') }}</div>
         <div class="recruit-hint">{{ t('character.recruitHint') }}</div>
       </div>
@@ -76,7 +78,7 @@
               </div>
             </div>
           </div>
-          <button class="dialog-close" @click="closeDialog">✕</button>
+          <button class="dialog-close" @click="closeDialog"><i class="ti ti-x"></i></button>
         </div>
 
         <div class="detail-tabs" role="tablist" :aria-label="t('character.detailTabsAria')">
@@ -99,7 +101,7 @@
             <!-- 基本信息组 -->
             <div class="info-section">
               <div class="section-title">
-                <span class="section-icon">👤</span>
+                <i class="ti ti-user section-icon"></i>
                 <span>{{ t('character.basicInfo') }}</span>
               </div>
               <div class="excel-style">
@@ -129,7 +131,7 @@
             <!-- 关系数据组 -->
             <div class="info-section">
               <div class="section-title">
-                <span class="section-icon">📊</span>
+                <i class="ti ti-chart-bar section-icon"></i>
                 <span>{{ t('character.relationshipData') }}</span>
               </div>
               <div class="favor-dashboard-compact">
@@ -139,9 +141,10 @@
                     {{ editedNpc.关系数据?.好感度 || 0 }}
                   </div>
                   <div class="gauge-bar">
+                    <div class="gauge-gradient"></div>
                     <div
-                      class="gauge-fill"
-                      :style="{ width: getFavorPercent(editedNpc.关系数据?.好感度 || 0) + '%' }"
+                      class="gauge-mask"
+                      :style="{ left: getFavorPercent(editedNpc.关系数据?.好感度 || 0) + '%' }"
                     ></div>
                   </div>
                 </div>
@@ -151,9 +154,10 @@
                     {{ editedNpc.关系数据?.信任度 || 0 }}
                   </div>
                   <div class="gauge-bar">
+                    <div class="gauge-gradient"></div>
                     <div
-                      class="trust-fill-gauge"
-                      :style="{ width: getTrustPercent(editedNpc.关系数据?.信任度 || 0) + '%' }"
+                      class="gauge-mask"
+                      :style="{ left: getTrustPercent(editedNpc.关系数据?.信任度 || 0) + '%' }"
                     ></div>
                   </div>
                 </div>
@@ -204,20 +208,21 @@
             class="info-section survival-section"
           >
             <div class="section-title">
-              <span class="section-icon">❤️</span>
+              <i class="ti ti-heart section-icon"></i>
               <span>{{ t('character.survivalStatus') }}</span>
               <button
                 class="follow-toggle-btn"
                 :class="{ active: editedNpc._关注 }"
                 @click="editedNpc._关注 = !editedNpc._关注"
               >
+                <i class="ti ti-star"></i>
                 {{ editedNpc._关注 ? t('character.followed') : t('character.followAction') }}
               </button>
             </div>
             <div class="survival-grid">
               <!-- 血量 - 始终显示 -->
               <div class="survival-item">
-                <span class="survival-label">❤️ {{ t('survival.health') }}</span>
+                <span class="survival-label"><i class="ti ti-heart"></i> {{ t('survival.health') }}</span>
                 <div class="survival-bar-container">
                   <div class="survival-bar hp-bar" :style="{ width: (editedNpc.生存状态?.血量 || 100) + '%' }"></div>
                 </div>
@@ -225,7 +230,7 @@
               </div>
               <!-- 体力 - 始终显示 -->
               <div class="survival-item">
-                <span class="survival-label">⚡ {{ t('survival.stamina') }}</span>
+                <span class="survival-label"><i class="ti ti-bolt"></i> {{ t('survival.stamina') }}</span>
                 <div class="survival-bar-container">
                   <div
                     class="survival-bar stamina-bar"
@@ -236,7 +241,7 @@
               </div>
               <!-- 饥饿 - 仅生存模式显示 -->
               <div v-if="survivalMode === '生存模式'" class="survival-item">
-                <span class="survival-label">🍖 {{ t('survival.hunger') }}</span>
+                <span class="survival-label"><i class="ti ti-meat"></i> {{ t('survival.hunger') }}</span>
                 <div class="survival-bar-container">
                   <div
                     class="survival-bar hunger-bar"
@@ -247,7 +252,7 @@
               </div>
               <!-- 口渴 - 仅生存模式显示 -->
               <div v-if="survivalMode === '生存模式'" class="survival-item">
-                <span class="survival-label">💧 {{ t('survival.thirst') }}</span>
+                <span class="survival-label"><i class="ti ti-droplet"></i> {{ t('survival.thirst') }}</span>
                 <div class="survival-bar-container">
                   <div
                     class="survival-bar thirst-bar"
@@ -262,7 +267,7 @@
           <!-- 社会身份组 -->
           <div v-show="activeDetailTab === 'profile'" class="info-section">
             <div class="section-title">
-              <span class="section-icon">💼</span>
+              <i class="ti ti-briefcase section-icon"></i>
               <span>{{ t('character.socialIdentity') }}</span>
             </div>
             <div class="excel-style">
@@ -296,7 +301,7 @@
           <!-- 个人信息组 -->
           <div v-show="activeDetailTab === 'profile'" class="info-section">
             <div class="section-title">
-              <span class="section-icon">✨</span>
+              <i class="ti ti-sparkles section-icon"></i>
               <span>{{ t('character.personalInfo') }}</span>
             </div>
             <div class="excel-style">
@@ -394,7 +399,7 @@
           <!-- 过往经历组 -->
           <div v-show="activeDetailTab === 'events'" class="info-section">
             <div class="section-title">
-              <span class="section-icon">📜</span>
+              <i class="ti ti-certificate section-icon"></i>
               <span>{{ t('character.pastExperiences') }}</span>
             </div>
             <div class="events-container">
@@ -406,7 +411,9 @@
                   :placeholder="t('character.pastExperiencePlaceholder')"
                   rows="1"
                 ></textarea>
-                <button class="icon-btn danger" :title="t('common.delete')" @click="removeHistory(index)">🗑️</button>
+                <button class="icon-btn danger" :title="t('common.delete')" @click="removeHistory(index)">
+                  <i class="ti ti-trash"></i>
+                </button>
               </div>
               <button v-if="(editedNpc.个人信息.过往经历?.length || 0) < 5" class="add-event-btn" @click="addHistory">
                 <span class="add-icon">+</span>
@@ -418,7 +425,7 @@
           <!-- 其他信息组 -->
           <div v-show="activeDetailTab === 'events'" class="info-section">
             <div class="section-title">
-              <span class="section-icon">📞</span>
+              <i class="ti ti-phone section-icon"></i>
               <span>{{ t('character.otherInfo') }}</span>
             </div>
             <div class="excel-style">
@@ -437,7 +444,7 @@
           <!-- 近期事件组 -->
           <div v-show="activeDetailTab === 'events'" class="info-section">
             <div class="section-title">
-              <span class="section-icon">📝</span>
+              <i class="ti ti-pencil section-icon"></i>
               <span>{{ t('character.recentEvents') }}</span>
             </div>
             <div class="events-container">
@@ -449,7 +456,9 @@
                   :placeholder="t('character.eventPlaceholder')"
                   rows="1"
                 ></textarea>
-                <button class="icon-btn danger" :title="t('common.delete')" @click="removeEvent(index)">🗑️</button>
+                <button class="icon-btn danger" :title="t('common.delete')" @click="removeEvent(index)">
+                  <i class="ti ti-trash"></i>
+                </button>
               </div>
               <button class="add-event-btn" @click="addEvent">
                 <span class="add-icon">+</span>
@@ -461,7 +470,7 @@
           <!-- 重要经历组 -->
           <div v-show="activeDetailTab === 'events'" class="info-section">
             <div class="section-title">
-              <span class="section-icon">🏆</span>
+              <i class="ti ti-trophy section-icon"></i>
               <span>{{ t('character.majorExperiences') }}</span>
             </div>
             <div class="events-container">
@@ -473,7 +482,9 @@
                   :placeholder="t('character.majorExperiencePlaceholder')"
                   rows="1"
                 ></textarea>
-                <button class="icon-btn danger" :title="t('common.delete')" @click="removeMajorEvent(index)">🗑️</button>
+                <button class="icon-btn danger" :title="t('common.delete')" @click="removeMajorEvent(index)">
+                  <i class="ti ti-trash"></i>
+                </button>
               </div>
               <button v-if="(editedNpc.重要经历?.length || 0) < 10" class="add-event-btn" @click="addMajorEvent">
                 <span class="add-icon">+</span>
@@ -498,20 +509,20 @@
         <div class="dashboard-header recruit-header">
           <div class="header-left">
             <div class="avatar-circle">
-              <span class="avatar-text">➕</span>
+              <i class="ti ti-plus avatar-text"></i>
             </div>
             <div class="header-info">
               <h3 class="person-name">{{ t('character.recruitNewCharacter') }}</h3>
             </div>
           </div>
-          <button class="dialog-close" @click="closeRecruitDialog">✕</button>
+          <button class="dialog-close" @click="closeRecruitDialog"><i class="ti ti-x"></i></button>
         </div>
 
         <!-- 主体 -->
         <div class="dialog-body">
           <div class="info-section">
             <div class="section-title">
-              <span class="section-icon">👤</span>
+              <i class="ti ti-user section-icon"></i>
               <span>{{ t('character.characterInfo') }}</span>
             </div>
             <div class="excel-style">
@@ -530,7 +541,9 @@
                   />
                 </div>
               </div>
-              <div v-if="nameExistsWarning" class="warning-text">{{ t('character.nameExistsWarning') }}</div>
+              <div v-if="nameExistsWarning" class="warning-text">
+                <i class="ti ti-alert-triangle"></i> {{ t('character.nameExistsWarning') }}
+              </div>
               <div class="excel-row">
                 <span class="excel-label">{{ t('character.relationship') }}</span>
                 <select v-model="recruitForm.relationType" class="excel-input relation-select">
@@ -580,9 +593,9 @@ import { useBadgeStore } from '../../stores/badge';
 import { useLayoutStore } from '../../stores/layout';
 import { useStatDataStore } from '../../stores/statData';
 import { useStatDataActions } from '../../stores/statDataActions';
-import { getGenderEmoji } from '../../utils/emoji';
 import { createNewNpc, createNpcDraft, normalizeNpcDraft, type NpcBase, type NpcRecord } from '../../utils/npcFactory';
 import { getFavorClass, getRelationPercent, getTrustClass } from '../../utils/npcMetrics';
+import GenderIcon from '../common/GenderIcon.vue';
 
 const store = useStatDataStore();
 const statDataActions = useStatDataActions();
@@ -913,6 +926,8 @@ watch([showDialog, activeDetailTab], async ([isOpen]) => {
   position: relative;
   overflow: visible;
   border: 1px solid var(--card-border);
+  display: flex;
+  flex-direction: column;
   border-top: 3px solid var(--accent-primary);
 }
 
@@ -922,7 +937,7 @@ watch([showDialog, activeDetailTab], async ([isOpen]) => {
   right: -6px;
   width: 16px;
   height: 16px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   z-index: 3;
 }
 
@@ -930,17 +945,26 @@ watch([showDialog, activeDetailTab], async ([isOpen]) => {
   opacity: 1;
 }
 
-.card-gender-emoji {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  font-size: 20px;
-  z-index: 1;
+/* 性别徽章：跟在名字行右侧，不再压在名字上 */
+.npc-gender {
+  margin-left: auto;
+  margin-top: 1px;
+  flex-shrink: 0;
+  width: calc(18px * var(--ui-font-scale));
+  height: calc(18px * var(--ui-font-scale));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(var(--accent-primary-rgb), 0.14);
+  border: 1px solid rgba(var(--accent-primary-rgb), 0.26);
+  color: var(--accent-primary);
+  font-size: calc(10px * var(--ui-font-scale));
 }
 
 .npc-name-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 4px;
   margin-bottom: 2px;
 }
@@ -960,7 +984,7 @@ watch([showDialog, activeDetailTab], async ([isOpen]) => {
   border: none;
   background: none;
   background-color: transparent;
-  font-size: 16px;
+  font-size: calc(16px * var(--ui-font-scale));
   cursor: pointer;
   color: color-mix(in srgb, var(--text-primary) 65%, var(--accent-warning) 35%);
   opacity: 0.62;
@@ -997,7 +1021,7 @@ watch([showDialog, activeDetailTab], async ([isOpen]) => {
   border: 1px solid var(--border-light);
   border-radius: 12px;
   background: var(--bg-primary);
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
   cursor: pointer;
   transition: all 200ms ease;
   color: var(--text-secondary);
@@ -1034,7 +1058,7 @@ watch([showDialog, activeDetailTab], async ([isOpen]) => {
 }
 
 .survival-label {
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
   color: var(--text-secondary);
   width: 50px;
   flex-shrink: 0;
@@ -1071,7 +1095,7 @@ watch([showDialog, activeDetailTab], async ([isOpen]) => {
 }
 
 .survival-value {
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
   font-weight: 600;
   color: var(--text-primary);
   width: 24px;
@@ -1096,6 +1120,8 @@ watch([showDialog, activeDetailTab], async ([isOpen]) => {
   font-weight: 600;
   color: var(--text-primary);
   margin-bottom: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .npc-job {
@@ -1116,6 +1142,11 @@ watch([showDialog, activeDetailTab], async ([isOpen]) => {
   flex-direction: column;
   gap: 4px;
   width: 100%;
+}
+
+/* 关系区沉到卡片底部，让所有卡片的两条进度条落在同一水平线上 */
+.npc-favor-container {
+  margin-top: auto;
 }
 
 .npc-trust-container {
@@ -1159,28 +1190,29 @@ watch([showDialog, activeDetailTab], async ([isOpen]) => {
 
 .npc-favor-bar,
 .npc-trust-bar {
+  position: relative;
   height: 4px;
   background: var(--bg-primary);
   border-radius: 2px;
   overflow: hidden;
 }
 
-.favor-fill {
-  height: 100%;
+/* 三色渐变铺满整条轨道，未填充段由遮罩盖住 —— 这样颜色位置才跟数值对应 */
+.favor-gradient,
+.trust-gradient {
+  position: absolute;
+  inset: 0;
   background: linear-gradient(90deg, var(--accent-danger), var(--accent-warning), var(--accent-success));
-  transition: width 300ms ease;
 }
 
-.trust-fill {
-  height: 100%;
-  background: linear-gradient(
-    90deg,
-    var(--accent-danger),
-    var(--accent-warning),
-    var(--accent-primary),
-    var(--accent-success)
-  );
-  transition: width 300ms ease;
+.favor-mask,
+.trust-mask {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--bg-primary);
+  transition: left 300ms ease;
 }
 
 /* 角色对话框样式 */
@@ -1260,33 +1292,6 @@ watch([showDialog, activeDetailTab], async ([isOpen]) => {
     0 0 0 1px rgba(var(--accent-primary-rgb), 0.12);
 }
 
-:global(body[data-theme='steelcool']) .detail-dialog .person-tags .tag,
-:global(body.theme-steelcool) .detail-dialog .person-tags .tag {
-  border-color: rgba(173, 216, 230, 0.34);
-  background: rgba(9, 18, 32, 0.58);
-  color: rgba(240, 248, 255, 0.98);
-  box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.28),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
-}
-
-:global(body[data-theme='steelcool']) .detail-tab,
-:global(body.theme-steelcool) .detail-tab {
-  border-color: rgba(173, 216, 230, 0.26);
-  background: rgba(10, 20, 35, 0.78);
-  color: rgba(224, 236, 248, 0.92);
-}
-
-:global(body[data-theme='steelcool']) .detail-tab.active,
-:global(body.theme-steelcool) .detail-tab.active {
-  border-color: rgba(120, 196, 255, 0.56);
-  background: rgba(73, 145, 214, 0.2);
-  color: rgba(246, 251, 255, 0.98);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.16),
-    0 0 0 1px rgba(120, 196, 255, 0.16);
-}
-
 @media (max-width: 768px) {
   .detail-dialog {
     width: 100%;
@@ -1351,7 +1356,7 @@ watch([showDialog, activeDetailTab], async ([isOpen]) => {
 }
 
 .gauge-label {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   font-weight: 600;
   color: var(--text-secondary);
   flex-shrink: 0;
@@ -1359,7 +1364,7 @@ watch([showDialog, activeDetailTab], async ([isOpen]) => {
 }
 
 .gauge-value {
-  font-size: 20px;
+  font-size: calc(20px * var(--ui-font-scale));
   font-weight: 700;
   flex-shrink: 0;
   white-space: nowrap;
@@ -1384,6 +1389,7 @@ watch([showDialog, activeDetailTab], async ([isOpen]) => {
 }
 
 .gauge-bar {
+  position: relative;
   flex: 1;
   min-width: 0;
   height: 8px;
@@ -1393,22 +1399,19 @@ watch([showDialog, activeDetailTab], async ([isOpen]) => {
   border: 1px solid var(--border-light);
 }
 
-.gauge-fill {
-  height: 100%;
+.gauge-gradient {
+  position: absolute;
+  inset: 0;
   background: linear-gradient(90deg, var(--accent-danger), var(--accent-warning), var(--accent-success));
-  transition: width 300ms ease;
 }
 
-.trust-fill-gauge {
-  height: 100%;
-  background: linear-gradient(
-    90deg,
-    var(--accent-danger),
-    var(--accent-warning),
-    var(--accent-primary),
-    var(--accent-success)
-  );
-  transition: width 300ms ease;
+.gauge-mask {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--bg-card);
+  transition: left 300ms ease;
 }
 
 .events-container {
@@ -1453,7 +1456,7 @@ watch([showDialog, activeDetailTab], async ([isOpen]) => {
   background: var(--accent-primary);
   color: white;
   border-radius: 50%;
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
   font-weight: 600;
   flex-shrink: 0;
 }
@@ -1467,7 +1470,7 @@ watch([showDialog, activeDetailTab], async ([isOpen]) => {
   border: 1px solid var(--control-border);
   border-radius: var(--radius-sm);
   cursor: pointer;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   background: var(--control-bg);
   transition: all var(--motion-fast);
 }
@@ -1488,7 +1491,7 @@ watch([showDialog, activeDetailTab], async ([isOpen]) => {
   border: none;
   border-radius: 4px;
   font-family: var(--font-base);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   font-weight: 500;
   cursor: pointer;
   transition: all 200ms ease;
@@ -1501,7 +1504,7 @@ watch([showDialog, activeDetailTab], async ([isOpen]) => {
 }
 
 .add-icon {
-  font-size: 18px;
+  font-size: calc(18px * var(--ui-font-scale));
   font-weight: 700;
 }
 
@@ -1516,7 +1519,7 @@ watch([showDialog, activeDetailTab], async ([isOpen]) => {
 }
 
 .empty-icon {
-  font-size: 48px;
+  font-size: calc(48px * var(--ui-font-scale));
   opacity: 0.5;
 }
 
@@ -1548,7 +1551,7 @@ watch([showDialog, activeDetailTab], async ([isOpen]) => {
 }
 
 .recruit-icon {
-  font-size: 28px;
+  font-size: calc(28px * var(--ui-font-scale));
   margin-bottom: 8px;
   opacity: 0.7;
 }
@@ -1715,7 +1718,7 @@ watch([showDialog, activeDetailTab], async ([isOpen]) => {
   border-radius: 999px;
   background: rgba(var(--accent-primary-rgb), 0.08);
   color: var(--accent-primary);
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
   line-height: 1.4;
   word-break: break-all;
 }
@@ -1750,7 +1753,7 @@ watch([showDialog, activeDetailTab], async ([isOpen]) => {
   padding: 6px 10px;
   background: rgba(var(--accent-primary-rgb), 0.94);
   color: var(--bg-card-solid);
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
   line-height: 1.3;
   border-radius: 4px;
   box-shadow: var(--shadow-md);

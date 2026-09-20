@@ -5,7 +5,7 @@
       <!-- 玩家基本信息 -->
       <div class="player-info">
         <div class="avatar">
-          <span class="avatar-emoji">{{ getGenderEmoji(data.玩家?.性别) }}</span>
+          <GenderIcon class="avatar-icon" :gender="data.玩家?.性别" />
         </div>
         <div class="info">
           <h3 class="name">{{ data.玩家?.姓名 || t('common.unnamed') }}</h3>
@@ -25,7 +25,7 @@
     <!-- 当前目标 -->
     <section v-if="data.玩家?.当前目标" class="goal-section">
       <div class="goal-item">
-        <span class="label">{{ t('profile.currentGoal') }}</span>
+        <span class="label"><i class="ti ti-target"></i> {{ t('profile.currentGoal') }}</span>
         <span class="value">{{ data.玩家?.当前目标 }}</span>
       </div>
     </section>
@@ -33,7 +33,7 @@
     <!-- 货币资源区域 -->
     <section class="currency-section">
       <div class="main-currency">
-        <span class="icon">💰</span>
+        <i class="ti ti-coins icon"></i>
         <span class="currency-name">{{ data.玩家?.货币资源?.主货币?.名称 || t('common.currency') }}</span>
         <span class="currency-amount">{{ formatMoney(data.玩家?.货币资源?.主货币?.数量 || 0) }}</span>
       </div>
@@ -69,7 +69,7 @@
     <!-- 技能系统 (多行显示，与物品相同) -->
     <section class="skills-section">
       <div class="section-header">
-        <i class="fa-solid fa-wand-sparkles"></i>
+        <i class="ti ti-wand"></i>
         <span>{{ t('profile.skills') }}</span>
       </div>
       <div v-if="hasSkills" class="items-multiline">
@@ -106,7 +106,7 @@
     <!-- 物品栏 (多行显示) -->
     <section class="items-section">
       <div class="section-header">
-        <i class="fa-solid fa-backpack"></i>
+        <i class="ti ti-backpack"></i>
         <span>{{ t('profile.items') }}</span>
       </div>
       <div v-if="hasItems" class="items-multiline">
@@ -159,8 +159,8 @@ import { useDelete } from '../../composables/useDelete';
 import { useBadgeStore } from '../../stores/badge';
 import { useStatDataStore } from '../../stores/statData';
 import { useStatDataActions } from '../../stores/statDataActions';
-import { getGenderEmoji } from '../../utils/emoji';
 import { formatAge, formatMoney, getQualityLevel } from '../../utils/format';
+import GenderIcon from '../common/GenderIcon.vue';
 import TruncateText from '../common/TruncateText.vue';
 
 const store = useStatDataStore();
@@ -352,8 +352,9 @@ function openDeleteConfirm(type: 'skill' | 'item', name: string) {
     inset 0 1px 0 rgba(255, 255, 255, 0.28);
 }
 
-.avatar-emoji {
-  font-size: 26px;
+.avatar-icon {
+  font-size: calc(30px * var(--ui-font-scale));
+  color: var(--text-primary);
 }
 
 .info {
@@ -486,7 +487,7 @@ function openDeleteConfirm(type: 'skill' | 'item', name: string) {
 }
 
 .icon {
-  font-size: 20px;
+  font-size: calc(20px * var(--ui-font-scale));
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
 }
 
@@ -544,7 +545,7 @@ function openDeleteConfirm(type: 'skill' | 'item', name: string) {
   padding: 2px 8px;
   border-radius: 8px;
   font-weight: 600;
-  font-size: 10px;
+  font-size: calc(10px * var(--ui-font-scale));
 }
 
 /* 身份信息 (紧凑键值对) */
@@ -619,7 +620,7 @@ function openDeleteConfirm(type: 'skill' | 'item', name: string) {
 }
 
 .section-header i:first-child {
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale));
   background: var(--gradient-primary);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -628,7 +629,7 @@ function openDeleteConfirm(type: 'skill' | 'item', name: string) {
 
 .scroll-hint {
   margin-left: auto;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   opacity: 0.5;
 }
 
@@ -729,12 +730,12 @@ function openDeleteConfirm(type: 'skill' | 'item', name: string) {
   padding: 2px 6px;
   border-radius: 10px;
   font-weight: 500;
-  font-size: 10px;
+  font-size: calc(10px * var(--ui-font-scale));
 }
 
 .item-expiry {
   color: rgba(255, 255, 255, 0.9);
-  font-size: 10px;
+  font-size: calc(10px * var(--ui-font-scale));
 }
 
 /* 空状态 */
@@ -753,7 +754,7 @@ function openDeleteConfirm(type: 'skill' | 'item', name: string) {
   right: -6px;
   width: 16px;
   height: 16px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
 }
 
 .skill-badge:hover .card-delete-btn,
@@ -826,8 +827,8 @@ function openDeleteConfirm(type: 'skill' | 'item', name: string) {
     height: 48px;
   }
 
-  .avatar-emoji {
-    font-size: 22px;
+  .avatar-icon {
+    font-size: calc(25px * var(--ui-font-scale));
   }
 
   .tags {
@@ -837,7 +838,7 @@ function openDeleteConfirm(type: 'skill' | 'item', name: string) {
 
   .tag {
     padding: 3px 9px;
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale));
   }
 
   .goal-item,
@@ -877,7 +878,7 @@ function openDeleteConfirm(type: 'skill' | 'item', name: string) {
   }
 
   .badge-tooltip {
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale));
     padding: 8px 10px;
   }
 }

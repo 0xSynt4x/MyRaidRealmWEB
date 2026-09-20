@@ -7,27 +7,28 @@
           v-for="(option, index) in options"
           :key="index"
           class="option-btn"
-          :style="{ color: `var(--option-color-${(index % 4) + 1})` }"
+          :style="{ '--oc': `var(--option-color-${(index % 4) + 1})` }"
           @click="handleOptionClick(option)"
         >
-          {{ option.description }}
+          <!-- 身份色只给编号，正文保持常规色，悬停时才染上 -->
+          <span class="option-no">{{ String(index + 1).padStart(2, '0') }}</span>
+          <span class="option-text">{{ option.description }}</span>
         </button>
       </div>
     </Transition>
 
-    <!-- 输入区域（始终可见） -->
+    <!-- 输入区（始终可见） -->
     <div class="input-container">
-      <!-- 展开/收起按钮 -->
+      <!-- 选项开关：方形辅助键 -->
       <button
         v-if="options.length > 0"
-        class="toggle-options-btn"
+        class="aux-btn"
         :class="{ active: showOptions }"
         :title="showOptions ? t('actionBar.collapseOptions') : t('actionBar.expandOptions')"
         :disabled="isInputLocked"
         @click="toggleOptions"
       >
-        <i :class="showOptions ? 'fa-solid fa-chevron-down' : 'fa-solid fa-chevron-up'"></i>
-        <span class="btn-text">{{ showOptions ? t('actionBar.collapse') : t('actionBar.options') }}</span>
+        <i :class="showOptions ? 'ti ti-chevron-down' : 'ti ti-list'"></i>
       </button>
 
       <textarea
@@ -49,7 +50,7 @@
         :title="isGenerating ? t('actionBar.cancelGeneration') : t('actionBar.sendMessage')"
         @click="handleSend"
       >
-        <i :class="isGenerating ? 'fa-solid fa-stop' : 'fa-solid fa-paper-plane'"></i>
+        <i :class="isGenerating ? 'ti ti-player-stop' : 'ti ti-player-play'"></i>
       </button>
     </div>
   </div>
@@ -392,127 +393,106 @@ async function cancelGeneration() {
 </script>
 
 <style scoped>
-/* ===== ActionBar - 玻璃拟态底栏 ===== */
+/* ===== ActionBar · 阶段2：无框输入栏 =====
+   分区照参照站：方形辅助键 / 无框输入线 / 圆角方块发送键。
+   去掉了原来的渐变装饰线、白色高光层、实心渐变发送按钮和圆角。
+   颜色一律走皮肤变量（ui-tokens.css），换主题自动跟着变。 */
+
 .action-bar {
   position: relative;
-  background: var(--card-bg-strong);
-  background-image: var(--card-sheen);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border-top: 1px solid var(--card-border);
-  box-shadow: 0 -14px 34px rgba(15, 23, 42, 0.08);
+  background: var(--ui-panel);
+  border-top: 1px solid var(--ui-line-soft);
+  /* 跟正文列严格对齐：同样的最宽限制 + 居中。
+     正文列在 ContentText.vue、横幅在 SceneBanner.vue 里用的也都是 var(--ui-reading-w)。
+     ⚠️ width: 100% 不能省 —— 手机布局下 .layout-footer 是 flex column，
+        光有 max-width + margin:0 auto 的话，flex item 会被 auto margin 抵消 stretch，
+        整条输入栏缩到内容宽度（实测 500 视口下只剩 221px）。 */
+  width: 100%;
+  max-width: var(--ui-reading-w, 750px);
+  margin: 0 auto;
 }
 
-/* 顶部渐变装饰线 */
-.action-bar::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: var(--gradient-primary);
-  opacity: 0.4;
-}
-
-.action-bar::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, transparent 42%);
-}
-
-/* ===== 弹出选项层 - 玻璃拟态 ===== */
+/* ===== 弹出选项层 ===== */
 .options-popup {
   position: absolute;
   bottom: 100%;
   left: 0;
   right: 0;
-  background: var(--card-bg-strong);
-  border: 1px solid var(--card-border);
+  background: var(--ui-panel);
+  border: 1px solid var(--ui-line-soft);
   border-bottom: none;
-  border-top-left-radius: var(--radius-lg);
-  border-top-right-radius: var(--radius-lg);
-  box-shadow: 0 -14px 36px rgba(15, 23, 42, 0.12);
-  backdrop-filter: var(--glass-blur-light);
-  -webkit-backdrop-filter: var(--glass-blur-light);
-  max-height: 200px;
-  overflow-y: auto;
-  z-index: 20;
+  box-shadow: none;
+  /* 选项改成圆角块后要留一点内缩，不然圆角会贴着直边 */
+  padding: var(--ui-space-1);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-space-1);
+  max-height: 220px;
   overflow: hidden auto;
+  z-index: 20;
 }
 
 .option-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--ui-space-3);
   width: 100%;
-  padding: 11px 16px;
+  flex: 0 0 auto;
+  padding: var(--ui-space-3) var(--ui-space-4);
   border: none;
-  border-bottom: 1px solid var(--border-light);
+  border-radius: var(--ui-radius-md);
   background: transparent;
-  color: var(--text-primary);
+  color: var(--ui-text);
   font-family: var(--font-base);
-  font-size: var(--text-sm);
-  font-weight: 600;
+  font-size: calc(var(--ui-fs-opt) * var(--ui-font-scale));
+  font-weight: 400;
+  letter-spacing: 0.02em;
   text-align: left;
   cursor: pointer;
-  transition: all var(--transition-normal);
-  line-height: 1.4;
-  position: relative;
-  overflow: hidden;
+  transition:
+    background var(--transition-fast),
+    padding-left var(--transition-fast);
 }
 
-/* 选项悬停 - 左侧彩色指示条 */
-.option-btn::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-  background: currentColor;
-  opacity: 0;
-  transition: opacity var(--transition-fast);
+/* 选项身份色：彩色编号取代原来的左侧竖条 + 底部分隔线 */
+.option-no {
+  flex: 0 0 auto;
+  font-family: var(--font-mono);
+  font-size: calc(var(--ui-fs-label) * var(--ui-font-scale));
+  color: var(--oc, var(--ui-dim));
 }
 
-.option-btn::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, transparent 48%);
-  opacity: 0;
-  transition: opacity var(--transition-fast);
-  pointer-events: none;
+.option-text {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.45;
 }
 
 .option-btn:hover {
-  background: var(--gradient-subtle);
-  padding-left: 20px;
+  background: var(--ui-surface-2);
+  padding-left: var(--ui-space-5);
 }
 
-.option-btn:hover::before {
-  opacity: 0.6;
-}
-
-.option-btn:hover::after {
-  opacity: 1;
+.option-btn:hover .option-text {
+  color: var(--oc, var(--ui-text));
 }
 
 .option-btn:active:not(:disabled) {
-  transform: scale(0.99);
+  background: var(--ui-surface-2);
 }
 
-/* ===== 弹出动画 - 增强 ===== */
+/* ===== 弹出动画 ===== */
 .slide-up-enter-active {
-  transition: all 300ms var(--ease-out-expo);
+  transition: all 260ms var(--ease-out-expo);
 }
 
 .slide-up-leave-active {
-  transition: all 200ms var(--ease-spring);
+  transition: all 180ms var(--ease-spring);
 }
 
 .slide-up-enter-from {
   opacity: 0;
-  transform: translateY(16px);
+  transform: translateY(14px);
 }
 
 .slide-up-leave-to {
@@ -520,209 +500,194 @@ async function cancelGeneration() {
   transform: translateY(8px);
 }
 
-/* ===== 输入容器 ===== */
+/* ===== 输入行 ===== */
 .input-container {
   display: flex;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, transparent 100%);
-  border-top: 1px solid rgba(var(--accent-primary-rgb), 0.08);
+  /* 输入框会随内容长高，按钮贴底才不会跟着往上飘 */
   align-items: flex-end;
+  gap: 12px;
+  /* 左右内边距跟正文列一致（ContentText 的 .reading-column 也是 18px），
+     这样输入框左边缘跟正文文字严格对齐。 */
+  padding: 8px 18px;
+  background: transparent;
 }
 
-/* ===== 展开按钮 - 渐变活跃态 ===== */
-.toggle-options-btn {
-  display: flex;
+/* 辅助键：跟输入框同一套实心块（原来只有 1px 描边、透明底，
+   在实心输入框旁边看着像两种风格） */
+.aux-btn {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 12px 14px;
+  justify-content: center;
   border: none;
-  background: var(--control-bg-elevated);
-  color: var(--text-secondary);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-surface-2);
+  color: var(--ui-muted);
   cursor: pointer;
-  transition: all var(--transition-normal);
-  border-right: 1px solid var(--border-light);
-  font-size: var(--text-xs);
-  font-family: var(--font-base);
-  white-space: nowrap;
+  transition:
+    color var(--transition-fast),
+    background var(--transition-fast);
 }
 
-.toggle-options-btn:hover {
-  color: var(--text-primary);
-  background: color-mix(in srgb, var(--accent-primary) 10%, var(--control-bg));
-  box-shadow: inset -1px 0 0 rgba(var(--accent-primary-rgb), 0.08);
+.aux-btn:hover {
+  color: var(--ui-accent);
+  background: var(--ui-surface-3);
 }
 
-.toggle-options-btn.active {
-  background: color-mix(in srgb, var(--accent-primary) 16%, var(--control-bg));
-  color: var(--accent-primary);
-  border-right-color: rgba(var(--accent-primary-rgb), 0.18);
-  box-shadow: inset -1px 0 0 rgba(var(--accent-primary-rgb), 0.1);
+.aux-btn.active {
+  color: var(--ui-on-accent);
+  background: var(--ui-accent);
 }
 
-.toggle-options-btn i {
-  font-size: 12px;
-  transition: transform var(--transition-spring);
+.aux-btn i {
+  font-size: calc(12px * var(--ui-font-scale));
 }
 
-.toggle-options-btn.active i {
-  transform: rotate(180deg);
-}
-
-.btn-text {
-  font-weight: 500;
-}
-
-/* ===== 输入框 ===== */
+/* 输入区：圆角实心框 —— 跟消息卡片同一套「半透明层」语言。
+   原来是底边一条 1px 下划线，那是旧硬边风格的残留。 */
 .input-field {
   flex: 1;
-  padding: 13px 16px;
+  min-width: 0;
+  min-height: 36px;
+  padding: var(--ui-space-2) var(--ui-space-3);
   border: none;
-  background: transparent;
-  color: var(--text-primary);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-surface-2);
+  color: var(--ui-text);
   font-family: var(--font-base);
-  font-size: var(--text-sm);
+  font-size: calc(var(--ui-fs-input) * var(--ui-font-scale));
+  letter-spacing: 0.06em;
   outline: none;
   resize: none;
   overflow-y: auto;
   line-height: 1.4;
   max-height: 120px;
-  min-height: unset;
   box-sizing: border-box;
   transition:
-    background var(--transition-normal),
-    color var(--transition-fast);
+    background var(--transition-fast),
+    box-shadow var(--transition-fast);
 }
 
+/* 聚焦：底色提一档 + 一圈强调色光晕，不用描边 */
 .input-field:focus {
-  background: linear-gradient(
-    180deg,
-    rgba(var(--accent-primary-rgb), 0.035) 0%,
-    rgba(var(--accent-primary-rgb), 0.015) 100%
-  );
+  background: var(--ui-surface-3);
+  box-shadow: 0 0 0 2px var(--ui-accent-soft);
 }
 
 .input-field::placeholder {
-  color: var(--text-tertiary);
+  color: var(--ui-dim);
   transition: color var(--transition-normal);
 }
 
 .input-field:focus::placeholder {
-  color: rgba(var(--accent-primary-rgb), 0.3);
+  color: var(--ui-muted);
 }
 
-/* ===== 发送按钮 - 渐变 + 发光 ===== */
+/* 发送键：圆角方块，跟旁边的辅助键同款圆角（--ui-radius-md）。
+   填充风格不同是故意的 —— 辅助键是中性实心块，发送键描边 + hover 填充强调色，主次才分得开 */
 .send-btn {
-  min-width: 52px;
-  padding: 12px 16px;
-  border: none;
-  border-left: 1px solid rgba(255, 255, 255, 0.14);
-  background: var(--gradient-primary);
-  color: white;
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--ui-accent);
+  border-radius: var(--ui-radius-md);
+  background: transparent;
+  color: var(--ui-accent);
   cursor: pointer;
-  transition: all var(--transition-normal);
-  position: relative;
-  overflow: hidden;
-  box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.12);
-}
-
-.send-btn::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, transparent 50%);
-  opacity: 0;
-  transition: opacity var(--transition-normal);
-}
-
-.send-btn::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, transparent 44%);
-  opacity: 0.82;
-  pointer-events: none;
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast),
+    border-color var(--transition-fast);
 }
 
 .send-btn:hover:not(:disabled) {
-  box-shadow: 0 12px 28px rgba(var(--accent-primary-rgb), 0.24);
-  transform: translateY(-1px);
-}
-
-.send-btn:hover:not(:disabled)::after {
-  opacity: 1;
+  background: var(--ui-accent);
+  color: var(--ui-on-accent);
 }
 
 .send-btn:active:not(:disabled) {
-  transform: scale(0.95);
+  transform: scale(0.94);
 }
 
 .send-btn i {
-  position: relative;
-  z-index: 1;
-  transition: transform var(--transition-spring);
+  font-size: calc(13px * var(--ui-font-scale));
 }
 
-.send-btn:hover:not(:disabled) i {
-  transform: translateX(1px) translateY(-1px);
-}
-
-/* 发送按钮生成中状态（取消按钮） */
+/* 生成中 = 取消键 */
 .send-btn.generating {
-  background: color-mix(in srgb, var(--accent-danger) 88%, white 12%);
-  cursor: pointer;
+  border-color: var(--accent-danger);
+  color: var(--accent-danger);
+  background: transparent;
+}
+
+.send-btn.generating:hover:not(:disabled) {
+  background: var(--accent-danger);
+  color: var(--ui-on-accent);
 }
 
 .send-btn.send-btn--phase-sync {
-  background: color-mix(in srgb, var(--accent-primary) 82%, white 18%);
-}
-
-.send-btn.generating:hover {
-  box-shadow: 0 12px 28px rgba(var(--accent-danger-rgb), 0.24);
-}
-
-.send-btn.send-btn--phase-sync:hover {
-  box-shadow: 0 12px 28px rgba(var(--accent-primary-rgb), 0.24);
+  border-color: var(--ui-accent);
+  color: var(--ui-accent);
 }
 
 .send-btn:disabled {
-  opacity: 0.6;
-}
-
-/* 输入框禁用状态 */
-.input-field:disabled {
-  background: rgba(var(--accent-primary-rgb), 0.02);
-  color: var(--text-tertiary);
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
-/* 展开按钮禁用状态 */
-.toggle-options-btn:disabled {
+/* 禁用态 */
+.input-field:disabled {
+  color: var(--ui-dim);
+  cursor: not-allowed;
+}
+
+.aux-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
 /* ===== 响应式 ===== */
+/* 左右留白三档，跟横幅（SceneBanner .banner-slot）和正文列（ContentText .reading-column）
+   逐档对齐 —— 输入栏、正文、横幅的内容边缘才会严格在一条线上 */
+@media (max-width: 1023px) {
+  .input-container {
+    padding: 8px 14px;
+  }
+}
+
 @media (max-width: 768px) {
-  .toggle-options-btn {
-    padding: 10px 10px;
+  .input-container {
+    gap: 8px;
+    padding: 6px 12px;
   }
 
-  .toggle-options-btn .btn-text {
-    display: none;
-  }
-
+  /* 手指点得中：撑高一点；字号仍走缩放系数，不写死 */
   .option-btn {
-    padding: 8px 10px;
-    font-size: var(--text-xs);
-    line-height: 1.3;
+    padding: var(--ui-space-3);
+    font-size: calc(12px * var(--ui-font-scale));
   }
 
   .input-field {
-    padding: 10px 12px;
-    font-size: var(--text-xs);
+    font-size: calc(12px * var(--ui-font-scale));
   }
 
   .send-btn {
-    padding: 10px 12px;
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+  }
+
+  .aux-btn {
+    width: 32px;
+    height: 32px;
   }
 }
 </style>

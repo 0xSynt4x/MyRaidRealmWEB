@@ -17,24 +17,24 @@
         :disabled="!canSelect || die.held || !die.scoring"
         @click="$emit('toggle', die.id)"
       >
-        <span class="die-face">{{ dieFaces[die.value] }}</span>
+        <span class="die-face"><i class="ti" :class="dieFaces[die.value]"></i></span>
         <span v-if="die.held" class="die-badge held-badge">
-          <i class="fa-solid fa-lock"></i>
+          <i class="ti ti-lock"></i>
         </span>
         <span v-else-if="!die.held && die.scoring && !die.justRolled" class="die-badge select-badge">
-          <i class="fa-solid fa-check"></i>
+          <i class="ti ti-check"></i>
         </span>
       </button>
     </div>
 
     <!-- 得分组合详情 -->
-    <div v-if="comboDetailText" class="combo-detail">
-      <span>{{ comboDetailText }}</span>
+    <div v-if="comboDetail" class="combo-detail">
+      <span><i class="ti" :class="comboDetail.icon"></i>{{ comboDetail.text }}</span>
     </div>
 
     <!-- 操作提示 -->
     <div v-if="scoringHint" class="scoring-hint">
-      <i class="fa-solid fa-hand-pointer"></i>
+      <i class="ti ti-hand-click"></i>
       <span>{{ scoringHint }}</span>
     </div>
   </div>
@@ -59,12 +59,12 @@ defineEmits<{
 const { t } = useI18n();
 
 const dieFaces: Record<DieValue, string> = {
-  1: '⚀',
-  2: '⚁',
-  3: '⚂',
-  4: '⚃',
-  5: '⚄',
-  6: '⚅',
+  1: 'ti-dice-1',
+  2: 'ti-dice-2',
+  3: 'ti-dice-3',
+  4: 'ti-dice-4',
+  5: 'ti-dice-5',
+  6: 'ti-dice-6',
 };
 
 /** 所有未保留骰子的得分组合 */
@@ -97,24 +97,30 @@ const scoringHint = computed(() => {
   return t('dice.display.selectedDiceHint', { count: selectedCount });
 });
 
-/** 格式化组合列表为可读文本 */
-const comboDetailText = computed(() => {
-  if (props.isAnimating) return '';
+/** 格式化组合列表为可读文本（图标 + 文案） */
+const comboDetail = computed(() => {
+  if (props.isAnimating) return null;
 
   const selectedCount = props.dice.filter(d => !d.held && d.scoring && !d.justRolled).length;
 
   if (selectedCount > 0 && selectedCombos.value.length > 0) {
     const parts = selectedCombos.value.map(c => `${c.label}(${c.score})`);
-    return t('dice.display.selectedCombo', { parts: parts.join(' + '), score: selectedTotalScore.value });
+    return {
+      icon: 'ti-circle-check',
+      text: t('dice.display.selectedCombo', { parts: parts.join(' + '), score: selectedTotalScore.value }),
+    };
   }
 
   if (allCombos.value.length > 0) {
     const totalScore = allCombos.value.reduce((s, c) => s + c.score, 0);
     const parts = allCombos.value.map(c => `${c.label}(${c.score})`);
-    return t('dice.display.availableCombo', { parts: parts.join(' + '), score: totalScore });
+    return {
+      icon: 'ti-star',
+      text: t('dice.display.availableCombo', { parts: parts.join(' + '), score: totalScore }),
+    };
   }
 
-  return '';
+  return null;
 });
 </script>
 

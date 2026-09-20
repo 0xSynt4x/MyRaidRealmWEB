@@ -3,7 +3,7 @@
     <i :class="iconClass"></i>
     <span class="notification-message">{{ message }}</span>
     <button class="notification-close" :title="t('common.close')" @click="$emit('close')">
-      <i class="fa fa-times"></i>
+      <i class="ti ti-x"></i>
     </button>
   </div>
 </template>
@@ -27,14 +27,14 @@ defineEmits<{
 const iconClass = computed(() => {
   switch (props.type) {
     case 'success':
-      return 'fa fa-check-circle';
+      return 'ti ti-circle-check';
     case 'warning':
-      return 'fa fa-exclamation-triangle';
+      return 'ti ti-alert-triangle';
     case 'error':
-      return 'fa fa-times-circle';
+      return 'ti ti-circle-x';
     case 'info':
     default:
-      return 'fa fa-info-circle';
+      return 'ti ti-info-circle';
   }
 });
 </script>
@@ -65,7 +65,7 @@ const iconClass = computed(() => {
 }
 
 .inline-notification i:first-child {
-  font-size: 18px;
+  font-size: calc(18px * var(--ui-font-scale));
   flex-shrink: 0;
 }
 

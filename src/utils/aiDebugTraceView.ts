@@ -1,9 +1,6 @@
 import { tCurrent } from '../i18n';
 import type { MessageRecord } from '../stores/messages';
-import {
-  resolvePreferredVariableDebugPass,
-  type StandaloneAiDebugPassTrace,
-} from './standaloneAiDebug';
+import { resolvePreferredVariableDebugPass, type StandaloneAiDebugPassTrace } from './standaloneAiDebug';
 
 /**
  * AI 调试信息解析工具

@@ -11,7 +11,7 @@
 - **独立运行**：单个 HTML 文件，双击即可打开，无后端、无框架依赖注入。
 - **自带 API 配置**：在页面内填写 OpenAI 兼容接口（地址 / Key / 模型），即可驱动正文与变量更新。
 - **丰富开局预设**：内置约 38 个世界观预设 + 21 个 Workshop 世界包（末世、修仙、官场、权游、漫威、火影、高考模拟等）。
-- **自定义开局向导**：分步配置世界时间、社会、身份、货币、阵营、商业等，或用 AI 一键生成世界。
+- **AI 生成开局**：填写世界与角色的关键信息，一键让 AI 生成开局配置并应用。
 - **变量驱动模拟**：通过本地 `stat_data` + `<JSONPatch>` 维护角色、NPC、商业、阵营等结构化状态，独立于 MVU。
 - **本地补充内容 / 世界书**：按发送目标（正文模型 / 变量模型 / 双向）注入规则与世界资料。
 - **内置小游戏**：骰子（Farkle）玩法面板。
@@ -45,14 +45,14 @@ pnpm watch
 
 可用脚本（见 `package.json`）：
 
-| 命令 | 说明 |
-| --- | --- |
-| `pnpm build` | 生产模式构建，产出自包含 `dist/index.html` |
-| `pnpm build:dev` | development 模式单次构建（便于调试） |
-| `pnpm watch` | development 模式 + `--watch`，改动即重建 |
-| `pnpm typecheck` | 用 `vue-tsc` 做完整类型检查（0 错误） |
-| `pnpm lint` | 运行 ESLint（0 error；warning 为已知技术债） |
-| `pnpm format` | 用 Prettier 格式化（存量代码未整体格式化，建议只对改动文件运行） |
+| 命令             | 说明                                                             |
+| ---------------- | ---------------------------------------------------------------- |
+| `pnpm build`     | 生产模式构建，产出自包含 `dist/index.html`                       |
+| `pnpm build:dev` | development 模式单次构建（便于调试）                             |
+| `pnpm watch`     | development 模式 + `--watch`，改动即重建                         |
+| `pnpm typecheck` | 用 `vue-tsc` 做完整类型检查（0 错误）                            |
+| `pnpm lint`      | 运行 ESLint（0 error；warning 为已知技术债）                     |
+| `pnpm format`    | 用 Prettier 格式化（存量代码未整体格式化，建议只对改动文件运行） |
 
 构建完成后，直接用浏览器打开 `dist/index.html` 即可使用。开发规范见 [`CONTRIBUTING.md`](./CONTRIBUTING.md)。
 
@@ -77,7 +77,7 @@ pnpm watch
 │  ├─ components/           # UI 组件
 │  │  ├─ layout/            # 布局（Header、侧栏、主区、面板）
 │  │  ├─ panels/            # 功能面板（角色、商业、阵营、抽奖、设置…）
-│  │  ├─ setup/             # 开局向导（预设选择、自定义向导、AI 生成）
+│  │  ├─ setup/             # 开局向导（预设选择、创意工坊、AI 生成）
 │  │  ├─ config/            # 世界/玩家/商业/阵营配置
 │  │  ├─ game/              # 骰子小游戏组件
 │  │  └─ common/            # 通用组件

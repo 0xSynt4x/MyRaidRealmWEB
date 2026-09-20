@@ -102,7 +102,7 @@ function getModeStatus(mode: SurvivalMode): string {
   position: relative;
   z-index: 1;
   padding: 2px 10px;
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
   font-weight: 500;
   color: var(--text-secondary);
   cursor: pointer;
@@ -149,7 +149,7 @@ function getModeStatus(mode: SurvivalMode): string {
 }
 
 .mode-status {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   color: var(--text-secondary);
   font-weight: 500;
 }

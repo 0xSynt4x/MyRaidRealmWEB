@@ -48,7 +48,7 @@
         <div class="form-section">
           <template v-if="activeTab === 'world'">
             <div class="form-section-group">
-              <h3 class="section-header">{{ t('setup.aiGenerate.section.worldInput') }}</h3>
+              <h3 class="section-header"><i class="ti ti-world"></i> {{ t('setup.aiGenerate.section.worldInput') }}</h3>
               <div class="form-grid">
                 <div class="form-field">
                   <label for="world-type">{{ t('setup.aiGenerate.field.worldType') }}</label>
@@ -107,8 +107,8 @@
                 @keydown.enter="toggleWorldOptionalSection"
                 @keydown.space.prevent="toggleWorldOptionalSection"
               >
-                <i :class="worldOptionalExpanded ? 'fa-solid fa-chevron-down' : 'fa-solid fa-chevron-right'"></i>
-                <span>{{ t('setup.aiGenerate.section.worldOptional') }}</span>
+                <i :class="worldOptionalExpanded ? 'ti ti-chevron-down' : 'ti ti-chevron-right'"></i>
+                <span><i class="ti ti-pencil"></i> {{ t('setup.aiGenerate.section.worldOptional') }}</span>
               </h3>
 
               <transition name="expand">
@@ -124,7 +124,9 @@
             </div>
 
             <div class="form-section-group">
-              <h3 class="section-header">{{ t('setup.aiGenerate.section.worldFreeform') }}</h3>
+              <h3 class="section-header">
+                <i class="ti ti-pencil"></i> {{ t('setup.aiGenerate.section.worldFreeform') }}
+              </h3>
               <div class="form-field full-width">
                 <label for="world-additional-requirement">{{
                   t('setup.aiGenerate.field.worldAdditionalRequirement')
@@ -142,7 +144,7 @@
 
           <template v-else-if="activeTab === 'player'">
             <div class="form-section-group">
-              <h3 class="section-header">{{ t('setup.aiGenerate.section.playerInput') }}</h3>
+              <h3 class="section-header"><i class="ti ti-user"></i> {{ t('setup.aiGenerate.section.playerInput') }}</h3>
               <div class="form-grid">
                 <div class="form-field">
                   <label for="player-name">{{
@@ -281,8 +283,8 @@
                 @keydown.enter="togglePlayerOptionalSection"
                 @keydown.space.prevent="togglePlayerOptionalSection"
               >
-                <i :class="playerOptionalExpanded ? 'fa-solid fa-chevron-down' : 'fa-solid fa-chevron-right'"></i>
-                <span>{{ t('setup.aiGenerate.section.playerOptional') }}</span>
+                <i :class="playerOptionalExpanded ? 'ti ti-chevron-down' : 'ti ti-chevron-right'"></i>
+                <span><i class="ti ti-tool"></i> {{ t('setup.aiGenerate.section.playerOptional') }}</span>
               </h3>
 
               <transition name="expand">
@@ -379,7 +381,9 @@
             </div>
 
             <div class="form-section-group">
-              <h3 class="section-header">{{ t('setup.aiGenerate.section.playerFreeform') }}</h3>
+              <h3 class="section-header">
+                <i class="ti ti-pencil"></i> {{ t('setup.aiGenerate.section.playerFreeform') }}
+              </h3>
               <div class="form-field full-width">
                 <label for="player-additional-requirement">{{
                   t('setup.aiGenerate.field.playerAdditionalRequirement')
@@ -397,7 +401,7 @@
 
           <template v-else>
             <div class="form-section-group">
-              <h3 class="section-header">{{ t('setup.aiGenerate.section.npcInput') }}</h3>
+              <h3 class="section-header"><i class="ti ti-users"></i> {{ t('setup.aiGenerate.section.npcInput') }}</h3>
               <div class="form-grid">
                 <div class="form-field full-width">
                   <label for="important-npcs">{{ t('setup.aiGenerate.field.importantNpcs') }}</label>
@@ -461,7 +465,9 @@
             </div>
 
             <div class="form-section-group">
-              <h3 class="section-header">{{ t('setup.aiGenerate.section.npcFreeform') }}</h3>
+              <h3 class="section-header">
+                <i class="ti ti-pencil"></i> {{ t('setup.aiGenerate.section.npcFreeform') }}
+              </h3>
               <div class="form-field full-width">
                 <label for="npc-additional-requirement">{{
                   t('setup.aiGenerate.field.npcAdditionalRequirement')
@@ -494,11 +500,7 @@
                 :disabled="!canGenerateModule(currentEditingModuleKey)"
                 @click="handleGenerate(currentEditingModuleKey)"
               >
-                <i
-                  :class="
-                    currentModuleState.isGenerating ? 'fa-solid fa-spinner fa-spin' : 'fa-solid fa-wand-magic-sparkles'
-                  "
-                />
+                <i :class="currentModuleState.isGenerating ? 'ti ti-loader-2 ti-spin' : 'ti ti-wand'" />
                 {{
                   currentModuleState.editableResult.trim()
                     ? t('setup.aiGenerate.action.regenerate')
@@ -510,7 +512,7 @@
                 :disabled="!currentModuleState.isGenerating"
                 @click="handleStopGenerate(currentEditingModuleKey)"
               >
-                <i class="fa-solid fa-stop" />
+                <i class="ti ti-player-stop" />
                 {{ t('setup.aiGenerate.action.stop') }}
               </button>
             </div>
@@ -518,7 +520,7 @@
 
           <div v-if="currentModuleDependencyHint" class="warning-panel">
             <div class="warning-panel__title">
-              <i class="fa-solid fa-link"></i> {{ t('setup.aiGenerate.warning.generationOrder') }}
+              <i class="ti ti-link"></i> {{ t('setup.aiGenerate.warning.generationOrder') }}
             </div>
             <p>{{ currentModuleDependencyHint }}</p>
           </div>
@@ -531,7 +533,7 @@
               role="alert"
               aria-live="polite"
             >
-              <i class="fa-solid fa-triangle-exclamation" />
+              <i class="ti ti-alert-triangle" />
               <span>{{ message }}</span>
             </div>
           </div>
@@ -565,7 +567,7 @@
 
         <div v-if="finalAssemblyState.requiredMissingModules.length > 0" class="warning-panel warning-panel--danger">
           <div class="warning-panel__title">
-            <i class="fa-solid fa-circle-info"></i> {{ t('setup.aiGenerate.warning.requiredMissingTitle') }}
+            <i class="ti ti-info-circle"></i> {{ t('setup.aiGenerate.warning.requiredMissingTitle') }}
           </div>
           <ul>
             <li v-for="moduleName in finalAssemblyState.requiredMissingModules" :key="moduleName">
@@ -576,7 +578,7 @@
 
         <div v-if="finalAssemblyState.optionalMissingModules.length > 0" class="warning-panel">
           <div class="warning-panel__title">
-            <i class="fa-solid fa-circle-info"></i> {{ t('setup.aiGenerate.warning.optionalMissingTitle') }}
+            <i class="ti ti-info-circle"></i> {{ t('setup.aiGenerate.warning.optionalMissingTitle') }}
           </div>
           <ul>
             <li v-for="moduleName in finalAssemblyState.optionalMissingModules" :key="moduleName">
@@ -587,7 +589,7 @@
 
         <div v-if="finalAssemblyState.invalidModules.length > 0" class="warning-panel warning-panel--danger">
           <div class="warning-panel__title">
-            <i class="fa-solid fa-triangle-exclamation"></i> {{ t('setup.aiGenerate.warning.invalidModulesTitle') }}
+            <i class="ti ti-alert-triangle"></i> {{ t('setup.aiGenerate.warning.invalidModulesTitle') }}
           </div>
           <ul>
             <li v-for="message in finalAssemblyState.invalidModules" :key="message">{{ message }}</li>
@@ -596,7 +598,7 @@
 
         <div v-if="finalAssemblyState.validationError" class="warning-panel warning-panel--danger">
           <div class="warning-panel__title">
-            <i class="fa-solid fa-shield-halved"></i> {{ t('setup.aiGenerate.warning.finalValidationFailed') }}
+            <i class="ti ti-shield-half"></i> {{ t('setup.aiGenerate.warning.finalValidationFailed') }}
           </div>
           <p>{{ finalAssemblyState.validationError }}</p>
           <ul v-if="finalValidationHints.length > 0" class="validation-hints-list">
@@ -605,7 +607,9 @@
         </div>
 
         <div class="form-section-group">
-          <h3 class="section-header">{{ t('setup.aiGenerate.section.localContentEntries') }}</h3>
+          <h3 class="section-header">
+            <i class="ti ti-books"></i> {{ t('setup.aiGenerate.section.localContentEntries') }}
+          </h3>
           <p class="section-description">{{ t('setup.aiGenerate.localContentEntriesHelp') }}</p>
           <div class="optional-content">
             <WorldbookEntriesInput v-model="formData.localContentEntries" />
@@ -622,11 +626,11 @@
 
         <div class="apply-row">
           <button class="download-button" :disabled="isResultActionDisabled" @click="handleDownload">
-            <i class="fa-solid fa-download" />
+            <i class="ti ti-download" />
             {{ t('setup.aiGenerate.action.downloadPreset') }}
           </button>
           <button class="apply-button" :disabled="isResultActionDisabled" @click="handleApply">
-            <i class="fa-solid fa-check" />
+            <i class="ti ti-check" />
             {{ t('setup.aiGenerate.action.applyAndSend') }}
           </button>
         </div>
@@ -676,25 +680,25 @@ const moduleTabs = computed<Array<{ key: AiGenerateTabKey; title: string; icon: 
   {
     key: 'world',
     title: t('setup.aiGenerate.tab.worldTitle'),
-    icon: 'fa-solid fa-earth-asia',
+    icon: 'ti ti-world',
     description: t('setup.aiGenerate.tab.worldDescription'),
   },
   {
     key: 'player',
     title: t('setup.aiGenerate.tab.playerTitle'),
-    icon: 'fa-solid fa-id-card',
+    icon: 'ti ti-id',
     description: t('setup.aiGenerate.tab.playerDescription'),
   },
   {
     key: 'npc',
     title: t('setup.aiGenerate.tab.npcTitle'),
-    icon: 'fa-solid fa-user-group',
+    icon: 'ti ti-users',
     description: t('setup.aiGenerate.tab.npcDescription'),
   },
   {
     key: 'final',
     title: t('setup.aiGenerate.tab.finalTitle'),
-    icon: 'fa-solid fa-file-circle-check',
+    icon: 'ti ti-file-check',
     description: t('setup.aiGenerate.tab.finalDescription'),
   },
 ]);
@@ -2067,14 +2071,14 @@ function handleBack() {
 
 .page-title {
   margin: 0 0 8px 0;
-  font-size: 28px;
+  font-size: calc(28px * var(--ui-font-scale));
   font-weight: 700;
   color: var(--text-primary);
 }
 
 .page-subtitle {
   margin: 0;
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale));
   color: var(--text-secondary);
 }
 
@@ -2129,12 +2133,12 @@ function handleBack() {
 }
 
 .module-tab__title {
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale));
   font-weight: 700;
 }
 
 .module-tab__status {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   color: var(--text-secondary);
   margin-top: 2px;
 }
@@ -2163,7 +2167,7 @@ function handleBack() {
 }
 
 .section-header {
-  font-size: 15px;
+  font-size: calc(15px * var(--ui-font-scale));
   font-weight: 700;
   color: var(--text-primary);
   margin: 0 0 12px 0;
@@ -2189,7 +2193,7 @@ button:focus-visible {
 }
 
 .section-description {
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale));
   color: var(--text-secondary);
   margin: -6px 0 0 0;
   line-height: 1.6;
@@ -2203,7 +2207,7 @@ button:focus-visible {
   min-height: 32px;
   padding: 6px 12px;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   font-weight: 700;
   border: 1px solid transparent;
   white-space: nowrap;
@@ -2258,7 +2262,7 @@ button:focus-visible {
 }
 
 .form-field label {
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale));
   font-weight: 600;
   color: var(--text-primary);
 }
@@ -2272,7 +2276,7 @@ button:focus-visible {
   border-radius: 8px;
   background: var(--bg-card);
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale));
   transition: border-color 0.2s ease;
 }
 
@@ -2333,7 +2337,7 @@ button:focus-visible {
 }
 
 .input-label {
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale));
   font-weight: 700;
   color: var(--text-primary);
 }
@@ -2353,7 +2357,7 @@ button:focus-visible {
   min-height: 40px;
   padding: 10px 16px;
   border-radius: 8px;
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale));
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -2411,7 +2415,7 @@ button:focus-visible {
   border-radius: 8px;
   background: color-mix(in srgb, var(--accent-danger) 8%, var(--bg-card));
   color: var(--accent-danger);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale));
   line-height: 1.5;
 }
 
@@ -2422,7 +2426,7 @@ button:focus-visible {
   border: 1px solid rgba(245, 158, 11, 0.24);
   background: rgba(245, 158, 11, 0.08);
   color: #a16207;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale));
 }
 
 .warning-panel--danger {
@@ -2460,7 +2464,7 @@ button:focus-visible {
   border-radius: 8px;
   background: var(--bg-card);
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale));
   font-family: 'Consolas', 'Monaco', monospace;
   line-height: 1.6;
   resize: vertical;
@@ -2517,7 +2521,7 @@ button:focus-visible {
   }
 
   .page-title {
-    font-size: 24px;
+    font-size: calc(24px * var(--ui-font-scale));
   }
 
   .tabs-section {
@@ -2549,11 +2553,11 @@ button:focus-visible {
   }
 
   .page-title {
-    font-size: 20px;
+    font-size: calc(20px * var(--ui-font-scale));
   }
 
   .page-subtitle {
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale));
   }
 }
 </style>

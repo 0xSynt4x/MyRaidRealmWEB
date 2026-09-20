@@ -13,7 +13,7 @@
 
       <!-- 说明卡片 -->
       <div class="info-card">
-        <i class="fa-solid fa-info-circle"></i>
+        <i class="ti ti-info-circle"></i>
         <div class="info-content">
           <p>
             <strong>{{ t('setup.settings.infoTitle') }}</strong>
@@ -25,7 +25,7 @@
 
       <div class="config-section language-config-section">
         <div class="section-header">
-          <i class="fa-solid fa-language"></i>
+          <i class="ti ti-language"></i>
           <span>{{ t('settings.languageSectionTitle') }}</span>
         </div>
         <div class="config-row">
@@ -41,7 +41,7 @@
       <div class="api-config">
         <div class="config-section api-tab-section">
           <div class="section-header">
-            <i class="fa-solid fa-plug"></i>
+            <i class="ti ti-plug"></i>
             <span>{{ t('setup.settings.apiSectionTitle') }}</span>
           </div>
           <p class="api-header-desc">{{ t('setup.settings.apiSectionDesc') }}</p>
@@ -77,12 +77,12 @@
         <template v-if="apiSetupTab === 'main'">
           <div class="config-section">
             <div class="section-header">
-              <i class="fa-solid fa-brain"></i>
+              <i class="ti ti-brain"></i>
               <span>{{ t('settings.mainApiTitle') }}</span>
             </div>
             <p class="api-header-desc">{{ t('settings.mainApiDesc') }}</p>
             <div class="api-standalone-hint">
-              <i class="fa-solid fa-circle-info"></i>
+              <i class="ti ti-info-circle"></i>
               <span>{{ t('settings.mainApiDirectBrowserHint') }}</span>
             </div>
 
@@ -90,7 +90,7 @@
               <div class="api-card main-api-card">
                 <div class="api-card-header">
                   <div class="api-card-title static-title">
-                    <i class="fa-solid fa-comment-dots"></i>
+                    <i class="ti ti-message-dots"></i>
                     <span>{{ t('settings.mainApiCardTitle') }}</span>
                     <small v-if="mainApi.model">{{ mainApi.model }}</small>
                   </div>
@@ -99,14 +99,14 @@
                 <div class="api-card-body">
                   <div class="config-grid">
                     <div class="config-row">
-                      <label><i class="fa-solid fa-cloud"></i> {{ t('settings.source') }}</label>
+                      <label><i class="ti ti-cloud"></i> {{ t('settings.source') }}</label>
                       <select v-model="mainApi.source" class="setup-field-input" @change="handleMainApiSourceChange">
                         <option value="openai_compatible">OpenAI</option>
                       </select>
                     </div>
 
                     <div class="config-row">
-                      <label><i class="fa-solid fa-link"></i> {{ t('settings.apiUrl') }}</label>
+                      <label><i class="ti ti-link"></i> {{ t('settings.apiUrl') }}</label>
                       <input
                         v-model="mainApi.apiurl"
                         type="text"
@@ -116,7 +116,7 @@
                     </div>
 
                     <div class="config-row">
-                      <label><i class="fa-solid fa-key"></i> {{ t('settings.apiKey') }}</label>
+                      <label><i class="ti ti-key"></i> {{ t('settings.apiKey') }}</label>
                       <input
                         v-model="mainApi.key"
                         type="password"
@@ -126,7 +126,7 @@
                     </div>
 
                     <div class="config-row model-row">
-                      <label><i class="fa-solid fa-microchip"></i> {{ t('settings.model') }}</label>
+                      <label><i class="ti ti-cpu"></i> {{ t('settings.model') }}</label>
                       <select
                         v-if="mainApi.availableModels.length > 0"
                         v-model="mainApi.model"
@@ -145,14 +145,14 @@
                         class="model-input setup-field-input"
                       />
                       <button class="fetch-btn setup-chip-btn" :disabled="isLoadingMainApi" @click="fetchMainApiModels">
-                        <i :class="['fa-solid', isLoadingMainApi ? 'fa-spinner fa-spin' : 'fa-download']"></i>
+                        <i :class="['ti', isLoadingMainApi ? 'ti-loader-2 ti-spin' : 'ti-download']"></i>
                       </button>
                     </div>
                   </div>
 
                   <div class="api-card-footer">
                     <button class="save-card-btn setup-chip-btn" @click="saveMainApiCard">
-                      <i class="fa-solid fa-floppy-disk"></i>
+                      <i class="ti ti-device-floppy"></i>
                       <span>{{ t('settings.saveThisApi') }}</span>
                     </button>
                   </div>
@@ -161,7 +161,7 @@
             </div>
 
             <div v-if="configError" class="error-message">
-              <i class="fa-solid fa-exclamation-circle"></i>
+              <i class="ti ti-alert-circle"></i>
               <span>{{ configError }}</span>
             </div>
           </div>
@@ -170,10 +170,10 @@
         <template v-else-if="apiSetupTab === 'assistant'">
           <div class="config-section">
             <div class="section-header">
-              <i class="fa-solid fa-server"></i>
+              <i class="ti ti-server"></i>
               <span>{{ t('settings.apiList') }}</span>
               <button class="add-api-btn setup-chip-btn" @click="handleAddApi">
-                <i class="fa-solid fa-plus"></i>
+                <i class="ti ti-plus"></i>
                 <span>{{ t('settings.addApi') }}</span>
               </button>
             </div>
@@ -183,7 +183,7 @@
               <div v-for="(api, index) in assistantApis" :key="api.id" class="api-card">
                 <div class="api-card-header">
                   <div class="api-card-title" @click="toggleCollapse(index)">
-                    <i :class="['fa-solid', api.collapsed ? 'fa-chevron-right' : 'fa-chevron-down']"></i>
+                    <i :class="['ti', api.collapsed ? 'ti-chevron-right' : 'ti-chevron-down']"></i>
                     <span>{{ t('settings.apiCardTitle', { index: index + 1 }) }}</span>
                     <small v-if="api.model">{{ api.model }}</small>
                   </div>
@@ -195,7 +195,7 @@
                       :title="t('settings.moveUp')"
                       @click="moveApiUp(index)"
                     >
-                      <i class="fa-solid fa-arrow-up"></i>
+                      <i class="ti ti-arrow-up"></i>
                     </button>
                     <button
                       class="icon-btn"
@@ -203,7 +203,7 @@
                       :title="t('settings.moveDown')"
                       @click="moveApiDown(index)"
                     >
-                      <i class="fa-solid fa-arrow-down"></i>
+                      <i class="ti ti-arrow-down"></i>
                     </button>
                     <button
                       class="icon-btn danger"
@@ -211,7 +211,7 @@
                       :title="t('settings.delete')"
                       @click="removeApi(index)"
                     >
-                      <i class="fa-solid fa-trash"></i>
+                      <i class="ti ti-trash"></i>
                     </button>
                   </div>
                 </div>
@@ -219,14 +219,14 @@
                 <div v-if="!api.collapsed" class="api-card-body">
                   <div class="config-grid">
                     <div class="config-row">
-                      <label><i class="fa-solid fa-cloud"></i> {{ t('settings.source') }}</label>
+                      <label><i class="ti ti-cloud"></i> {{ t('settings.source') }}</label>
                       <select v-model="api.source" class="setup-field-input" @change="handleCardSourceChange(index)">
                         <option value="openai_compatible">OpenAI</option>
                       </select>
                     </div>
 
                     <div class="config-row">
-                      <label><i class="fa-solid fa-link"></i> {{ t('settings.apiUrl') }}</label>
+                      <label><i class="ti ti-link"></i> {{ t('settings.apiUrl') }}</label>
                       <input
                         v-model="api.apiurl"
                         type="text"
@@ -236,7 +236,7 @@
                     </div>
 
                     <div class="config-row">
-                      <label><i class="fa-solid fa-key"></i> {{ t('settings.apiKey') }}</label>
+                      <label><i class="ti ti-key"></i> {{ t('settings.apiKey') }}</label>
                       <input
                         v-model="api.key"
                         type="password"
@@ -246,7 +246,7 @@
                     </div>
 
                     <div class="config-row model-row">
-                      <label><i class="fa-solid fa-microchip"></i> {{ t('settings.model') }}</label>
+                      <label><i class="ti ti-cpu"></i> {{ t('settings.model') }}</label>
                       <select
                         v-if="api.availableModels.length > 0"
                         v-model="api.model"
@@ -267,14 +267,14 @@
                         :disabled="isLoadingById[api.id]"
                         @click="fetchModels(index, api.id)"
                       >
-                        <i :class="['fa-solid', isLoadingById[api.id] ? 'fa-spinner fa-spin' : 'fa-download']"></i>
+                        <i :class="['ti', isLoadingById[api.id] ? 'ti-loader-2 ti-spin' : 'ti-download']"></i>
                       </button>
                     </div>
                   </div>
 
                   <div class="api-card-footer">
                     <button class="save-card-btn setup-chip-btn" @click="saveApiCard(index)">
-                      <i class="fa-solid fa-floppy-disk"></i>
+                      <i class="ti ti-device-floppy"></i>
                       <span>{{ t('settings.saveThisApi') }}</span>
                     </button>
                   </div>
@@ -283,7 +283,7 @@
             </div>
 
             <div v-if="configError" class="error-message">
-              <i class="fa-solid fa-exclamation-circle"></i>
+              <i class="ti ti-alert-circle"></i>
               <span>{{ configError }}</span>
             </div>
           </div>
@@ -304,7 +304,7 @@
                     :disabled="!canEditWorldbookEntries"
                     @click="addEditableEntry"
                   >
-                    <i class="fa-solid fa-plus"></i>
+                    <i class="ti ti-plus"></i>
                     {{ t('contentCenter.worldbook.addEntry') }}
                   </button>
                 </div>
@@ -359,8 +359,8 @@
                         </div>
                         <i
                           :class="[
-                            'fa-solid',
-                            isEditableEntryExpanded(index) ? 'fa-chevron-up' : 'fa-chevron-down',
+                            'ti',
+                            isEditableEntryExpanded(index) ? 'ti-chevron-up' : 'ti-chevron-down',
                             'compact-worldbook-chevron',
                           ]"
                         ></i>
@@ -383,7 +383,7 @@
                           :title="t('settings.moveUp')"
                           @click="moveEditableEntryUp(index)"
                         >
-                          <i class="fa-solid fa-arrow-up"></i>
+                          <i class="ti ti-arrow-up"></i>
                         </button>
                         <button
                           class="ghost-btn icon-only-btn compact-icon-btn"
@@ -392,7 +392,7 @@
                           :title="t('settings.moveDown')"
                           @click="moveEditableEntryDown(index)"
                         >
-                          <i class="fa-solid fa-arrow-down"></i>
+                          <i class="ti ti-arrow-down"></i>
                         </button>
                         <button
                           class="ghost-btn icon-only-btn compact-icon-btn danger-btn"
@@ -400,7 +400,7 @@
                           :title="t('settings.delete')"
                           @click="deleteEditableEntry(index)"
                         >
-                          <i class="fa-solid fa-trash"></i>
+                          <i class="ti ti-trash"></i>
                         </button>
                       </div>
                     </div>
@@ -470,7 +470,7 @@
                       </div>
 
                       <div class="preset-detail-note-card worldbook-editor-note compact-worldbook-note">
-                        <i class="fa-solid fa-pen-to-square"></i>
+                        <i class="ti ti-edit"></i>
                         <p>{{ t('contentCenter.worldbook.editorHint') }}</p>
                       </div>
 
@@ -549,8 +549,8 @@
                       </div>
                       <i
                         :class="[
-                          'fa-solid',
-                          isSystemAssetExpanded(asset.id) ? 'fa-chevron-up' : 'fa-chevron-down',
+                          'ti',
+                          isSystemAssetExpanded(asset.id) ? 'ti-chevron-up' : 'ti-chevron-down',
                           'compact-worldbook-chevron',
                         ]"
                       ></i>
@@ -613,7 +613,7 @@
                       </span>
                     </div>
                     <div class="preset-detail-note-card worldbook-editor-note compact-worldbook-note">
-                      <i class="fa-solid fa-circle-info"></i>
+                      <i class="ti ti-info-circle"></i>
                       <p>
                         {{
                           isSystemAssetRouteLocked(asset.id)
@@ -664,13 +664,11 @@
                 <span class="summary-label">{{ t('contentCenter.archive.saveStatus') }}</span>
                 <div class="button-group-wrap">
                   <button class="primary-btn" :disabled="isArchiving" @click="handleArchiveExport">
-                    <i :class="isArchiving ? 'fa-solid fa-spinner fa-spin' : 'fa-solid fa-download'"></i>
+                    <i :class="isArchiving ? 'ti ti-loader-2 ti-spin' : 'ti ti-download'"></i>
                     {{ t('contentCenter.archive.downloadButton') }}
                   </button>
                   <button class="ghost-btn" :disabled="isSavingStandaloneArchive" @click="handleSaveStandaloneArchive">
-                    <i
-                      :class="isSavingStandaloneArchive ? 'fa-solid fa-spinner fa-spin' : 'fa-solid fa-floppy-disk'"
-                    ></i>
+                    <i :class="isSavingStandaloneArchive ? 'ti ti-loader-2 ti-spin' : 'ti ti-device-floppy'"></i>
                     {{ t('contentCenter.archive.saveLocalButton') }}
                   </button>
                 </div>
@@ -680,7 +678,7 @@
                 <span class="summary-label">{{ t('contentCenter.archive.importStatus') }}</span>
                 <div class="button-group-wrap">
                   <button class="ghost-btn" :disabled="isImportingArchive" @click="triggerArchiveImport">
-                    <i :class="isImportingArchive ? 'fa-solid fa-spinner fa-spin' : 'fa-solid fa-file-import'"></i>
+                    <i :class="isImportingArchive ? 'ti ti-loader-2 ti-spin' : 'ti ti-file-import'"></i>
                     {{ t('contentCenter.archive.importButton') }}
                   </button>
                 </div>
@@ -720,19 +718,15 @@
                     :disabled="isRestoringArchiveId === archive.id"
                     @click="handleRestoreStandaloneArchive(archive.id)"
                   >
-                    <i
-                      :class="
-                        isRestoringArchiveId === archive.id ? 'fa-solid fa-spinner fa-spin' : 'fa-solid fa-rotate-left'
-                      "
-                    ></i>
+                    <i :class="isRestoringArchiveId === archive.id ? 'ti ti-loader-2 ti-spin' : 'ti ti-rotate'"></i>
                     {{ t('contentCenter.archive.restoreButton') }}
                   </button>
                   <button class="ghost-btn" @click="handleDownloadStandaloneArchive(archive.id)">
-                    <i class="fa-solid fa-file-arrow-down"></i>
+                    <i class="ti ti-file-download"></i>
                     {{ t('contentCenter.archive.exportSavedButton') }}
                   </button>
                   <button class="ghost-btn danger-btn" @click="handleDeleteStandaloneArchive(archive.id)">
-                    <i class="fa-solid fa-trash"></i>
+                    <i class="ti ti-trash"></i>
                     {{ t('contentCenter.archive.deleteButton') }}
                   </button>
                 </div>
@@ -761,7 +755,7 @@
           <span>{{ t('settings.skip') }}</span>
         </button>
         <button class="start-btn setup-primary-btn" :disabled="isStarting" @click="handleStart">
-          <i :class="['fa-solid', isStarting ? 'fa-spinner fa-spin' : 'fa-play']"></i>
+          <i :class="['ti', isStarting ? 'ti-loader-2 ti-spin' : 'ti-player-play']"></i>
           <span>{{ t('settings.startGame') }}</span>
         </button>
       </div>
@@ -1464,14 +1458,14 @@ async function startGame() {
 
 .page-title {
   margin: 0 0 8px 0;
-  font-size: 24px;
+  font-size: calc(24px * var(--ui-font-scale));
   font-weight: 700;
   color: var(--text-primary);
 }
 
 .page-subtitle {
   margin: 0;
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale));
   color: var(--text-secondary);
 }
 
@@ -1490,14 +1484,14 @@ async function startGame() {
 
 .info-card > i {
   color: var(--accent-primary);
-  font-size: 20px;
+  font-size: calc(20px * var(--ui-font-scale));
   flex-shrink: 0;
   margin-top: 2px;
 }
 
 .info-content p {
   margin: 0 0 8px 0;
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale));
   color: var(--text-primary);
   line-height: 1.5;
 }
@@ -1508,7 +1502,7 @@ async function startGame() {
 
 .info-content .hint {
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale));
 }
 
 .api-config {
@@ -1537,7 +1531,7 @@ async function startGame() {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 15px;
+  font-size: calc(15px * var(--ui-font-scale));
   font-weight: 600;
   color: var(--text-primary);
   margin-bottom: 12px;
@@ -1549,7 +1543,7 @@ async function startGame() {
 
 .header-hint {
   margin-left: auto;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   font-weight: 400;
   color: var(--text-secondary);
 }
@@ -1567,7 +1561,7 @@ async function startGame() {
   padding: 6px 10px;
   box-shadow: var(--control-shadow);
   cursor: pointer;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   transition:
     border-color var(--motion-fast),
     background var(--motion-fast),
@@ -1623,14 +1617,14 @@ async function startGame() {
 }
 
 .mode-btn small {
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
   color: var(--text-tertiary);
   text-align: center;
 }
 
 .api-header-desc {
   margin: -4px 0 12px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   color: var(--text-secondary);
   line-height: 1.5;
 }
@@ -1645,7 +1639,7 @@ async function startGame() {
   border: 1px solid color-mix(in srgb, var(--accent-warning, #f59e0b) 30%, var(--card-border));
   background: color-mix(in srgb, var(--accent-warning, #f59e0b) 10%, var(--card-bg-strong));
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   line-height: 1.5;
 }
 
@@ -1749,14 +1743,14 @@ async function startGame() {
   margin: 0;
   color: var(--text-secondary);
   line-height: 1.6;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
 }
 
 .settings-management-panel .summary-label,
 .settings-management-panel .asset-meta,
 .settings-management-panel .status-hint {
   color: var(--text-tertiary);
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
   line-height: 1.45;
   letter-spacing: 0.04em;
 }
@@ -1769,7 +1763,7 @@ async function startGame() {
   gap: 6px;
   padding: 6px 10px;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   line-height: 1;
 }
 
@@ -1937,7 +1931,7 @@ async function startGame() {
 .settings-management-panel .compact-summary-item dt {
   margin: 0;
   color: var(--text-tertiary);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   line-height: 1.45;
 }
 
@@ -1981,7 +1975,7 @@ async function startGame() {
 
 .settings-management-panel .archive-message-preview {
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   line-height: 1.7;
 }
 
@@ -2094,7 +2088,7 @@ async function startGame() {
   min-width: 44px;
   padding-top: 2px;
   color: var(--accent-primary);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   font-weight: 700;
 }
 
@@ -2105,7 +2099,7 @@ async function startGame() {
 
 .settings-management-panel .system-order {
   min-width: 30px;
-  font-size: 10px;
+  font-size: calc(10px * var(--ui-font-scale));
 }
 
 .settings-management-panel .worldbook-entry-copy {
@@ -2130,7 +2124,7 @@ async function startGame() {
 
 .settings-management-panel .compact-worldbook-title-line strong {
   color: var(--text-primary);
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--ui-font-scale));
   line-height: 1.28;
   letter-spacing: 0.01em;
   min-width: 0;
@@ -2143,14 +2137,14 @@ async function startGame() {
   justify-content: center;
   padding: 5px 10px;
   border-radius: 999px;
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
   line-height: 1;
   font-weight: 700;
 }
 
 .settings-management-panel .compact-badge {
   padding: 4px 8px;
-  font-size: 10px;
+  font-size: calc(10px * var(--ui-font-scale));
 }
 
 .settings-management-panel .entry-enabled-badge.enabled {
@@ -2165,13 +2159,13 @@ async function startGame() {
 
 .settings-management-panel .compact-tag {
   padding: 3px 7px;
-  font-size: 10px;
+  font-size: calc(10px * var(--ui-font-scale));
 }
 
 .settings-management-panel .compact-worldbook-preview {
   min-width: 0;
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
   line-height: 1.3;
   flex: 1 1 180px;
   overflow: hidden;
@@ -2183,7 +2177,7 @@ async function startGame() {
 .settings-management-panel .compact-worldbook-chevron {
   margin-top: 4px;
   color: var(--text-tertiary);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   flex-shrink: 0;
 }
 
@@ -2375,7 +2369,7 @@ async function startGame() {
   background: transparent;
   color: var(--text-secondary);
   font: inherit;
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
   font-weight: 600;
   cursor: pointer;
   transition:
@@ -2410,7 +2404,7 @@ async function startGame() {
 .settings-management-panel .compact-system-toggle {
   min-height: 32px;
   padding: 6px 10px;
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
 }
 
 .settings-management-panel .compact-system-meta-line {
@@ -2418,7 +2412,7 @@ async function startGame() {
   flex-direction: column;
   gap: 4px;
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
   line-height: 1.45;
   padding-inline: 2px;
 }
@@ -2509,7 +2503,7 @@ async function startGame() {
 
 .config-row label {
   width: 120px;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale));
   color: var(--text-secondary);
   display: flex;
   align-items: center;
@@ -2524,7 +2518,7 @@ async function startGame() {
   border: 1px solid var(--control-border);
   border-radius: var(--radius-md);
   background: var(--control-bg);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale));
   color: var(--text-primary);
   box-shadow: var(--control-shadow);
 }
@@ -2547,7 +2541,7 @@ async function startGame() {
   background: var(--control-bg);
   box-shadow: var(--control-shadow);
   cursor: pointer;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale));
   color: var(--text-secondary);
   transition:
     border-color var(--motion-fast),
@@ -2630,7 +2624,7 @@ async function startGame() {
   gap: 6px;
   box-shadow: var(--control-shadow);
   cursor: pointer;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale));
   transition:
     border-color var(--motion-fast),
     background var(--motion-fast),
@@ -2654,7 +2648,7 @@ async function startGame() {
   border: 1px solid color-mix(in srgb, var(--accent-danger) 30%, var(--card-border));
   border-radius: var(--radius-md);
   color: var(--accent-danger);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale));
   margin-top: 12px;
 }
 
@@ -2671,7 +2665,7 @@ async function startGame() {
   border-radius: var(--radius-md);
   box-shadow: var(--control-shadow);
   color: var(--text-secondary);
-  font-size: 15px;
+  font-size: calc(15px * var(--ui-font-scale));
   cursor: pointer;
   transition:
     border-color var(--motion-fast),
@@ -2699,7 +2693,7 @@ async function startGame() {
   border-radius: var(--radius-md);
   box-shadow: 0 10px 24px rgba(var(--accent-primary-rgb), 0.18);
   color: white;
-  font-size: 16px;
+  font-size: calc(16px * var(--ui-font-scale));
   font-weight: 600;
   cursor: pointer;
   transition:

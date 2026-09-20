@@ -13,7 +13,7 @@
     <!-- 消息头部 -->
     <div class="message-header">
       <div class="floor-info">
-        <span class="floor-text">{{ floorText }}</span>
+        <span class="floor-text"><i class="ti" :class="floorIconClass"></i>{{ floorText }}</span>
       </div>
 
       <div v-if="streamStateLabel || variableUpdateStatusInfo" class="message-meta">
@@ -30,7 +30,7 @@
       <div class="message-actions">
         <!-- 编辑按钮（用户和AI楼层都有） -->
         <button class="btn-action btn-edit" :title="t('messageCard.editMessage')" @click="handleEdit">
-          <i class="fa fa-edit"></i>
+          <i class="ti ti-pencil"></i>
         </button>
 
         <!-- 用户楼层：重新发送按钮 -->
@@ -41,7 +41,7 @@
           :disabled="actionsDisabled"
           @click="handleResend"
         >
-          <i class="fa fa-paper-plane"></i>
+          <i class="ti ti-send"></i>
         </button>
 
         <!-- AI楼层：重新生成按钮 -->
@@ -52,7 +52,7 @@
           :disabled="actionsDisabled"
           @click="handleRegenerate"
         >
-          <i class="fa fa-refresh"></i>
+          <i class="ti ti-refresh"></i>
         </button>
 
         <!-- 删除按钮（所有楼层都有） -->
@@ -62,7 +62,7 @@
           :disabled="actionsDisabled"
           @click="handleDelete"
         >
-          <i class="fa fa-trash"></i>
+          <i class="ti ti-trash"></i>
         </button>
       </div>
     </div>
@@ -139,10 +139,10 @@
       ></textarea>
       <div class="edit-buttons">
         <button class="btn-action btn-save" :title="t('messageCard.saveEdit')" @click="handleSaveEdit">
-          <i class="fa fa-check"></i>
+          <i class="ti ti-check"></i>
         </button>
         <button class="btn-action btn-cancel" :title="t('messageCard.cancelEdit')" @click="handleCancelEdit">
-          <i class="fa fa-times"></i>
+          <i class="ti ti-x"></i>
         </button>
       </div>
     </div>
@@ -291,15 +291,17 @@ const showVariableUpdateSection = computed(() => {
   return Boolean(updateFormatted.value || variableUpdateStatusInfo.value || props.message.variable_update_warning);
 });
 
-// 楼层文本（简化格式：#楼层号+图标+名称）
+// 楼层文本（简化格式：#楼层号 + 图标 + 名称）
 const floorText = computed(() => {
   if (props.message.role === 'user') {
     // 从本地状态读取玩家姓名
     const playerName = statDataStore.data.玩家.姓名 || t('messageCard.player');
-    return `#${props.message.message_id}👤 ${playerName}`;
+    return `#${props.message.message_id} ${playerName}`;
   }
-  return `#${props.message.message_id}😺 ${t('messageCard.ai')}`;
+  return `#${props.message.message_id} ${t('messageCard.ai')}`;
 });
+
+const floorIconClass = computed(() => (props.message.role === 'user' ? 'ti-user' : 'ti-robot'));
 
 // 编辑状态
 const isEditing = computed(() => messagesStore.isEditing(props.message.message_id));
@@ -377,27 +379,21 @@ function handleEditInput() {
 <style scoped>
 /* ===== 消息卡片 - 增强玻璃拟态 ===== */
 .message {
-  margin-bottom: 16px;
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  background: var(--card-bg);
-  backdrop-filter: var(--glass-blur-light);
-  -webkit-backdrop-filter: var(--glass-blur-light);
-  border: 1px solid var(--card-border);
-  box-shadow: var(--card-shadow);
-  transition:
-    box-shadow var(--motion-normal),
-    border-color var(--motion-normal),
-    transform var(--motion-normal);
+  margin-bottom: var(--ui-msg-gap);
+  padding: var(--ui-msg-pad-y) var(--ui-msg-pad-x);
+  border-radius: var(--ui-radius-lg);
+  background: var(--ui-surface-1);
+  transition: background var(--transition-normal);
   animation: messageSlideIn 0.5s var(--ease-out-expo) forwards;
 }
 
-.message--streaming {
-  border-color: rgba(var(--accent-success-rgb), 0.28);
+/* 流式 / 部分完成：原来靠左侧边框色提示，边框去掉后改用底色微调 */
+.message--streaming.assistant-message {
+  background: rgba(var(--accent-success-rgb), 0.055);
 }
 
-.message--partial {
-  border-color: rgba(251, 191, 36, 0.28);
+.message--partial.assistant-message {
+  background: rgba(var(--accent-warning-rgb), 0.055);
 }
 
 /* 消息入场动画 - 增强 */
@@ -413,9 +409,7 @@ function handleEditInput() {
 }
 
 .message:hover {
-  box-shadow: var(--card-shadow-hover);
-  transform: translateY(-2px);
-  border-color: rgba(var(--accent-primary-rgb), 0.14);
+  background: var(--ui-surface-2);
 }
 
 .btn-action:disabled {
@@ -424,54 +418,26 @@ function handleEditInput() {
   transform: none;
 }
 
-/* 用户消息样式 - 蓝色玻璃 */
+/* 用户消息 - 强调色底 */
 .user-message {
-  background: linear-gradient(
-    135deg,
-    rgba(var(--accent-primary-rgb), 0.05) 0%,
-    rgba(var(--accent-primary-rgb), 0.02) 100%
-  );
-  border-color: rgba(var(--accent-primary-rgb), 0.08);
+  background: var(--ui-surface-me);
 }
 
-.user-message .message-header {
-  background: linear-gradient(
-    135deg,
-    rgba(var(--accent-primary-rgb), 0.88) 0%,
-    rgba(var(--accent-primary-rgb), 0.72) 100%
-  );
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  color: white;
+.user-message:hover {
+  background: rgba(var(--accent-primary-rgb), 0.09);
 }
 
-/* AI消息样式 - 绿色玻璃 */
+/* AI 消息 - 中性白底 */
 .assistant-message {
-  background: linear-gradient(
-    135deg,
-    rgba(var(--accent-success-rgb), 0.05) 0%,
-    rgba(var(--accent-success-rgb), 0.02) 100%
-  );
-  border-color: rgba(var(--accent-success-rgb), 0.08);
-}
-
-.assistant-message .message-header {
-  background: linear-gradient(
-    135deg,
-    rgba(var(--accent-success-rgb), 0.88) 0%,
-    rgba(var(--accent-success-rgb), 0.72) 100%
-  );
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  color: white;
+  background: var(--ui-surface-1);
 }
 
 .message--streaming.assistant-message .message-header {
-  background: linear-gradient(135deg, rgba(var(--accent-success-rgb), 0.98) 0%, rgba(52, 211, 153, 0.84) 100%);
+  color: var(--accent-success);
 }
 
 .message--partial.assistant-message .message-header {
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.9) 0%, rgba(217, 119, 6, 0.84) 100%);
+  color: var(--accent-warning);
 }
 
 /* 消息头部 */
@@ -479,8 +445,12 @@ function handleEditInput() {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 4px 10px;
+  padding: 0 0 6px;
   gap: 8px;
+  font-family: var(--font-mono);
+  font-size: calc(11px * var(--ui-font-scale));
+  letter-spacing: 0.14em;
+  color: var(--ui-dim);
 }
 
 .floor-info {
@@ -510,9 +480,9 @@ function handleEditInput() {
   gap: 4px;
   padding: 2px 8px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  font-size: 11px;
+  background: var(--ui-panel);
+  border: 1px solid var(--ui-line-soft);
+  font-size: calc(11px * var(--ui-font-scale));
   font-weight: 700;
   white-space: nowrap;
 }
@@ -525,7 +495,7 @@ function handleEditInput() {
   padding: 2px 8px;
   border-radius: 999px;
   border: 1px solid transparent;
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
   font-weight: 700;
   white-space: nowrap;
 }
@@ -568,11 +538,11 @@ function handleEditInput() {
   width: max(26px, var(--touch-target-min));
   height: max(26px, var(--touch-target-min));
   padding: 0;
-  border: 1px solid rgba(255, 255, 255, 0.22);
+  border: 1px solid var(--ui-line-soft);
   border-radius: var(--radius-sm);
-  background: rgba(255, 255, 255, 0.16);
+  background: var(--ui-panel);
   backdrop-filter: blur(8px);
-  color: white;
+  color: var(--ui-muted);
   cursor: pointer;
   transition: all var(--motion-fast);
   display: flex;
@@ -587,7 +557,7 @@ function handleEditInput() {
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at center, rgba(255, 255, 255, 0.3) 0%, transparent 70%);
+  background: radial-gradient(circle at center, rgba(var(--accent-primary-rgb), 0.22) 0%, transparent 70%);
   opacity: 0;
   transform: scale(0);
   transition: all 0.4s ease;
@@ -601,7 +571,9 @@ function handleEditInput() {
 .message-actions button:hover {
   transform: scale(1.15) translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  background: rgba(255, 255, 255, 0.25);
+  background: var(--ui-accent-soft);
+  border-color: var(--ui-accent);
+  color: var(--ui-accent);
 }
 
 .message-actions button:active {
@@ -609,7 +581,7 @@ function handleEditInput() {
 }
 
 .message-actions button i {
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale));
   position: relative;
   z-index: 1;
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -670,33 +642,47 @@ function handleEditInput() {
 
 /* 消息内容 */
 .message-content {
-  padding: 16px;
+  padding: 0;
   font-family: var(--font-base);
   font-size: var(--text-base);
+  /* 行距跟随设置里的五档（--line-height-base，由 .app-container 的 data-line 决定）。
+     原来这里写死 1.8，设置里的行距滑块怎么拖都没反应。 */
   line-height: var(--line-height-base);
+  letter-spacing: 0.03em;
   color: var(--text-primary);
   white-space: normal;
   word-break: break-word;
+  /* 去掉了写死的深色投影：没有背景图时它只会让浅色主题的字发虚。
+     以后做背景图层时再按主题补回来。 */
 }
 
+/* 正文档位：默认档（2）落在 17px，即参照站的正文大小。
+   档位均匀铺开 15→23，最小档也保证可读。 */
 .message-content[data-size='1'] {
-  font-size: 13px;
+  font-size: calc(15px * var(--ui-font-scale));
 }
 
 .message-content[data-size='2'] {
-  font-size: 14px;
+  font-size: calc(17px * var(--ui-font-scale));
 }
 
 .message-content[data-size='3'] {
-  font-size: 16px;
+  font-size: calc(19px * var(--ui-font-scale));
 }
 
 .message-content[data-size='4'] {
-  font-size: 18px;
+  font-size: calc(21px * var(--ui-font-scale));
 }
 
 .message-content[data-size='5'] {
-  font-size: 20px;
+  font-size: calc(23px * var(--ui-font-scale));
+}
+
+/* 内心独白：*文字* 会被富文本渲染成 <em>（见 utils/messageFormatting.ts）。
+   用斜体 + 次要色跟叙述正文拉开层次，不靠图标。 */
+.text-content :deep(em) {
+  font-style: italic;
+  color: var(--text-secondary);
 }
 
 .partial-banner {
@@ -706,7 +692,7 @@ function handleEditInput() {
   background: rgba(245, 158, 11, 0.12);
   border: 1px solid rgba(245, 158, 11, 0.24);
   color: #b45309;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   font-weight: 600;
 }
 
@@ -718,7 +704,7 @@ function handleEditInput() {
   border-radius: 999px;
   background: rgba(var(--accent-success-rgb), 0.12);
   color: var(--accent-success);
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
   font-weight: 700;
 }
 
@@ -747,14 +733,13 @@ function handleEditInput() {
 }
 
 /* 折叠区块 - 玻璃拟态 */
+/* 折叠块（思考过程 / 总结）：去掉外框、底色和模糊，
+   只留一条左侧细线表示「这是附属内容」，正文本体直接坐在底色上。 */
 .fold-block {
   margin-bottom: 3px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--card-border);
-  border-left: 3px solid var(--accent-primary);
-  background: var(--card-bg);
-  backdrop-filter: var(--glass-blur-light);
-  -webkit-backdrop-filter: var(--glass-blur-light);
+  border: 0;
+  border-left: 1px solid var(--ui-line-soft);
+  background: transparent;
   overflow: hidden;
   transition: border-color var(--motion-normal);
 }
@@ -885,7 +870,7 @@ function handleEditInput() {
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at center, rgba(255, 255, 255, 0.3) 0%, transparent 70%);
+  background: radial-gradient(circle at center, rgba(var(--accent-primary-rgb), 0.22) 0%, transparent 70%);
   opacity: 0;
   transform: scale(0);
   transition: all 0.4s ease;
@@ -897,7 +882,7 @@ function handleEditInput() {
 }
 
 .edit-buttons button i {
-  font-size: 18px;
+  font-size: calc(18px * var(--ui-font-scale));
   position: relative;
   z-index: 1;
 }
@@ -912,8 +897,8 @@ function handleEditInput() {
 }
 
 .btn-save {
-  background: var(--gradient-success) !important;
-  color: white !important;
+  background: var(--accent-success) !important;
+  color: #15120d !important;
 }
 
 .btn-save:hover {
@@ -922,68 +907,23 @@ function handleEditInput() {
 
 .btn-cancel {
   background: linear-gradient(135deg, var(--text-secondary) 0%, var(--text-tertiary) 100%) !important;
-  color: white !important;
+  color: var(--ui-on-accent) !important;
 }
 
 .btn-cancel:hover {
   opacity: 0.85;
 }
 
-/* 暗色主题适配 - 增强发光 */
-:global([data-theme='dark']) .message {
-  box-shadow:
-    0 4px 24px rgba(0, 0, 0, 0.25),
-    0 1px 2px rgba(0, 0, 0, 0.15),
-    inset 0 1px 0 rgba(255, 255, 255, 0.04);
-}
-
-:global([data-theme='dark']) .message:hover {
-  box-shadow:
-    0 8px 40px rgba(0, 0, 0, 0.3),
-    0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-:global([data-theme='dark']) .user-message {
-  background: linear-gradient(
-    135deg,
-    rgba(var(--accent-primary-rgb), 0.1) 0%,
-    rgba(var(--accent-primary-rgb), 0.03) 100%
-  );
-}
-
-:global([data-theme='dark']) .user-message .message-header {
-  background: linear-gradient(
-    135deg,
-    rgba(var(--accent-primary-rgb), 0.92) 0%,
-    rgba(var(--accent-primary-rgb), 0.78) 100%
-  );
-}
-
-:global([data-theme='dark']) .assistant-message {
-  background: linear-gradient(
-    135deg,
-    rgba(var(--accent-success-rgb), 0.1) 0%,
-    rgba(var(--accent-success-rgb), 0.03) 100%
-  );
-}
-
-:global([data-theme='dark']) .assistant-message .message-header {
-  background: linear-gradient(
-    135deg,
-    rgba(var(--accent-success-rgb), 0.92) 0%,
-    rgba(var(--accent-success-rgb), 0.78) 100%
-  );
-}
-
 /* 响应式 */
 @media (max-width: 768px) {
   .message {
-    margin-bottom: 12px;
-    border-radius: 14px;
+    margin-bottom: var(--ui-space-4);
+    /* 左右内边距由 .message 统一提供，header 不再自己加 */
+    padding: var(--ui-space-4) var(--ui-space-3);
   }
 
   .message-header {
-    padding: 6px 10px;
+    padding: 0 0 6px;
     flex-wrap: nowrap; /* 禁止换行 */
     gap: 6px;
   }
@@ -994,7 +934,7 @@ function handleEditInput() {
   }
 
   .floor-text {
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale));
   }
 
   .message-meta {
@@ -1013,7 +953,7 @@ function handleEditInput() {
   .inline-phase-indicator,
   .stream-state-badge {
     padding: 1px 6px;
-    font-size: 10px;
+    font-size: calc(10px * var(--ui-font-scale));
   }
 
   .message-actions button {
@@ -1023,7 +963,7 @@ function handleEditInput() {
   }
 
   .message-actions button i {
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale));
   }
 
   .message-content {
@@ -1050,7 +990,7 @@ function handleEditInput() {
   }
 
   .edit-buttons button i {
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale));
   }
 }
 
@@ -1065,7 +1005,7 @@ function handleEditInput() {
   }
 
   .floor-text {
-    font-size: 10px;
+    font-size: calc(10px * var(--ui-font-scale));
   }
 
   .message-actions button {
@@ -1074,17 +1014,17 @@ function handleEditInput() {
   }
 
   .message-actions button i {
-    font-size: 10px;
+    font-size: calc(10px * var(--ui-font-scale));
   }
 
   .message-content {
     padding: 8px;
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale));
   }
 
   .variable-update-hint,
   .variable-update-warning {
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale));
   }
 
   .fold-title {
@@ -1101,7 +1041,7 @@ function handleEditInput() {
   }
 
   .edit-buttons button i {
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale));
   }
 }
 </style>

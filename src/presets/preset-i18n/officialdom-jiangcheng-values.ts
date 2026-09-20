@@ -72,8 +72,7 @@ const valueTranslations: Record<string, string> = {
     'Familiar with national, provincial, and municipal policies, able to accurately grasp policy direction.',
   '熟悉项目审批流程,能够高效处理各类项目申报':
     'Familiar with project approval procedures, able to handle various project applications efficiently.',
-  '公文写作规范,能够撰写各类汇报材料':
-    'Skilled in standardized official writing and able to draft various reports.',
+  '公文写作规范,能够撰写各类汇报材料': 'Skilled in standardized official writing and able to draft various reports.',
   专业技能: 'Professional Skill',
   通用技能: 'General Skill',
   一般: 'Average',
@@ -127,8 +126,7 @@ const valueTranslations: Record<string, string> = {
   年龄焦虑: 'Age Anxiety',
   持续性风险: 'Ongoing risk',
   '5年内需要实现晋升突破': 'A promotion breakthrough is needed within five years',
-  '严格遵守纪律,拒绝一切违规行为,保持清白':
-    'Strictly follow discipline, reject all violations, and stay clean.',
+  '严格遵守纪律,拒绝一切违规行为,保持清白': 'Strictly follow discipline, reject all violations, and stay clean.',
   '提升业务能力,积累政绩,扩大人脉': 'Improve professional ability, build achievements, and expand connections.',
   '抓住关键机会,争取在40岁前晋升副处':
     'Seize key opportunities and strive for deputy division-level promotion before age 40.',
@@ -143,9 +141,8 @@ const valueTranslations: Record<string, string> = {
   '保持与组织部的良好关系,表达发展意愿':
     'Maintain good relations with the Organization Department and express willingness to develop.',
   '做好业务工作,让领导看到能力': 'Do the work well and let leaders see your ability.',
-  '主动请缨参与申报工作,在关键项目上出彩':
-    'Volunteer for the application work and stand out on key projects.',
-  '适时表达去基层或关键部门锻炼的意愿':
+  '主动请缨参与申报工作,在关键项目上出彩': 'Volunteer for the application work and stand out on key projects.',
+  适时表达去基层或关键部门锻炼的意愿:
     'Express willingness at the right time to gain experience at the grassroots or in key departments.',
   '高质量完成重点项目审批,争取获得领导肯定':
     'Complete key project approvals to a high standard and seek leadership recognition.',
@@ -226,7 +223,7 @@ const valueTranslations: Record<string, string> = {
   '这次新区申报是个机会，要是成了，我也许能动一动...':
     'This new district application is an opportunity. If it succeeds, I might be able to move up...',
   '老张最近压力大，得给他炖点补汤。顺便问问李局长夫人的那款包哪里买的。':
-    'Old Zhang has been under pressure lately; I should make him some nourishing soup. And while I am at it, ask Director Li\'s wife where she bought that handbag.',
+    "Old Zhang has been under pressure lately; I should make him some nourishing soup. And while I am at it, ask Director Li's wife where she bought that handbag.",
   '这方案明明很完美，领导非要改什么字体大小...':
     'This plan is clearly perfect, but the leaders insist on changing things like font size...',
   '深谙官场规则,人脉广泛,与省发改委关系密切':
@@ -235,15 +232,13 @@ const valueTranslations: Record<string, string> = {
     'Well-informed, skilled at gathering officialdom news, with a wide social circle.',
   '精通通信技术,对信息化建设有独到见解,与各运营商关系良好':
     'Expert in communications technology, with unique insight into informatization projects and good relations with telecom operators.',
-  '深色西装,白衬衫,系着暗红色领带,佩戴一块低调的手表':
-    'Dark suit, white shirt, dark red tie, and a discreet watch.',
+  '深色西装,白衬衫,系着暗红色领带,佩戴一块低调的手表': 'Dark suit, white shirt, dark red tie, and a discreet watch.',
   '深蓝色职业套装,佩戴珍珠项链': 'Dark blue business suit with a pearl necklace',
   '灰色夹克,深色休闲裤,穿着较为随意': 'Gray jacket and dark casual trousers, dressed rather casually',
   市发改委主任办公室: "Director's Office, Municipal Development and Reform Commission",
   市电信局办公楼: 'Municipal Telecommunications Bureau Office Building',
   市电信局网络科办公室: 'Network Section Office, Municipal Telecommunications Bureau',
-  '正常工作,近期因新区申报工作较为忙碌':
-    'Working normally, recently busy with the new district application.',
+  '正常工作,近期因新区申报工作较为忙碌': 'Working normally, recently busy with the new district application.',
   正常工作: 'Working normally',
   '正常工作,正在推进全市政务网络升级项目':
     'Working normally, currently advancing the citywide government network upgrade project.',
@@ -256,8 +251,7 @@ const valueTranslations: Record<string, string> = {
   笑面虎: 'Smiling tiger',
   '贤内助（？）': 'Good wife and helper (?)',
   实干家: 'Doer',
-  '已婚,妻子王淑芬在市电信局工作':
-    'Married; wife Wang Shufen works at the municipal telecommunications bureau',
+  '已婚,妻子王淑芬在市电信局工作': 'Married; wife Wang Shufen works at the municipal telecommunications bureau',
   '已婚,丈夫张建国是市发改委主任':
     'Married; husband Zhang Jianguo is director of the municipal Development and Reform Commission',
   '已婚,妻子是中学教师': 'Married; wife is a middle school teacher',

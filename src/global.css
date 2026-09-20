@@ -1,7 +1,9 @@
 @import 'tailwindcss';
 
-/* 图标字体导入（当前界面大量按钮依赖 Font Awesome 图标） */
-@import url('https://testingcf.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/css/all.min.css');
+/* 图标字体导入（本地内联，不依赖外网 CDN）
+   Tabler Icons 3.47.0（MIT），只子集化打包项目实际用到的图标；
+   字体以 data URI 形式内联在 tabler-inline.css 内，产物单文件可离线运行。 */
+@import './assets/tabler/tabler-inline.css';
 
 /* 网络字体导入 */
 @import url('https://fontsapi.zeoseven.com/69/main/result.css'); /* 思源黑体 */
@@ -10,63 +12,72 @@
 @import url('https://fontsapi.zeoseven.com/516/main/result.css'); /* 尚古圆体 */
 @import './styles/delete-button.css';
 
+/* 界面皮肤变量层 + 装饰零件（扁平化游戏界面改造 · 阶段 1）
+   ui-tokens 只定义变量，不产生任何视觉变化；
+   ornaments 里的零件要显式挂 class 才生效，也不影响现有界面。 */
+@import './styles/ui-tokens.css';
+@import './styles/ornaments.css';
+
 /* ========== 高端玻璃拟态设计系统 ========== */
 :root {
-  /* 主色调 - 柔和蓝灰底色 */
-  --bg-primary: hsl(220, 16%, 96%);
-  --bg-secondary: hsl(220, 14%, 93%);
-  --bg-card: rgba(255, 255, 255, 0.78);
-  --bg-card-solid: hsl(0, 0%, 100%);
-  --text-primary: hsl(220, 20%, 14%);
-  --text-secondary: hsl(220, 10%, 46%);
-  --text-tertiary: hsl(220, 8%, 62%);
-  --border-light: rgba(0, 0, 0, 0.06);
+  /* 主色调 - 近黑暖调（参考项目语言：底近黑、字米白、强调暖金）
+     扁平化改版（方向 A）：底色压成 #0d0c0b，金色换成更淡的 #c9a86a。 */
+  --bg-primary: #0d0c0b;
+  --bg-secondary: #1c1813;
+  --bg-card: rgba(28, 24, 19, 0.92);
+  --bg-card-solid: #1c1813;
+  --text-primary: #ede7d9;
+  --text-secondary: rgba(237, 231, 217, 0.64);
+  --text-tertiary: rgba(237, 231, 217, 0.42);
+  --border-light: rgba(201, 168, 106, 0.16);
 
-  /* 精调 HSL 强调色 */
-  --accent-primary: hsl(217, 91%, 60%);
-  --accent-primary-rgb: 59, 130, 246;
-  --accent-secondary: hsl(265, 83%, 57%);
-  --accent-success: hsl(160, 84%, 39%);
-  --accent-success-rgb: 16, 185, 129;
-  --accent-warning: hsl(38, 92%, 50%);
-  --accent-warning-rgb: 245, 158, 11;
-  --accent-danger: hsl(0, 84%, 60%);
-  --accent-danger-rgb: 239, 68, 68;
+  /* 强调色 - 暖金主调（改版后更淡、更冷一点） */
+  --accent-primary: #c9a86a;
+  --accent-primary-rgb: 201, 168, 106;
+  --accent-secondary: #d8bf87;
+  --accent-secondary-rgb: 216, 191, 135;
+  --accent-success: #6f9e5a;
+  --accent-success-rgb: 111, 158, 90;
+  --accent-warning: #cf9440;
+  --accent-warning-rgb: 207, 148, 64;
+  --accent-danger: #b5544a;
+  --accent-danger-rgb: 181, 84, 74;
 
-  /* 渐变系统 */
-  --gradient-primary: linear-gradient(135deg, hsl(217, 91%, 60%), hsl(265, 83%, 57%));
-  --gradient-success: linear-gradient(135deg, hsl(160, 84%, 39%), hsl(172, 57%, 69%));
-  --gradient-warning: linear-gradient(135deg, hsl(38, 92%, 50%), hsl(28, 95%, 55%));
-  --gradient-danger: linear-gradient(135deg, hsl(0, 84%, 60%), hsl(350, 80%, 55%));
-  --gradient-header: linear-gradient(135deg, hsl(220, 16%, 96%) 0%, hsl(230, 20%, 98%) 100%);
-  --gradient-subtle: linear-gradient(135deg, rgba(59, 130, 246, 0.04) 0%, rgba(139, 92, 246, 0.03) 100%);
+  /* 渐变系统 - 同色系微差，不做花哨渐变 */
+  --gradient-primary: linear-gradient(135deg, #c9a86a, #d8bf87);
+  --gradient-success: linear-gradient(135deg, #6f9e5a, #86ad6d);
+  --gradient-warning: linear-gradient(135deg, #cf9440, #dda85c);
+  --gradient-danger: linear-gradient(135deg, #b5544a, #c46b60);
+  --gradient-header: linear-gradient(135deg, #15120d 0%, #1a1611 100%);
+  --gradient-subtle: linear-gradient(135deg, rgba(201, 168, 106, 0.05) 0%, rgba(201, 168, 106, 0.02) 100%);
 
-  /* 选项颜色（ActionBar 选项循环使用） */
-  --option-color-1: hsl(217, 91%, 60%);
-  --option-color-2: hsl(160, 84%, 39%);
-  --option-color-3: hsl(38, 92%, 50%);
-  --option-color-4: hsl(265, 83%, 57%);
+  /* 选项颜色（ActionBar 选项循环使用）- 暖调四色
+     1 号跟主强调色保持一致，否则界面里会出现两种金 */
+  --option-color-1: #c9a86a;
+  --option-color-2: #8fa86a;
+  --option-color-3: #c98a52;
+  --option-color-4: #9a8bb0;
 
-  /* 玻璃拟态系统 */
-  --glass-bg: rgba(255, 255, 255, 0.55);
-  --glass-bg-heavy: rgba(255, 255, 255, 0.72);
-  --glass-border: rgba(255, 255, 255, 0.25);
-  --glass-blur: blur(8px);
-  --glass-blur-light: blur(4px);
+  /* 玻璃拟态系统 - 改为实色面，不做模糊 */
+  --glass-bg: rgba(24, 20, 16, 0.94);
+  --glass-bg-heavy: rgba(28, 24, 19, 0.97);
+  --glass-border: rgba(201, 168, 106, 0.18);
+  --glass-blur: blur(0px);
+  --glass-blur-light: blur(0px);
 
-  /* 发光效果 */
-  --glow-primary: 0 0 20px rgba(59, 130, 246, 0.15);
-  --glow-success: 0 0 20px rgba(16, 185, 129, 0.15);
-  --glow-warning: 0 0 20px rgba(245, 158, 11, 0.15);
-  --glow-danger: 0 0 20px rgba(239, 68, 68, 0.15);
+  /* 发光效果 - 关闭 */
+  --glow-primary: none;
+  --glow-success: none;
+  --glow-warning: none;
+  --glow-danger: none;
 
-  /* 阴影系统 - 更精致的多层阴影 */
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06), 0 2px 4px rgba(0, 0, 0, 0.03);
-  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.04);
-  --shadow-xl: 0 20px 60px rgba(0, 0, 0, 0.1), 0 8px 20px rgba(0, 0, 0, 0.05);
-  --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.5);
-  --shadow-card-hover: 0 12px 40px rgba(59, 130, 246, 0.1), 0 4px 12px rgba(0, 0, 0, 0.04);
+  /* 阴影系统 - 压到极弱，靠描边分层而非投影 */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 6px 18px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 10px 30px rgba(0, 0, 0, 0.55);
+  --shadow-glass: 0 2px 8px rgba(0, 0, 0, 0.4);
+  --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.5);
 
   /* 动画系统 */
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
@@ -89,99 +100,80 @@
   --text-xl: 18px;
 
   /* 行距 */
-  --line-height-base: 1.5;
+  /* 兜底值，跟设置里默认档（3）保持一致；实际值由 [data-line='N'] 覆盖 */
+  --line-height-base: 1.8;
 
-  /* 圆角系统 */
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
-  --radius-xl: 20px;
+  /* 圆角系统 - 硬边，几乎不用圆角 */
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 2px;
+  --radius-xl: 2px;
 
   /* 语义化令牌（统一卡片/控件） */
   --card-bg: var(--glass-bg);
   --card-bg-strong: var(--glass-bg-heavy);
-  --card-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.04) 22%, transparent 52%);
+  --card-sheen: none;
   --card-border: var(--glass-border);
   --card-shadow: var(--shadow-glass);
   --card-shadow-hover: var(--shadow-card-hover);
   --border-color: var(--card-border);
 
   --control-bg: var(--glass-bg);
-  --control-bg-elevated: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--control-bg) 84%, rgba(255, 255, 255, 0.18)) 0%,
-    var(--control-bg) 100%
-  );
+  --control-bg-elevated: var(--control-bg);
   --control-border: var(--glass-border);
-  --control-border-hover: rgba(var(--accent-primary-rgb), 0.3);
-  --control-focus-ring: 0 0 0 3px rgba(var(--accent-primary-rgb), 0.14);
-  --control-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.34);
-  --control-shadow-active: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 2px rgba(15, 23, 42, 0.08);
-  --control-glow: 0 10px 24px rgba(var(--accent-primary-rgb), 0.1);
-  --control-emboss: inset 0 1px 0 rgba(255, 255, 255, 0.14), inset 0 -1px 0 rgba(15, 23, 42, 0.1);
+  --control-border-hover: rgba(var(--accent-primary-rgb), 0.55);
+  --control-focus-ring: 0 0 0 2px rgba(var(--accent-primary-rgb), 0.22);
+  --control-shadow: none;
+  --control-shadow-active: none;
+  --control-glow: none;
+  --control-emboss: none;
   --control-text-rest: var(--text-secondary);
   --control-text-strong: var(--text-primary);
   --control-text-shadow: none;
-  --control-accent-ink: white;
-  --control-accent-text-shadow: 0 1px 0 rgba(15, 23, 42, 0.16);
-  --control-surface-subtle: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--accent-primary) 8%, var(--control-bg) 92%) 0%,
-    color-mix(in srgb, var(--control-bg) 94%, black 6%) 100%
-  );
+  --control-accent-ink: #15120d;
+  --control-accent-text-shadow: none;
+  --control-surface-subtle: var(--control-bg);
   --footer-btn-secondary-bg: var(--control-surface-subtle);
   --footer-btn-secondary-border: var(--control-border);
   --footer-btn-secondary-color: var(--control-text-strong);
-  --footer-btn-secondary-shadow: var(--shadow-sm);
-  --footer-btn-primary-bg: var(--gradient-primary);
-  --footer-btn-primary-border: rgba(var(--accent-primary-rgb), 0.36);
-  --footer-btn-primary-color: white;
+  --footer-btn-secondary-shadow: none;
+  --footer-btn-primary-bg: var(--accent-primary);
+  --footer-btn-primary-border: var(--accent-primary);
+  --footer-btn-primary-color: #15120d;
   --footer-btn-primary-text-shadow: none;
-  --footer-btn-primary-shadow: 0 14px 28px rgba(var(--accent-primary-rgb), 0.2);
-  --compact-confirm-primary-bg: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--accent-primary) 78%, white 22%) 0%,
-    color-mix(in srgb, var(--accent-primary) 64%, black 10%) 100%
-  );
-  --compact-confirm-warning-bg: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--accent-warning) 78%, white 22%) 0%,
-    color-mix(in srgb, var(--accent-warning) 64%, black 10%) 100%
-  );
-  --compact-confirm-danger-bg: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--accent-danger) 78%, white 22%) 0%,
-    color-mix(in srgb, var(--accent-danger) 64%, black 10%) 100%
-  );
-  --compact-confirm-primary-border: rgba(var(--accent-primary-rgb), 0.48);
-  --compact-confirm-warning-border: rgba(var(--accent-warning-rgb), 0.48);
-  --compact-confirm-danger-border: rgba(var(--accent-danger-rgb), 0.48);
+  --footer-btn-primary-shadow: none;
+  --compact-confirm-primary-bg: var(--accent-primary);
+  --compact-confirm-warning-bg: var(--accent-warning);
+  --compact-confirm-danger-bg: var(--accent-danger);
+  --compact-confirm-primary-border: var(--accent-primary);
+  --compact-confirm-warning-border: var(--accent-warning);
+  --compact-confirm-danger-border: var(--accent-danger);
 
   --status-info: var(--accent-primary);
   --status-success: var(--accent-success);
   --status-warning: var(--accent-warning);
   --status-danger: var(--accent-danger);
-  --tag-bg: rgba(21, 37, 58, 0.2);
-  --tag-bg-hover: rgba(21, 37, 58, 0.3);
-  --tag-border-color: rgba(21, 37, 58, 0.26);
-  --tag-text-color: hsl(220, 26%, 18%);
-  --tag-highlight: rgba(255, 255, 255, 0.14);
-  --tag-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
-  --tag-status-success-bg: rgba(7, 89, 69, 0.18);
-  --tag-status-success-border: rgba(7, 89, 69, 0.3);
-  --tag-status-success-text: hsl(161, 87%, 23%);
-  --tag-status-info-bg: rgba(30, 64, 175, 0.18);
-  --tag-status-info-border: rgba(30, 64, 175, 0.28);
-  --tag-status-info-text: hsl(221, 83%, 32%);
-  --tag-status-neutral-bg: rgba(51, 65, 85, 0.16);
-  --tag-status-neutral-border: rgba(51, 65, 85, 0.24);
-  --tag-status-neutral-text: hsl(215, 25%, 28%);
-  --tag-status-warning-bg: rgba(146, 64, 14, 0.18);
-  --tag-status-warning-border: rgba(146, 64, 14, 0.28);
-  --tag-status-warning-text: hsl(31, 92%, 28%);
-  --tag-status-danger-bg: rgba(153, 27, 27, 0.18);
-  --tag-status-danger-border: rgba(153, 27, 27, 0.28);
-  --tag-status-danger-text: hsl(0, 74%, 34%);
+  --tag-bg: rgba(237, 231, 217, 0.08);
+  --tag-bg-hover: rgba(237, 231, 217, 0.14);
+  --tag-border-color: rgba(237, 231, 217, 0.22);
+  --tag-text-color: rgba(237, 231, 217, 0.86);
+  --tag-highlight: rgba(255, 255, 255, 0.05);
+  --tag-shadow: none;
+  --tag-status-success-bg: rgba(111, 158, 90, 0.16);
+  --tag-status-success-border: rgba(111, 158, 90, 0.42);
+  --tag-status-success-text: #a8c98a;
+  --tag-status-info-bg: rgba(201, 168, 106, 0.16);
+  --tag-status-info-border: rgba(201, 168, 106, 0.42);
+  --tag-status-info-text: #e0c07a;
+  --tag-status-neutral-bg: rgba(237, 231, 217, 0.1);
+  --tag-status-neutral-border: rgba(237, 231, 217, 0.24);
+  --tag-status-neutral-text: rgba(237, 231, 217, 0.8);
+  --tag-status-warning-bg: rgba(207, 148, 64, 0.18);
+  --tag-status-warning-border: rgba(207, 148, 64, 0.44);
+  --tag-status-warning-text: #e5b878;
+  --tag-status-danger-bg: rgba(181, 84, 74, 0.18);
+  --tag-status-danger-border: rgba(181, 84, 74, 0.44);
+  --tag-status-danger-text: #d98b80;
   --primary-color: var(--accent-primary);
   --error-color: var(--accent-danger);
 
@@ -192,113 +184,111 @@
   --touch-target-min: 32px;
 
   /* 三栏布局相关变量 */
-  --sidebar-width: 48px;
-  --panel-width: 380px;
+  --sidebar-width: var(--ui-rail-w, 48px);
+  --panel-width: var(--ui-panel-w, 322px);
   --mobile-drawer-width: min(88vw, 360px);
   --mobile-footer-reserved-height: calc(112px + env(safe-area-inset-bottom, 0px));
   --collapse-btn-size: 28px;
-  --header-height: 40px;
+  --header-height: var(--ui-topbar-h, 46px);
 
   /* Overlay / Dialog 响应式变量 */
   --overlay-gap: clamp(8px, 2vw, 18px);
   --overlay-panel-max: 760px;
   --dialog-max-width: 640px;
   --dialog-max-height: calc(100% - (var(--overlay-gap) * 2));
-  --overlay-backdrop: rgba(15, 23, 42, 0.42);
-  --overlay-highlight: radial-gradient(circle at top, rgba(255, 255, 255, 0.16) 0%, transparent 58%);
+  --overlay-backdrop: rgba(10, 8, 5, 0.72);
+  --overlay-highlight: none;
 }
 
-/* ========== 暗色主题 - 深邃蓝黑 + 发光效果 ========== */
+/* ========== 暗色主题 - 暖调加深 ========== */
 [data-theme='dark'] {
-  --bg-primary: hsl(225, 25%, 10%);
-  --bg-secondary: hsl(225, 22%, 13%);
-  --bg-card: rgba(24, 30, 48, 0.86);
-  --bg-card-solid: hsl(225, 25%, 14%);
-  --text-primary: hsl(220, 18%, 92%);
-  --text-secondary: hsl(220, 14%, 72%);
-  --text-tertiary: hsl(220, 10%, 56%);
-  --border-light: rgba(255, 255, 255, 0.12);
+  /* 扁平化改版（方向 A）：与 :root 同步，底色更冷、金色更淡 */
+  --bg-primary: #0d0c0b;
+  --bg-secondary: #16130e;
+  --bg-card: rgba(22, 19, 14, 0.94);
+  --bg-card-solid: #16130e;
+  --text-primary: #f0ebdf;
+  --text-secondary: rgba(240, 235, 223, 0.62);
+  --text-tertiary: rgba(240, 235, 223, 0.4);
+  --border-light: rgba(201, 168, 106, 0.14);
 
-  --accent-primary: hsl(217, 92%, 68%);
-  --accent-primary-rgb: 96, 165, 250;
-  --accent-secondary: hsl(265, 80%, 68%);
-  --accent-success: hsl(160, 84%, 39%);
-  --accent-success-rgb: 52, 211, 153;
-  --accent-warning: hsl(45, 93%, 58%);
-  --accent-warning-rgb: 251, 191, 36;
-  --accent-danger: hsl(0, 90%, 70%);
-  --accent-danger-rgb: 248, 113, 113;
+  --accent-primary: #c9a86a;
+  --accent-primary-rgb: 201, 168, 106;
+  --accent-secondary: #d8bf87;
+  --accent-secondary-rgb: 216, 191, 135;
+  --accent-success: #78a862;
+  --accent-success-rgb: 120, 168, 98;
+  --accent-warning: #d89e48;
+  --accent-warning-rgb: 216, 158, 72;
+  --accent-danger: #bf5d52;
+  --accent-danger-rgb: 191, 93, 82;
 
-  --gradient-primary: linear-gradient(135deg, hsl(217, 92%, 68%), hsl(265, 80%, 68%));
-  --gradient-success: linear-gradient(135deg, hsl(160, 84%, 39%), hsl(172, 60%, 60%));
-  --gradient-warning: linear-gradient(135deg, hsl(45, 93%, 58%), hsl(35, 90%, 60%));
-  --gradient-danger: linear-gradient(135deg, hsl(0, 90%, 70%), hsl(350, 85%, 65%));
-  --gradient-header: linear-gradient(135deg, hsl(225, 25%, 10%) 0%, hsl(230, 28%, 14%) 100%);
-  --gradient-subtle: linear-gradient(135deg, rgba(96, 165, 250, 0.06) 0%, rgba(167, 139, 250, 0.04) 100%);
+  --gradient-primary: linear-gradient(135deg, #c9a86a, #d8bf87);
+  --gradient-success: linear-gradient(135deg, #78a862, #8fb678);
+  --gradient-warning: linear-gradient(135deg, #d89e48, #e3b164);
+  --gradient-danger: linear-gradient(135deg, #bf5d52, #cd7568);
+  --gradient-header: linear-gradient(135deg, #0e0c08 0%, #14110c 100%);
+  --gradient-subtle: linear-gradient(135deg, rgba(201, 168, 106, 0.05) 0%, rgba(201, 168, 106, 0.02) 100%);
 
-  --option-color-1: hsl(217, 92%, 68%);
-  --option-color-2: hsl(160, 84%, 39%);
-  --option-color-3: hsl(45, 93%, 58%);
-  --option-color-4: hsl(265, 80%, 68%);
+  --option-color-1: #c9a86a;
+  --option-color-2: #96b06f;
+  --option-color-3: #d09155;
+  --option-color-4: #a293b8;
 
-  /* 暗色玻璃拟态 */
-  --glass-bg: rgba(20, 25, 45, 0.78);
-  --glass-bg-heavy: rgba(25, 30, 50, 0.88);
-  --glass-border: rgba(148, 163, 184, 0.2);
-  --glass-blur: blur(8px);
-  --glass-blur-light: blur(4px);
+  --glass-bg: rgba(20, 17, 12, 0.95);
+  --glass-bg-heavy: rgba(24, 20, 15, 0.98);
+  --glass-border: rgba(201, 168, 106, 0.2);
+  --glass-blur: blur(0px);
+  --glass-blur-light: blur(0px);
 
-  /* 暗色主题语义令牌覆写，修复卡片偏灰/文字发虚 */
-  --card-bg: rgba(26, 32, 52, 0.86);
-  --card-bg-strong: rgba(30, 36, 56, 0.92);
-  --card-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 18%, transparent 52%);
-  --control-bg: rgba(22, 28, 46, 0.9);
-  --control-bg-elevated: linear-gradient(180deg, rgba(33, 40, 61, 0.96) 0%, rgba(22, 28, 46, 0.92) 100%);
+  --card-bg: rgba(22, 19, 14, 0.94);
+  --card-bg-strong: rgba(26, 22, 16, 0.97);
+  --card-sheen: none;
+  --control-bg: rgba(20, 17, 12, 0.96);
+  --control-bg-elevated: var(--control-bg);
 
-  /* 暗色发光效果 - 更明显 */
-  --glow-primary: 0 0 24px rgba(96, 165, 250, 0.2);
-  --glow-success: 0 0 24px rgba(52, 211, 153, 0.2);
-  --glow-warning: 0 0 24px rgba(251, 191, 36, 0.2);
-  --glow-danger: 0 0 24px rgba(248, 113, 113, 0.2);
+  --glow-primary: none;
+  --glow-success: none;
+  --glow-warning: none;
+  --glow-danger: none;
 
-  /* 暗色阴影 */
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.2), 0 1px 2px rgba(0, 0, 0, 0.12);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.25), 0 2px 4px rgba(0, 0, 0, 0.15);
-  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.3), 0 4px 12px rgba(0, 0, 0, 0.2);
-  --shadow-xl: 0 20px 60px rgba(0, 0, 0, 0.4), 0 8px 20px rgba(0, 0, 0, 0.25);
-  --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  --shadow-card-hover: 0 12px 40px rgba(96, 165, 250, 0.12), 0 4px 12px rgba(0, 0, 0, 0.15);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.55);
+  --shadow-lg: 0 6px 18px rgba(0, 0, 0, 0.6);
+  --shadow-xl: 0 10px 30px rgba(0, 0, 0, 0.65);
+  --shadow-glass: 0 2px 8px rgba(0, 0, 0, 0.5);
+  --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.6);
 
-  --card-border: rgba(148, 163, 184, 0.24);
-  --control-border: rgba(148, 163, 184, 0.3);
-  --control-border-hover: rgba(96, 165, 250, 0.58);
-  --control-focus-ring: 0 0 0 3px rgba(96, 165, 250, 0.28);
-  --control-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  --control-shadow-active: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 1px 2px rgba(0, 0, 0, 0.22);
-  --control-glow: 0 14px 30px rgba(96, 165, 250, 0.12);
-  --tag-bg: rgba(9, 18, 32, 0.56);
-  --tag-bg-hover: rgba(9, 18, 32, 0.72);
-  --tag-border-color: rgba(148, 163, 184, 0.26);
-  --tag-text-color: rgba(241, 245, 249, 0.96);
-  --tag-highlight: rgba(255, 255, 255, 0.06);
-  --tag-shadow: 0 2px 6px rgba(2, 6, 23, 0.28);
-  --tag-status-success-bg: rgba(6, 78, 59, 0.62);
-  --tag-status-success-border: rgba(52, 211, 153, 0.34);
-  --tag-status-success-text: rgba(209, 250, 229, 0.98);
-  --tag-status-info-bg: rgba(30, 64, 175, 0.62);
-  --tag-status-info-border: rgba(96, 165, 250, 0.34);
-  --tag-status-info-text: rgba(219, 234, 254, 0.98);
-  --tag-status-neutral-bg: rgba(51, 65, 85, 0.58);
-  --tag-status-neutral-border: rgba(148, 163, 184, 0.26);
-  --tag-status-neutral-text: rgba(226, 232, 240, 0.96);
-  --tag-status-warning-bg: rgba(120, 53, 15, 0.62);
-  --tag-status-warning-border: rgba(251, 191, 36, 0.34);
-  --tag-status-warning-text: rgba(254, 243, 199, 0.98);
-  --tag-status-danger-bg: rgba(127, 29, 29, 0.62);
-  --tag-status-danger-border: rgba(248, 113, 113, 0.34);
-  --tag-status-danger-text: rgba(254, 226, 226, 0.98);
-  --overlay-backdrop: rgba(2, 6, 23, 0.58);
-  --overlay-highlight: radial-gradient(circle at top, rgba(255, 255, 255, 0.08) 0%, transparent 58%);
+  --card-border: rgba(201, 168, 106, 0.2);
+  --control-border: rgba(201, 168, 106, 0.24);
+  --control-border-hover: rgba(201, 168, 106, 0.6);
+  --control-focus-ring: 0 0 0 2px rgba(201, 168, 106, 0.26);
+  --control-shadow: none;
+  --control-shadow-active: none;
+  --control-glow: none;
+  --tag-bg: rgba(240, 235, 223, 0.08);
+  --tag-bg-hover: rgba(240, 235, 223, 0.14);
+  --tag-border-color: rgba(240, 235, 223, 0.2);
+  --tag-text-color: rgba(240, 235, 223, 0.86);
+  --tag-highlight: rgba(255, 255, 255, 0.04);
+  --tag-shadow: none;
+  --tag-status-success-bg: rgba(120, 168, 98, 0.16);
+  --tag-status-success-border: rgba(120, 168, 98, 0.42);
+  --tag-status-success-text: #b0cf94;
+  --tag-status-info-bg: rgba(201, 168, 106, 0.16);
+  --tag-status-info-border: rgba(201, 168, 106, 0.42);
+  --tag-status-info-text: #e5c884;
+  --tag-status-neutral-bg: rgba(240, 235, 223, 0.1);
+  --tag-status-neutral-border: rgba(240, 235, 223, 0.22);
+  --tag-status-neutral-text: rgba(240, 235, 223, 0.8);
+  --tag-status-warning-bg: rgba(216, 158, 72, 0.18);
+  --tag-status-warning-border: rgba(216, 158, 72, 0.44);
+  --tag-status-warning-text: #e8c088;
+  --tag-status-danger-bg: rgba(191, 93, 82, 0.18);
+  --tag-status-danger-border: rgba(191, 93, 82, 0.44);
+  --tag-status-danger-text: #dd968b;
+  --overlay-backdrop: rgba(5, 4, 2, 0.78);
+  --overlay-highlight: none;
 }
 
 /* 暗色主题下拉框修复 */
@@ -322,6 +312,7 @@
   --accent-primary: hsl(211, 24%, 40%);
   --accent-primary-rgb: 80, 103, 126;
   --accent-secondary: hsl(219, 16%, 52%);
+  --accent-secondary-rgb: 113, 127, 152;
   --accent-success: hsl(162, 46%, 34%);
   --accent-success-rgb: 61, 128, 109;
   --accent-warning: hsl(40, 43%, 43%);
@@ -399,25 +390,29 @@
   --control-border: rgba(118, 132, 151, 0.42);
   --control-border-hover: rgba(90, 109, 132, 0.68);
   --control-focus-ring: 0 0 0 3px rgba(98, 116, 139, 0.28);
-  --tag-bg: rgba(18, 31, 48, 0.6);
-  --tag-bg-hover: rgba(18, 31, 48, 0.76);
+  /* 标签组：本主题是「深底 + 浅字」的徽章式样，保留。
+     但原先底色透明度偏低（0.6~0.68），叠在浅金属面板上合成出来是中灰，
+     近白字压上去对比度只有 3.5~3.9:1（低于无障碍 4.5 线）。
+     把底色压得更实 + 把两条偏亮的底色（信息蓝 / 警告棕）调深，对比度提到 5.3:1 以上。 */
+  --tag-bg: rgba(18, 31, 48, 0.7);
+  --tag-bg-hover: rgba(18, 31, 48, 0.82);
   --tag-border-color: rgba(173, 216, 230, 0.3);
   --tag-text-color: rgba(244, 248, 252, 0.98);
   --tag-highlight: rgba(255, 255, 255, 0.08);
   --tag-shadow: 0 2px 6px rgba(33, 45, 61, 0.22);
-  --tag-status-success-bg: rgba(28, 78, 66, 0.66);
+  --tag-status-success-bg: rgba(28, 78, 66, 0.82);
   --tag-status-success-border: rgba(131, 192, 146, 0.34);
   --tag-status-success-text: rgba(231, 245, 235, 0.98);
-  --tag-status-info-bg: rgba(46, 87, 122, 0.68);
+  --tag-status-info-bg: rgba(36, 72, 104, 0.82);
   --tag-status-info-border: rgba(137, 173, 206, 0.38);
   --tag-status-info-text: rgba(236, 243, 249, 0.98);
-  --tag-status-neutral-bg: rgba(57, 69, 84, 0.62);
+  --tag-status-neutral-bg: rgba(57, 69, 84, 0.8);
   --tag-status-neutral-border: rgba(189, 201, 214, 0.28);
   --tag-status-neutral-text: rgba(239, 244, 248, 0.96);
-  --tag-status-warning-bg: rgba(109, 80, 32, 0.68);
+  --tag-status-warning-bg: rgba(92, 66, 24, 0.82);
   --tag-status-warning-border: rgba(214, 188, 112, 0.34);
   --tag-status-warning-text: rgba(250, 243, 214, 0.98);
-  --tag-status-danger-bg: rgba(110, 58, 54, 0.68);
+  --tag-status-danger-bg: rgba(110, 58, 54, 0.82);
   --tag-status-danger-border: rgba(204, 144, 138, 0.34);
   --tag-status-danger-text: rgba(252, 237, 235, 0.98);
 
@@ -427,6 +422,41 @@
   --steel-brush-angle: 118deg;
   --steel-brush-strong: rgba(150, 162, 178, 0.16);
   --steel-brush-soft: rgba(255, 255, 255, 0.2);
+
+  /* 派生令牌：这类「值是 var(--基色)」的令牌若只在 :root 声明一次，
+     var() 会在最外层（默认暗金主题）就替换成字面量并继承下来，
+     本主题改了基色也带不动它 → 按钮/控件面会卡在金色、深棕。
+     本主题重声明一遍，让它们跟着本主题的基色重新解析。 */
+  --control-text-rest: var(--text-secondary);
+  --control-text-strong: var(--text-primary);
+  --control-surface-subtle: var(--control-bg);
+  --footer-btn-secondary-bg: var(--control-surface-subtle);
+  --footer-btn-secondary-border: var(--control-border);
+  --footer-btn-secondary-color: var(--control-text-strong);
+  --footer-btn-primary-bg: var(--accent-primary);
+  --footer-btn-primary-border: var(--accent-primary);
+  --footer-btn-primary-color: #f4f8fc;
+
+  /* 同一类派生令牌的剩余漏项（确认弹窗按钮 / 设置页用到的语义色） */
+  --border-color: var(--card-border);
+  --control-accent-ink: #f4f8fc;
+  --primary-color: var(--accent-primary);
+  --error-color: var(--accent-danger);
+  --status-info: var(--accent-primary);
+  --status-success: var(--accent-success);
+  --status-warning: var(--accent-warning);
+  --status-danger: var(--accent-danger);
+  --compact-confirm-primary-bg: var(--accent-primary);
+  --compact-confirm-primary-border: var(--accent-primary);
+  --compact-confirm-warning-bg: var(--accent-warning);
+  --compact-confirm-warning-border: var(--accent-warning);
+  --compact-confirm-danger-bg: var(--accent-danger);
+  --compact-confirm-danger-border: var(--accent-danger);
+
+  /* 弹窗遮罩底色：这个变量原先只在默认主题和深色主题里写过，
+     其余主题不重写就会继承默认的近黑暖色 —— 浅色主题一开弹窗，整块被压成暗灰。
+     本主题补上自己色系（描边同源色）的遮罩。 */
+  --overlay-backdrop: rgba(51, 63, 80, 0.46);
 }
 
 /* steelcool 主题专属：强化金属卡片与控件质感，不影响其它主题 */
@@ -436,6 +466,9 @@
 [data-theme='steelcool'] .section-group,
 [data-theme='steelcool'] .info-section {
   border-color: var(--card-border);
+  /* 实底色：上面两层拉丝都是半透明，若没有实底，半透明层会被合成到一片黑底上
+     （实测渲染值 ≈ 半透明层压在纯黑上），面板就会整块发黑。补一个不透明基色。 */
+  background-color: var(--bg-card-solid);
   background-image:
     repeating-linear-gradient(
       var(--steel-brush-angle),
@@ -452,6 +485,12 @@
     var(--card-shadow),
     inset 0 1px 0 var(--steel-highlight),
     inset 0 -1px 0 rgba(103, 117, 135, 0.18);
+}
+
+/* 生存状态区在组件内自带「透明底 + 半透明淡色渐变」的背景，本主题下会被合成到黑底发暗，
+   这里提高一级优先级补上实底色（保留组件那层淡色渐变）。 */
+[data-theme='steelcool'] .info-section.survival-section {
+  background-color: var(--bg-card-solid);
 }
 
 [data-theme='steelcool'] .ui-card:hover,
@@ -624,6 +663,7 @@
   --accent-primary: #268bd2;
   --accent-primary-rgb: 38, 139, 210;
   --accent-secondary: #2aa198;
+  --accent-secondary-rgb: 42, 161, 152;
   --accent-success: #859900;
   --accent-success-rgb: 133, 153, 0;
   --accent-warning: #b58900;
@@ -677,6 +717,57 @@
   --control-border: rgba(131, 148, 150, 0.36);
   --control-border-hover: rgba(38, 139, 210, 0.64);
   --control-focus-ring: 0 0 0 3px rgba(38, 139, 210, 0.26);
+
+  /* 派生令牌：只在 :root 声明的话，var() 会在最外层（默认主题）就替换成字面量并继承下来，
+     本主题改了基色也带不动它。本主题重声明一遍，控件面/弹窗按钮/语义色才跟着走。 */
+  --border-color: var(--card-border);
+  --control-text-rest: var(--text-secondary);
+  --control-text-strong: var(--text-primary);
+  --control-surface-subtle: var(--control-bg);
+  --footer-btn-secondary-bg: var(--control-surface-subtle);
+  --footer-btn-secondary-border: var(--control-border);
+  --footer-btn-secondary-color: var(--control-text-strong);
+  --footer-btn-primary-bg: var(--accent-primary);
+  --footer-btn-primary-border: var(--accent-primary);
+  --primary-color: var(--accent-primary);
+  --error-color: var(--accent-danger);
+  --status-info: var(--accent-primary);
+  --status-success: var(--accent-success);
+  --status-warning: var(--accent-warning);
+  --status-danger: var(--accent-danger);
+  --compact-confirm-primary-bg: var(--accent-primary);
+  --compact-confirm-primary-border: var(--accent-primary);
+  --compact-confirm-warning-bg: var(--accent-warning);
+  --compact-confirm-warning-border: var(--accent-warning);
+  --compact-confirm-danger-bg: var(--accent-danger);
+  --compact-confirm-danger-border: var(--accent-danger);
+  /* 弹窗遮罩底色：本主题自带（不重写会继承默认的近黑暖色，色相不搭） */
+  --overlay-backdrop: rgba(0, 22, 28, 0.7);
+
+  /* 标签组：这组令牌只在 :root 写过，是按「深色底」设计的（近白半透明底 + 近白字）。
+     深色主题不重写也能看，但色相是默认暗金的 —— 这里换成跟随本主题强调色的浅色调。
+     字色 = 本主题强调色 42% + 白 58%（本主题正文色偏灰、混进去反而压暗，实测过）。 */
+  --tag-bg: rgba(var(--accent-primary-rgb), 0.16);
+  --tag-bg-hover: rgba(var(--accent-primary-rgb), 0.28);
+  --tag-border-color: rgba(var(--accent-primary-rgb), 0.46);
+  --tag-text-color: color-mix(in srgb, var(--accent-primary) 42%, #ffffff 58%);
+  --tag-highlight: rgba(255, 255, 255, 0.06);
+  --tag-shadow: none;
+  --tag-status-success-bg: rgba(var(--accent-success-rgb), 0.18);
+  --tag-status-success-border: rgba(var(--accent-success-rgb), 0.46);
+  --tag-status-success-text: color-mix(in srgb, var(--accent-success) 42%, #ffffff 58%);
+  --tag-status-info-bg: rgba(var(--accent-primary-rgb), 0.18);
+  --tag-status-info-border: rgba(var(--accent-primary-rgb), 0.46);
+  --tag-status-info-text: color-mix(in srgb, var(--accent-primary) 42%, #ffffff 58%);
+  --tag-status-neutral-bg: rgba(var(--accent-primary-rgb), 0.14);
+  --tag-status-neutral-border: rgba(var(--accent-primary-rgb), 0.36);
+  --tag-status-neutral-text: color-mix(in srgb, var(--text-secondary) 55%, #ffffff 45%);
+  --tag-status-warning-bg: rgba(var(--accent-warning-rgb), 0.18);
+  --tag-status-warning-border: rgba(var(--accent-warning-rgb), 0.46);
+  --tag-status-warning-text: color-mix(in srgb, var(--accent-warning) 42%, #ffffff 58%);
+  --tag-status-danger-bg: rgba(var(--accent-danger-rgb), 0.18);
+  --tag-status-danger-border: rgba(var(--accent-danger-rgb), 0.46);
+  --tag-status-danger-text: color-mix(in srgb, var(--accent-danger) 42%, #ffffff 58%);
 }
 
 [data-theme='solarized'] select,
@@ -753,6 +844,7 @@
   --accent-primary: #7fbbb3;
   --accent-primary-rgb: 127, 187, 179;
   --accent-secondary: #a7c080;
+  --accent-secondary-rgb: 167, 192, 128;
   --accent-success: #a7c080;
   --accent-success-rgb: 167, 192, 128;
   --accent-warning: #dbbc7f;
@@ -823,6 +915,49 @@
   --footer-btn-primary-color: #223035;
   --footer-btn-primary-text-shadow: 0 1px 0 rgba(255, 255, 255, 0.12);
   --footer-btn-primary-shadow: 0 14px 28px rgba(18, 24, 22, 0.26), inset 0 1px 0 rgba(246, 238, 220, 0.14);
+
+  /* 派生令牌补全（同上：只在 :root 声明会被默认主题提前解析并继承） */
+  --border-color: var(--card-border);
+  --footer-btn-secondary-bg: var(--control-surface-subtle);
+  --footer-btn-secondary-border: var(--control-border);
+  --footer-btn-primary-bg: var(--accent-primary);
+  --primary-color: var(--accent-primary);
+  --error-color: var(--accent-danger);
+  --status-info: var(--accent-primary);
+  --status-success: var(--accent-success);
+  --status-warning: var(--accent-warning);
+  --status-danger: var(--accent-danger);
+  --compact-confirm-primary-bg: var(--accent-primary);
+  --compact-confirm-primary-border: var(--accent-primary);
+  --compact-confirm-warning-bg: var(--accent-warning);
+  --compact-confirm-warning-border: var(--accent-warning);
+  --compact-confirm-danger-bg: var(--accent-danger);
+  --compact-confirm-danger-border: var(--accent-danger);
+  /* 弹窗遮罩底色：本主题自带（不重写会继承默认的近黑暖色，色相不搭） */
+  --overlay-backdrop: rgba(24, 30, 33, 0.7);
+
+  /* 标签组：同 solarized，换成跟随本主题强调色的浅色调字 */
+  --tag-bg: rgba(var(--accent-primary-rgb), 0.16);
+  --tag-bg-hover: rgba(var(--accent-primary-rgb), 0.28);
+  --tag-border-color: rgba(var(--accent-primary-rgb), 0.46);
+  --tag-text-color: color-mix(in srgb, var(--accent-primary) 42%, #ffffff 58%);
+  --tag-highlight: rgba(255, 255, 255, 0.06);
+  --tag-shadow: none;
+  --tag-status-success-bg: rgba(var(--accent-success-rgb), 0.18);
+  --tag-status-success-border: rgba(var(--accent-success-rgb), 0.46);
+  --tag-status-success-text: color-mix(in srgb, var(--accent-success) 42%, #ffffff 58%);
+  --tag-status-info-bg: rgba(var(--accent-primary-rgb), 0.18);
+  --tag-status-info-border: rgba(var(--accent-primary-rgb), 0.46);
+  --tag-status-info-text: color-mix(in srgb, var(--accent-primary) 42%, #ffffff 58%);
+  --tag-status-neutral-bg: rgba(var(--accent-primary-rgb), 0.14);
+  --tag-status-neutral-border: rgba(var(--accent-primary-rgb), 0.36);
+  --tag-status-neutral-text: color-mix(in srgb, var(--text-secondary) 55%, #ffffff 45%);
+  --tag-status-warning-bg: rgba(var(--accent-warning-rgb), 0.18);
+  --tag-status-warning-border: rgba(var(--accent-warning-rgb), 0.46);
+  --tag-status-warning-text: color-mix(in srgb, var(--accent-warning) 42%, #ffffff 58%);
+  --tag-status-danger-bg: rgba(var(--accent-danger-rgb), 0.18);
+  --tag-status-danger-border: rgba(var(--accent-danger-rgb), 0.46);
+  --tag-status-danger-text: color-mix(in srgb, var(--accent-danger) 42%, #ffffff 58%);
 }
 
 [data-theme='everforest1980s'] select,
@@ -916,6 +1051,7 @@
   --accent-primary: hsl(22, 46%, 36%);
   --accent-primary-rgb: 134, 86, 49;
   --accent-secondary: hsl(6, 46%, 42%);
+  --accent-secondary-rgb: 156, 68, 58;
   --accent-success: hsl(150, 24%, 34%);
   --accent-success-rgb: 66, 108, 87;
   --accent-warning: hsl(38, 58%, 42%);
@@ -924,6 +1060,11 @@
   --accent-danger-rgb: 161, 86, 70;
 
   --gradient-primary: linear-gradient(135deg, hsl(24, 47%, 40%), hsl(8, 45%, 43%));
+  /* 其余主题都有这三条，本主题原先漏了 → 会退回默认暗金主题的绿/橙/红渐变。
+     按本主题自己的强调色补：亮→暗两档，与 --accent-success/-warning/-danger 同色系。 */
+  --gradient-success: linear-gradient(135deg, hsl(150, 30%, 42%), hsl(150, 24%, 32%));
+  --gradient-warning: linear-gradient(135deg, hsl(38, 62%, 52%), hsl(38, 46%, 38%));
+  --gradient-danger: linear-gradient(135deg, hsl(8, 50%, 54%), hsl(8, 36%, 40%));
   --gradient-header: linear-gradient(135deg, hsl(39, 39%, 94%) 0%, hsl(34, 31%, 92%) 100%);
   --gradient-subtle: linear-gradient(135deg, rgba(134, 86, 49, 0.05) 0%, rgba(161, 86, 70, 0.035) 100%);
 
@@ -945,6 +1086,73 @@
     rgba(231, 217, 197, 0.9) 100%
   );
   --control-border: rgba(112, 85, 56, 0.24);
+
+  /* 派生变量：这一组每个主题都必须重列一遍。
+     原因：它们的值是 var(别的变量)，而 var() 是在「声明它的那一层」就代入完的
+     —— 写在 :root 里就只用默认主题的值算一次，主题覆盖了源色也传不进来。
+     漏列 = 直接继承默认主题（近黑暖调）的深色值，浅色主题会当场变脏。 */
+  --card-bg: var(--glass-bg);
+  --card-bg-strong: var(--glass-bg-heavy);
+  --card-shadow: var(--shadow-glass);
+  --card-shadow-hover: var(--shadow-card-hover);
+  --border-color: var(--card-border);
+  --control-bg: var(--glass-bg);
+  --control-surface-subtle: var(--control-bg);
+  --control-border-hover: rgba(var(--accent-primary-rgb), 0.55);
+  --control-focus-ring: 0 0 0 2px rgba(var(--accent-primary-rgb), 0.22);
+  --control-text-rest: var(--text-secondary);
+  --control-text-strong: var(--text-primary);
+  --footer-btn-secondary-bg: var(--control-surface-subtle);
+  --footer-btn-secondary-border: var(--control-border);
+  --footer-btn-secondary-color: var(--control-text-strong);
+  --footer-btn-primary-bg: var(--accent-primary);
+  --footer-btn-primary-border: var(--accent-primary);
+  --compact-confirm-primary-bg: var(--accent-primary);
+  --compact-confirm-warning-bg: var(--accent-warning);
+  --compact-confirm-danger-bg: var(--accent-danger);
+  --compact-confirm-primary-border: var(--accent-primary);
+  --compact-confirm-warning-border: var(--accent-warning);
+  --compact-confirm-danger-border: var(--accent-danger);
+  --status-info: var(--accent-primary);
+  --status-success: var(--accent-success);
+  --status-warning: var(--accent-warning);
+  --status-danger: var(--accent-danger);
+  --primary-color: var(--accent-primary);
+  --error-color: var(--accent-danger);
+  /* 弹窗遮罩底色：本主题自带（不重写会继承默认的近黑暖色，
+     古卷是浅色主题，一开弹窗整块会被压暗） */
+  --overlay-backdrop: rgba(89, 64, 37, 0.44);
+  /* 「压在强调色上的字」：默认值 #15120d 是给**亮**强调色（金色）配的近黑字。
+     本主题的强调色是深棕 hsl(22,46%,36%)，近黑字压上去对比度只有 2.99:1（保存键几乎看不清）。
+     改成浅米色，对比度 5.8:1。 */
+  --control-accent-ink: hsl(36, 40%, 96%);
+  --footer-btn-primary-color: hsl(36, 40%, 96%);
+
+  /* 标签组：这组令牌只在 :root 写过，是按「深色底」设计的 —— 近白半透明底 + 近白字。
+     本主题是浅米底，不重写就会「字融进底色」，标签基本看不见。
+     改成暖调淡底 + 深墨字：字色 = 本主题对应强调色 + 本主题正文色（深棕）按比例混，
+     比例逐档调过，保证对比度都在 4.5:1 以上。 */
+  --tag-bg: rgba(var(--accent-primary-rgb), 0.1);
+  --tag-bg-hover: rgba(var(--accent-primary-rgb), 0.18);
+  --tag-border-color: rgba(var(--accent-primary-rgb), 0.34);
+  --tag-text-color: color-mix(in srgb, var(--accent-primary) 55%, var(--text-primary) 45%);
+  --tag-highlight: rgba(255, 255, 255, 0.5);
+  --tag-shadow: none;
+  --tag-status-success-bg: rgba(var(--accent-success-rgb), 0.13);
+  --tag-status-success-border: rgba(var(--accent-success-rgb), 0.42);
+  --tag-status-success-text: color-mix(in srgb, var(--accent-success) 52%, var(--text-primary) 48%);
+  --tag-status-info-bg: rgba(var(--accent-primary-rgb), 0.13);
+  --tag-status-info-border: rgba(var(--accent-primary-rgb), 0.42);
+  --tag-status-info-text: color-mix(in srgb, var(--accent-primary) 52%, var(--text-primary) 48%);
+  --tag-status-neutral-bg: rgba(var(--accent-primary-rgb), 0.08);
+  --tag-status-neutral-border: rgba(var(--accent-primary-rgb), 0.26);
+  --tag-status-neutral-text: color-mix(in srgb, var(--text-secondary) 70%, var(--text-primary) 30%);
+  --tag-status-warning-bg: rgba(var(--accent-warning-rgb), 0.15);
+  --tag-status-warning-border: rgba(var(--accent-warning-rgb), 0.46);
+  --tag-status-warning-text: color-mix(in srgb, var(--accent-warning) 44%, var(--text-primary) 56%);
+  --tag-status-danger-bg: rgba(var(--accent-danger-rgb), 0.13);
+  --tag-status-danger-border: rgba(var(--accent-danger-rgb), 0.42);
+  --tag-status-danger-text: color-mix(in srgb, var(--accent-danger) 52%, var(--text-primary) 48%);
 }
 
 /* 雅黑字体 */
@@ -979,6 +1187,7 @@
   --text-base: 13px;
   --text-lg: 14px;
   --text-xl: 16px;
+  --ui-font-scale: 0.92;
 }
 
 /* 中号界面字体（默认）(2) */
@@ -988,6 +1197,7 @@
   --text-base: 14px;
   --text-lg: 16px;
   --text-xl: 18px;
+  --ui-font-scale: 1;
 }
 
 /* 大号界面字体 (3) */
@@ -997,6 +1207,7 @@
   --text-base: 16px;
   --text-lg: 18px;
   --text-xl: 20px;
+  --ui-font-scale: 1.17;
 }
 
 /* 特大界面字体 (4) */
@@ -1006,6 +1217,7 @@
   --text-base: 18px;
   --text-lg: 20px;
   --text-xl: 22px;
+  --ui-font-scale: 1.25;
 }
 
 /* 超大界面字体 (5) */
@@ -1015,31 +1227,35 @@
   --text-base: 20px;
   --text-lg: 22px;
   --text-xl: 24px;
+  --ui-font-scale: 1.33;
 }
 
+/* 行距五档 —— 正文（.message-content）读的就是这个变量。
+   ⚠️ 默认档（3）定在 1.8：正文原来写死 1.8，档位值要跟它对齐，
+   否则把写死值改成变量后，默认观感会突然变紧。 */
 /* 紧凑行距 (1) */
 [data-line='1'] {
-  --line-height-base: 1.2;
+  --line-height-base: 1.4;
 }
 
 /* 正常行距 (2) */
 [data-line='2'] {
-  --line-height-base: 1.4;
+  --line-height-base: 1.6;
 }
 
 /* 舒适行距（默认）(3) */
 [data-line='3'] {
-  --line-height-base: 1.5;
+  --line-height-base: 1.8;
 }
 
 /* 宽松行距 (4) */
 [data-line='4'] {
-  --line-height-base: 1.7;
+  --line-height-base: 2;
 }
 
 /* 超宽松行距 (5) */
 [data-line='5'] {
-  --line-height-base: 2;
+  --line-height-base: 2.2;
 }
 
 /* 全局重置 */
@@ -1434,7 +1650,7 @@ button:disabled {
 }
 
 .card-header i {
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale));
   background: var(--gradient-primary);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -1446,14 +1662,14 @@ button:disabled {
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
   color: var(--text-tertiary);
   font-weight: 400;
   margin-left: auto;
 }
 
 .card-hint-inline i {
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
 }
 
 /* 卡片提示 */
@@ -1470,12 +1686,12 @@ button:disabled {
 }
 
 .card-hint.small {
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
   padding: 4px 6px;
 }
 
 .card-hint i {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
 }
 
 /* 配置网格 */
@@ -1501,7 +1717,7 @@ button:disabled {
   background: var(--bg-primary);
   border-radius: 5px;
   color: var(--accent-primary);
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale));
 }
 
 .config-row input,
@@ -1539,7 +1755,7 @@ button:disabled {
 }
 
 .input-row label {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   color: var(--text-secondary);
   min-width: 40px;
   font-weight: 500;
@@ -1551,7 +1767,7 @@ button:disabled {
   border: none;
   border-bottom: 1px solid var(--border-light);
   padding: 2px 4px;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale));
   background: transparent;
   color: var(--text-primary);
   transition: border-color 150ms;
@@ -1564,7 +1780,7 @@ button:disabled {
 
 .underline-input::placeholder {
   color: var(--text-tertiary);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
 }
 
 .underline-input.short,
@@ -1578,7 +1794,7 @@ button:disabled {
   border: none;
   border-bottom: 1px solid var(--border-light);
   padding: 2px 4px;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale));
   background: transparent;
   color: var(--text-primary);
   transition: border-color 150ms;
@@ -1601,7 +1817,7 @@ button:disabled {
   background: transparent;
   color: var(--accent-success);
   cursor: pointer;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   text-align: left;
   border-radius: 4px;
   transition: all 150ms;
@@ -1704,7 +1920,7 @@ button:disabled {
 .dialog-close {
   background: var(--control-bg);
   border: 1px solid var(--control-border);
-  font-size: 16px;
+  font-size: calc(16px * var(--ui-font-scale));
   cursor: pointer;
   color: var(--text-secondary);
   width: 30px;
@@ -1850,13 +2066,13 @@ button:disabled {
 
 .avatar-text,
 .avatar-icon {
-  font-size: 16px;
+  font-size: calc(16px * var(--ui-font-scale));
   font-weight: 700;
   color: white;
 }
 
 .avatar-icon {
-  font-size: 18px;
+  font-size: calc(18px * var(--ui-font-scale));
 }
 
 /* 头部信息 - 改为横向布局，让名字和标签在同一行 */
@@ -1874,7 +2090,7 @@ button:disabled {
 .business-title,
 .faction-title {
   margin: 0;
-  font-size: 16px;
+  font-size: calc(16px * var(--ui-font-scale));
   font-weight: 700;
   color: white;
   white-space: nowrap;
@@ -1900,7 +2116,7 @@ button:disabled {
   padding: 2px 8px;
   background: var(--tag-bg);
   border-radius: 10px;
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   color: var(--tag-text-color);
@@ -2004,7 +2220,7 @@ button:disabled {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale));
   font-weight: 600;
   color: var(--accent-primary);
   margin-bottom: 8px;
@@ -2013,7 +2229,7 @@ button:disabled {
 }
 
 .section-icon {
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale));
 }
 
 /* Excel表格风格 */
@@ -2172,7 +2388,7 @@ button:disabled {
 }
 
 .footer-btn i {
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale));
 }
 
 /* 子区块标题 */
@@ -2211,7 +2427,7 @@ button:disabled {
 }
 
 .stat-item i {
-  font-size: 16px;
+  font-size: calc(16px * var(--ui-font-scale));
   color: var(--accent-primary);
 }
 
@@ -2309,9 +2525,12 @@ button:disabled {
 
 /* ========== 正文格式化样式 ========== */
 
-/* 段落间距 */
+/* 段落间距 + 中文首行缩进两字 */
 .text-content p {
   margin: 0.8em 0;
+  /* 中文排版习惯：每个自然段首行缩进两格。
+     2em 跟着字号走，用户在设置里换字号档位时缩进量会一起变。 */
+  text-indent: 2em;
 }
 
 .text-content p:first-child {
@@ -2320,6 +2539,13 @@ button:disabled {
 
 .text-content p:last-child {
   margin-bottom: 0;
+}
+
+/* 列表项 / 引用块里的段落不缩进 —— 它们已经有自己的缩进层级，
+   再叠一个首行缩进会跟项目符号、引用竖线错位。 */
+.text-content li p,
+.text-content blockquote p {
+  text-indent: 0;
 }
 
 /* 引号包裹的对话文字 - 使用主题色 */
@@ -2663,27 +2889,7 @@ button:disabled {
   background: rgba(91, 154, 255, 0.08);
 }
 
-/* ========== 自定义向导步骤页面共享样式 ========== */
-
-.step-content-inner {
-  max-width: 600px;
-  margin: 0 auto;
-}
-
-.step-title {
-  margin: 0 0 8px 0;
-  font-size: 20px;
-  font-weight: 600;
-  color: var(--text-primary);
-  text-align: center;
-}
-
-.step-desc {
-  margin: 0 0 24px 0;
-  font-size: 14px;
-  color: var(--text-secondary);
-  text-align: center;
-}
+/* ========== 开局表单共享样式 ========== */
 
 .form-section {
   display: flex;
@@ -2704,76 +2910,9 @@ button:disabled {
 
 .section-label {
   margin: 0 0 12px 0;
-  font-size: 15px;
+  font-size: calc(15px * var(--ui-font-scale));
   font-weight: 600;
   color: var(--text-primary);
-}
-
-/* 步骤页面输入行 - 覆盖全局样式 */
-.step-content-inner .input-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-
-.step-content-inner .input-row:last-child {
-  margin-bottom: 0;
-}
-
-.step-content-inner .input-row label {
-  font-size: 13px;
-  color: var(--text-secondary);
-  min-width: 70px;
-  font-weight: 500;
-}
-
-/* 步骤页面下划线输入框 - 覆盖全局样式 */
-.step-content-inner .underline-input {
-  flex: 1;
-  border: none;
-  border-bottom: 1px solid var(--border-light);
-  padding: 6px 4px;
-  font-size: 14px;
-  background: transparent;
-  color: var(--text-primary);
-  transition: border-color 0.2s ease;
-}
-
-.step-content-inner .underline-input:focus {
-  outline: none;
-  border-bottom-color: var(--accent-primary);
-}
-
-.step-content-inner .underline-input.error {
-  border-bottom-color: var(--accent-danger);
-}
-
-.step-content-inner .underline-input::placeholder {
-  color: var(--text-tertiary);
-  font-size: 13px;
-}
-
-.step-content-inner .underline-input.short {
-  flex: 0 0 80px;
-}
-
-/* 步骤页面下划线选择框 */
-.step-content-inner .underline-select {
-  flex: 1;
-  border: none;
-  border-bottom: 1px solid var(--border-light);
-  padding: 6px 4px;
-  font-size: 14px;
-  background: transparent;
-  color: var(--text-primary);
-  transition: border-color 0.2s ease;
-  cursor: pointer;
-}
-
-.step-content-inner .underline-select:focus {
-  outline: none;
-  border-bottom-color: var(--accent-primary);
 }
 
 .required {
@@ -2786,7 +2925,7 @@ button:disabled {
   border: none;
   background: transparent;
   color: var(--text-tertiary);
-  font-size: 18px;
+  font-size: calc(18px * var(--ui-font-scale));
   cursor: pointer;
   transition: color 0.2s ease;
   display: flex;
@@ -2798,75 +2937,18 @@ button:disabled {
   color: var(--accent-danger);
 }
 
-.add-btn {
-  padding: 8px 16px;
-  border: 1px dashed var(--border-light);
-  background: transparent;
-  border-radius: var(--radius-sm);
-  font-size: 13px;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all var(--transition-normal);
-}
-
-.add-btn:hover {
-  border-color: var(--accent-primary);
-  color: var(--accent-primary);
-  background: rgba(var(--accent-primary-rgb), 0.04);
-  box-shadow: var(--glow-primary);
-}
-
-.add-btn.small {
-  padding: 6px 12px;
-  border-style: solid;
-}
-
-.inline-label {
-  font-size: 12px;
-  color: var(--text-tertiary);
-  white-space: nowrap;
-}
-
 /* 步骤页面响应式样式 */
 @media (max-width: 768px) {
-  .step-title {
-    font-size: 18px;
-  }
-
-  .step-desc {
-    font-size: 13px;
-    margin-bottom: 20px;
-  }
-
   .section-group {
     padding: 14px;
   }
 
   .section-label {
-    font-size: 13px;
-  }
-
-  .step-content-inner .input-row label {
-    font-size: 12px;
-    min-width: 60px;
-  }
-
-  .step-content-inner .underline-input,
-  .step-content-inner .underline-select {
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale));
   }
 }
 
 @media (max-width: 480px) {
-  .step-title {
-    font-size: 16px;
-  }
-
-  .step-desc {
-    font-size: 12px;
-    margin-bottom: 16px;
-  }
-
   .form-section {
     gap: 16px;
   }
@@ -2876,30 +2958,8 @@ button:disabled {
   }
 
   .section-label {
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale));
     margin-bottom: 10px;
-  }
-
-  .step-content-inner .input-row {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
-    margin-bottom: 10px;
-  }
-
-  .step-content-inner .input-row label {
-    min-width: auto;
-  }
-
-  .step-content-inner .underline-input,
-  .step-content-inner .underline-select {
-    width: 100%;
-    font-size: 13px;
-  }
-
-  .step-content-inner .underline-input.short {
-    flex: none;
-    width: 100%;
   }
 }
 
@@ -2936,17 +2996,17 @@ button:disabled {
 
   .avatar-text,
   .avatar-icon {
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale));
   }
 
   .avatar-icon {
-    font-size: 16px;
+    font-size: calc(16px * var(--ui-font-scale));
   }
 
   .person-name,
   .business-title,
   .faction-title {
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale));
   }
 
   .person-tags,
@@ -2957,13 +3017,13 @@ button:disabled {
 
   .tag {
     padding: 1px 6px;
-    font-size: 10px;
+    font-size: calc(10px * var(--ui-font-scale));
     max-width: 100%;
   }
 
   .dialog-close {
     width: 24px;
     height: 24px;
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale));
   }
 }

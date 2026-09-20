@@ -15,7 +15,7 @@ const valueTranslations: Record<string, string> = {
   '分数至上、考上好大学改变命运、吃得苦中苦方为人上人':
     'Scores come first; getting into a good university changes your fate; only those who endure the bitterest hardship rise above others.',
   '半现实——用户拥有唯一的超能力「规则制定权」：可以向任意老师申请制定任何规则，无论内容多么离谱、荒诞、违反常理，老师都会立刻批准并在全校范围内强制执行。所有师生、校方人员都会将这些规则视为天经地义，自然而然地遵守，没有人会质疑或反抗。这是用户在这个世界中唯一的超自然能力，除此之外一切遵循现实规律。':
-    'Semi-realistic: the user possesses a single superpower, Rulemaking Authority. They may ask any teacher to create any rule, no matter how outrageous, absurd, or contrary to common sense. The teacher will immediately approve it and enforce it schoolwide. All students, teachers, and school staff will regard these rules as perfectly natural and obey them without question or resistance. This is the user\'s only supernatural ability in this world; everything else follows real-world logic.',
+    "Semi-realistic: the user possesses a single superpower, Rulemaking Authority. They may ask any teacher to create any rule, no matter how outrageous, absurd, or contrary to common sense. The teacher will immediately approve it and enforce it schoolwide. All students, teachers, and school staff will regard these rules as perfectly natural and obey them without question or resistance. This is the user's only supernatural ability in this world; everything else follows real-world logic.",
   '在有限的152天内平衡学习、社交、健康和心理状态':
     'Balance study, social life, health, and mental state within the limited span of 152 days.',
   '2025年高考改革新政策落地，部分省份实行新高考3+1+2模式，竞争愈发激烈':
@@ -42,8 +42,7 @@ const valueTranslations: Record<string, string> = {
   "经常被点名批评，是重点'关照'对象":
     'Frequently singled out for criticism and treated as key special-attention targets.',
   '互相看不太顺眼，偶尔有摩擦': 'They do not see eye to eye and occasionally clash.',
-  '体育社团和电竞社是后排兄弟的主阵地':
-    'Sports clubs and the esports club are the main turf of the back-row bros.',
+  体育社团和电竞社是后排兄弟的主阵地: 'Sports clubs and the esports club are the main turf of the back-row bros.',
   高中生: 'High School Student',
   '高三(5)班': 'Senior Year Class 5',
   '高三住校生。在班级排名15-20名左右，有潜力但尚未全力以赴。父母在外地工作，平时靠手机和家人联系。性格尚未完全定型，正处于人生观价值观形成的关键时期。内心深处渴望考上一所好大学，但又时常被青春期的种种诱惑和迷茫所困扰。':
@@ -51,7 +50,7 @@ const valueTranslations: Record<string, string> = {
   '初中成绩优异，考入这所重点高中后有些不适应，成绩起伏不定。高三上学期经历了一次情感波折，现在决定痛改前非。':
     'They had excellent grades in middle school, but struggled to adapt after entering this key high school, causing unstable performance. After an emotional setback in the first semester of senior year, they have now resolved to turn over a new leaf.',
   '考上一本重点大学，不辜负父母的期望':
-    'Get into a key first-tier university and live up to their parents\' expectations.',
+    "Get into a key first-tier university and live up to their parents' expectations.",
   规则制定权: 'Rulemaking Authority',
   '向任意老师申请制定规则的超能力。无论规则内容多么离谱，只要开口申请，老师就会立刻批准，全校所有人都会自然而然地遵守执行，没有人会质疑为什么。已批准的规则记录在商业情报中。':
     'A superpower that lets you ask any teacher to create a rule. No matter how outrageous the rule is, the moment you ask, the teacher will approve it, and everyone in the school will naturally obey without questioning why. Approved rules are recorded under business intelligence.',
@@ -69,24 +68,22 @@ const valueTranslations: Record<string, string> = {
     'Precisely knows the serving speed and cost-effectiveness of every cafeteria stall, and can prepare to sprint 30 seconds before the class bell rings.',
   饭卡余额: 'Meal Card Balance',
   '1人民币=1饭卡余额，食堂充值': '1 RMB = 1 meal card balance, recharged at the cafeteria.',
-  '食堂消费、校内超市购物、打印复印':
-    'Cafeteria spending, campus store purchases, printing, and photocopying.',
+  '食堂消费、校内超市购物、打印复印': 'Cafeteria spending, campus store purchases, printing, and photocopying.',
   学生证: 'Student ID',
   智能手机: 'Smartphone',
   课外小说: 'Extracurricular Novel',
   保温杯: 'Thermos',
   零食储备: 'Snack Stockpile',
-  '出入校门必备': 'Required for entering and leaving campus.',
+  出入校门必备: 'Required for entering and leaving campus.',
   '联系家人、查资料、娱乐，但上课期间使用会被没收':
     'Contact family, look up information, and entertain yourself, but it will be confiscated if used during class.',
-  '存了不少歌和几部没看完的番': 'Stores many songs and several unfinished anime series.',
+  存了不少歌和几部没看完的番: 'Stores many songs and several unfinished anime series.',
   '阅读可恢复少量精神状态，但有被没收的风险':
     'Reading restores a small amount of mental state, but carries a risk of confiscation.',
   藏在行李箱里: 'Hidden in the suitcase.',
   装热水喝可恢复口渴值: 'Can be filled with hot water to restore thirst.',
   枸杞泡水是不可能的: 'No way it is getting filled with goji berry tea.',
-  '使用1个恢复10点饥饿值，晚自习续命神器':
-    'Use 1 to restore 10 hunger points. A lifesaver during evening self-study.',
+  '使用1个恢复10点饥饿值，晚自习续命神器': 'Use 1 to restore 10 hunger points. A lifesaver during evening self-study.',
   '辣条、饼干、巧克力等混装': 'A mixed stash of spicy strips, biscuits, chocolate, and more.',
   模考情报: 'Mock Exam Intel',
   考试信息: 'Exam Information',
@@ -113,7 +110,7 @@ const valueTranslations: Record<string, string> = {
   结果导向: 'Result-Oriented',
   外冷内热: 'Cold Outside, Warm Inside',
   篮球: 'Basketball',
-  学生们的笑脸: 'Students\' smiling faces',
+  学生们的笑脸: "Students' smiling faces",
   死记硬背: 'Rote memorization',
   放弃思考: 'Giving up thinking',
   不写解题过程: 'Not writing solution steps',

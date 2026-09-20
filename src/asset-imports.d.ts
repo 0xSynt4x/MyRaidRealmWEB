@@ -24,4 +24,3 @@ declare module '*?url' {
  * 这里最小声明，避免为整个项目引入 Node 全局类型污染浏览器环境。
  */
 declare function require<T = any>(id: string): T;
-

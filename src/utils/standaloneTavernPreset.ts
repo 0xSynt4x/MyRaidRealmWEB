@@ -338,8 +338,7 @@ export function deleteImportedStandaloneTavernPreset(presetId: string): void {
   const library = loadStandaloneTavernPresetLibrary();
   const importedPresets = library.importedPresets.filter(preset => preset.id !== presetId);
   persistStandaloneTavernPresetLibrary({
-    activePresetId:
-      library.activePresetId === presetId ? STANDALONE_TAVERN_PRESET_BUILTIN_ID : library.activePresetId,
+    activePresetId: library.activePresetId === presetId ? STANDALONE_TAVERN_PRESET_BUILTIN_ID : library.activePresetId,
     importedPresets,
   });
 }

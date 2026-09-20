@@ -55,8 +55,8 @@ export const Schema = z.object({
       玩法侧重: z.string().prefault(''), // 战斗/经营/社交/探索等
       运行规则: z
         .array(z.string())
-        .transform(arr => arr.slice(-6))
-        .prefault([]), // 世界运行规则，采用并列多行格式，最多6条
+        .transform(arr => arr.slice(-10))
+        .prefault([]), // 世界运行规则，采用并列多行格式，最多10条
       叙事玩法: z.string().prefault(''), // 当前叙事玩法重点
 
       信息层级: z

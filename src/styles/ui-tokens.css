@@ -1,0 +1,161 @@
+/* ============================================================
+   界面皮肤变量层 · 阶段 1 地基
+   ------------------------------------------------------------
+   为什么要有这一层：
+
+   参照站把颜色烤死在每一条样式里——同一个金色在它样式表里出现了
+   几百次，所以它换不了皮。这里反过来：所有界面零件只写「用途」，
+   颜色一律从这一层取。形状和颜色彻底分开。
+
+   结果：换主题时整套界面（含装饰纹样）自己跟着变色，
+   不需要重画素材、不需要改组件。
+
+   全部从现有主题变量派生，6 套主题自动覆盖，不用逐主题列一遍。
+
+   ⚠️ 关键：必须同时声明在 :root 和 .app-container 上。
+   CSS 自定义属性的 var() 是在「声明它的那个元素」上代入的，
+   而 data-theme 挂在 .app-container 上——只在 :root 声明的话，
+   派生值会在 html 上就固化，换主题时不会跟着变。
+   ============================================================ */
+
+:root,
+.app-container {
+  /* —— 线条 —— */
+  --ui-line: var(--accent-primary);
+  --ui-line-soft: var(--border-light);
+
+  /* —— 面板底 —— */
+  --ui-panel: var(--glass-bg);
+  --ui-panel-border: var(--glass-border);
+
+  /* —— 文字 —— */
+  --ui-text: var(--text-primary);
+  --ui-muted: var(--text-secondary);
+  --ui-dim: var(--text-tertiary);
+
+  /* —— 压在遮罩上的浮层色（横幅这类叠在照片底图上的东西专用）——
+     底永远是**暗遮罩**（--ui-scrim-rgb 全主题都是黑，因为底图是照片、跟主题无关），
+     所以这里的字和图标必须恒为浅色，**不能跟随 --ui-text / --accent-***：
+     浅色主题（金属 / 古卷）的 --text-primary 是深棕，压上去就成了「深字压黑底」，
+     实测古卷 + 夜间底图对比度只有约 1.3:1（要 3:1 才够看）。
+
+     取值＝默认深色主题的现值，所以深色主题外观零变化，只是把浅色主题拉回同一水平。 */
+  --ui-on-scrim: #ede7d9;
+  --ui-on-scrim-dim: rgba(237, 231, 217, 0.64);
+  --ui-on-scrim-accent: #c9a86a;
+  --ui-on-scrim-accent-rgb: 201, 168, 106;
+  --ui-on-scrim-success: #6f9e5a;
+  /* 深底上专用的亮红：默认主题的 --accent-danger（#b5544a）压黑底偏暗 */
+  --ui-on-scrim-danger: #e28f85;
+  --ui-on-scrim-danger-rgb: 226, 143, 133;
+
+  /* —— 强调 —— */
+  --ui-accent: var(--accent-primary);
+  --ui-accent-soft: rgba(var(--accent-primary-rgb), 0.14);
+  --ui-on-accent: var(--bg-primary);
+
+  /* —— 比例（从参照站量出来的，不是估的）—— */
+  --ui-topbar-h: 46px; /* 顶栏高（顶栏已隐藏，恢复时用它） */
+  --ui-rail-w: 64px; /* 左侧竖栏宽（设计稿方向 A：48 → 64） */
+  --ui-panel-w: 318px; /* 右栏宽（设计稿方向 A：322 → 318） */
+  --ui-reading-w: 660px; /* 正文列最宽（设计稿方向 A：750 → 660） */
+  --ui-edge-gutter: 12px; /* 左右竖标签离边距离 */
+
+  /* —— 装饰 —— */
+  --ui-orn-ink: var(--ui-line);
+  --ui-orn-opacity: 0.9;
+  --ui-orn-tile-opacity: 0.055;
+  --ui-noise-opacity: 0.07;
+  --ui-noise-blend: overlay; /* overlay 在深色主题提亮、浅色主题压暗，两边都成立 */
+  --ui-vignette-strength: 0.18; /* 暗角压暗强度；浅色主题可调低，免得发脏 */
+
+  /* —— 直角 —— */
+  --ui-radius: 0px;
+
+  /* —— 字号缩放 ——
+     界面上写死像素的字号，统一乘上这个系数，就能跟着设置里的「字号」
+     档位一起放大缩小。默认 1（中号）＝ 外观与改造前**完全一致**，
+     所以这次改动不会让任何现有界面看起来不一样；
+     小号 0.92 / 大号 1.15 由 global.css 的 [data-size] 块覆盖。
+     兜底定义在 :root，保证 .app-container 之外的浮层也能取到。 */
+  --ui-font-scale: 1;
+
+  /* ============================================================
+     扁平化改版新增 · 阶段 1（本步只增不改，零视觉变化）
+     数值取「方向 A · 静谧」。
+
+     ⚠️ 只做默认主题：其余主题准备废弃，未逐一适配。
+        将来新增主题时，把下面这一整块复制过去换值即可。
+     ⚠️ 同样必须同时声明在 :root 与 .app-container 上（原因见文件头）。
+     ============================================================ */
+
+  /* —— 层：替代「卡片」，全部半透明，能透出底色 —— */
+  --ui-surface-1: rgba(255, 255, 255, 0.016);
+  --ui-surface-2: rgba(255, 255, 255, 0.03);
+  --ui-surface-3: rgba(255, 255, 255, 0.055);
+  --ui-hairline: rgba(255, 255, 255, 0.048);
+  /* 玩家输入层：派生自强调色，换主题自动跟着变 */
+  --ui-surface-me: rgba(var(--accent-primary-rgb), 0.06);
+
+  /* —— 圆角档位（旧的单一 --ui-radius 保留给未迁移组件）—— */
+  --ui-radius-sm: 9px;
+  --ui-radius-md: 13px;
+  --ui-radius-lg: 20px;
+
+  /* —— 语义字号（使用时一律 calc(基值 * var(--ui-font-scale))）—— */
+  --ui-fs-meta: 10.5px; /* 楼层号 / 时间 */
+  --ui-fs-label: 11.5px; /* 右栏分组标题、顶栏状态 */
+  --ui-fs-body: 12.5px; /* 右栏正文 */
+  --ui-fs-opt: 13px; /* 选项 */
+  --ui-fs-input: 13.5px; /* 输入框 */
+  --ui-fs-reading: 16px; /* 正文 */
+  --ui-fs-name: 15px; /* 玩家名 */
+  --ui-fs-scene: 17px; /* banner 地点名 */
+
+  /* —— 行高 —— */
+  --ui-leading-reading: 1.95;
+  --ui-leading-ui: 1.55;
+
+  /* —— 间距 —— */
+  --ui-space-1: 4px;
+  --ui-space-2: 8px;
+  --ui-space-3: 12px;
+  --ui-space-4: 16px;
+  --ui-space-5: 22px;
+  --ui-space-6: 28px;
+
+  /* —— 消息块 —— */
+  --ui-msg-gap: 26px;
+  --ui-msg-pad-y: 22px;
+  --ui-msg-pad-x: 26px;
+
+  /* —— 场景横幅（高度 = 宽度 ÷ 比例，不写死像素）—— */
+  --ui-banner-ar: 3.2/1;
+  --ui-banner-r: 20px;
+  --ui-banner-focus: 50% 50%;
+  --ui-banner-fade: 0.6s; /* 换天气时底图淡入淡出时长 */
+  /* 图上遮罩的分量色：深色主题用黑压暗，浅色主题可换白 */
+  --ui-scrim-rgb: 0, 0, 0;
+}
+
+/* 装饰总开关：给根节点加 .no-orn → 装饰全部归零，界面只剩细线。
+   必须放在上面那条规则之后（同特异度，靠顺序覆盖）。 */
+.no-orn {
+  --ui-orn-opacity: 0;
+  --ui-orn-tile-opacity: 0;
+  --ui-noise-opacity: 0;
+}
+
+/* ============================================================
+   响应式：手机端场景横幅改高一点
+   ------------------------------------------------------------
+   横幅高度 = 宽度 ÷ --ui-banner-ar。手机上列宽只剩一屏宽，
+   再按 3.2:1 算就薄成一条，所以换 1.9:1（设计稿方向 A 的值）。
+   ⚠️ 必须放在上面主块之后：同特异度，靠源码顺序覆盖。
+   ============================================================ */
+@media (max-width: 767px) {
+  .app-container {
+    --ui-banner-ar: 1.9/1;
+    --ui-banner-r: 14px;
+  }
+}

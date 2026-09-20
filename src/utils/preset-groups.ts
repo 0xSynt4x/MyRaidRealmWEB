@@ -31,7 +31,3 @@ export function isWorkshopPreset(preset: PresetConfig): boolean {
 export function getBuiltInPresets(presets: PresetConfig[]): PresetConfig[] {
   return presets.filter(preset => !isWorkshopPreset(preset));
 }
-
-export function getWorkshopPresets(presets: PresetConfig[]): PresetConfig[] {
-  return presets.filter(isWorkshopPreset);
-}

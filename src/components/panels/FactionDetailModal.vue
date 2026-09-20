@@ -7,7 +7,7 @@
           <div class="dashboard-header">
             <div class="header-left">
               <div class="faction-avatar">
-                <span class="avatar-icon">{{ factionIcon }}</span>
+                <span class="avatar-icon"><i class="ti" :class="factionIcon"></i></span>
               </div>
               <div class="header-info">
                 <h3 class="faction-title">{{ factionName }}</h3>
@@ -20,7 +20,7 @@
                 </div>
               </div>
             </div>
-            <button class="dialog-close" @click="handleClose">✕</button>
+            <button class="dialog-close" @click="handleClose"><i class="ti ti-x"></i></button>
           </div>
 
           <!-- 主体内容 -->
@@ -28,12 +28,12 @@
             <!-- 势力基本信息 -->
             <div v-if="factionData" class="info-section">
               <div class="section-title">
-                <span class="section-icon">📋</span>
+                <i class="ti ti-clipboard-list section-icon"></i>
                 <span>{{ t('faction.detail.info') }}</span>
               </div>
               <div class="faction-stats">
                 <div class="stat-card">
-                  <div class="stat-icon">💪</div>
+                  <div class="stat-icon"><i class="ti ti-barbell"></i></div>
                   <div class="stat-info">
                     <div class="stat-label">{{ t('faction.detail.influence') }}</div>
                     <div class="stat-value">{{ factionData.影响力 || 0 }}</div>
@@ -43,7 +43,7 @@
                   </div>
                 </div>
                 <div class="stat-card">
-                  <div class="stat-icon">👥</div>
+                  <div class="stat-icon"><i class="ti ti-users"></i></div>
                   <div class="stat-info">
                     <div class="stat-label">{{ t('faction.detail.members') }}</div>
                     <div class="stat-value">{{ formatPopulation(factionData.人数 || 0) }}</div>
@@ -55,7 +55,7 @@
             <!-- 玩家与该势力的关系 -->
             <div v-if="playerRelation" class="info-section">
               <div class="section-title">
-                <span class="section-icon">📊</span>
+                <i class="ti ti-chart-bar section-icon"></i>
                 <span>{{ t('faction.detail.yourRelation') }}</span>
               </div>
               <div class="reputation-dashboard">
@@ -105,7 +105,7 @@
             <!-- 未建立联系提示 -->
             <div v-else class="info-section">
               <div class="no-relation-box">
-                <i class="fa-solid fa-handshake-slash"></i>
+                <i class="ti ti-hand-off"></i>
                 <p>{{ t('faction.detail.noRelation') }}</p>
               </div>
             </div>
@@ -113,7 +113,7 @@
             <!-- 关联势力网络 -->
             <div v-if="relatedFactions.length > 0" class="info-section">
               <div class="section-title">
-                <span class="section-icon">🌐</span>
+                <i class="ti ti-world section-icon"></i>
                 <span>{{ t('faction.detail.relatedFactions') }}</span>
               </div>
               <div class="related-list">
@@ -177,7 +177,18 @@ const emit = defineEmits<{
 }>();
 
 const factionIcon = computed(() => {
-  const icons = ['🏛️', '⚔️', '🏰', '🕌', '🗼', '🏢', '🏭', '🏫', '🏦', '⛪'];
+  const icons = [
+    'ti-building-monument',
+    'ti-swords',
+    'ti-building-castle',
+    'ti-building-mosque',
+    'ti-tower',
+    'ti-building',
+    'ti-building-factory',
+    'ti-school',
+    'ti-building-bank',
+    'ti-building-church',
+  ];
   const hash = props.factionName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
   return icons[hash % icons.length];
 });
@@ -261,14 +272,14 @@ function handleClose() {
 }
 
 .gauge-label {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale));
   font-weight: 600;
   color: var(--text-secondary);
   min-width: 50px;
 }
 
 .gauge-value {
-  font-size: 20px;
+  font-size: calc(20px * var(--ui-font-scale));
   font-weight: 700;
   min-width: 50px;
   text-align: center;
@@ -309,7 +320,7 @@ function handleClose() {
 }
 
 .stat-icon {
-  font-size: 24px;
+  font-size: calc(24px * var(--ui-font-scale));
   flex-shrink: 0;
 }
 
@@ -366,7 +377,7 @@ function handleClose() {
 }
 
 .no-relation-box i {
-  font-size: 32px;
+  font-size: calc(32px * var(--ui-font-scale));
   color: var(--text-secondary);
   opacity: 0.5;
 }
@@ -401,7 +412,7 @@ function handleClose() {
   background: var(--accent-primary);
   color: white;
   border-radius: 50%;
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale));
   font-weight: 600;
   flex-shrink: 0;
 }
@@ -500,7 +511,7 @@ function handleClose() {
   }
 
   .gauge-value {
-    font-size: 18px;
+    font-size: calc(18px * var(--ui-font-scale));
     min-width: 44px;
   }
 
@@ -516,7 +527,7 @@ function handleClose() {
   }
 
   .stat-icon {
-    font-size: 20px;
+    font-size: calc(20px * var(--ui-font-scale));
   }
 
   .title-item {
