@@ -9,6 +9,9 @@ dist/
 .sisyphus/
 .workbuddy-ai/
 
+# 本地临时工作目录（排查脚本、截图、探测产物）
+Temp/
+
 # 系统与日志
 .DS_Store
 Thumbs.db
