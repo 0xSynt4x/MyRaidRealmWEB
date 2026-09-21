@@ -66,7 +66,9 @@ function restoreBlockPlaceholders(text: string, placeholders: InlinePlaceholder[
 function wrapDialogueSegments(text: string): string {
   return text
     .replace(/“([^”]+)”/g, '<span class="quote">“$1”</span>')
-    .replace(/&quot;([^&]+?)&quot;/g, '<span class="quote">&quot;$1&quot;</span>');
+    .replace(/&quot;([^&]+?)&quot;/g, '<span class="quote">&quot;$1&quot;</span>')
+    .replace(/「([^「」]+)」/g, '<span class="quote">「$1」</span>')
+    .replace(/『([^『』]+)』/g, '<span class="quote">『$1』</span>');
 }
 
 function formatStandaloneText(text: string): string {
