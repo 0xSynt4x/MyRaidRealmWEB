@@ -7,7 +7,9 @@ import { useNotificationStore } from '../stores/notification';
 import { useStatDataStore } from '../stores/statData';
 import { useSetupStore } from '../stores/setup';
 import { formatMessageContentForDisplay } from '../utils/messageFormatting';
-import { commitStandaloneRuntimeStateFromStores } from '../utils/standaloneRuntime';
+import { notify } from '../utils/notify';
+import { commitStandaloneRuntimeStateFromStores, resolveStandaloneStageSummaryState } from '../utils/standaloneRuntime';
+import { resolveStandaloneStageSummaryProgress } from '../utils/stageSummaryArchive';
 import { loadStandaloneStatData } from '../utils/standaloneStatData';
 import { parseUpdateVariableDetails } from '../utils/taggedReply';
 import { applyVariableUpdatePatch, parseVariableUpdatePatch } from '../utils/variableUpdate';
@@ -138,6 +140,36 @@ export function useMessageActions() {
     messagesStore.syncStandaloneRuntimeContentContext(`${input.reason}:failed`);
   }
 
+  /**
+   * 每轮收尾检查一次：掉出窗口、还没被阶段总结覆盖的小总结攒够阈值了，
+   * 就提醒玩家去「设置 → 存档管理」手动归档。
+   *
+   * 只提醒不自动跑 —— 归档要花主 API 的钱，必须玩家自己点。
+   */
+  function notifyStageSummaryArchiveDueIfNeeded(reason: string) {
+    try {
+      const progress = resolveStandaloneStageSummaryProgress();
+
+      if (!progress.isDue) {
+        return;
+      }
+
+      notify.warning(
+        tCurrent('contentCenter.archive.stageSummaryDueToast', {
+          pending: progress.pendingCount,
+          threshold: progress.threshold,
+        }),
+      );
+      console.info('[StageSummary] 已提示玩家归档:', {
+        reason,
+        pendingCount: progress.pendingCount,
+        threshold: progress.threshold,
+      });
+    } catch (error) {
+      console.warn('[StageSummary] 检查归档提示失败:', error);
+    }
+  }
+
   async function generateStandaloneAssistantReply(
     latestUserMessageId: number,
     reason: string,
@@ -157,6 +189,8 @@ export function useMessageActions() {
       // 记录本回合「开始时」的商城刷新基线值，供收尾对账区分「历史触发」与「回合中途玩家新点击的刷新」。
       const turnStartStatData = loadStandaloneStatData();
       const turnStartShopRefresh = Boolean(_.get(turnStartStatData, '设置.积分系统.商城刷新', false));
+      // 阶段总结 + 归档水位线：告诉拼提示词的那一层，哪些早期回合已经被压过了
+      const stageSummaryState = resolveStandaloneStageSummaryState();
 
       const outcome = await runStandaloneLocalTurn({
         mainApi: settingsStore.mainApi,
@@ -170,6 +204,8 @@ export function useMessageActions() {
         localContentCustomEntries: setupStore.customWorldbookEntries,
         selectedPreset: setupStore.selectedPreset,
         scriptedTurn: options.scriptedTurn,
+        stageSummary: stageSummaryState.stageSummary,
+        archivedUntilMessageId: stageSummaryState.archivedUntilMessageId,
         onMainReplyPartialText: partialText => {
           messagesStore.updateStandaloneStreamingPreview(partialText, reason);
         },
@@ -234,6 +270,9 @@ export function useMessageActions() {
       } finally {
         emitStandaloneGenerationState(false, reason);
       }
+
+      // 这一轮彻底收尾了，看看该不该提醒玩家归档阶段总结
+      notifyStageSummaryArchiveDueIfNeeded(reason);
 
       return true;
     } catch (error) {

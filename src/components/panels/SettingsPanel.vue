@@ -933,6 +933,46 @@
           </article>
         </div>
 
+        <article class="settings-status-card archive-action-card stage-summary-card">
+          <span class="summary-label">{{ t('contentCenter.archive.stageSummaryTitle') }}</span>
+          <p class="asset-description">{{ t('contentCenter.archive.stageSummaryDescription') }}</p>
+
+          <label class="worldbook-field compact-field">
+            <span class="summary-label">{{ t('contentCenter.archive.stageSummaryThresholdLabel') }}</span>
+            <select v-model="stageSummaryThreshold" class="worldbook-select compact-worldbook-input">
+              <option v-for="option in stageSummaryThresholdOptions" :key="option" :value="option">
+                {{ t('contentCenter.archive.stageSummaryThresholdUnit', { count: option }) }}
+              </option>
+            </select>
+          </label>
+
+          <p class="asset-meta">
+            {{
+              t('contentCenter.archive.stageSummaryPendingValue', {
+                pending: stageSummaryProgress.pendingCount,
+                archived: stageSummaryProgress.archivedCount,
+              })
+            }}
+          </p>
+
+          <div class="button-group-wrap">
+            <button class="primary-btn" :disabled="isArchivingStageSummary" @click="handleArchiveStageSummary">
+              <i :class="isArchivingStageSummary ? 'ti ti-loader-2 ti-spin' : 'ti ti-archive'"></i>
+              {{ t('contentCenter.archive.stageSummaryArchiveButton') }}
+            </button>
+          </div>
+
+          <label class="worldbook-field worldbook-field-body compact-field">
+            <span class="summary-label">{{ t('contentCenter.archive.stageSummaryCurrentTitle') }}</span>
+            <textarea
+              class="worldbook-textarea compact-worldbook-textarea compact-worldbook-textarea-readonly"
+              :value="stageSummaryProgress.stageSummary || t('contentCenter.archive.stageSummaryEmpty')"
+              rows="6"
+              readonly
+            />
+          </label>
+        </article>
+
         <input
           ref="archiveInputRef"
           class="file-input-hidden"
@@ -1036,6 +1076,7 @@ import { useSetupStore } from '../../stores/setup';
 import DeclarationModal from './DeclarationModal.vue';
 import ComfyUiSettingsCard from './ComfyUiSettingsCard.vue';
 import { useStandaloneArchiveManager } from '../../composables/useStandaloneArchiveManager';
+import { STAGE_SUMMARY_THRESHOLD_OPTIONS } from '../../utils/stageSummaryThreshold';
 
 const currentTab = ref<'ui' | 'textToImage' | 'mainApi' | 'assistantApi' | 'worldbook' | 'archive'>('ui');
 const showDeclaration = ref(false);
@@ -1059,6 +1100,7 @@ const {
   backgroundImage,
   worldDifficulty,
   standaloneLocalContent,
+  stageSummaryThreshold,
 } = storeToRefs(settingsStore);
 const { selectedPreset } = storeToRefs(setupStore);
 
@@ -1100,9 +1142,12 @@ const {
   currentArchiveMessageCount,
   currentArchiveVariableSectionCount,
   currentArchiveMessageIdPreview,
+  isArchivingStageSummary,
+  stageSummaryProgress,
   setArchiveStatus,
   refreshStandaloneArchiveList,
   handleArchiveExport,
+  handleArchiveStageSummary,
   handleSaveStandaloneArchive,
   triggerArchiveImport,
   handleArchiveFileChange,
@@ -1110,6 +1155,16 @@ const {
   handleDownloadStandaloneArchive,
   handleDeleteStandaloneArchive,
 } = useStandaloneArchiveManager();
+
+const stageSummaryThresholdOptions = STAGE_SUMMARY_THRESHOLD_OPTIONS;
+
+// 设置面板被 KeepAlive 缓存着，切回「存档管理」时得重新读一次本地存档与待归档条数，
+// 否则会拿开局时算出来的旧数字。
+watch(currentTab, tab => {
+  if (tab === 'archive') {
+    refreshStandaloneArchiveList();
+  }
+});
 const expandedSystemAssetId = ref<string | null>(null);
 const selectedEditableEntryIndex = ref(0);
 const editableEntryKeyMap = new WeakMap<LocalContentEntryConfig, string>();
@@ -3062,6 +3117,16 @@ function removeBackgroundImage() {
 
 .settings-management-panel .archive-action-card {
   justify-content: space-between;
+}
+
+/* 阶段总结归档卡：内容比旁边两张动作卡多，给大一点的间距 */
+.settings-management-panel .stage-summary-card {
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.settings-management-panel .stage-summary-card .worldbook-select {
+  max-width: 220px;
 }
 
 .settings-management-panel .asset-title-wrap {

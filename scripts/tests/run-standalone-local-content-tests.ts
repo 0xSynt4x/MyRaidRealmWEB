@@ -1,10 +1,7 @@
 import assert from 'node:assert/strict';
 import { createPinia, setActivePinia } from 'pinia';
 import { nextTick } from 'vue';
-import {
-  plotLotteryRulesTemplate,
-  variableUpdateRulesTemplate,
-} from '../../src/assets/standalone-local-content';
+import { plotLotteryRulesTemplate, variableUpdateRulesTemplate } from '../../src/assets/standalone-local-content';
 import { legacyWorldbookContentByName } from '../../src/assets/legacy-worldbook-compat';
 import { getBuiltInPresets, isWorkshopPreset } from '../../src/utils/preset-groups';
 import {
@@ -42,13 +39,11 @@ import {
   buildMainTurnPrompt,
   cancelStandaloneLocalTurn,
   buildVariableUpdateSecondPassPrompt,
+  collectStandalonePriorSummaryItems,
   runStandaloneLocalTurn,
   type StandaloneLocalTurnInput,
 } from '../../src/utils/standaloneLocalTurn';
-import {
-  cancelStandaloneMainApiRequest,
-  requestStandaloneMainApiText,
-} from '../../src/utils/standaloneMainApi';
+import { cancelStandaloneMainApiRequest, requestStandaloneMainApiText } from '../../src/utils/standaloneMainApi';
 import {
   hasCompleteStandaloneProviderApiConfig,
   requestStandaloneProviderTextCore,
@@ -69,10 +64,7 @@ import {
   resolveMainPassWorldbookPromptFromTrace,
   resolvePreferredVariableDebugPass,
 } from '../../src/utils/standaloneAiDebug';
-import {
-  formatAuxiliaryContentForDisplay,
-  formatMessageContentForDisplay,
-} from '../../src/utils/messageFormatting';
+import { formatAuxiliaryContentForDisplay, formatMessageContentForDisplay } from '../../src/utils/messageFormatting';
 import {
   createDefaultApiConfig,
   normalizeApiConfig,
@@ -84,11 +76,7 @@ import {
 } from '../../src/stores/settings';
 import { getPresets, loadPresetsBundle } from '../../src/utils/preset-loader';
 import { useNotificationStore } from '../../src/stores/notification';
-import {
-  isSetupCompleted,
-  clearSetupCompleted,
-  markSetupCompleted,
-} from '../../src/utils/setupProgress';
+import { isSetupCompleted, clearSetupCompleted, markSetupCompleted } from '../../src/utils/setupProgress';
 import { useSetupStore } from '../../src/stores/setup';
 import { useMessageActions } from '../../src/composables/useMessageActions';
 import { useStatDataStore } from '../../src/stores/statData';
@@ -104,8 +92,16 @@ import {
   syncStandaloneRuntimeSessionStatData,
 } from '../../src/utils/standaloneRuntime';
 import { clearStandaloneStatData, loadStandaloneStatData } from '../../src/utils/standaloneStatData';
+import {
+  archiveStandaloneStageSummary,
+  resolveStandaloneStageSummaryProgress,
+} from '../../src/utils/stageSummaryArchive';
+import { DEFAULT_STAGE_SUMMARY_THRESHOLD, normalizeStageSummaryThreshold } from '../../src/utils/stageSummaryThreshold';
 
 const STANDALONE_ARCHIVE_STORAGE_KEY_PREFIX = 'th1980s:standalone-archive:';
+// 预设记忆是「跟着会话走」的：键 = th1980s:selected-preset:<会话id>。
+// 没有会话时读取路径直接返回 null，所以测这条必须先把会话造出来。
+const STANDALONE_SELECTED_PRESET_STORAGE_KEY_PREFIX = 'th1980s:selected-preset';
 const mockEventBus = new Map<string, Array<(payload: unknown) => void>>();
 
 const browserDocument = {
@@ -450,14 +446,287 @@ async function testSupportsGetvarDefaultsAndLodashRandom(): Promise<void> {
 function testStandalonePromptMacroReplacementHelpers(): void {
   const statData = createRenderContext().statData;
   const replaced = applyStandalonePromptMacroReplacements(
-    'snapshot={{format_message_variable::stat_data}}; user={{user}}; char={{char}}',
+    'snapshot={{format_message_variable::stat_data}}; user={{user}}; char={{char}}; scenario={{scenario}}',
     { statData },
   );
 
   assert.match(replaced, /"姓名": "测试玩家"/);
-  assert.match(replaced, /user=玩家/);
+  assert.match(replaced, /user=测试玩家/);
   assert.match(replaced, /char=当前角色/);
+  assert.match(replaced, /scenario=当前场景/);
   assert.equal(buildStandaloneCurrentStatDataBlock(statData).startsWith('[当前变量快照 stat_data]\n{'), true);
+
+  assert.equal(
+    applyStandalonePromptMacroReplacements('scenario={{scenario}}', {
+      statData: { 世界: { 空间定位: { 当前位置: '王都商业区' } } },
+    }),
+    'scenario=王都商业区',
+  );
+
+  assert.equal(applyStandalonePromptMacroReplacements('user={{user}}', { statData: {} }), 'user=玩家');
+}
+
+function testPriorSummariesOutsideRecentWindowAreInjected(): void {
+  const latestUserMessage = createMessage({ message_id: 21, role: 'user', content_text: '本轮输入' });
+  const history: MessageRecord[] = [];
+
+  for (let round = 1; round <= 10; round += 1) {
+    history.push(
+      createMessage({ message_id: round * 2 - 1, role: 'user', content_text: `第${round}轮输入` }),
+      createMessage({
+        message_id: round * 2,
+        role: 'assistant',
+        content_text: `第${round}轮正文`,
+        summary_content: `第${round}轮总结`,
+      }),
+    );
+  }
+
+  const combined = buildMainTurnPrompt(
+    createStandaloneTurnInput({
+      messages: [...history, latestUserMessage],
+      latestUserMessage,
+    }),
+  )
+    .messages.map(message => message.content)
+    .join('\n\n');
+
+  assert.ok(combined.includes('[前情提要]'));
+  assert.ok(combined.includes('第1轮总结'));
+  assert.ok(combined.includes('第6轮总结'));
+  assert.ok(!combined.includes('第7轮总结'));
+  assert.ok(combined.includes('第10轮正文'));
+
+  const withoutSummary = buildMainTurnPrompt(
+    createStandaloneTurnInput({ messages: [createMessage()], latestUserMessage: createMessage() }),
+  )
+    .messages.map(message => message.content)
+    .join('\n\n');
+
+  assert.ok(!withoutSummary.includes('[前情提要]'));
+}
+
+function testStageSummaryReplacesArchivedPriorSummaries(): void {
+  const latestUserMessage = createMessage({ message_id: 21, role: 'user', content_text: '本轮输入' });
+  const history: MessageRecord[] = [];
+
+  for (let round = 1; round <= 10; round += 1) {
+    history.push(
+      createMessage({ message_id: round * 2 - 1, role: 'user', content_text: `第${round}轮输入` }),
+      createMessage({
+        message_id: round * 2,
+        role: 'assistant',
+        content_text: `第${round}轮正文`,
+        summary_content: `第${round}轮总结`,
+      }),
+    );
+  }
+
+  const messages = [...history, latestUserMessage];
+  const combined = buildMainTurnPrompt(
+    createStandaloneTurnInput({
+      messages,
+      latestUserMessage,
+      stageSummary: '第1、2轮已归档：主角离开村子抵达王都。',
+      archivedUntilMessageId: 4,
+    }),
+  )
+    .messages.map(message => message.content)
+    .join('\n\n');
+
+  assert.ok(combined.includes('[阶段总结]'));
+  assert.ok(combined.includes('第1、2轮已归档：主角离开村子抵达王都。'));
+  // 已被阶段总结覆盖的回合不再逐条重复发
+  assert.ok(!combined.includes('第1轮总结'));
+  assert.ok(!combined.includes('第2轮总结'));
+  // 还没归档的照旧进前情提要
+  assert.ok(combined.includes('第3轮总结'));
+  assert.ok(combined.includes('第6轮总结'));
+  assert.ok(!combined.includes('第7轮总结'));
+
+  // 没有阶段总结时只剩前情提要，旧条目照旧全发
+  const withoutStage = buildMainTurnPrompt(createStandaloneTurnInput({ messages, latestUserMessage }))
+    .messages.map(message => message.content)
+    .join('\n\n');
+
+  assert.ok(!withoutStage.includes('[阶段总结]'));
+  assert.ok(withoutStage.includes('第1轮总结'));
+}
+
+function testStageSummaryThresholdNormalization(): void {
+  assert.equal(DEFAULT_STAGE_SUMMARY_THRESHOLD, 100);
+  assert.equal(normalizeStageSummaryThreshold(undefined), 100);
+  assert.equal(normalizeStageSummaryThreshold(100), 100);
+  assert.equal(normalizeStageSummaryThreshold('200'), 200);
+  assert.equal(normalizeStageSummaryThreshold(300), 300);
+  assert.equal(normalizeStageSummaryThreshold(500), 500);
+  // 不在档位里的值一律回退默认档
+  assert.equal(normalizeStageSummaryThreshold(123), 100);
+  assert.equal(normalizeStageSummaryThreshold(-5), 100);
+  assert.equal(normalizeStageSummaryThreshold(Number.NaN), 100);
+  assert.equal(normalizeStageSummaryThreshold('abc'), 100);
+}
+
+function testCollectStandalonePriorSummaryItemsSharesWindowWithPrompt(): void {
+  const messages: MessageRecord[] = [];
+
+  for (let round = 1; round <= 10; round += 1) {
+    messages.push(
+      createMessage({ message_id: round * 2 - 1, role: 'user', content_text: `第${round}轮输入` }),
+      createMessage({
+        message_id: round * 2,
+        role: 'assistant',
+        content_text: `第${round}轮正文`,
+        summary_content: `第${round}轮总结`,
+      }),
+    );
+  }
+
+  assert.deepEqual(
+    collectStandalonePriorSummaryItems({ messages }).map(item => item.messageId),
+    [2, 4, 6, 8, 10, 12],
+  );
+
+  // 推进水位线后，已归档的不再算作待归档
+  assert.deepEqual(
+    collectStandalonePriorSummaryItems({ messages, archivedUntilMessageId: 4 }).map(item => item.messageId),
+    [6, 8, 10, 12],
+  );
+
+  // 缺小总结、或只有空白小总结的回合不算数
+  const mixedSummaries: MessageRecord[] = [];
+  for (let messageId = 1; messageId <= 12; messageId += 1) {
+    const summary = messageId === 1 ? undefined : messageId === 2 ? '   ' : `第${messageId}条总结`;
+    mixedSummaries.push(createMessage({ message_id: messageId, role: 'assistant', summary_content: summary }));
+  }
+
+  assert.deepEqual(
+    collectStandalonePriorSummaryItems({ messages: mixedSummaries }).map(item => item.messageId),
+    [3, 4],
+  );
+}
+
+async function testArchiveStandaloneStageSummaryCompressesPendingSummaries(): Promise<void> {
+  const seeded = await seedStandaloneArchiveScenario({
+    playerName: '阶段归档角色',
+    sendFullPreset: true,
+  });
+  const { messagesStore, settingsStore } = seeded;
+
+  // 补到 10 轮：每轮 = 玩家输入 + AI 正文（AI 那侧带小总结）
+  for (let round = 2; round <= 10; round += 1) {
+    messagesStore.appendStandaloneMessage({
+      role: 'user',
+      raw_content: `第${round}轮输入`,
+      content_text: `第${round}轮输入`,
+      formatted: `第${round}轮输入`,
+      action_options: [],
+      stat_data_snapshot: seeded.statData,
+    });
+    messagesStore.appendStandaloneMessage({
+      role: 'assistant',
+      raw_content: `<contenttext>第${round}轮正文</contenttext>`,
+      content_text: `第${round}轮正文`,
+      formatted: `第${round}轮正文`,
+      action_options: [],
+      summary_content: `第${round}轮总结`,
+      stat_data_snapshot: seeded.statData,
+    });
+  }
+  await nextTick();
+
+  // 默认阈值 100：只有 6 条待归档，不该提示
+  const before = resolveStandaloneStageSummaryProgress();
+  assert.equal(before.threshold, 100);
+  assert.equal(before.pendingCount, 6);
+  assert.equal(before.archivedCount, 0);
+  assert.equal(before.isDue, false);
+
+  // 阈值降到 5 就该提示了
+  assert.equal(resolveStandaloneStageSummaryProgress(5).isDue, true);
+
+  const originalFetch = globalThis.fetch;
+  let capturedBody: { messages?: Array<{ role: string; content: string }> } = {};
+  globalThis.fetch = (async (_input: string | URL | Request, init?: RequestInit) => {
+    capturedBody = JSON.parse(String(init?.body ?? '{}'));
+    return createMockFetchResponse({
+      jsonData: { choices: [{ message: { content: '  合并后的阶段总结  ' } }] },
+    });
+  }) as typeof fetch;
+
+  try {
+    const outcome = await archiveStandaloneStageSummary();
+
+    assert.equal(outcome.archivedCount, 6);
+    assert.equal(outcome.stageSummary, '合并后的阶段总结');
+    assert.equal(outcome.archivedUntilMessageId, 11);
+
+    // 确实把「旧阶段总结占位 + 这 6 条」一起送进了主 API
+    const sentText = (capturedBody.messages ?? []).map(message => message.content).join('\n');
+    assert.ok(sentText.includes('（无，这是第一次归档）'));
+    assert.ok(sentText.includes('阶段归档角色的剧情总结'));
+    assert.ok(sentText.includes('第6轮总结'));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  // 归档后：水位线推进，待归档清零，已归档 6 条
+  const after = resolveStandaloneStageSummaryProgress();
+  assert.equal(after.pendingCount, 0);
+  assert.equal(after.archivedCount, 6);
+  assert.equal(after.archivedUntilMessageId, 11);
+  assert.equal(after.stageSummary, '合并后的阶段总结');
+  assert.equal(after.isDue, false);
+
+  // 落进会话，刷新/读档都还在
+  const session = loadStandaloneRuntimeSession();
+  assert.equal(session?.stage_summary, '合并后的阶段总结');
+  assert.equal(session?.stage_summary_archived_until_message_id, 11);
+
+  const savedEntry = saveStandaloneArchiveSnapshot();
+  const payload = readStoredArchivePayload(savedEntry.id);
+  assert.equal(payload.session.stage_summary, '合并后的阶段总结');
+  assert.equal(payload.session.stage_summary_archived_until_message_id, 11);
+
+  // 提示词换成「一段阶段总结」，不再逐条发旧小总结
+  const latestUserMessage = [...messagesStore.messages].reverse().find(message => message.role === 'user');
+  assert.ok(latestUserMessage);
+
+  const combined = buildMainTurnPrompt(
+    createStandaloneTurnInput({
+      messages: messagesStore.messages,
+      latestUserMessage,
+      stageSummary: after.stageSummary,
+      archivedUntilMessageId: after.archivedUntilMessageId,
+    }),
+  )
+    .messages.map(message => message.content)
+    .join('\n\n');
+
+  assert.ok(combined.includes('[阶段总结]'));
+  assert.ok(combined.includes('合并后的阶段总结'));
+  assert.ok(!combined.includes('[前情提要]'));
+  assert.ok(!combined.includes('阶段归档角色的剧情总结'));
+  assert.ok(!combined.includes('第6轮总结'));
+
+  // 再点一次：没有新内容，不该白花一次主 API 调用
+  let secondFetchCallCount = 0;
+  globalThis.fetch = (async () => {
+    secondFetchCallCount += 1;
+    return createMockFetchResponse({ jsonData: { choices: [{ message: { content: '不该被调用' } }] } });
+  }) as typeof fetch;
+
+  try {
+    const secondOutcome = await archiveStandaloneStageSummary();
+    assert.equal(secondOutcome.archivedCount, 0);
+    assert.equal(secondFetchCallCount, 0);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  // 阈值改成 200 也要能存下来
+  settingsStore.stageSummaryThreshold = 200;
+  assert.equal(resolveStandaloneStageSummaryProgress().threshold, 200);
 }
 
 function testAssistantApiDebugTracePreferredOverLegacyVariablePass(): void {
@@ -528,8 +797,14 @@ function testPresetGroupHelpersSplitBuiltInAndWorkshopPresets(): void {
   const presets = [builtInPreset, workshopPreset];
 
   assert.equal(isWorkshopPreset(workshopPreset), true);
-  assert.deepEqual(getBuiltInPresets(presets).map(preset => preset.id), ['reform-era-1980s']);
-  assert.deepEqual(presets.filter(preset => isWorkshopPreset(preset)).map(preset => preset.id), ['yiren-zhixia']);
+  assert.deepEqual(
+    getBuiltInPresets(presets).map(preset => preset.id),
+    ['reform-era-1980s'],
+  );
+  assert.deepEqual(
+    presets.filter(preset => isWorkshopPreset(preset)).map(preset => preset.id),
+    ['yiren-zhixia'],
+  );
 }
 
 function testRegisteredWorldbookEntriesNormalizeToMainWorldbookLocalContent(): void {
@@ -1090,11 +1365,6 @@ function readStoredArchivePayload(archiveId: string): StandaloneArchiveFile {
   return JSON.parse(stored) as StandaloneArchiveFile;
 }
 
-async function flushScheduledUiEffects(): Promise<void> {
-  await new Promise(resolve => setTimeout(resolve, 0));
-  await nextTick();
-}
-
 async function seedStandaloneArchiveScenario(input: {
   playerName: string;
   sendFullPreset: boolean;
@@ -1343,8 +1613,15 @@ async function testImportStandaloneArchiveFileWritesListAndRestoresState(): Prom
 
 async function testSetupStoreRestoreRehydratesStoredBuiltInPreset(): Promise<void> {
   resetStandaloneTestEnvironment();
+
+  // 先把会话造出来并落盘，再往「这个会话作用域」下写预设记忆。
+  // 少了会话这一步，读取路径拿不到键、直接返回 null（产品是有意这么设计的：
+  // 选预设发生在点「开始游戏」之前，那时还没会话，写了也会落到兜底作用域）。
+  const session = createSeededStandaloneRuntimeSession({});
+  persistStandaloneRuntimeSession(session);
+
   localStorage.setItem(
-    'th1980s:selected-preset:standalone',
+    `${STANDALONE_SELECTED_PRESET_STORAGE_KEY_PREFIX}:${session.id}`,
     JSON.stringify({
       id: 'china-1990s-family',
       name: '温馨小屋',
@@ -2324,14 +2601,8 @@ async function testStandaloneProviderCoreFallsBackWhenStreamingReturnsWholeJson(
 function testStandaloneOpenAiApiUrlNormalization(): void {
   assert.equal(normalizeStandaloneOpenAiApiUrl('https://example.com/v1'), 'https://example.com/v1');
   assert.equal(normalizeStandaloneOpenAiApiUrl('https://example.com/v1/'), 'https://example.com/v1');
-  assert.equal(
-    normalizeStandaloneOpenAiApiUrl('https://example.com/v1/chat/completions'),
-    'https://example.com/v1',
-  );
-  assert.equal(
-    normalizeStandaloneOpenAiApiUrl('https://example.com/v1/models'),
-    'https://example.com/v1',
-  );
+  assert.equal(normalizeStandaloneOpenAiApiUrl('https://example.com/v1/chat/completions'), 'https://example.com/v1');
+  assert.equal(normalizeStandaloneOpenAiApiUrl('https://example.com/v1/models'), 'https://example.com/v1');
   assert.equal(normalizeStandaloneOpenAiApiUrl('https://generativelanguage.googleapis.com/v1beta/models'), '');
 
   assert.equal(
@@ -3084,6 +3355,27 @@ async function testStandaloneMessageActionsProjectStreamingPreviewWithoutMutatin
   resetStandaloneTestEnvironment();
   const originalFetch = globalThis.fetch;
 
+  // 这条测的是「流式预览期间不许动真实变量」，先种一份已知的变量快照才有东西可对照
+  // （不种的话读出来是空名字，那条断言等于没测）。
+  ensureStandaloneRuntimeBootstrap(createRenderContext().statData as StandaloneLocalTurnInput['statData']);
+
+  // 假请求要「正文片段先到、[DONE] 一直吊着不吐」。整段一次读完的话，
+  // 断言还没跑这一轮就已经收尾（流式投影层被清掉），只能读到 undefined。
+  // 吊住之后「正文已到、流还没结束」这个中间态就稳定可观察，不用赌 flush 几次。
+  let releaseStreamEnd: (() => void) | null = null;
+  let streamEndReleased = false;
+  const holdStreamEnd = new Promise<void>(resolve => {
+    releaseStreamEnd = resolve;
+  });
+  const releaseMainReplyStream = () => {
+    if (streamEndReleased) {
+      return;
+    }
+
+    streamEndReleased = true;
+    releaseStreamEnd?.();
+  };
+
   globalThis.fetch = (async (_input: string | URL | Request, init?: RequestInit) => {
     const body = JSON.parse(String(init?.body ?? '{}'));
 
@@ -3102,12 +3394,27 @@ async function testStandaloneMessageActionsProjectStreamingPreviewWithoutMutatin
       });
     }
 
+    const encoder = new TextEncoder();
+    const streamChunks = [
+      'data: {"choices":[{"delta":{"content":"<contenttext>流式"}}]}\n\n',
+      'data: {"choices":[{"delta":{"content":"正文</contenttext><summary>临时总结</summary>"}}]}\n\n',
+    ];
+    let deliveredChunkCount = 0;
+
     return new Response(
-      [
-        'data: {"choices":[{"delta":{"content":"<contenttext>流式"}}]}\n\n',
-        'data: {"choices":[{"delta":{"content":"正文</contenttext><summary>临时总结</summary>"}}]}\n\n',
-        'data: [DONE]\n\n',
-      ].join(''),
+      new ReadableStream<Uint8Array>({
+        async pull(controller) {
+          if (deliveredChunkCount < streamChunks.length) {
+            controller.enqueue(encoder.encode(streamChunks[deliveredChunkCount]));
+            deliveredChunkCount += 1;
+            return;
+          }
+
+          await holdStreamEnd;
+          controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+          controller.close();
+        },
+      }),
       {
         status: 200,
         headers: {
@@ -3116,6 +3423,8 @@ async function testStandaloneMessageActionsProjectStreamingPreviewWithoutMutatin
       },
     );
   }) as typeof fetch;
+
+  let pendingSend: Promise<boolean> | null = null;
 
   try {
     const settingsStore = useSettingsStore();
@@ -3144,14 +3453,25 @@ async function testStandaloneMessageActionsProjectStreamingPreviewWithoutMutatin
     setupStore.selectedPreset = null;
 
     const sendPromise = actions.sendStandaloneUserMessage('请继续剧情', 'streaming_preview_test');
-    await flushScheduledUiEffects(12);
+    pendingSend = sendPromise;
+    // 先让两段正文片段流进来
+    await flushScheduledUiEffects();
+    // 🔴 流式投影是「120ms 防抖」之后才刷到界面上的，只 flush 微任务等不到它，
+    // 必须真等过那个防抖窗口。用模块加载时抓死的定时器，免得被别的测试改过的 setTimeout 影响。
+    await new Promise<void>(resolve => {
+      standaloneTestSetTimeout(resolve, 150);
+    });
 
     assert.equal(messagesStore.streamingRecord?.content_text, '流式正文');
     assert.equal(messagesStore.streamingRecord?.summary_content, '临时总结');
     assert.equal(messagesStore.streamingRecord?.is_streaming, true);
     assert.equal(loadStandaloneStatData().玩家.姓名, '测试玩家');
 
+    // 中间态断言完了，放行 [DONE] 让这一轮正常收尾。
+    releaseMainReplyStream();
+
     const sendResult = await sendPromise;
+    pendingSend = null;
     assert.equal(sendResult, true);
     assert.equal(messagesStore.streamingRecord, null);
 
@@ -3164,6 +3484,16 @@ async function testStandaloneMessageActionsProjectStreamingPreviewWithoutMutatin
     assert.equal(lastAssistantMessage?.variable_update_status, 'success');
     assert.equal(loadStandaloneStatData().玩家.姓名, '动作流式最终成功');
   } finally {
+    // 断言失败时这一轮还在跑：先放行、再取消。不收拾干净它会一直占着模块级的
+    // 「正在生成」状态，后面所有回合测试都会报「已有独立模式生成任务正在进行中」。
+    releaseMainReplyStream();
+
+    if (pendingSend) {
+      pendingSend.catch(() => {});
+      cancelStandaloneLocalTurn();
+      await flushScheduledUiEffects();
+    }
+
     globalThis.fetch = originalFetch;
   }
 }
@@ -3176,8 +3506,15 @@ async function testStandaloneLocalTurnAbortAfterMainReplyStillRejectsFinalize():
     const body = JSON.parse(String(init?.body ?? '{}'));
 
     if (isStandaloneVariableUpdateRequest(body)) {
-      return await new Promise<Response>(resolve => {
+      return await new Promise<Response>((resolve, reject) => {
         resolveSecondPassResponse = resolve;
+        // 真实 fetch 收到取消信号会立刻中断，假请求也必须照做。
+        // 少了这段，这条测试会一直等一个永远不来的结果，把后面所有测试一起拖死。
+        const signal = init?.signal;
+        signal?.addEventListener('abort', () => {
+          const reason = signal.reason;
+          reject(reason instanceof Error ? reason : new Error(String(reason ?? 'aborted-by-test')));
+        });
       });
     }
 
@@ -4250,6 +4587,76 @@ async function testAssistantApiMalformedReplyTracePersistsInArchive(): Promise<v
   );
 }
 
+/**
+ * 单条测试的超时上限。
+ *
+ * 为什么必须有：有条测试会死等一个永远不来的结果（假请求不理会取消信号）。
+ * 没有超时的话，事件循环一空 node 就以「成功」退出，**后面所有测试被静默吞掉、
+ * CI 还显示绿**。加上它，挂住的测试会变成一条明确的失败，后面的照跑。
+ *
+ * 默认 90 秒：产品里有一条 60 秒的「变量更新补写超时」，测试要靠它触发，
+ * 上限压太低会把这类测试误判成挂住。可用 STANDALONE_TEST_TIMEOUT_MS 临时覆盖。
+ */
+const STANDALONE_TEST_TIMEOUT_MS = Number(process.env.STANDALONE_TEST_TIMEOUT_MS) || 90_000;
+
+/**
+ * 看门狗必须用「测试跑之前就抓好的」定时器。
+ *
+ * 有条测试会把 `globalThis.setTimeout` 换成 0ms 版来快进产品的 60 秒超时；
+ * 如果看门狗现取 `setTimeout`，就会被它顺手加速成 0ms，秒判「超时」——
+ * 变成被测对象把裁判也一起改了。这里在模块加载时就抓死。
+ */
+const standaloneTestSetTimeout = globalThis.setTimeout;
+
+function withStandaloneTestTimeout(promise: Promise<void>, label: string): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    const timer = standaloneTestSetTimeout(() => {
+      reject(new Error(`测试超时（${STANDALONE_TEST_TIMEOUT_MS}ms 内没有结束）：${label}`));
+    }, STANDALONE_TEST_TIMEOUT_MS);
+
+    promise.then(
+      () => {
+        clearTimeout(timer);
+        resolve();
+      },
+      error => {
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
+
+type StandaloneTestGlobalSnapshot = {
+  fetch: typeof globalThis.fetch;
+  setTimeout: typeof globalThis.setTimeout;
+  windowSetTimeout: typeof globalThis.setTimeout | undefined;
+};
+
+/**
+ * 跑挂的测试走不到自己的 `finally`，会把改过的全局（假请求、被压成 0ms 的定时器）
+ * 泄漏给后面所有测试，让失败原因没法读。所以每条测试前后都整体还原一次。
+ */
+function captureStandaloneTestGlobals(): StandaloneTestGlobalSnapshot {
+  const windowLike = (globalThis as { window?: { setTimeout?: typeof globalThis.setTimeout } }).window;
+
+  return {
+    fetch: globalThis.fetch,
+    setTimeout: globalThis.setTimeout,
+    windowSetTimeout: windowLike?.setTimeout,
+  };
+}
+
+function restoreStandaloneTestGlobals(snapshot: StandaloneTestGlobalSnapshot): void {
+  globalThis.fetch = snapshot.fetch;
+  globalThis.setTimeout = snapshot.setTimeout;
+
+  const windowLike = (globalThis as { window?: { setTimeout?: typeof globalThis.setTimeout } }).window;
+  if (windowLike && snapshot.windowSetTimeout) {
+    windowLike.setTimeout = snapshot.windowSetTimeout;
+  }
+}
+
 async function run(): Promise<void> {
   const tests = [
     ['passes through plain text', testPassesThroughPlainText],
@@ -4258,6 +4665,14 @@ async function run(): Promise<void> {
     ['supports raw interpolation without html escaping', testSupportsRawInterpolationWithoutHtmlEscaping],
     ['supports getvar defaults and lodash random', testSupportsGetvarDefaultsAndLodashRandom],
     ['standalone prompt macro helpers', testStandalonePromptMacroReplacementHelpers],
+    ['prior summaries outside recent window are injected', testPriorSummariesOutsideRecentWindowAreInjected],
+    ['stage summary replaces archived prior summaries', testStageSummaryReplacesArchivedPriorSummaries],
+    ['stage summary threshold normalization', testStageSummaryThresholdNormalization],
+    [
+      'collect prior summary items shares window with prompt',
+      testCollectStandalonePriorSummaryItemsSharesWindowWithPrompt,
+    ],
+    ['archive stage summary compresses pending summaries', testArchiveStandaloneStageSummaryCompressesPendingSummaries],
     [
       'assistant api debug trace preferred over legacy variable pass',
       testAssistantApiDebugTracePreferredOverLegacyVariablePass,
@@ -4356,7 +4771,10 @@ async function run(): Promise<void> {
     ],
     ['standalone openai api url normalization', testStandaloneOpenAiApiUrlNormalization],
     ['standalone main api request normalizes runtime api url', testStandaloneMainApiRequestNormalizesRuntimeApiUrl],
-    ['openai compatible models use sillytavern backend when available', testOpenAiCompatibleModelsUseSillyTavernBackendWhenAvailable],
+    [
+      'openai compatible models use sillytavern backend when available',
+      testOpenAiCompatibleModelsUseSillyTavernBackendWhenAvailable,
+    ],
     ['openai compatible models fallback to direct fetch', testOpenAiCompatibleModelsFallbackToDirectFetch],
     ['normalize api config forces openai compatible mode', testNormalizeApiConfigForcesOpenAiCompatibleMode],
     ['standalone main api abort contract', testStandaloneMainApiAbortContract],
@@ -4485,12 +4903,38 @@ async function run(): Promise<void> {
     throw new Error(`No tests matched TEST_FILTER=${filter}`);
   }
 
+  const passedLabels: string[] = [];
+  const failedResults: Array<{ label: string; error: unknown }> = [];
+
   for (const [label, execute] of runnableTests) {
-    await execute();
-    console.info(`✔ ${label}`);
+    const globalsBeforeTest = captureStandaloneTestGlobals();
+
+    try {
+      await withStandaloneTestTimeout(
+        (async () => {
+          await execute();
+        })(),
+        label,
+      );
+      passedLabels.push(label);
+      console.info(`✔ ${label}`);
+    } catch (error) {
+      failedResults.push({ label, error });
+      console.error(`✖ ${label}`);
+      console.error(error instanceof Error ? (error.stack ?? error.message) : error);
+    } finally {
+      restoreStandaloneTestGlobals(globalsBeforeTest);
+    }
   }
 
-  console.info(`1980s-NW standalone renderer tests passed: ${runnableTests.length}`);
+  if (failedResults.length > 0) {
+    console.error('');
+    console.error(`失败的测试（${failedResults.length} 条）：`);
+    failedResults.forEach(({ label }) => console.error(`  ✖ ${label}`));
+    process.exitCode = 1;
+  }
+
+  console.info(`1980s-NW standalone renderer tests: 通过 ${passedLabels.length} / 共 ${runnableTests.length}`);
 }
 
 void run().catch(error => {

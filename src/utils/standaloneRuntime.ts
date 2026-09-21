@@ -280,6 +280,45 @@ export function patchStandaloneRuntimeSessionContextFromStores(): StandaloneRunt
   return patchStandaloneRuntimeSessionContext(getStandaloneRuntimeStoreContextInput());
 }
 
+/** 阶段总结 + 归档水位线：跟着会话存，读档时一起回来 */
+export type StandaloneStageSummaryState = {
+  /** 已经压好的整体剧情摘要，空串＝还没归档过 */
+  stageSummary: string;
+  /** message_id 小于等于它的回合已被上面那段覆盖，不再单独进提示词 */
+  archivedUntilMessageId: number;
+};
+
+export function resolveStandaloneStageSummaryState(): StandaloneStageSummaryState {
+  const session = loadStandaloneRuntimeSession();
+
+  return {
+    stageSummary: session?.stage_summary ?? '',
+    archivedUntilMessageId: session?.stage_summary_archived_until_message_id ?? -1,
+  };
+}
+
+export function persistStandaloneStageSummary(input: StandaloneStageSummaryState): StandaloneStageSummaryState {
+  const session = loadStandaloneRuntimeSession();
+
+  if (!session) {
+    throw new Error('当前没有可写入的会话，无法归档阶段总结');
+  }
+
+  const nextSession = StandaloneRuntimeSessionSchema.parse({
+    ...session,
+    stage_summary: input.stageSummary,
+    stage_summary_archived_until_message_id: input.archivedUntilMessageId,
+    updatedAt: new Date().toISOString(),
+  });
+
+  persistStandaloneRuntimeSession(nextSession);
+
+  return {
+    stageSummary: nextSession.stage_summary,
+    archivedUntilMessageId: nextSession.stage_summary_archived_until_message_id,
+  };
+}
+
 export function loadStandaloneRuntimeMessages(): StandaloneRuntimeMessages | null {
   try {
     const stored = localStorage.getItem(STANDALONE_RUNTIME_MESSAGES_STORAGE_KEY);

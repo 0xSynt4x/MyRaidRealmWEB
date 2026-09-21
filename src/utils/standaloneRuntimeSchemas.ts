@@ -97,6 +97,16 @@ export const StandaloneRuntimeSessionSchema = z
     custom_worldbook_entries: z.array(StandaloneRuntimeCustomWorldbookEntrySchema).default([]),
     prompt_assets: StandaloneRuntimePromptAssetsSchema.nullable().default(null),
     preset_meta: StandaloneRuntimePresetMetaSchema.nullable().default(null),
+    /**
+     * 阶段总结：把已经掉出「最近若干轮」窗口、且玩家手动归档过的小总结，
+     * 压成一段整体剧情摘要。空串表示还没归档过。
+     */
+    stage_summary: z.string().default(''),
+    /**
+     * 归档水位线：message_id 小于等于它的回合，已经被上面那段阶段总结覆盖，
+     * 不用再单独塞进提示词。默认 -1 表示一条都没归档。
+     */
+    stage_summary_archived_until_message_id: z.number().int().default(-1),
   })
   .transform(session => ({
     ...session,

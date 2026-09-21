@@ -952,6 +952,24 @@ const messages: Record<Locale, Record<string, string>> = {
     'contentCenter.archive.deleteSuccess': '存档已删除',
     'contentCenter.archive.actionFailed': '操作失败，请重试',
     'contentCenter.archive.emptyStandalone': '暂无本地存档',
+    'contentCenter.archive.stageSummaryTitle': '阶段总结归档',
+    'contentCenter.archive.stageSummaryDescription':
+      '掉出最近对话、还没归档的回合总结会一直堆在「前情提要」里。归档会把它们交给主 API 压成一段整体剧情摘要，之后只发这一段，提示词长度就不会无限涨。只能手动触发。',
+    'contentCenter.archive.stageSummaryThresholdLabel': '攒够多少条提醒我归档',
+    'contentCenter.archive.stageSummaryThresholdUnit': '{count} 条',
+    'contentCenter.archive.stageSummaryPendingValue': '待归档 {pending} 条 · 已归档 {archived} 条',
+    'contentCenter.archive.stageSummaryArchiveButton': '归档阶段总结',
+    'contentCenter.archive.stageSummaryCurrentTitle': '当前阶段总结',
+    'contentCenter.archive.stageSummaryEmpty': '还没有归档过',
+    'contentCenter.archive.stageSummaryConfirmTitle': '归档阶段总结',
+    'contentCenter.archive.stageSummaryConfirmMessage':
+      '将把 {pending} 条回合总结交给主 API 压缩成一段阶段总结，会消耗一次主 API 调用。是否继续？',
+    'contentCenter.archive.stageSummaryConfirmButton': '开始归档',
+    'contentCenter.archive.stageSummaryArchivedSuccess': '已归档 {count} 条，阶段总结已更新',
+    'contentCenter.archive.stageSummaryNothingToArchive': '当前没有可归档的回合总结',
+    'contentCenter.archive.stageSummaryArchiveFailed': '归档失败：{error}',
+    'contentCenter.archive.stageSummaryDueToast':
+      '有 {pending} 条回合总结待归档（阈值 {threshold} 条）。去「设置 → 存档管理」点「归档阶段总结」压一下。',
 
     'setup.favorite.addPreset': '收藏预设',
     'setup.favorite.removePreset': '取消收藏',
@@ -2550,6 +2568,24 @@ const messages: Record<Locale, Record<string, string>> = {
     'contentCenter.archive.deleteSuccess': 'Archive deleted',
     'contentCenter.archive.actionFailed': 'Operation failed, please try again',
     'contentCenter.archive.emptyStandalone': 'No local archive',
+    'contentCenter.archive.stageSummaryTitle': 'Stage summary archiving',
+    'contentCenter.archive.stageSummaryDescription':
+      'Round summaries that have fallen out of the recent window keep piling up in the recap. Archiving hands them to the main API to compress into one overall story summary, so only that single block is sent from then on and the prompt stops growing without bound. Manual only.',
+    'contentCenter.archive.stageSummaryThresholdLabel': 'Remind me after this many rounds',
+    'contentCenter.archive.stageSummaryThresholdUnit': '{count}',
+    'contentCenter.archive.stageSummaryPendingValue': '{pending} pending · {archived} archived',
+    'contentCenter.archive.stageSummaryArchiveButton': 'Archive stage summary',
+    'contentCenter.archive.stageSummaryCurrentTitle': 'Current stage summary',
+    'contentCenter.archive.stageSummaryEmpty': 'Nothing archived yet',
+    'contentCenter.archive.stageSummaryConfirmTitle': 'Archive stage summary',
+    'contentCenter.archive.stageSummaryConfirmMessage':
+      'This sends {pending} round summaries to the main API and compresses them into one stage summary, costing one main API call. Continue?',
+    'contentCenter.archive.stageSummaryConfirmButton': 'Start archiving',
+    'contentCenter.archive.stageSummaryArchivedSuccess': 'Archived {count} summaries, stage summary updated',
+    'contentCenter.archive.stageSummaryNothingToArchive': 'Nothing to archive right now',
+    'contentCenter.archive.stageSummaryArchiveFailed': 'Archiving failed: {error}',
+    'contentCenter.archive.stageSummaryDueToast':
+      '{pending} round summaries are waiting to be archived (threshold {threshold}). Open Settings → Archive and press "Archive stage summary".',
 
     /* —— 内容中心 · AI 调试 —— */
     'contentCenter.aiDebug.empty': 'No debug records',

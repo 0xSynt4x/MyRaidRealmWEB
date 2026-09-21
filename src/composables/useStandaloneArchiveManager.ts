@@ -14,6 +14,7 @@ import {
   saveStandaloneArchiveSnapshot,
 } from '../utils/archive';
 import { loadStandaloneRuntimeMessages, loadStandaloneRuntimeSession } from '../utils/standaloneRuntime';
+import { archiveStandaloneStageSummary, resolveStandaloneStageSummaryProgress } from '../utils/stageSummaryArchive';
 
 /**
  * 存档管理
@@ -62,6 +63,12 @@ export function useStandaloneArchiveManager() {
     }
 
     return currentArchiveMessageIds.value.join(', ');
+  });
+
+  const isArchivingStageSummary = ref(false);
+  const stageSummaryProgress = computed(() => {
+    void archiveRefreshTick.value;
+    return resolveStandaloneStageSummaryProgress();
   });
 
   function setArchiveStatus(message: string, tone: 'info' | 'error' = 'info') {
@@ -128,6 +135,52 @@ export function useStandaloneArchiveManager() {
       notify.error(message);
     } finally {
       isSavingStandaloneArchive.value = false;
+    }
+  }
+
+  async function handleArchiveStageSummary() {
+    if (isArchivingStageSummary.value) {
+      return;
+    }
+
+    const pendingCount = stageSummaryProgress.value.pendingCount;
+
+    if (pendingCount === 0) {
+      const message = tCurrent('contentCenter.archive.stageSummaryNothingToArchive');
+      setArchiveStatus(message);
+      notify.info(message);
+      return;
+    }
+
+    const confirmed = await notificationStore.confirm({
+      title: tCurrent('contentCenter.archive.stageSummaryConfirmTitle'),
+      message: tCurrent('contentCenter.archive.stageSummaryConfirmMessage', { pending: pendingCount }),
+      type: 'info',
+      confirmText: tCurrent('contentCenter.archive.stageSummaryConfirmButton'),
+    });
+
+    if (!confirmed) {
+      return;
+    }
+
+    isArchivingStageSummary.value = true;
+    try {
+      const outcome = await archiveStandaloneStageSummary();
+      refreshStandaloneArchiveList();
+      const message =
+        outcome.archivedCount > 0
+          ? tCurrent('contentCenter.archive.stageSummaryArchivedSuccess', { count: outcome.archivedCount })
+          : tCurrent('contentCenter.archive.stageSummaryNothingToArchive');
+      setArchiveStatus(message);
+      notify.success(message);
+    } catch (error) {
+      const message = tCurrent('contentCenter.archive.stageSummaryArchiveFailed', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      setArchiveStatus(message, 'error');
+      notify.error(message);
+    } finally {
+      isArchivingStageSummary.value = false;
     }
   }
 
@@ -258,9 +311,12 @@ export function useStandaloneArchiveManager() {
     currentArchiveMessageCount,
     currentArchiveVariableSectionCount,
     currentArchiveMessageIdPreview,
+    isArchivingStageSummary,
+    stageSummaryProgress,
     setArchiveStatus,
     refreshStandaloneArchiveList,
     handleArchiveExport,
+    handleArchiveStageSummary,
     handleSaveStandaloneArchive,
     triggerArchiveImport,
     handleArchiveFileChange,
