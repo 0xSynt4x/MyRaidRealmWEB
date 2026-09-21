@@ -399,14 +399,13 @@ export const useSettingsStore = defineStore('settings', () => {
   );
 
   watch(
-    [theme, fontFamily, fontSize, contentFontSize, lineHeight],
+    [theme, fontFamily, fontSize, lineHeight],
     () => {
       const appContainer = document.querySelector('.app-container');
       if (appContainer) {
         appContainer.setAttribute('data-theme', theme.value);
         appContainer.setAttribute('data-font', fontFamily.value);
         appContainer.setAttribute('data-size', String(fontSize.value));
-        appContainer.setAttribute('data-content-size', String(contentFontSize.value));
         appContainer.setAttribute('data-line', String(lineHeight.value));
       }
     },

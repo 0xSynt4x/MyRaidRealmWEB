@@ -678,25 +678,27 @@ function handleEditInput() {
 }
 
 /* 正文档位：默认档（2）落在 17px，即参照站的正文大小。
-   档位均匀铺开 15→23，最小档也保证可读。 */
+   档位均匀铺开 15→23，最小档也保证可读。
+   ⚠️ 刻意不乘 --ui-font-scale：正文大小只由「正文字号」滑块决定，
+   否则调「界面字号」会连带把正文一起放大，两个滑块互相干扰。 */
 .message-content[data-size='1'] {
-  font-size: calc(15px * var(--ui-font-scale));
+  font-size: 15px;
 }
 
 .message-content[data-size='2'] {
-  font-size: calc(17px * var(--ui-font-scale));
+  font-size: 17px;
 }
 
 .message-content[data-size='3'] {
-  font-size: calc(19px * var(--ui-font-scale));
+  font-size: 19px;
 }
 
 .message-content[data-size='4'] {
-  font-size: calc(21px * var(--ui-font-scale));
+  font-size: 21px;
 }
 
 .message-content[data-size='5'] {
-  font-size: calc(23px * var(--ui-font-scale));
+  font-size: 23px;
 }
 
 /* 内心独白：*文字* 会被富文本渲染成 <em>（见 utils/messageFormatting.ts）。

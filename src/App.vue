@@ -6,7 +6,6 @@
     :data-theme="settingsStore.theme"
     :data-font="settingsStore.fontFamily"
     :data-size="settingsStore.fontSize"
-    :data-content-size="settingsStore.contentFontSize"
     :data-line="settingsStore.lineHeight"
   >
     <!-- 设置向导 - 仅在第0层显示 -->
