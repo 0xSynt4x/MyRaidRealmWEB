@@ -212,6 +212,10 @@ const messages: Record<Locale, Record<string, string>> = {
     'messageImage.generate': '生成插图',
     'messageImage.retry': '重试',
     'messageImage.failed': '生成失败',
+    'messageImage.loadFailed': '插图加载失败',
+    'messageImage.loadFailedHint':
+      '可能是本地 ComfyUI 没启动，或浏览器还没允许「本地网络访问」。点「重新加载」再试一次。',
+    'messageImage.reload': '重新加载',
     'messageImage.promptLabel': '生图提示词',
     'messageImage.expandPrompt': '展开提示词',
     'messageImage.collapsePrompt': '收起提示词',
@@ -1496,6 +1500,10 @@ const messages: Record<Locale, Record<string, string>> = {
     'messageImage.generate': 'Generate',
     'messageImage.retry': 'Retry',
     'messageImage.failed': 'Generation failed',
+    'messageImage.loadFailed': 'Failed to load illustration',
+    'messageImage.loadFailedHint':
+      'Local ComfyUI may be offline, or the browser has not allowed local network access. Click Reload to try again.',
+    'messageImage.reload': 'Reload',
     'messageImage.promptLabel': 'Image prompt',
     'messageImage.expandPrompt': 'Show prompt',
     'messageImage.collapsePrompt': 'Hide prompt',

@@ -8,8 +8,18 @@
     </template>
 
     <template v-else-if="status === 'done' && image?.url">
-      <button class="image-slot-frame" :title="t('messageImage.viewOriginal')" @click="openViewer">
-        <img :src="image.url" :alt="prompt" loading="lazy" />
+      <div v-if="loadFailed" class="image-slot-fallback">
+        <i class="ti ti-alert-triangle image-slot-fallback-icon"></i>
+        <div class="image-slot-fallback-body">
+          <p class="image-slot-fallback-title">{{ t('messageImage.loadFailed') }}</p>
+          <p class="image-slot-fallback-hint">{{ t('messageImage.loadFailedHint') }}</p>
+        </div>
+        <button class="image-slot-btn" @click="retryLoad">
+          <i class="ti ti-refresh"></i>{{ t('messageImage.reload') }}
+        </button>
+      </div>
+      <button v-else class="image-slot-frame" :title="t('messageImage.viewOriginal')" @click="openViewer">
+        <img :key="reloadKey" :src="image.url" :alt="prompt" loading="lazy" @error="loadFailed = true" />
       </button>
       <div class="image-slot-bar">
         <span class="image-slot-hint"><i class="ti ti-photo"></i>{{ t('messageImage.generated') }}</span>
@@ -44,7 +54,7 @@
   </div>
 
   <ImageLightbox
-    v-if="image?.url"
+    v-if="image?.url && !loadFailed"
     :visible="viewerVisible"
     :src="image.url"
     :alt="prompt"
@@ -53,7 +63,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useI18n } from '../../i18n';
 import type { MessageGeneratedImage } from '../../stores/messages';
 import ImageLightbox from './ImageLightbox.vue';
@@ -71,12 +81,27 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const promptExpanded = ref(false);
 const viewerVisible = ref(false);
+const loadFailed = ref(false);
+const reloadKey = ref(0);
 
 const status = computed(() => props.image?.status ?? 'idle');
+
+watch(
+  () => props.image?.url,
+  () => {
+    loadFailed.value = false;
+    reloadKey.value += 1;
+  },
+);
 
 function openViewer() {
   if (!props.image?.url) return;
   viewerVisible.value = true;
+}
+
+function retryLoad() {
+  loadFailed.value = false;
+  reloadKey.value += 1;
 }
 </script>
 
@@ -123,6 +148,44 @@ function openViewer() {
   width: 100%;
   height: auto;
   border-radius: var(--radius-md);
+}
+
+.image-slot-fallback {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 0 4px;
+}
+
+.image-slot-fallback-icon {
+  flex: none;
+  margin-top: 1px;
+  font-size: calc(18px * var(--ui-font-scale));
+  color: var(--accent-danger);
+}
+
+.image-slot-fallback-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.image-slot-fallback-title {
+  margin: 0;
+  font-size: calc(12px * var(--ui-font-scale));
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.image-slot-fallback-hint {
+  margin: 4px 0 0;
+  font-size: calc(11px * var(--ui-font-scale));
+  line-height: 1.6;
+  color: var(--text-secondary);
+  word-break: break-word;
+}
+
+.image-slot-fallback .image-slot-btn {
+  flex: none;
 }
 
 .image-slot-prompt {
