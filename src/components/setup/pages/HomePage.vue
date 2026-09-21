@@ -132,11 +132,43 @@ const { t } = useI18n();
 const { stageRef, debrisRef, emberRef, flashRef, plateSrc, auroraA, auroraB, glowVar, syncLayout } =
   useCoverBackground();
 
+/** 音乐偏好的本地存储键。默认关、50% 音量 */
+const BGM_STORAGE_KEY = 'th1980s:bgm-preference';
+const DEFAULT_VOLUME = 0.5;
+
+interface BgmPreference {
+  enabled: boolean;
+  volume: number;
+}
+
+function loadBgmPreference(): BgmPreference {
+  const fallback: BgmPreference = { enabled: false, volume: DEFAULT_VOLUME };
+  try {
+    const raw = localStorage.getItem(BGM_STORAGE_KEY);
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw) as Partial<BgmPreference>;
+    const storedVolume =
+      typeof parsed.volume === 'number' && Number.isFinite(parsed.volume)
+        ? Math.min(1, Math.max(0, parsed.volume))
+        : fallback.volume;
+    return { enabled: parsed.enabled === true, volume: storedVolume };
+  } catch {
+    return fallback;
+  }
+}
+
 // 背景音乐：外置音频文件（`src/assets/audio/`），打包时落到 dist/assets/audio/，不进 HTML
 const hasBgMusic = ref(true);
+const bgmPreference = loadBgmPreference();
+/**
+ * 用户是否开着音乐 —— 这一项会持久化。
+ * 必须跟「此刻是否在响」分开记：浏览器会拦自动播放，开着也可能没响，
+ * 两者混成一个状态的话，开着音乐刷新一次就会被记成「关」。
+ */
+const musicEnabled = ref(bgmPreference.enabled);
 const isMusicPlaying = ref(false);
-/** 目标音量（0~1）。拖音量条改的就是它，暂停时也保留 */
-const volume = ref(0.5);
+/** 目标音量（0~1）。拖音量条改的就是它，暂停时也保留；同样持久化 */
+const volume = ref(bgmPreference.volume);
 
 const archiveInput = ref<HTMLInputElement | null>(null);
 const pageRef = ref<HTMLElement | null>(null);
@@ -189,6 +221,15 @@ function commitVolume() {
   if (isMusicPlaying.value) el.volume = volume.value;
 }
 
+/** 把开关和音量写回本地。拖音量条过程中别调它 —— 拖拽结束存一次就够 */
+function saveBgmPreference(): void {
+  try {
+    localStorage.setItem(BGM_STORAGE_KEY, JSON.stringify({ enabled: musicEnabled.value, volume: volume.value }));
+  } catch {
+    // 存不进去也不影响本次会话的音乐
+  }
+}
+
 /** 首次交互兜底：自动播放被拦时，用户点/按键盘任意处就把音乐带起来 */
 function onFirstGesture(event: Event) {
   // 落在音乐控件自己身上就不抢 —— 按钮和音量条各有各的处理
@@ -236,8 +277,14 @@ function stopMusic() {
 
 function toggleMusic() {
   disarmGesture();
-  if (isMusicPlaying.value) stopMusic();
-  else startMusic();
+  if (isMusicPlaying.value) {
+    musicEnabled.value = false;
+    stopMusic();
+  } else {
+    musicEnabled.value = true;
+    startMusic();
+  }
+  saveBgmPreference();
 }
 
 /**
@@ -293,6 +340,7 @@ function onVolumePointerUp(event: PointerEvent) {
   draggingVolume = false;
   const bar = event.currentTarget as HTMLElement;
   if (bar.hasPointerCapture(event.pointerId)) bar.releasePointerCapture(event.pointerId);
+  saveBgmPreference();
 }
 
 /** 键盘调音量：方向键 ±5%，Home / End 到两端 */
@@ -307,6 +355,7 @@ function onVolumeKeydown(event: KeyboardEvent) {
   event.preventDefault();
   volume.value = Math.min(1, Math.max(0, Number(next.toFixed(2))));
   commitVolume();
+  saveBgmPreference();
 }
 
 /**
@@ -384,7 +433,8 @@ function handleArchiveFileChange(event: Event) {
 
 // 生命周期
 onMounted(() => {
-  attemptAutoplay();
+  // 默认关：只有上次开着（且浏览器放行）才自动播，否则等用户自己点开
+  if (musicEnabled.value) attemptAutoplay();
 });
 
 onUnmounted(() => {

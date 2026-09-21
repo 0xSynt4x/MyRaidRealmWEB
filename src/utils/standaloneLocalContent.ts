@@ -34,8 +34,11 @@ export type StandaloneLocalContentAsset = {
   rawContent: string;
 };
 
+/** 条目的来源：内置资产 / 预设携带 / 玩家在设置里手填 */
+export type StandaloneLocalContentSourceKind = 'builtin' | 'preset' | 'custom';
+
 export type ResolvedStandaloneLocalContentEntry = StandaloneLocalContentAsset & {
-  sourceKind: 'builtin' | 'preset';
+  sourceKind: StandaloneLocalContentSourceKind;
 };
 
 export type ResolvedStandaloneLocalContentStateEntry = ResolvedStandaloneLocalContentEntry & {
@@ -46,7 +49,7 @@ export type StandaloneRuntimeWorldbookContextEntry = {
   id: string;
   title: string;
   sourceName: string;
-  sourceKind: 'builtin' | 'preset';
+  sourceKind: StandaloneLocalContentSourceKind;
   kind: StandaloneLocalContentKind;
   defaultRoute: StandaloneLocalContentRoute;
   route: StandaloneLocalContentRoute;
@@ -376,48 +379,87 @@ export function inferStandaloneLocalContentKind(input: {
   return 'general';
 }
 
+function normalizeLocalContentEntryList(input: {
+  entries: LocalContentEntryConfig[] | null | undefined;
+  idPrefix: string;
+  sourceNamePrefix?: string;
+  description: string;
+  sourceKind: StandaloneLocalContentSourceKind;
+}): ResolvedStandaloneLocalContentEntry[] {
+  const entries = Array.isArray(input.entries) ? input.entries : [];
+  const prefix = input.sourceNamePrefix?.trim();
+
+  return entries
+    .filter(entry => Boolean(entry?.name?.trim()) && Boolean(entry?.content?.trim()))
+    .map((entry, index) => {
+      const name = entry.name.trim();
+      return {
+        id: `${input.idPrefix}-${index}`,
+        title: name,
+        sourceName: prefix ? `${prefix} / ${name}` : name,
+        kind: inferStandaloneLocalContentKind({
+          name,
+          sourceName: prefix,
+          route: entry.route,
+        }),
+        route: entry.route ?? 'shared',
+        defaultEnabled: entry.enabled !== false,
+        description: input.description,
+        rawContent: entry.content,
+        sourceKind: input.sourceKind,
+      };
+    });
+}
+
 function normalizePresetLocalContentEntries(
   preset: PresetConfig | null | undefined,
 ): ResolvedStandaloneLocalContentEntry[] {
-  const entries = Array.isArray(preset?.localContentEntries) ? preset.localContentEntries : [];
-  return entries
-    .filter(entry => Boolean(entry?.name?.trim()) && Boolean(entry?.content?.trim()))
-    .map((entry, index) => ({
-      id: `preset-local-content-${preset?.id ?? 'adhoc'}-${index}`,
-      title: entry.name.trim(),
-      sourceName: preset?.name?.trim() ? `${preset.name} / ${entry.name.trim()}` : entry.name.trim(),
-      kind: inferStandaloneLocalContentKind({
-        name: entry.name,
-        sourceName: preset?.name,
-        route: entry.route,
-      }),
-      route: entry.route ?? 'shared',
-      defaultEnabled: entry.enabled !== false,
-      description: '由当前开局模板携带的本地附加内容。',
-      rawContent: entry.content,
-      sourceKind: 'preset' as const,
-    }));
+  return normalizeLocalContentEntryList({
+    entries: preset?.localContentEntries,
+    idPrefix: `preset-local-content-${preset?.id ?? 'adhoc'}`,
+    sourceNamePrefix: preset?.name,
+    description: '由当前开局模板携带的本地附加内容。',
+    sourceKind: 'preset',
+  });
+}
+
+/** 玩家在设置里手动添加的条目；不挂在预设上，没选预设也能用 */
+function normalizeCustomLocalContentEntries(
+  entries: LocalContentEntryConfig[] | null | undefined,
+): ResolvedStandaloneLocalContentEntry[] {
+  return normalizeLocalContentEntryList({
+    entries,
+    idPrefix: 'custom-local-content',
+    description: '在设置里手动添加的本地附加内容。',
+    sourceKind: 'custom',
+  });
 }
 
 export function getStandaloneEffectiveLocalContentManifest(
   preset: PresetConfig | null | undefined,
+  customEntries?: LocalContentEntryConfig[] | null,
 ): ResolvedStandaloneLocalContentEntry[] {
   const builtinEntries = STANDALONE_LOCAL_CONTENT_MANIFEST.map(asset => ({
     ...asset,
     sourceKind: 'builtin' as const,
   }));
 
-  return [...builtinEntries, ...normalizePresetLocalContentEntries(preset)];
+  return [
+    ...builtinEntries,
+    ...normalizePresetLocalContentEntries(preset),
+    ...normalizeCustomLocalContentEntries(customEntries),
+  ];
 }
 
 export function resolveStandaloneLocalContentEntries(input: {
   preset?: PresetConfig | null;
+  customEntries?: LocalContentEntryConfig[] | null;
   enabledMap?: Record<string, boolean>;
   builtinRouteOverrides?: StandaloneBuiltinAssetRouteOverrideMap;
 }): ResolvedStandaloneLocalContentStateEntry[] {
-  const { preset, enabledMap = {}, builtinRouteOverrides } = input;
+  const { preset, customEntries, enabledMap = {}, builtinRouteOverrides } = input;
 
-  return getStandaloneEffectiveLocalContentManifest(preset).map(asset => {
+  return getStandaloneEffectiveLocalContentManifest(preset, customEntries).map(asset => {
     const resolvedRoute =
       asset.sourceKind === 'builtin'
         ? resolveStandaloneBuiltinAssetRoute({
@@ -441,6 +483,7 @@ export function resolveStandaloneLocalContentEntries(input: {
 
 export function createStandaloneRuntimeWorldbookContext(input: {
   preset?: PresetConfig | null;
+  customEntries?: LocalContentEntryConfig[] | null;
   enabledMap?: Record<string, boolean>;
   builtinRouteOverrides?: StandaloneBuiltinAssetRouteOverrideMap;
 }): StandaloneRuntimeWorldbookContextEntry[] {
@@ -481,10 +524,11 @@ export function resolveStandaloneLocalContentBlocks(input: {
   enabledMap: Record<string, boolean>;
   renderContext: StandaloneLocalContentRenderContext;
   preset?: PresetConfig | null;
+  customEntries?: LocalContentEntryConfig[] | null;
   builtinRouteOverrides?: StandaloneBuiltinAssetRouteOverrideMap;
 }): string[] {
-  const { route, enabledMap, renderContext, preset, builtinRouteOverrides } = input;
-  const manifest = resolveStandaloneLocalContentEntries({ preset, enabledMap, builtinRouteOverrides });
+  const { route, enabledMap, renderContext, preset, customEntries, builtinRouteOverrides } = input;
+  const manifest = resolveStandaloneLocalContentEntries({ preset, customEntries, enabledMap, builtinRouteOverrides });
 
   return manifest
     .filter(asset => asset.enabled && shouldIncludeRoute(asset.route, route))

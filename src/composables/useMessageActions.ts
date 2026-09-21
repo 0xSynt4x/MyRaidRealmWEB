@@ -167,6 +167,7 @@ export function useMessageActions() {
         worldDifficulty: settingsStore.worldDifficulty,
         localContentEnabledMap: settingsStore.standaloneLocalContent.enabledAssets,
         localContentBuiltinRouteOverrides: settingsStore.standaloneLocalContent.builtinAssetRouteOverrides,
+        localContentCustomEntries: setupStore.customWorldbookEntries,
         selectedPreset: setupStore.selectedPreset,
         scriptedTurn: options.scriptedTurn,
         onMainReplyPartialText: partialText => {
@@ -517,6 +518,7 @@ export function useMessageActions() {
         worldDifficulty: settingsStore.worldDifficulty,
         localContentEnabledMap: settingsStore.standaloneLocalContent.enabledAssets,
         localContentBuiltinRouteOverrides: settingsStore.standaloneLocalContent.builtinAssetRouteOverrides,
+        localContentCustomEntries: setupStore.customWorldbookEntries,
         selectedPreset: setupStore.selectedPreset,
       });
 

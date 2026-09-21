@@ -56,7 +56,7 @@ const StandaloneRuntimeWorldbookContextEntrySchema = z.object({
   id: z.string().min(1),
   title: z.string().min(1),
   sourceName: z.string().min(1),
-  sourceKind: z.enum(['builtin', 'preset']),
+  sourceKind: z.enum(['builtin', 'preset', 'custom']),
   kind: z.enum(['worldbook', 'plot_rule', 'variable_update_rule', 'general']),
   defaultRoute: z.enum(['main', 'variable_update', 'shared']).default('shared'),
   route: z.enum(['main', 'variable_update', 'shared']),
@@ -75,6 +75,16 @@ const StandaloneRuntimePromptAssetsSchema = z.object({
   containsActionOptionsRule: z.boolean(),
 });
 
+/** 玩家在设置里手动添加的世界书条目（不挂在预设上，跟着会话走） */
+const StandaloneRuntimeCustomWorldbookEntrySchema = z.object({
+  name: z.string(),
+  content: z.string(),
+  registeredWorldbookName: z.string().optional(),
+  kind: z.enum(['worldbook', 'plot_rule', 'variable_update_rule', 'general']).optional(),
+  route: z.enum(['main', 'variable_update', 'shared']).optional(),
+  enabled: z.boolean().optional(),
+});
+
 export const StandaloneRuntimeSessionSchema = z
   .object({
     id: z.string().min(1),
@@ -84,6 +94,7 @@ export const StandaloneRuntimeSessionSchema = z
     stat_data: StandaloneRuntimeStatDataSchema,
     initial_stat_data: StandaloneRuntimeOptionalStatDataSchema,
     worldbook_context: z.array(StandaloneRuntimeWorldbookContextEntrySchema).default([]),
+    custom_worldbook_entries: z.array(StandaloneRuntimeCustomWorldbookEntrySchema).default([]),
     prompt_assets: StandaloneRuntimePromptAssetsSchema.nullable().default(null),
     preset_meta: StandaloneRuntimePresetMetaSchema.nullable().default(null),
   })

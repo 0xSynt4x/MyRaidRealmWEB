@@ -1,5 +1,5 @@
 import { Schema } from '../schema/schema';
-import type { PresetConfig } from '../src/presets/types';
+import type { LocalContentEntryConfig, PresetConfig } from '../src/presets/types';
 import type { MessageRecord } from '../src/stores/messages';
 import type { ApiConfig, WorldDifficulty } from '../src/stores/settings';
 import {
@@ -47,6 +47,8 @@ export type StandaloneLocalTurnInput = {
   worldDifficulty: WorldDifficulty;
   localContentEnabledMap: Record<string, boolean>;
   localContentBuiltinRouteOverrides: StandaloneBuiltinAssetRouteOverrideMap;
+  /** 玩家在设置里手动添加的条目；没选预设时靠它把内容送进提示词 */
+  localContentCustomEntries?: LocalContentEntryConfig[];
   selectedPreset?: PresetConfig | null;
   onMainReplyPartialText?: (text: string) => void;
   scriptedTurn?: StandaloneScriptedTurnInput;
@@ -87,6 +89,8 @@ export async function runStandaloneVariableUpdatePass(input: {
   worldDifficulty: WorldDifficulty;
   localContentEnabledMap: Record<string, boolean>;
   localContentBuiltinRouteOverrides: StandaloneBuiltinAssetRouteOverrideMap;
+  /** 玩家在设置里手动添加的条目；没选预设时靠它把内容送进提示词 */
+  localContentCustomEntries?: LocalContentEntryConfig[];
   selectedPreset?: PresetConfig | null;
 }): Promise<StandaloneVariableUpdatePhaseOutcome> {
   const assistantContentText = input.targetAssistantMessage.content_text.trim();
@@ -119,6 +123,7 @@ export async function runStandaloneVariableUpdatePass(input: {
         worldDifficulty: input.worldDifficulty,
         localContentEnabledMap: input.localContentEnabledMap,
         localContentBuiltinRouteOverrides: input.localContentBuiltinRouteOverrides,
+        localContentCustomEntries: input.localContentCustomEntries,
         selectedPreset: input.selectedPreset,
       },
       assistantContentText,
@@ -577,6 +582,7 @@ export function buildMainTurnPrompt(input: StandaloneLocalTurnInput): Standalone
     route: 'main',
     enabledMap: input.localContentEnabledMap,
     builtinRouteOverrides: input.localContentBuiltinRouteOverrides,
+    customEntries: input.localContentCustomEntries,
     preset: input.selectedPreset,
     renderContext: {
       statData: input.statData,
@@ -649,6 +655,8 @@ export function buildVariableUpdateSecondPassPrompt(input: {
   worldDifficulty: WorldDifficulty;
   localContentEnabledMap: Record<string, boolean>;
   localContentBuiltinRouteOverrides: StandaloneBuiltinAssetRouteOverrideMap;
+  /** 玩家在设置里手动添加的条目；没选预设时靠它把内容送进提示词 */
+  localContentCustomEntries?: LocalContentEntryConfig[];
   selectedPreset?: PresetConfig | null;
 }): StandalonePromptMessagesBundle {
   const promptSections = buildStandaloneVariableUpdatePromptSections(input);
@@ -698,6 +706,8 @@ function buildStandaloneVariableUpdatePromptSections(input: {
   worldDifficulty: WorldDifficulty;
   localContentEnabledMap: Record<string, boolean>;
   localContentBuiltinRouteOverrides: StandaloneBuiltinAssetRouteOverrideMap;
+  /** 玩家在设置里手动添加的条目；没选预设时靠它把内容送进提示词 */
+  localContentCustomEntries?: LocalContentEntryConfig[];
   selectedPreset?: PresetConfig | null;
 }): StandaloneVariableUpdatePromptSections {
   const renderContext = {
@@ -711,6 +721,7 @@ function buildStandaloneVariableUpdatePromptSections(input: {
     preset: input.selectedPreset ?? null,
     enabledMap: input.localContentEnabledMap,
     builtinRouteOverrides: input.localContentBuiltinRouteOverrides,
+    customEntries: input.localContentCustomEntries,
   });
 
   const renderedBlocks = manifest
@@ -881,6 +892,7 @@ async function requestVariableUpdateSecondPass(
     worldDifficulty: input.worldDifficulty,
     localContentEnabledMap: input.localContentEnabledMap,
     localContentBuiltinRouteOverrides: input.localContentBuiltinRouteOverrides,
+    localContentCustomEntries: input.localContentCustomEntries,
     selectedPreset: input.selectedPreset ?? null,
   });
 

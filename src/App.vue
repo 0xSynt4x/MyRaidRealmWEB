@@ -143,7 +143,9 @@ if (isSetupCompleted()) {
 }
 
 watch(
-  () => [setupStore.selectedPreset, settingsStore.standaloneLocalContent],
+  // 这三样都会影响送进提示词的内容，任一变化就重建会话底稿。
+  // 🔴 手填的世界书条目必须在这里——它挂在会话上，不监听就不会建立会话，条目只会留在内存里。
+  () => [setupStore.selectedPreset, settingsStore.standaloneLocalContent, setupStore.customWorldbookEntries],
   () => {
     ensureStandaloneRuntimeBootstrapFromStores(loadStandaloneStatData());
   },

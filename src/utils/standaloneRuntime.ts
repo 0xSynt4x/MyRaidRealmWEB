@@ -1,4 +1,4 @@
-import type { PresetConfig } from '../presets/types';
+import type { LocalContentEntryConfig, PresetConfig } from '../presets/types';
 import type { StandaloneLocalContentSettings } from '../stores/settings';
 import { createStandaloneRuntimeWorldbookContext } from './standaloneLocalContent';
 import {
@@ -30,6 +30,8 @@ type StandaloneRuntimeRestoreInput = {
 
 type StandaloneRuntimeContentContextInput = {
   preset?: PresetConfig | null;
+  /** 玩家手填的世界书条目（存在会话里，没预设时靠它把内容送进提示词） */
+  customEntries?: LocalContentEntryConfig[] | null;
   standaloneLocalContent?: StandaloneLocalContentSettings | null;
   sendFullPreset?: boolean;
 };
@@ -43,6 +45,7 @@ function getStandaloneRuntimeStoreContextInput(): StandaloneRuntimeContentContex
 
   return {
     preset: setupStore.selectedPreset,
+    customEntries: setupStore.customWorldbookEntries,
     standaloneLocalContent: settingsStore.standaloneLocalContent,
     sendFullPreset: true,
   };
@@ -67,6 +70,7 @@ export function createSeededStandaloneRuntimeSession(seedStatData: unknown): Sta
     stat_data: parsedSeed,
     initial_stat_data: parsedSeed,
     worldbook_context: [],
+    custom_worldbook_entries: [],
     prompt_assets: null,
     preset_meta: null,
   });
@@ -92,10 +96,12 @@ function buildStandaloneRuntimeContentContext(input: StandaloneRuntimeContentCon
   const preset = input.preset ?? null;
   const enabledAssets = input.standaloneLocalContent?.enabledAssets ?? {};
   const builtinAssetRouteOverrides = input.standaloneLocalContent?.builtinAssetRouteOverrides ?? {};
+  const customEntries = input.customEntries ?? [];
 
   return {
     worldbook_context: createStandaloneRuntimeWorldbookContext({
       preset,
+      customEntries,
       enabledMap: enabledAssets,
       builtinRouteOverrides: builtinAssetRouteOverrides,
     }),
@@ -142,6 +148,23 @@ function persistStandaloneRuntimePayload(payload: RuntimeBootstrapPayload): Runt
   };
 }
 
+/**
+ * 会话建立后，把只留在内存里的「预设记忆」补写到会话作用域下。
+ *
+ * 「选中预设」发生在会话建立之前（会话是点「开始游戏」才建的），
+ * 那时只能留在内存；这里补写一次，刷新后才读得回来。
+ */
+function flushSetupStateToCurrentSession(): void {
+  try {
+    const { useSetupStore } = require('../stores/setup') as typeof import('../stores/setup');
+    const setupStore = useSetupStore();
+    setupStore.flushSelectedPresetToStorage();
+    setupStore.flushCustomWorldbookEntriesToStorage();
+  } catch (error) {
+    console.warn('[1980s-standalone] 会话建立后补写开局状态失败:', error);
+  }
+}
+
 export function createStandaloneRuntimeBaseline(
   seedStatData: unknown,
   contentContext?: StandaloneRuntimeContentContextInput,
@@ -156,10 +179,15 @@ export function createStandaloneRuntimeBaseline(
   });
   const messages = createSeededStandaloneRuntimeMessages(session.id);
 
-  return persistStandaloneRuntimePayload({
+  const payload = persistStandaloneRuntimePayload({
     session,
     messages,
   });
+
+  // 会话到这里才算建立，补写之前写不进去的预设记忆
+  flushSetupStateToCurrentSession();
+
+  return payload;
 }
 
 export function createStandaloneRuntimeBaselineFromStores(seedStatData: unknown): RuntimeBootstrapPayload {
@@ -169,7 +197,8 @@ export function createStandaloneRuntimeBaselineFromStores(seedStatData: unknown)
 export function commitStandaloneRuntimeState(input: StandaloneRuntimeCommitInput = {}): RuntimeBootstrapPayload {
   const parsedStatData =
     typeof input.statData === 'undefined' ? undefined : getStandaloneStatSchema().parse(input.statData);
-  const currentSession = loadStandaloneRuntimeSession() ?? createSeededStandaloneRuntimeSession(parsedStatData ?? {});
+  const storedSession = loadStandaloneRuntimeSession();
+  const currentSession = storedSession ?? createSeededStandaloneRuntimeSession(parsedStatData ?? {});
   const session = StandaloneRuntimeSessionSchema.parse({
     ...currentSession,
     ...(input.contentContext ? buildStandaloneRuntimeContentContext(input.contentContext) : {}),
@@ -178,10 +207,17 @@ export function commitStandaloneRuntimeState(input: StandaloneRuntimeCommitInput
   });
   const messages = normalizeStandaloneRuntimeMessagesForSession(session.id, input.messages);
 
-  return persistStandaloneRuntimePayload({
+  const payload = persistStandaloneRuntimePayload({
     session,
     messages,
   });
+
+  // 这里也可能第一次建立会话（会话丢失后重建），同样要补写预设记忆
+  if (!storedSession) {
+    flushSetupStateToCurrentSession();
+  }
+
+  return payload;
 }
 
 export function commitStandaloneRuntimeStateFromStores(
@@ -283,17 +319,26 @@ export function ensureStandaloneRuntimeBootstrap(
   contentContext?: StandaloneRuntimeContentContextInput,
 ): RuntimeBootstrapPayload {
   const parsedSeed = getStandaloneStatSchema().parse(seedStatData);
-  const currentSession = loadStandaloneRuntimeSession() ?? createSeededStandaloneRuntimeSession(parsedSeed);
+  const storedSession = loadStandaloneRuntimeSession();
+  const currentSession = storedSession ?? createSeededStandaloneRuntimeSession(parsedSeed);
   const session = StandaloneRuntimeSessionSchema.parse({
     ...currentSession,
     ...(contentContext ? buildStandaloneRuntimeContentContext(contentContext) : {}),
   });
   const messages = normalizeStandaloneRuntimeMessagesForSession(session.id);
 
-  return persistStandaloneRuntimePayload({
+  const payload = persistStandaloneRuntimePayload({
     session,
     messages,
   });
+
+  // 🔴 会话真正的建立点就在这（选预设时消息落盘会走到这）。
+  // 会话一建立，立刻把之前写不进去的预设记忆 / 手填条目补写到会话作用域下。
+  if (!storedSession) {
+    flushSetupStateToCurrentSession();
+  }
+
+  return payload;
 }
 
 export function ensureStandaloneRuntimeBootstrapFromStores(seedStatData: unknown): RuntimeBootstrapPayload {

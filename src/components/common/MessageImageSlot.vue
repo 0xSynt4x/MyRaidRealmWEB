@@ -8,7 +8,7 @@
     </template>
 
     <template v-else-if="status === 'done' && image?.url">
-      <button class="image-slot-frame" :title="t('messageImage.viewOriginal')" @click="openOriginal">
+      <button class="image-slot-frame" :title="t('messageImage.viewOriginal')" @click="openViewer">
         <img :src="image.url" :alt="prompt" loading="lazy" />
       </button>
       <div class="image-slot-bar">
@@ -42,12 +42,21 @@
       </div>
     </template>
   </div>
+
+  <ImageLightbox
+    v-if="image?.url"
+    :visible="viewerVisible"
+    :src="image.url"
+    :alt="prompt"
+    @close="viewerVisible = false"
+  />
 </template>
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useI18n } from '../../i18n';
 import type { MessageGeneratedImage } from '../../stores/messages';
+import ImageLightbox from './ImageLightbox.vue';
 
 const props = defineProps<{
   prompt: string;
@@ -61,12 +70,13 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 const promptExpanded = ref(false);
+const viewerVisible = ref(false);
 
 const status = computed(() => props.image?.status ?? 'idle');
 
-function openOriginal() {
+function openViewer() {
   if (!props.image?.url) return;
-  window.open(props.image.url, '_blank', 'noopener,noreferrer');
+  viewerVisible.value = true;
 }
 </script>
 

@@ -6,7 +6,7 @@ import {
   variableUpdateRulesTemplate,
 } from '../../src/assets/standalone-local-content';
 import { legacyWorldbookContentByName } from '../../src/assets/legacy-worldbook-compat';
-import { getBuiltInPresets, getWorkshopPresets, isWorkshopPreset } from '../../src/utils/preset-groups';
+import { getBuiltInPresets, isWorkshopPreset } from '../../src/utils/preset-groups';
 import {
   formatArchiveSummaryForToast,
   clearPendingStandaloneArchiveResume,
@@ -529,7 +529,7 @@ function testPresetGroupHelpersSplitBuiltInAndWorkshopPresets(): void {
 
   assert.equal(isWorkshopPreset(workshopPreset), true);
   assert.deepEqual(getBuiltInPresets(presets).map(preset => preset.id), ['reform-era-1980s']);
-  assert.deepEqual(getWorkshopPresets(presets).map(preset => preset.id), ['yiren-zhixia']);
+  assert.deepEqual(presets.filter(preset => isWorkshopPreset(preset)).map(preset => preset.id), ['yiren-zhixia']);
 }
 
 function testRegisteredWorldbookEntriesNormalizeToMainWorldbookLocalContent(): void {
@@ -905,7 +905,7 @@ async function testNormalizesStoredStandaloneLocalContentSettingsFromMode(): Pro
         'main-api-prompt': true,
       },
     },
-    textToImageEnabled: true,
+    imagePromptEnabled: true,
     onlineModeEnabled: true,
   });
 
@@ -1115,7 +1115,7 @@ async function seedStandaloneArchiveScenario(input: {
         'plot-online-mode': true,
       },
     },
-    textToImageEnabled: true,
+    imagePromptEnabled: true,
     onlineModeEnabled: true,
   });
 
@@ -2101,7 +2101,7 @@ async function testStandaloneRuntimeSessionPersistsFormalContentContext(): Promi
 
   const standaloneLocalContent = resolveStoredStandaloneLocalContentSettings({
     storedSettings: undefined,
-    textToImageEnabled: true,
+    imagePromptEnabled: true,
     onlineModeEnabled: false,
   });
 
@@ -3999,7 +3999,7 @@ async function testLoadStandaloneMessagesRepairsMissingSnapshotsAndRegeneratesFo
     preset: null,
     standaloneLocalContent: resolveStoredStandaloneLocalContentSettings({
       storedSettings: { enabledAssets: {} },
-      textToImageEnabled: false,
+      imagePromptEnabled: false,
       onlineModeEnabled: false,
     }),
     sendFullPreset: true,

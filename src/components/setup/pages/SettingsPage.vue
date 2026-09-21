@@ -298,12 +298,7 @@
                     <span class="summary-label">{{ t('contentCenter.worldbook.editableSectionTitle') }}</span>
                     <h5>{{ t('contentCenter.worldbook.editableSectionSubtitle') }}</h5>
                   </div>
-                  <button
-                    class="primary-btn compact-action-btn"
-                    type="button"
-                    :disabled="!canEditWorldbookEntries"
-                    @click="addEditableEntry"
-                  >
+                  <button class="primary-btn compact-action-btn" type="button" @click="addEditableEntry">
                     <i class="ti ti-plus"></i>
                     {{ t('contentCenter.worldbook.addEntry') }}
                   </button>
@@ -311,14 +306,14 @@
 
                 <p class="workspace-help-text workspace-help-text--compact">
                   {{
-                    canEditWorldbookEntries
+                    hasSelectedPreset
                       ? t('contentCenter.worldbook.editableHelp')
                       : t('contentCenter.worldbook.noPresetGuidance')
                   }}
                 </p>
 
                 <div
-                  v-if="canEditWorldbookEntries && editableWorldbookEntries.length > 0"
+                  v-if="editableWorldbookEntries.length > 0"
                   class="worldbook-entry-list compact-worldbook-list"
                   role="list"
                 >
@@ -489,7 +484,7 @@
                 </div>
                 <div v-else class="empty-state compact-empty">
                   {{
-                    canEditWorldbookEntries
+                    hasSelectedPreset
                       ? t('contentCenter.worldbook.editableEmpty')
                       : t('contentCenter.worldbook.noPresetGuidance')
                   }}
@@ -889,10 +884,19 @@ const worldbookEntries = computed(() =>
   }),
 );
 
-const canEditWorldbookEntries = computed(() => Boolean(selectedPreset.value));
+/**
+ * 是否选中了预设。只影响提示文案：有预设时条目跟着预设走，没预设时存进设置里的自定义容器。
+ * 两种情况都能编辑，所以按钮不再受它控制。
+ */
+const hasSelectedPreset = computed(() => Boolean(selectedPreset.value));
 const editableWorldbookEntries = computed<LocalContentEntryConfig[]>(() => {
-  const entries = selectedPreset.value?.localContentEntries;
-  return Array.isArray(entries) ? entries : [];
+  if (selectedPreset.value) {
+    const entries = selectedPreset.value.localContentEntries;
+    return Array.isArray(entries) ? entries : [];
+  }
+
+  // 没预设时用手填条目：存在会话里，跟着存档走
+  return setupStore.customWorldbookEntries;
 });
 const systemWorldbookEntries = computed(() => worldbookEntries.value.filter(asset => asset.sourceKind === 'builtin'));
 const editableEntryKeys = computed(() =>
@@ -1048,15 +1052,16 @@ function resolveReadonlyAssetContent(assetId: string): string {
 }
 
 function ensureEditableEntries(): LocalContentEntryConfig[] | null {
-  if (!selectedPreset.value) {
-    return null;
+  if (selectedPreset.value) {
+    if (!Array.isArray(selectedPreset.value.localContentEntries)) {
+      selectedPreset.value.localContentEntries = [];
+    }
+
+    return selectedPreset.value.localContentEntries;
   }
 
-  if (!Array.isArray(selectedPreset.value.localContentEntries)) {
-    selectedPreset.value.localContentEntries = [];
-  }
-
-  return selectedPreset.value.localContentEntries;
+  // 没选预设（比如 AI 生成开局）：条目存进会话，跟着存档走，照样会进正文/变量更新
+  return setupStore.customWorldbookEntries;
 }
 
 function editableEntryTitle(entry: LocalContentEntryConfig) {

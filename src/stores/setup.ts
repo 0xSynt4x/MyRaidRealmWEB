@@ -9,22 +9,41 @@ import { defineStore } from 'pinia';
 import { reactive, ref, watch } from 'vue';
 import { Schema } from '../../schema/schema';
 import { tCurrent } from '../i18n';
-import type { PresetConfig, PresetMigrationWarning } from '../presets/types';
+import type { LocalContentEntryConfig, PresetConfig, PresetMigrationWarning } from '../presets/types';
 import { rehydratePresetWithRegisteredWorldbooks } from '../assets/worldbook-registry';
-import { getSafeCurrentChatId } from '../utils/hostEnvironment';
+import { getSafeCurrentChatId, hasStandaloneRuntimeSession } from '../utils/hostEnvironment';
+import { loadStandaloneRuntimeSession, persistStandaloneRuntimeSession } from '../utils/standaloneRuntime';
+import { normalizeLocalContentEntriesInput } from '../utils/standaloneLocalContent';
 import { migrateLegacyPresetLocalContent } from '../utils/legacyPresetCompat';
 
 export type SetupPage = 'home' | 'presets' | 'playerInfo' | 'settings' | 'aiGenerate' | 'workshop';
 
 const SELECTED_PRESET_STORAGE_KEY_PREFIX = 'th1980s:selected-preset';
 
-function getSelectedPresetStorageKey(): string {
+/**
+ * 预设记忆存在哪。
+ *
+ * 🔴 会话还没建立时返回 null —— 这时候**不能写**。
+ * 因为会话是点「开始游戏」才建立的，而选预设更早；写下去会落到兜底作用域，
+ * 等会话建立后按会话 id 去读就再也找不回来了（表现为刷新后预设丢失、世界书按钮变灰）。
+ * 没会话时先留在内存，等会话建立后由 flushSelectedPresetToStorage() 补写。
+ */
+function getSelectedPresetStorageKey(): string | null {
+  if (!hasStandaloneRuntimeSession()) {
+    return null;
+  }
+
   return `${SELECTED_PRESET_STORAGE_KEY_PREFIX}:${getSafeCurrentChatId()}`;
 }
 
 function loadStoredSelectedPreset(): PresetConfig | null {
   try {
-    const stored = localStorage.getItem(getSelectedPresetStorageKey());
+    const storageKey = getSelectedPresetStorageKey();
+    if (!storageKey) {
+      return null;
+    }
+
+    const stored = localStorage.getItem(storageKey);
     if (!stored) {
       return null;
     }
@@ -60,12 +79,18 @@ function normalizeRegisteredWorldbookNamesInput(input: unknown): string[] | unde
 
 function persistSelectedPreset(preset: PresetConfig | null): void {
   try {
-    if (!preset) {
-      localStorage.removeItem(getSelectedPresetStorageKey());
+    const storageKey = getSelectedPresetStorageKey();
+    // 会话还没建立：先留在内存，等会话建立后再补写（见 flushSelectedPresetToStorage）
+    if (!storageKey) {
       return;
     }
 
-    localStorage.setItem(getSelectedPresetStorageKey(), JSON.stringify(preset));
+    if (!preset) {
+      localStorage.removeItem(storageKey);
+      return;
+    }
+
+    localStorage.setItem(storageKey, JSON.stringify(preset));
   } catch (error) {
     console.warn('[Setup] 写入本地预设记忆失败:', error);
   }
@@ -78,6 +103,48 @@ export const useSetupStore = defineStore('setup', () => {
 
   // ===== 预设状态 =====
   const selectedPreset = ref<PresetConfig | null>(loadStoredSelectedPreset());
+
+  // ===== 玩家手填的世界书条目 =====
+  // 没选预设时（比如 AI 生成开局）用；存在会话里，跟着存档走，不跨会话串。
+  const customWorldbookEntries = ref<LocalContentEntryConfig[]>(loadStoredCustomWorldbookEntries());
+
+  /**
+   * 从当前会话里读出手填条目。
+   * 会话还没建立时读不到（返回空），此时面板上的编辑只留在内存，等会话建立后补写。
+   */
+  function loadStoredCustomWorldbookEntries(): LocalContentEntryConfig[] {
+    const session = loadStandaloneRuntimeSession();
+    const entries = session?.custom_worldbook_entries;
+    if (!Array.isArray(entries)) {
+      return [];
+    }
+
+    return entries.map(entry => ({ ...entry }));
+  }
+
+  /**
+   * 把手填条目写回当前会话。
+   * 🔴 会话还没建立时直接跳过——写下去会落到兜底位置，等会话建立后就再也读不回来了。
+   * 落盘前统一归一化：没名字或没内容的空条目不会存（用户还在编辑的那条留在内存里）。
+   */
+  function persistCustomWorldbookEntries(): void {
+    try {
+      const session = loadStandaloneRuntimeSession();
+      if (!session) {
+        return;
+      }
+
+      persistStandaloneRuntimeSession({
+        ...session,
+        custom_worldbook_entries: normalizeLocalContentEntriesInput(customWorldbookEntries.value),
+        updatedAt: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.warn('[Setup] 写入本地世界书条目失败:', error);
+    }
+  }
+
+  watch(customWorldbookEntries, persistCustomWorldbookEntries, { deep: true });
 
   // ===== AI生成状态 =====
   const aiGeneratedConfig = ref<string>('');
@@ -434,6 +501,7 @@ export const useSetupStore = defineStore('setup', () => {
   function reset() {
     currentPage.value = 'home';
     selectedPreset.value = null;
+    customWorldbookEntries.value = [];
     aiGeneratedConfig.value = '';
     isGenerating.value = false;
     clearGenerationState();
@@ -448,6 +516,29 @@ export const useSetupStore = defineStore('setup', () => {
     },
     { deep: true },
   );
+
+  /**
+   * 会话建立后补写一次预设记忆。
+   *
+   * 「选中预设」比「会话建立」更早，那时写不进去（只能留在内存）。
+   * 会话一建立就调这个，把内存里的预设落到会话作用域下，刷新才读得回来。
+   */
+  function flushSelectedPresetToStorage(): void {
+    persistSelectedPreset(selectedPreset.value ? klona(selectedPreset.value) : null);
+  }
+
+  /** 同上：会话建立后补写手填的世界书条目 */
+  function flushCustomWorldbookEntriesToStorage(): void {
+    persistCustomWorldbookEntries();
+  }
+
+  /**
+   * 会话被整个换掉之后（导入存档、重置游戏），把手填条目重新读一遍。
+   * 条目存在会话里，会话换了就得跟着换，否则面板还显示上一个存档的条目。
+   */
+  function syncCustomWorldbookEntriesFromSession(): void {
+    customWorldbookEntries.value = loadStoredCustomWorldbookEntries();
+  }
 
   return {
     // 状态
@@ -468,6 +559,12 @@ export const useSetupStore = defineStore('setup', () => {
     // 预设操作
     selectPreset,
     importPreset,
+    flushSelectedPresetToStorage,
+    flushCustomWorldbookEntriesToStorage,
+
+    // 手填世界书条目（跟着会话走）
+    customWorldbookEntries,
+    syncCustomWorldbookEntriesFromSession,
 
     // AI生成开局
     startAiGenerate,

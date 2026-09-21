@@ -423,7 +423,13 @@ async function handleRefreshApi() {
   /* 横幅上的控件尺寸：三点按钮和它下面那列菜单共用，改一处两边一起变 */
   --banner-ctl: 30px;
   position: relative;
+  /* ⚠️ width: 100% 不能省 —— 只有 aspect-ratio + max-height 时，
+     浏览器会拿「被压过的高度」按比例反推宽度（实测 140 × 3.2 = 448px），
+     横幅就比正文列窄一大截。显式钉住宽度后，宽度跟正文列走，
+     比例只负责算高度；高度再由 max-height 封顶，多出的画面由底图 cover 裁掉。 */
+  width: 100%;
   aspect-ratio: var(--ui-banner-ar);
+  max-height: var(--ui-banner-h-max, 140px);
   border-radius: var(--ui-banner-r);
   flex: 0 0 auto;
   color: var(--ui-on-scrim);

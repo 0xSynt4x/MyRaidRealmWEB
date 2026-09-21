@@ -401,6 +401,8 @@ function applyStandaloneArchivePayloadToStores(payload: StandaloneArchiveFile): 
   setupStore.selectedPreset = payload.selectedPreset
     ? rehydratePresetWithRegisteredWorldbooks(klona(payload.selectedPreset))
     : null;
+  // 手填的世界书条目存在会话里，会话刚被换掉，重新读一遍
+  setupStore.syncCustomWorldbookEntriesFromSession();
   Object.assign(setupStore.config, Schema.parse(klona(payload.currentVariableSnapshot)));
 
   settingsStore.standaloneLocalContent = klona(normalizedStandaloneLocalContent);
