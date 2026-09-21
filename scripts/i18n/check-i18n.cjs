@@ -37,8 +37,8 @@ const lines = fs.readFileSync(FILE, 'utf8').split(/\r?\n/);
 // —— 按出现顺序把三对 zh / en 块切出来 ——
 const marks = [];
 lines.forEach((l, i) => {
-  if (/^  'zh-CN': \{$/.test(l)) marks.push({ i, locale: 'zh' });
-  else if (/^  en: \{$/.test(l)) marks.push({ i, locale: 'en' });
+  if (/^ {2}'zh-CN': \{$/.test(l)) marks.push({ i, locale: 'zh' });
+  else if (/^ {2}en: \{$/.test(l)) marks.push({ i, locale: 'en' });
 });
 
 const pairs = [];

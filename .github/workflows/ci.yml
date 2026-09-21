@@ -37,6 +37,10 @@ jobs:
       - name: Lint
         run: pnpm lint
 
+      # 放在 Build 之前：测试不过就别浪费构建时间
+      - name: Test
+        run: pnpm test
+
       - name: Build
         run: pnpm build
 
