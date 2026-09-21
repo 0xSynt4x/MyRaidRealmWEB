@@ -70,6 +70,8 @@ export interface ComfyUiSettings {
   workflowApiJson: string;
   /** 接收正向提示词的节点 */
   positiveNodeId: string;
+  /** 正向节点是不是玩家自己选的：是的话重新解析也不覆盖他的选择 */
+  positiveNodeManual: boolean;
   /** 接收负向提示词的节点，可为空 */
   negativeNodeId: string;
   /** 是否用下面的宽高覆盖工作流里的画布尺寸 */
@@ -96,6 +98,7 @@ export function createDefaultComfyUiSettings(): ComfyUiSettings {
     workflowJson: '',
     workflowApiJson: '',
     positiveNodeId: '',
+    positiveNodeManual: false,
     negativeNodeId: '',
     overrideSize: false,
     width: 1024,
@@ -121,6 +124,7 @@ export function normalizeComfyUiSettings(input?: Partial<ComfyUiSettings> | null
     workflowJson: typeof input?.workflowJson === 'string' ? input.workflowJson : '',
     workflowApiJson: typeof input?.workflowApiJson === 'string' ? input.workflowApiJson : '',
     positiveNodeId: typeof input?.positiveNodeId === 'string' ? input.positiveNodeId : '',
+    positiveNodeManual: Boolean(input?.positiveNodeManual ?? defaults.positiveNodeManual),
     negativeNodeId: typeof input?.negativeNodeId === 'string' ? input.negativeNodeId : '',
     overrideSize: Boolean(input?.overrideSize ?? defaults.overrideSize),
     width: normalizeComfyUiSize(input?.width, defaults.width),
