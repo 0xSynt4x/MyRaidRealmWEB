@@ -12,6 +12,10 @@ dist/
 # 本地临时工作目录（排查脚本、截图、探测产物）
 Temp/
 
+# 设计文档与创作素材（仅本地保留，不随代码仓库公开）
+docs/
+assets-design/
+
 # 系统与日志
 .DS_Store
 Thumbs.db
