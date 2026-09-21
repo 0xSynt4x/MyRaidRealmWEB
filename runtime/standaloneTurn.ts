@@ -34,7 +34,7 @@ import {
 import { formatMessageContentForDisplay } from '../src/utils/messageFormatting';
 import { normalizeLineEndingsTrimmed as normalizeLineEndings } from '../src/utils/textNormalize';
 import { applyVariableUpdatePatch, parseVariableUpdatePatch } from '../src/utils/variableUpdate';
-import { buildStandaloneCurrentStatDataBlock } from './standalonePromptUtils';
+import { applyStandalonePromptMacroReplacements, buildStandaloneCurrentStatDataBlock } from './standalonePromptUtils';
 
 type StandaloneStatData = ReturnType<typeof Schema.parse>;
 
@@ -52,6 +52,10 @@ export type StandaloneLocalTurnInput = {
   selectedPreset?: PresetConfig | null;
   onMainReplyPartialText?: (text: string) => void;
   scriptedTurn?: StandaloneScriptedTurnInput;
+  /** 玩家手动归档出来的整体剧情摘要，空＝还没归档过 */
+  stageSummary?: string;
+  /** 归档水位线：message_id 小于等于它的回合已被上面那段覆盖 */
+  archivedUntilMessageId?: number;
 };
 
 export type StandaloneScriptedTurnInput = {
@@ -206,11 +210,7 @@ type StandalonePromptMessagesBundle = {
 };
 
 export type StandaloneMainChainViewEntryKey =
-  | 'system_protocol'
-  | 'current_stat_snapshot'
-  | 'active_worldbook'
-  | 'recent_history'
-  | 'latest_user_input';
+  'system_protocol' | 'current_stat_snapshot' | 'active_worldbook' | 'recent_history' | 'latest_user_input';
 
 export type StandaloneMainChainViewEntry = {
   key: StandaloneMainChainViewEntryKey;
@@ -261,15 +261,6 @@ const LOTTERY_LOCAL_CONTENT_BLOCK_PREFIX = '[本地内容:抽奖结果规则]';
 const STANDALONE_PRESET_COMPACT_IDENTIFIERS = new Set(['main']);
 
 const STANDALONE_PRESET_SKIP_IDENTIFIERS = new Set(['worldInfoBefore', 'worldInfoAfter', 'dialogueExamples']);
-
-const STANDALONE_PRESET_PLACEHOLDER_REPLACEMENTS: Array<{ pattern: RegExp; replacement: string }> = [
-  { pattern: /\{\{\s*user\s*\}\}/gi, replacement: '玩家' },
-  { pattern: /\{\{\s*char\s*\}\}/gi, replacement: '当前角色' },
-  { pattern: /\{\{\s*group\s*\}\}/gi, replacement: '当前群组' },
-  { pattern: /\{\{\s*scenario\s*\}\}/gi, replacement: '当前场景' },
-  { pattern: /\{\{\s*personality\s*\}\}/gi, replacement: '角色性格' },
-  { pattern: /\{\{\s*lastChatMessage\s*\}\}/gi, replacement: '上一条消息' },
-];
 
 let activeStandaloneTurnController: AbortController | null = null;
 
@@ -344,6 +335,69 @@ function resolveStandaloneRecentHistoryMessages(input: {
     }));
 }
 
+export type StandalonePriorSummaryItem = {
+  messageId: number;
+  summary: string;
+};
+
+/**
+ * 收集「已经掉出最近窗口、且还没被阶段总结覆盖」的回合小总结。
+ *
+ * 提示词拼装与玩家手动归档共用这一份口径 —— 否则两边算出来的条数对不上，
+ * 会出现「界面说攒够了、点归档却说没有可归档内容」这种自相矛盾。
+ */
+export function collectStandalonePriorSummaryItems(input: {
+  messages: MessageRecord[];
+  archivedUntilMessageId?: number;
+  excludeMessageId?: number;
+}): StandalonePriorSummaryItem[] {
+  const windowStart = Math.max(0, input.messages.length - RECENT_MESSAGE_LIMIT);
+  const archivedUntilMessageId = input.archivedUntilMessageId ?? -1;
+
+  return input.messages
+    .slice(0, windowStart)
+    .filter(message => message.role === 'assistant')
+    .filter(message => message.message_id !== input.excludeMessageId)
+    .filter(message => message.message_id > archivedUntilMessageId)
+    .map(message => ({
+      messageId: message.message_id,
+      summary: typeof message.summary_content === 'string' ? message.summary_content.trim() : '',
+    }))
+    .filter(item => Boolean(item.summary));
+}
+
+function buildStandalonePriorSummaryBlock(input: {
+  messages: MessageRecord[];
+  latestUserMessage: MessageRecord;
+  stageSummary?: string;
+  archivedUntilMessageId?: number;
+}): string {
+  const stageSummary = typeof input.stageSummary === 'string' ? input.stageSummary.trim() : '';
+  const pendingItems = collectStandalonePriorSummaryItems({
+    messages: input.messages,
+    archivedUntilMessageId: input.archivedUntilMessageId,
+    excludeMessageId: input.latestUserMessage.message_id,
+  });
+
+  const blocks: string[] = [];
+
+  if (stageSummary) {
+    blocks.push(['[阶段总结]', '以下是更早剧情的归档摘要（越靠后越接近当前）：', stageSummary].join('\n'));
+  }
+
+  if (pendingItems.length > 0) {
+    blocks.push(
+      [
+        '[前情提要]',
+        '以下是尚未归档的更早回合剧情总结（按时间顺序，越靠后越接近当前）：',
+        ...pendingItems.map(item => item.summary),
+      ].join('\n\n'),
+    );
+  }
+
+  return blocks.join('\n\n');
+}
+
 function resolveStandaloneLatestUserMessage(input: MessageRecord): StandaloneProviderChatMessage {
   return {
     role: 'user',
@@ -357,14 +411,25 @@ function buildStandaloneOrderedMainMessages(input: {
   latestUserMessage: MessageRecord;
   localContentBlocks: string[];
   includeFullPreset: boolean;
+  /** 玩家手动归档出来的整体剧情摘要，空＝还没归档过 */
+  stageSummary?: string;
+  /** 归档水位线：message_id 小于等于它的回合已被上面那段覆盖 */
+  archivedUntilMessageId?: number;
 }): StandaloneProviderChatMessage[] {
   const orderedPrompts = resolveOrderedStandalonePresetPrompts();
   const messages: StandaloneProviderChatMessage[] = [];
   let latestUserInjected = false;
   let statDataInjected = false;
   let worldbookInjected = false;
+  let priorSummaryInjected = false;
   let mainPresetBlock = '';
   const activeWorldbookPrompt = resolveStandaloneMainWorldbookPrompt(input.localContentBlocks);
+  const priorSummaryBlock = buildStandalonePriorSummaryBlock({
+    messages: input.messages,
+    latestUserMessage: input.latestUserMessage,
+    stageSummary: input.stageSummary,
+    archivedUntilMessageId: input.archivedUntilMessageId,
+  });
 
   orderedPrompts.forEach(prompt => {
     if (!prompt.enabledInOrder || typeof prompt.identifier !== 'string') {
@@ -376,7 +441,10 @@ function buildStandaloneOrderedMainMessages(input: {
     }
 
     if (prompt.identifier === 'main') {
-      const content = typeof prompt.content === 'string' ? normalizeStandalonePresetPromptContent(prompt.content) : '';
+      const content =
+        typeof prompt.content === 'string'
+          ? normalizeStandalonePresetPromptContent(prompt.content, input.statData)
+          : '';
       if (!content) {
         return;
       }
@@ -403,6 +471,14 @@ function buildStandaloneOrderedMainMessages(input: {
         worldbookInjected = true;
       }
 
+      if (priorSummaryBlock && !priorSummaryInjected) {
+        messages.push({
+          role: 'user',
+          content: priorSummaryBlock,
+        });
+        priorSummaryInjected = true;
+      }
+
       messages.push(
         ...resolveStandaloneRecentHistoryMessages({
           messages: input.messages,
@@ -419,7 +495,7 @@ function buildStandaloneOrderedMainMessages(input: {
     }
 
     const directContent =
-      typeof prompt.content === 'string' ? normalizeStandalonePresetPromptContent(prompt.content) : '';
+      typeof prompt.content === 'string' ? normalizeStandalonePresetPromptContent(prompt.content, input.statData) : '';
     const resolvedContent = directContent
       ? formatNamedPromptBlock(`[原版预设:${prompt.name?.trim() || prompt.identifier}]`, directContent)
       : '';
@@ -455,6 +531,14 @@ function buildStandaloneOrderedMainMessages(input: {
     worldbookInjected = true;
   }
 
+  if (priorSummaryBlock && !priorSummaryInjected) {
+    messages.push({
+      role: 'user',
+      content: priorSummaryBlock,
+    });
+    priorSummaryInjected = true;
+  }
+
   if (!latestUserInjected) {
     messages.push(resolveStandaloneLatestUserMessage(input.latestUserMessage));
   }
@@ -462,17 +546,14 @@ function buildStandaloneOrderedMainMessages(input: {
   return messages;
 }
 
-function normalizeStandalonePresetPromptContent(content: string): string {
+function normalizeStandalonePresetPromptContent(content: string, statData?: StandaloneStatData): string {
   const sanitizedLines = normalizeLineEndings(content)
     .split('\n')
     .filter(line => !/^\s*(忽略之前提示词|ignore previous prompts?)\s*$/i.test(line));
 
-  let sanitized = sanitizedLines.join('\n').trim();
-  STANDALONE_PRESET_PLACEHOLDER_REPLACEMENTS.forEach(({ pattern, replacement }) => {
-    sanitized = sanitized.replace(pattern, replacement);
-  });
+  const sanitized = sanitizedLines.join('\n').trim();
 
-  return sanitized;
+  return applyStandalonePromptMacroReplacements(sanitized, { statData });
 }
 
 function resolveOrderedStandalonePresetPrompts(): ResolvedStandalonePresetPrompt[] {
@@ -603,6 +684,8 @@ export function buildMainTurnPrompt(input: StandaloneLocalTurnInput): Standalone
       latestUserMessage: input.latestUserMessage,
       localContentBlocks: effectiveLocalContentBlocks,
       includeFullPreset,
+      stageSummary: input.stageSummary,
+      archivedUntilMessageId: input.archivedUntilMessageId,
     }),
   };
 }

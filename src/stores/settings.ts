@@ -22,6 +22,7 @@ import {
   NO_STYLE_PRESET_ID,
   findStylePreset,
 } from '../utils/comfyuiStylePresets';
+import { DEFAULT_STAGE_SUMMARY_THRESHOLD, normalizeStageSummaryThreshold } from '../utils/stageSummaryThreshold';
 
 export type Theme = 'light' | 'dark' | 'steelcool' | 'solarized' | 'everforest1980s' | 'wuxia';
 export type FontFamily = 'yahei' | 'source-han-sans' | 'lxgw-hazy' | 'hanchan' | 'shanggu';
@@ -261,6 +262,13 @@ export const useSettingsStore = defineStore('settings', () => {
   // 世界难度仅作为前端本地设置保存，不直接写入 schema。
   const worldDifficulty = ref<WorldDifficulty>(stored.worldDifficulty || '最简单');
 
+  // 「攒够多少条小总结才提示归档阶段总结」，只影响提示时机，不限制玩家手动归档。
+  const stageSummaryThreshold = ref<number>(
+    typeof stored.stageSummaryThreshold === 'undefined'
+      ? DEFAULT_STAGE_SUMMARY_THRESHOLD
+      : normalizeStageSummaryThreshold(stored.stageSummaryThreshold),
+  );
+
   const mainApi = ref<ApiConfig>(
     hasValidApiContent(stored.mainApi)
       ? normalizeApiConfig(stored.mainApi as Partial<ApiConfig>)
@@ -331,6 +339,7 @@ export const useSettingsStore = defineStore('settings', () => {
       actionOptionBehavior: actionOptionBehavior.value,
       onlineModeEnabled: onlineModeEnabled.value,
       worldDifficulty: worldDifficulty.value,
+      stageSummaryThreshold: stageSummaryThreshold.value,
       backgroundImage: backgroundImage.value,
       standaloneLocalContent: standaloneLocalContent.value,
       comfyUi: comfyUi.value,
@@ -368,6 +377,7 @@ export const useSettingsStore = defineStore('settings', () => {
       actionOptionBehavior,
       onlineModeEnabled,
       worldDifficulty,
+      stageSummaryThreshold,
       backgroundImage,
       standaloneLocalContent,
       comfyUi,
@@ -424,6 +434,7 @@ export const useSettingsStore = defineStore('settings', () => {
     actionOptionBehavior,
     onlineModeEnabled,
     worldDifficulty,
+    stageSummaryThreshold,
     mainApi,
     assistantApis,
     backgroundImage,

@@ -1,5 +1,6 @@
 export {
   buildMainTurnPrompt,
+  collectStandalonePriorSummaryItems,
   inspectStandaloneMainChainView,
   runStandaloneVariableUpdatePass,
   buildVariableUpdateSecondPassPrompt,
@@ -11,6 +12,7 @@ export {
   type StandaloneMainChainViewEntryKey,
   type StandaloneLocalTurnInput,
   type StandaloneLocalTurnOutcome,
+  type StandalonePriorSummaryItem,
   type StandaloneScriptedTurnInput,
   type StandaloneVariableUpdatePhaseOutcome,
   type StandaloneVariableUpdateStatus,
