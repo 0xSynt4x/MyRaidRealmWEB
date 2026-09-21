@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import HtmlInlineScriptWebpackPlugin from 'html-inline-script-webpack-plugin';
 import HtmlWebpackPlugin from 'html-webpack-plugin';
 import MiniCssExtractPlugin from 'mini-css-extract-plugin';
@@ -34,6 +35,40 @@ const assetFilename = (pathData: { filename?: string }): string => {
   const file = `${name}.[contenthash:8]${ext}`;
   return dir === '.' ? `assets/${file}` : `assets/${dir}/${file}`;
 };
+
+/**
+ * `src/static/` 是「原样搬走、不参与打包」的目录，目前装着三个文件：
+ *   favicon.ico            浏览器标签页图标
+ *   apple-touch-icon.png   手机「添加到主屏幕」图标
+ *   404.html               找不到地址时显示的页面
+ *
+ * 为什么必须待在产物**根目录**、不能走打包：
+ *   - 浏览器会主动去要 `/favicon.ico`，这个路径是写死的；
+ *   - Cloudflare Pages 只在站点根目录找 404 页，而且「根目录有 404 页」这件事本身就是
+ *     关掉它「任何找不到的网址都回首页」默认行为的开关。
+ * 走 webpack 的资源处理会把它们带上内容哈希塞进 `assets/`，位置就全错了。
+ *
+ * 为什么不用第三方拷贝插件：就为两三个文件装一个依赖不划算，这十几行够用且看得懂。
+ */
+const staticDirectory = path.join(projectRoot, 'src/static');
+
+class CopyStaticToRootPlugin {
+  apply(compiler: webpack.Compiler): void {
+    compiler.hooks.thisCompilation.tap('CopyStaticToRootPlugin', compilation => {
+      compilation.hooks.processAssets.tap(
+        { name: 'CopyStaticToRootPlugin', stage: webpack.Compilation.PROCESS_ASSETS_STAGE_ADDITIONAL },
+        () => {
+          if (!fs.existsSync(staticDirectory)) return;
+          for (const name of fs.readdirSync(staticDirectory)) {
+            const full = path.join(staticDirectory, name);
+            if (!fs.statSync(full).isFile()) continue;
+            compilation.emitAsset(name, new webpack.sources.RawSource(fs.readFileSync(full)));
+          }
+        },
+      );
+    });
+  }
+}
 
 export default (_env: unknown, argv: { mode?: 'development' | 'production' }): webpack.Configuration => ({
   experiments: {
@@ -158,7 +193,18 @@ export default (_env: unknown, argv: { mode?: 'development' | 'production' }): w
           },
           {
             test: /\.html$/,
-            use: 'html-loader',
+            use: {
+              loader: 'html-loader',
+              options: {
+                // 关掉「把 HTML 属性当模块解析」这个行为。
+                // 原因：模板 src/index.html 里的两个图标声明指向的是产物根目录下的固定文件
+                // （见下面 CopyStaticToRootPlugin），它们不是能被打包的模块；
+                // html-loader 默认会去解析 <link href>，然后直接报「找不到模块」把构建打断。
+                // 模板本身是纯外壳（只有 meta / title / style / 一个空的 #app），不含任何素材，
+                // 所以关掉不影响任何现有功能。以后若要在模板里直接放图片，需要改回默认值。
+                sources: false,
+              },
+            },
             exclude: /node_modules/,
           },
           {
@@ -197,6 +243,7 @@ export default (_env: unknown, argv: { mode?: 'development' | 'production' }): w
       scriptLoading: 'module',
       cache: false,
     }),
+    new CopyStaticToRootPlugin(),
     new HtmlInlineScriptWebpackPlugin(),
     new MiniCssExtractPlugin(),
     new HTMLInlineCSSWebpackPlugin({
