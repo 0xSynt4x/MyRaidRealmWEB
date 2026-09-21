@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>走岔了 · 诸界穿越模拟器</title>
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <!--
+      这一页只干一件事：告诉「找不到的地址」它真的找不到。
+      为什么需要它 —— Cloudflare Pages 有个默认行为：站点根目录没有 404 页时，
+      它会把你当成「单页应用」，任何不存在的网址都原样回首页（整份 2.9 MB 的页面）。
+      结果就是浏览器找 /favicon.ico、扫描器探 /.env 这类请求，每次都白搬一遍整个应用。
+      放上这一页，Pages 就不再兜底回首页了，找不到就是 404 + 这一小页。
+      所以它必须极轻、且不能引用任何外部文件（否则 404 又要多几次请求）。
+    -->
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 18px;
+        padding: 32px 24px;
+        background: radial-gradient(120% 90% at 50% 0%, #241e17 0%, #0d0c0b 62%);
+        color: #ede7d9;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+        text-align: center;
+        line-height: 1.8;
+      }
+      .mark {
+        width: 64px;
+        height: 72px;
+        border: 8px solid #c9a86a;
+        border-bottom: none;
+        border-radius: 32px 32px 0 0;
+        opacity: 0.9;
+      }
+      h1 {
+        margin: 0;
+        font-size: 56px;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        color: #c9a86a;
+      }
+      p {
+        margin: 0;
+        max-width: 32em;
+        color: rgba(237, 231, 217, 0.72);
+      }
+      p.en {
+        font-size: 13px;
+        color: rgba(237, 231, 217, 0.42);
+      }
+      a {
+        margin-top: 10px;
+        padding: 10px 26px;
+        border: 1px solid rgba(201, 168, 106, 0.42);
+        border-radius: 999px;
+        color: #c9a86a;
+        text-decoration: none;
+        transition: background-color 0.18s ease;
+      }
+      a:hover {
+        background: rgba(201, 168, 106, 0.14);
+      }
+    </style>
+  </head>
+  <body>
+    <!-- 门是纯 CSS 画的：这一页不能有任何外部请求，否则「省流量」就白省了 -->
+    <div class="mark"></div>
+    <h1>404</h1>
+    <p>这条路径没有通向任何一界。也许是地址写错了，也许是它本来就该藏起来。</p>
+    <p class="en">This path leads nowhere. Check the address, or head back to the gateway.</p>
+    <a href="/">回到入口</a>
+  </body>
+</html>

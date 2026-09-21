@@ -178,6 +178,12 @@ const messages: Record<Locale, Record<string, string>> = {
     'settings.comfyui.nodeNone': '无',
     'settings.comfyui.nodeEmptyPreview': '空',
     'settings.comfyui.nodeOption': '节点 {id}｜{type}｜{preview}',
+    'settings.comfyui.nodeMatchHint':
+      '自动识别看的是节点标题：在 ComfyUI 里把正向提示词节点的标题改成 positive prompt、负向改成 negative prompt（不区分大小写，空格下划线都行）。不想改标题就在下面手动指定，选谁就是谁。',
+    'settings.comfyui.analysisPickManually': '没自动认出提示词节点，请在下面手动指定',
+    'settings.comfyui.analysisManual': '已按你的指定：正向提示词 → 节点 {positive}；负向提示词 → 节点 {negative}',
+    'settings.comfyui.analysisGuess': '没自动认出正向提示词节点，先按节点 {positive} 试；请在下面手动确认',
+    'settings.comfyui.warningNoWritableNode': '这个工作流里没有能装提示词的节点，出图会失败，请检查工作流',
     'settings.comfyui.promptSection': '提示词',
     'settings.comfyui.stylePreset': '画风预置',
     'settings.comfyui.stylePreset.none': '不用画风',
@@ -1482,6 +1488,15 @@ const messages: Record<Locale, Record<string, string>> = {
     'settings.comfyui.nodeNone': 'None',
     'settings.comfyui.nodeEmptyPreview': 'empty',
     'settings.comfyui.nodeOption': 'Node {id} | {type} | {preview}',
+    'settings.comfyui.nodeMatchHint':
+      'Auto-detection reads node titles: in ComfyUI rename the positive prompt node to "positive prompt" and the negative one to "negative prompt" (case and separators are ignored). Or just pick them manually below - whatever you pick is what gets used.',
+    'settings.comfyui.analysisPickManually': 'No prompt node detected - pick one manually below',
+    'settings.comfyui.analysisManual':
+      'Using your picks: positive prompt -> node {positive}; negative prompt -> node {negative}',
+    'settings.comfyui.analysisGuess':
+      'Could not auto-detect the positive prompt node - tentatively using node {positive}; please confirm below',
+    'settings.comfyui.warningNoWritableNode':
+      'No node in this workflow accepts a prompt, so generation will fail - please check the workflow',
     'settings.comfyui.promptSection': 'Prompts',
     'settings.comfyui.stylePreset': 'Style preset',
     'settings.comfyui.stylePreset.none': 'No style',

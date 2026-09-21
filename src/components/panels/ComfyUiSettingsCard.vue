@@ -84,11 +84,18 @@
       </p>
 
       <template v-if="textNodeOptions.length > 0">
+        <p class="comfy-hint">
+          <i class="ti ti-info-circle"></i>
+          <span>{{ t('settings.comfyui.nodeMatchHint') }}</span>
+        </p>
+
         <div class="setting-row">
           <span class="row-label">{{ t('settings.comfyui.positiveNode') }}</span>
-          <select v-model="comfyUi.positiveNodeId" class="comfy-select">
+          <select v-model="comfyUi.positiveNodeId" class="comfy-select" @change="comfyUi.positiveNodeManual = true">
             <option value="">{{ t('settings.comfyui.nodeUnset') }}</option>
-            <option v-for="node in textNodeOptions" :key="node.id" :value="node.id">{{ node.label }}</option>
+            <option v-for="node in textNodeOptions" :key="node.id" :value="node.id" :disabled="node.disabled">
+              {{ node.label }}
+            </option>
           </select>
         </div>
 
@@ -96,7 +103,9 @@
           <span class="row-label">{{ t('settings.comfyui.negativeNode') }}</span>
           <select v-model="comfyUi.negativeNodeId" class="comfy-select">
             <option value="">{{ t('settings.comfyui.nodeNone') }}</option>
-            <option v-for="node in textNodeOptions" :key="node.id" :value="node.id">{{ node.label }}</option>
+            <option v-for="node in textNodeOptions" :key="node.id" :value="node.id" :disabled="node.disabled">
+              {{ node.label }}
+            </option>
           </select>
         </div>
       </template>
@@ -211,7 +220,7 @@ const connectionMessage = ref('');
 const analysisTone = ref<Tone>('idle');
 const analysisMessage = ref('');
 const analysisWarning = ref('');
-const textNodeOptions = ref<{ id: string; label: string }[]>([]);
+const textNodeOptions = ref<{ id: string; label: string; disabled: boolean }[]>([]);
 const stylePresets = COMFYUI_STYLE_PRESETS;
 
 /** 换预置就把它的文本填进画风框（自定义 / 不用时清空或保留原文） */
@@ -285,13 +294,15 @@ function commitWorkflow() {
   if (comfyUi.value.workflowJson === workflowDraft.value) return;
   comfyUi.value.workflowJson = workflowDraft.value;
   comfyUi.value.workflowApiJson = '';
+  // 换了工作流就等于换了一批节点，之前手选的正向节点不再作数
+  comfyUi.value.positiveNodeManual = false;
   textNodeOptions.value = [];
   analysisTone.value = 'idle';
   analysisMessage.value = '';
   analysisWarning.value = '';
 }
 
-function buildNodeOptions(nodes: { id: string; classType: string; preview: string }[]) {
+function buildNodeOptions(nodes: { id: string; classType: string; preview: string; writable: boolean }[]) {
   return nodes.map(node => ({
     id: node.id,
     label: t('settings.comfyui.nodeOption', {
@@ -299,6 +310,8 @@ function buildNodeOptions(nodes: { id: string; classType: string; preview: strin
       type: node.classType || 'node',
       preview: node.preview || t('settings.comfyui.nodeEmptyPreview'),
     }),
+    // 装不了提示词的节点列出来但不给选，免得选完出图才报错
+    disabled: !node.writable,
   }));
 }
 
@@ -382,9 +395,9 @@ async function runAnalysis(silent: boolean) {
   textNodeOptions.value = buildNodeOptions(result.textNodes);
 
   const knownIds = new Set(result.textNodes.map(node => node.id));
-  const nextPositive = knownIds.has(comfyUi.value.positiveNodeId)
-    ? comfyUi.value.positiveNodeId
-    : result.positiveNodeId;
+  // 玩家已经手动指定过、而且那个节点还在，就继续用他的选择
+  const reusedPositive = comfyUi.value.positiveNodeManual && knownIds.has(comfyUi.value.positiveNodeId);
+  const nextPositive = reusedPositive ? comfyUi.value.positiveNodeId : result.positiveNodeId;
   const nextNegative = knownIds.has(comfyUi.value.negativeNodeId)
     ? comfyUi.value.negativeNodeId
     : result.negativeNodeId;
@@ -393,11 +406,24 @@ async function runAnalysis(silent: boolean) {
   comfyUi.value.negativeNodeId = nextNegative === nextPositive ? '' : nextNegative;
 
   analysisTone.value = 'ok';
-  analysisMessage.value = t('settings.comfyui.analysisOk', {
-    positive: nextPositive,
-    negative: nextNegative || t('settings.comfyui.nodeNone'),
-  });
-  analysisWarning.value = result.hasSaveImage ? '' : t('settings.comfyui.warningNoSaveImage');
+  const positiveText = nextPositive || t('settings.comfyui.nodeUnset');
+  const negativeText = nextNegative || t('settings.comfyui.nodeNone');
+  if (!nextPositive) {
+    analysisMessage.value = t('settings.comfyui.analysisPickManually');
+  } else if (reusedPositive) {
+    analysisMessage.value = t('settings.comfyui.analysisManual', { positive: positiveText, negative: negativeText });
+  } else if (result.positiveDetected) {
+    analysisMessage.value = t('settings.comfyui.analysisOk', { positive: positiveText, negative: negativeText });
+  } else {
+    analysisMessage.value = t('settings.comfyui.analysisGuess', { positive: positiveText });
+  }
+
+  const hasWritableNode = result.textNodes.some(node => node.writable);
+  if (!hasWritableNode) {
+    analysisWarning.value = t('settings.comfyui.warningNoWritableNode');
+  } else {
+    analysisWarning.value = result.hasSaveImage ? '' : t('settings.comfyui.warningNoSaveImage');
+  }
 }
 
 async function handleAnalyze() {
@@ -412,6 +438,7 @@ function handleClearWorkflow() {
   workflowDraft.value = '';
   commitWorkflow();
   comfyUi.value.positiveNodeId = '';
+  comfyUi.value.positiveNodeManual = false;
   comfyUi.value.negativeNodeId = '';
   textNodeOptions.value = [];
   analysisTone.value = 'idle';

@@ -13,17 +13,23 @@
 export interface ComfyUiWorkflowNode {
   id: string;
   classType: string;
-  /** 节点里可填文字的字段值预览（用于界面上区分正向/负向） */
+  /** 玩家在 ComfyUI 里给节点起的标题（没改过就是空的） */
+  title: string;
+  /** 界面上用来区分节点的简短说明：优先显示标题，其次显示节点里已有的文字 */
   preview: string;
+  /** 这个节点里有没有「能装提示词」的字段，供界面上排序/提示 */
+  writable: boolean;
 }
 
 export interface ComfyUiWorkflowAnalysis {
   ok: boolean;
   error?: string;
-  /** 所有带 text 字段的节点，供玩家手动指定 */
+  /** 工作流里所有节点，供玩家手动指定提示词节点 */
   textNodes: ComfyUiWorkflowNode[];
   /** 自动认出的正向提示词节点 */
   positiveNodeId: string;
+  /** 正向是「真认出来的」还是「没认出来、先按第一个能装提示词的节点猜的」 */
+  positiveDetected: boolean;
   /** 自动认出的负向提示词节点（没有则为空） */
   negativeNodeId: string;
   /** 带 width/height 的节点 */
@@ -115,6 +121,56 @@ function readNodeRef(value: unknown): string | null {
   return typeof first === 'string' || typeof first === 'number' ? String(first) : null;
 }
 
+/**
+ * 节点里能装提示词的字段，按优先级排。
+ * 不再死认 text 一个名字：SDXL 用 text_g / text_l，通配符节点用 wildcard_text。
+ */
+const PROMPT_FIELD_PRIORITY = ['text', 'text_g', 'text_l', 'prompt', 'wildcard_text', 'populated_text'];
+
+/** 读玩家给节点起的标题：API 格式放在 _meta.title，界面格式放在 title */
+function readNodeTitle(node: Record<string, unknown>): string {
+  const meta = node._meta;
+  if (isNodeRecord(meta) && typeof meta.title === 'string') return meta.title.trim();
+  if (typeof node.title === 'string') return node.title.trim();
+  return '';
+}
+
+/** 标题比对前先抹平大小写与分隔符，这样 Positive Prompt / positive_prompt 都算 */
+function normalizeNodeTitle(title: string): string {
+  return title.toLowerCase().replace(/[\s_-]+/g, '');
+}
+
+/** 玩家把节点标题改成这两个名字，就能被自动认出来 */
+const POSITIVE_TITLE_ALIASES = new Set(['positiveprompt', 'positive']);
+const NEGATIVE_TITLE_ALIASES = new Set(['negativeprompt', 'negative']);
+
+function hasTitleAlias(node: Record<string, unknown>, aliases: Set<string>): boolean {
+  const title = normalizeNodeTitle(readNodeTitle(node));
+  return title !== '' && aliases.has(title);
+}
+
+/**
+ * 这些字段装的是文件名/配置，不是提示词。
+ * 只在「白名单没命中、靠唯一文字字段兜底」时用来排除，避免把加载器节点当成提示词节点。
+ */
+const NON_PROMPT_FIELD_PATTERN =
+  /(name|path|file|prefix|image|url|type|mode|device|method|dtype|precision|crop|format|language|scheduler|sampler)$/i;
+
+/** 节点里有没有可写入的提示词字段；有的话返回字段名 */
+function findPromptField(node: Record<string, unknown>): string | null {
+  const inputs = readNodeInputs(node);
+  for (const field of PROMPT_FIELD_PRIORITY) {
+    if (typeof inputs[field] === 'string') return field;
+  }
+
+  // 字段名很冷门时退一步：整个节点只有一个文字字段、且它不像文件名/配置，那它就是提示词
+  const stringFields = Object.keys(inputs).filter(key => typeof inputs[key] === 'string');
+  if (stringFields.length === 1 && !NON_PROMPT_FIELD_PATTERN.test(stringFields[0])) {
+    return stringFields[0];
+  }
+  return null;
+}
+
 function findUpstreamTextNode(
   workflow: Record<string, unknown>,
   startNodeId: string,
@@ -126,10 +182,12 @@ function findUpstreamTextNode(
   const node = workflow[startNodeId];
   if (!isNodeRecord(node)) return null;
 
-  const inputs = readNodeInputs(node);
-  if (typeof inputs.text === 'string') {
+  // 认字段不再死认 text：SDXL 的 text_g、通配符节点的 wildcard_text 都算
+  if (findPromptField(node)) {
     return startNodeId;
   }
+
+  const inputs = readNodeInputs(node);
 
   for (const value of Object.values(inputs)) {
     const refId = readNodeRef(value);
@@ -258,7 +316,11 @@ export function convertUiWorkflowToApi(
       inputs[name] = value;
     });
 
-    api[String(rawNode.id)] = { class_type: nodeType, inputs };
+    // 把玩家改过的节点标题带过去，否则转成 API 格式后就没法按标题认节点了
+    const nodeTitle = typeof rawNode.title === 'string' ? rawNode.title.trim() : '';
+    api[String(rawNode.id)] = nodeTitle
+      ? { class_type: nodeType, inputs, _meta: { title: nodeTitle } }
+      : { class_type: nodeType, inputs };
   });
 
   if (Object.keys(api).length === 0) {
@@ -303,6 +365,7 @@ export function analyzeComfyWorkflow(rawJson: string): ComfyUiWorkflowAnalysis {
     ok: false,
     textNodes: [],
     positiveNodeId: '',
+    positiveDetected: false,
     negativeNodeId: '',
     sizeNodeIds: [],
     seedNodes: [],
@@ -332,26 +395,47 @@ export function analyzeComfyWorkflow(rawJson: string): ComfyUiWorkflowAnalysis {
   }
 
   const textNodes: ComfyUiWorkflowNode[] = [];
+  const writableNodeIds: string[] = [];
   const sizeNodeIds: string[] = [];
   const seedNodes: { id: string; field: string }[] = [];
   const samplers: string[] = [];
+  const titledPositiveIds: string[] = [];
+  const titledNegativeIds: string[] = [];
   let hasSaveImage = false;
 
   nodeIds.forEach(id => {
     const node = workflow[id] as Record<string, unknown>;
     const classType = typeof node.class_type === 'string' ? node.class_type : '';
     const inputs = readNodeInputs(node);
+    const title = readNodeTitle(node);
+    const promptField = findPromptField(node);
 
     if (/saveimage/i.test(classType)) {
       hasSaveImage = true;
     }
 
-    if (typeof inputs.text === 'string') {
-      textNodes.push({
-        id,
-        classType,
-        preview: inputs.text.replace(/\s+/g, ' ').slice(0, 60),
-      });
+    if (promptField) {
+      writableNodeIds.push(id);
+    }
+
+    // 界面上区分节点用：改过标题就显示标题，否则显示节点里已有的文字
+    const rawText = promptField ? inputs[promptField] : '';
+    const textPreview = typeof rawText === 'string' ? rawText.replace(/\s+/g, ' ').trim().slice(0, 60) : '';
+    const showTitle = title !== '' && title !== classType;
+
+    textNodes.push({
+      id,
+      classType,
+      title,
+      preview: showTitle ? title : textPreview,
+      writable: Boolean(promptField),
+    });
+
+    // 标题对上了、而且这个节点确实能装提示词，才算数
+    if (promptField && hasTitleAlias(node, POSITIVE_TITLE_ALIASES)) {
+      titledPositiveIds.push(id);
+    } else if (promptField && hasTitleAlias(node, NEGATIVE_TITLE_ALIASES)) {
+      titledNegativeIds.push(id);
     }
 
     if (typeof inputs.width === 'number' && typeof inputs.height === 'number') {
@@ -373,30 +457,39 @@ export function analyzeComfyWorkflow(rawJson: string): ComfyUiWorkflowAnalysis {
     }
   });
 
-  if (textNodes.length === 0) {
-    return { ...empty, error: 'workflow-no-text-node' };
+  // 让「能装提示词的节点」排前面，方便手动指定
+  textNodes.sort((a, b) => Number(b.writable) - Number(a.writable));
+
+  // 第一优先：玩家把节点标题改成了 positive prompt / negative prompt
+  let positiveNodeId = titledPositiveIds[0] ?? '';
+  let negativeNodeId = titledNegativeIds[0] ?? '';
+  // 标题命中或连线命中才算「真认出来了」；退化成第一个节点只是猜，界面要说清楚
+  let positiveDetected = positiveNodeId !== '';
+
+  // 第二优先：顺着采样器的正/负输入往上找文本节点
+  if (!positiveNodeId || !negativeNodeId) {
+    for (const samplerId of samplers) {
+      const inputs = readNodeInputs(workflow[samplerId] as Record<string, unknown>);
+      const positiveRef = readNodeRef(inputs.positive);
+      const negativeRef = readNodeRef(inputs.negative);
+
+      if (!positiveNodeId && positiveRef) {
+        const found = findUpstreamTextNode(workflow, positiveRef, new Set());
+        if (found) {
+          positiveNodeId = found;
+          positiveDetected = true;
+        }
+      }
+      if (!negativeNodeId && negativeRef) {
+        negativeNodeId = findUpstreamTextNode(workflow, negativeRef, new Set()) || '';
+      }
+      if (positiveNodeId && negativeNodeId) break;
+    }
   }
 
-  let positiveNodeId = '';
-  let negativeNodeId = '';
-
-  for (const samplerId of samplers) {
-    const inputs = readNodeInputs(workflow[samplerId] as Record<string, unknown>);
-    const positiveRef = readNodeRef(inputs.positive);
-    const negativeRef = readNodeRef(inputs.negative);
-
-    if (!positiveNodeId && positiveRef) {
-      positiveNodeId = findUpstreamTextNode(workflow, positiveRef, new Set()) || '';
-    }
-    if (!negativeNodeId && negativeRef) {
-      negativeNodeId = findUpstreamTextNode(workflow, negativeRef, new Set()) || '';
-    }
-    if (positiveNodeId && negativeNodeId) break;
-  }
-
-  // 兜底：没有采样器或找不到连线时，退化成「第一个文本节点作正向」
+  // 兜底：还是认不出就取第一个能装提示词的节点，至少给玩家一个起点
   if (!positiveNodeId) {
-    positiveNodeId = textNodes[0].id;
+    positiveNodeId = writableNodeIds[0] ?? '';
   }
   if (negativeNodeId === positiveNodeId) {
     negativeNodeId = '';
@@ -406,6 +499,7 @@ export function analyzeComfyWorkflow(rawJson: string): ComfyUiWorkflowAnalysis {
     ok: true,
     textNodes,
     positiveNodeId,
+    positiveDetected,
     negativeNodeId,
     sizeNodeIds,
     seedNodes,
@@ -490,8 +584,11 @@ function applyPromptToNode(workflow: Record<string, unknown>, nodeId: string, te
   if (!isNodeRecord(node)) return false;
   const inputs = node.inputs;
   if (!isNodeRecord(inputs)) return false;
-  if (typeof inputs.text !== 'string') return false;
-  inputs.text = text;
+
+  const field = findPromptField(node);
+  if (!field) return false;
+
+  inputs[field] = text;
   return true;
 }
 
