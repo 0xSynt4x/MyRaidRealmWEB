@@ -112,7 +112,7 @@ import { useNotificationStore } from '../../stores/notification';
 import { useSetupStore } from '../../stores/setup';
 import { useStatDataStore } from '../../stores/statData';
 import { clearPendingStandaloneArchiveResume, saveCurrentArchive } from '../../utils/archive';
-import { clearSetupCompleted } from '../../utils/setupProgress';
+import { clearLocalGameState } from '../../utils/localGameState';
 import { matchWeather, isNight, type WeatherFamily, type WeatherVariant } from '../../utils/weatherFamily';
 
 // 氛围底图：全部是中性抽象质感，不指向任何具体题材，配什么世界观都不出戏。
@@ -371,7 +371,7 @@ async function handleResetGame() {
 
   try {
     clearPendingStandaloneArchiveResume();
-    clearSetupCompleted();
+    clearLocalGameState();
     setupStore.reset();
     messagesStore.clearMessages();
     emit('reset-game');

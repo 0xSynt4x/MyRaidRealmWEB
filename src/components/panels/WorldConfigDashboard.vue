@@ -73,9 +73,7 @@ import { useI18n } from '../../i18n';
 import type { PresetConfig } from '../../presets/types';
 import { useSetupStore } from '../../stores/setup';
 import { useStatDataStore } from '../../stores/statData';
-import { useStatDataActions } from '../../stores/statDataActions';
 import { loadPresetsBundle } from '../../utils/preset-loader';
-import { markSetupCompleted } from '../../utils/setupProgress';
 import { writeSetupConfigToCurrentMessage } from '../../utils/setupStartGame';
 import type { LocalContentEntryConfig } from '../../presets/types';
 import ConfigSection from '../common/ConfigSection.vue';
@@ -221,8 +219,6 @@ async function startGame() {
     syncConfigToDraft();
     await writeSetupConfigToCurrentMessage(_.cloneDeep(config), 'world-config.apply');
     statDataStore.refreshData('world-config.apply');
-
-    markSetupCompleted();
 
     // 先切到主游戏界面，再继续等待开场消息生成
     emit('complete');

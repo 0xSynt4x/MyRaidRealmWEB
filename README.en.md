@@ -2,17 +2,17 @@
 
 **English** | [简体中文](./README.md)
 
-`1980s-NW` (MyRaidRealm) is a **browser-only AI text role-play / world-simulation** project. It fully migrates gameplay that originally ran inside SillyTavern into a self-contained web page: running it in production **requires no SillyTavern installation and no tavern scripts**.
+`1980s-NW` (MyRaidRealm) is a **browser-only AI text role-play / world-simulation** project: a self-contained web page that handles reply generation, variable updates, message history, saves, and local content management in-page. Running it in production **requires no external tools and no external runtime scripts**.
 
-The build output is a **self-contained single file** `dist/index.html` (with JS/CSS fully inlined). Users simply open this file in a browser to configure the API, choose a starting preset, begin a session, send messages, auto-update game variables, and save/import game states.
+The build output is the whole `dist/` directory. Inside it, `index.html` has **JS and CSS fully inlined** (no external script or style requests), but images, audio, and the preset package are **not** inlined — they sit beside it as relative paths under `dist/assets/` and `dist/preset-package/`. So the **only supported distribution is deploying the whole directory online**; shipping `index.html` alone means missing images and no starting presets. Players visit the online URL and configure the API, choose a starting preset, begin a session, send messages, auto-update game variables, and save/import game states in the page.
 
 ## Features
 
-- **Standalone**: A single HTML file — double-click to open. No backend, no framework injection required.
+- **Standalone**: A pure front-end build with no backend and no framework injection — just open the online URL in a browser.
 - **Built-in API configuration**: Fill in an OpenAI-compatible endpoint (URL / Key / model) in-page to drive both narration and variable updates.
 - **Rich starting presets**: About 38 world-setting presets + 21 Workshop world packs (apocalypse, cultivation, officialdom, Game of Thrones, Marvel, Naruto, Gaokao simulator, and more).
 - **AI opening setup**: Fill in the key details of your world and character, then let AI generate the opening setup in one click.
-- **Variable-driven simulation**: Maintains structured state for characters, NPCs, business, and factions via a local `stat_data` + `<JSONPatch>`, independent of MVU.
+- **Variable-driven simulation**: Maintains structured state for characters, NPCs, business, and factions via a local `stat_data` + `<JSONPatch>`.
 - **Local supplementary content / worldbooks**: Inject rules and world material by target (narration model / variable model / both).
 - **Built-in mini-game**: A dice (Farkle) gameplay panel.
 - **Save management**: Browser local storage + JSON import/export.
@@ -47,25 +47,25 @@ Available scripts (see `package.json`):
 
 | Command          | Description                                                                                       |
 | ---------------- | ------------------------------------------------------------------------------------------------- |
-| `pnpm build`     | Production build; produces the self-contained `dist/index.html`                                   |
+| `pnpm build`     | Production build; produces `dist/` (`index.html` + `assets/` + `preset-package/`)                 |
 | `pnpm build:dev` | One-off development-mode build (for debugging)                                                    |
 | `pnpm watch`     | Development mode + `--watch`; rebuilds on change                                                  |
 | `pnpm typecheck` | Full type check via `vue-tsc` (0 errors)                                                          |
 | `pnpm lint`      | Run ESLint (0 errors; warnings are known tech debt)                                               |
 | `pnpm format`    | Format with Prettier (existing code is not fully formatted; prefer running only on changed files) |
 
-After the build, open `dist/index.html` in a browser to use it. See [`CONTRIBUTING.md`](./CONTRIBUTING.md) for the development workflow.
+After the build you can **preview locally**: serve the whole `dist/` directory with a static server (opening `index.html` on its own gives missing images and no presets). See [`CONTRIBUTING.md`](./CONTRIBUTING.md) for the development workflow.
 
 ## Production Entry Points
 
-- Release entry: `dist/index.html`
+- Deployment entry: `dist/` (whole directory)
 - HTML template: `src/index.html`
 - Source entry: `src/index.ts`
 - Build config: `webpack.1980s-nw-standalone.config.ts`
 - Build command: run `pnpm build` in this directory
 - Local dev command: run `pnpm watch` in this directory (development-mode watch rebuild)
 
-The built `dist/index.html` is the standalone web page users open. Within the page, users configure the API, choose presets, start a session, send messages, auto-update variables, and save/import game states.
+The built `dist/` directory is deployed to Cloudflare Pages as the online page players visit. Within the page, players configure the API, choose presets, start a session, send messages, auto-update variables, and save/import game states.
 
 ## Directory Structure
 
@@ -92,37 +92,11 @@ The built `dist/index.html` is the standalone web page users open. Within the pa
 ├─ schema/                  # Variable/data-structure schema (schema.ts / schema.json)
 ├─ preset-package/          # Preset package entry (attached globally for runtime loading)
 ├─ assets-design/           # Design drafts and raw preset JSON (not part of the build)
-├─ legacy-reference/        # Legacy tavern script references (archive only, not an entry)
 ├─ docs/                    # Plan, progress, and snapshot docs
 ├─ scripts/tests/           # Test scripts
 ├─ dist/                    # Build output (index.html, git-ignored)
 └─ webpack.1980s-nw-standalone.config.ts
 ```
-
-## Release Boundary
-
-The production standalone build depends only on the web source, runtime code, and standalone assets.
-
-Content that enters the standalone web main flow:
-
-- `src/`
-- `runtime/`
-- `schema/schema.ts`
-- `dist/index.html` and its sibling build artifacts
-- `src/assets/standalone-local-content/`
-- `src/assets/standalone-worldbooks/`
-- `src/assets/worldbook-registry/`
-
-Content that should NOT be loaded as a standalone entry:
-
-- `legacy-reference/assistant-api/` (formerly `脚本/辅助API(Legacy)/`)
-- `legacy-reference/variable-schema/` (formerly `脚本/变量结构(Legacy)/`)
-
-These directories are references from the old tavern project; their capabilities have been replaced by in-page implementations and are not part of the standalone HTML main flow. Reply generation, auxiliary variable updates, message history, saves, and local content management are all handled inside the web page.
-
-`preset-package/` (formerly `脚本/预设包/`) is NOT on the "do not load" list above: it is the runtime source of presets — see the "Preset Delivery" section below.
-
-`package.json` is kept in this directory to give the build tooling a clear sub-project boundary and prevent the root build from mistakenly scanning legacy reference directories as entries; it does not mean the standalone version still depends on the tavern.
 
 ## Preset Delivery
 
@@ -132,13 +106,18 @@ Starting presets are not bundled into `dist/index.html`; instead they are dynami
 - Preset package entry: `preset-package/index.ts`, which attaches `PRESETS` to the global `window.__TH1980S_PRESETS__`.
 - Loading logic: `src/utils/preset-loader.ts` injects a `<script>` at runtime to load the preset package.
 
-In production, the preset package is served from a single CDN shared by both the standalone and tavern versions, so it is maintained once and updated in sync. `preset-loader.ts` tries candidate URLs in order; local relative paths and local dev addresses are optional fallbacks, with the CDN as the source of truth.
+The preset package is **deployed together with `dist/`** and loaded only from the project's own artifacts — it **does not depend on any external CDN**. `preset-loader.ts` tries three candidate URLs in order:
 
-Note: because presets fully depend on that CDN address, if the CDN is unavailable or the network is down, the page will be unable to load starting presets. This is a deliberate current trade-off.
+1. Relative path `../preset-package/index.js` (when the page is deployed at the root)
+2. Local dev server `http://127.0.0.1:5500/dist/1980s/preset-package/index.js`
+3. The project's own Cloudflare Pages absolute address (fallback when the page moves to a sub-path)
+
+Note: presets depend entirely on the project's own artifacts; if the preset package is not deployed or the path is wrong, the page cannot load starting presets.
+**After changing presets you must rebuild and redeploy the preset package**; rebuilding only the main artifact has no effect.
 
 ## Multiplayer
 
-Multiplayer is not provided in the standalone version due to the lack of a dedicated server. The related legacy tavern multiplayer scripts have been removed from this directory.
+Multiplayer requires a dedicated server, so it is not provided in the current version.
 
 ## Local Content & Worldbook Strategy
 
@@ -148,12 +127,12 @@ The standalone version adopts the current local-content model: explicitly enable
 - `variable_update`: sent only to the variable-update model
 - `shared`: sent to both
 
-It does not fully replicate SillyTavern's worldbook mechanics such as keyword triggers, insertion depth, or recursive triggering. The old "worldbook" concept maps to one type of "local supplementary content" in the standalone version.
+Worldbook injection uses a local-content model: explicitly enabled entries injected by send target. Entries are injected whole, with no keyword filtering. The "worldbook" concept maps to one type of "local supplementary content".
 
 Currently active assets live in:
 
 - `src/assets/standalone-local-content/`: general prompts, variable-update rules, lottery, text-to-image rules, etc.
-- `src/assets/standalone-worldbooks/`: preset world material migrated into the standalone version
+- `src/assets/standalone-worldbooks/`: preset world material built into the standalone version
 - `src/assets/worldbook-registry/index.ts`: links built-in presets to their corresponding world material
 
 ## Legacy Preset Compatibility
@@ -164,14 +143,14 @@ If an old preset still contains a `worldbookEntries` field, importing will autom
 
 ## Variable Updates
 
-The standalone version does not use the MVU global object. Variable updates are handled by the local `stat_data`, `<JSONPatch>`, and the standalone run pipeline.
+Variable updates are handled by the local `stat_data`, `<JSONPatch>`, and the runtime pipeline, with no global object involved.
 
 The production rules live in:
 
 - `src/assets/standalone-local-content/variable-update-rules.txt`
 - `src/assets/standalone-local-content/variable-update-format.txt`
 
-The old chain-of-thought template has been folded into the `<Analysis>` section and is no longer loaded as a separate rule entry.
+The chain-of-thought template is folded into the `<Analysis>` section and is not loaded as a separate rule entry.
 
 ## Save Strategy
 

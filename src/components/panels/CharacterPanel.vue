@@ -834,7 +834,6 @@ function checkNameExists() {
 // 删除NPC（使用统一删除函数）
 function openDeleteConfirm(npcId: string, npcName: string) {
   deleteItem({
-    typeName: t('character.recruitCharacter'),
     displayName: npcName,
     onDelete: () => statDataActions.removeStatDataAtPath('npc.delete', `人物档案.${npcId}`),
   });

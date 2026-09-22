@@ -1057,18 +1057,6 @@ import {
   type StandaloneLocalContentKind,
   type StandaloneLocalContentRoute,
 } from '../../utils/standaloneLocalContent';
-import {
-  deleteStandaloneArchive,
-  downloadStandaloneArchiveById,
-  formatArchiveSummaryForToast,
-  getStandaloneArchiveFeedbackMessageKey,
-  importArchiveFile,
-  listStandaloneArchives,
-  restoreStandaloneArchiveById,
-  saveCurrentArchive,
-  saveStandaloneArchiveSnapshot,
-} from '../../utils/archive';
-import { loadStandaloneRuntimeMessages, loadStandaloneRuntimeSession } from '../../utils/standaloneRuntime';
 import { useSettingsStore, type SurvivalMode, type Theme, type WorldDifficulty } from '../../stores/settings';
 import { useStatDataStore } from '../../stores/statData';
 import { useStatDataActions } from '../../stores/statDataActions';
@@ -1134,17 +1122,11 @@ const {
   archiveStatusMessage,
   archiveStatusTone,
   archiveInputRef,
-  archiveRefreshTick,
   standaloneArchives,
-  currentArchiveSession,
-  currentArchiveMessages,
-  currentArchiveMessageIds,
   currentArchiveMessageCount,
   currentArchiveVariableSectionCount,
-  currentArchiveMessageIdPreview,
   isArchivingStageSummary,
   stageSummaryProgress,
-  setArchiveStatus,
   refreshStandaloneArchiveList,
   handleArchiveExport,
   handleArchiveStageSummary,
@@ -1267,12 +1249,6 @@ const backgroundPositionLabelMap = computed<Record<'top' | 'center' | 'bottom', 
   top: t('settings.backgroundPosition.top'),
   center: t('settings.backgroundPosition.center'),
   bottom: t('settings.backgroundPosition.bottom'),
-}));
-
-const survivalModeSummaryMap = computed<Record<SurvivalMode, string>>(() => ({
-  关闭: t('settings.survival.summary.off'),
-  基础模式: t('settings.survival.summary.basic'),
-  生存模式: t('settings.survival.summary.full'),
 }));
 
 function localizedToggleStatus(enabled: boolean) {

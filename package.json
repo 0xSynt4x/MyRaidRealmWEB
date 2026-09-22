@@ -1,7 +1,7 @@
 {
   "name": "@1980s/nw-standalone",
   "private": true,
-  "description": "Standalone 1980s-NW browser project. Builds a single self-contained dist/index.html.",
+  "description": "Standalone 1980s-NW browser project. Builds dist/ (inlined index.html + assets/ + preset-package/) for whole-directory web deployment.",
   "packageManager": "pnpm@11.5.2",
   "engines": {
     "node": ">=18",

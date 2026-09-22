@@ -57,14 +57,6 @@ export function useStandaloneArchiveManager() {
 
     return Object.keys(statData as Record<string, unknown>).length;
   });
-  const currentArchiveMessageIdPreview = computed(() => {
-    if (currentArchiveMessageIds.value.length === 0) {
-      return tCurrent('contentCenter.archive.noMessageIds');
-    }
-
-    return currentArchiveMessageIds.value.join(', ');
-  });
-
   const isArchivingStageSummary = ref(false);
   const stageSummaryProgress = computed(() => {
     void archiveRefreshTick.value;
@@ -310,7 +302,6 @@ export function useStandaloneArchiveManager() {
     currentArchiveMessageIds,
     currentArchiveMessageCount,
     currentArchiveVariableSectionCount,
-    currentArchiveMessageIdPreview,
     isArchivingStageSummary,
     stageSummaryProgress,
     setArchiveStatus,

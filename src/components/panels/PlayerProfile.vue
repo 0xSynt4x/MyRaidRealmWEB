@@ -269,11 +269,9 @@ function handlePlayerCardInteract(type: 'skill' | 'item', name: string, e: Mouse
 
 // 删除技能/物品（使用统一删除函数）
 function openDeleteConfirm(type: 'skill' | 'item', name: string) {
-  const typeName = type === 'skill' ? '技能' : '物品';
   const path = type === 'skill' ? `玩家.技能系统.${name}` : `玩家.物品栏.${name}`;
 
   deleteItem({
-    typeName,
     displayName: name,
     onDelete: () => statDataActions.removeStatDataAtPath(`player.delete.${type}`, path),
   });

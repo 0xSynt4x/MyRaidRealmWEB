@@ -67,7 +67,7 @@ createApp(App) → createPinia() → messagesStore.setupEventListeners() → mou
 
 ## 硬边界
 
-1. **不引入 SillyTavern / MVU / 酒馆脚本依赖。** 相关旧实现只在 `legacy-reference/` 存档。
+1. **不引入任何外部运行时或脚本依赖。** 所有能力都在本仓内实现。
 2. **不引入运行时外部依赖。** 所有依赖一律打进产物，构建配置里**没有 `externals`**（见 `02-build-and-deploy.md`）。
 3. **不使用 IndexedDB。** 存档走 localStorage + JSON 导入导出。
 4. **保持单文件产物。** 任何新增依赖都要先确认它能被内联。

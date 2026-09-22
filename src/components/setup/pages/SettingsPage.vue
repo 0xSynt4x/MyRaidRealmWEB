@@ -771,20 +771,7 @@ import { notify } from '../../../utils/notify';
 import { useSettingsStore } from '../../../stores/settings';
 import { useSetupStore } from '../../../stores/setup';
 import { useStatDataStore } from '../../../stores/statData';
-import {
-  clearPendingStandaloneArchiveResume,
-  deleteStandaloneArchive,
-  downloadStandaloneArchiveById,
-  formatArchiveSummaryForToast,
-  getStandaloneArchiveFeedbackMessageKey,
-  importArchiveFile,
-  listStandaloneArchives,
-  loadPendingStandaloneArchiveResume,
-  restoreStandaloneArchiveById,
-  saveCurrentArchive,
-  saveStandaloneArchiveSnapshot,
-} from '../../../utils/archive';
-import { markSetupCompleted } from '../../../utils/setupProgress';
+import { clearPendingStandaloneArchiveResume, loadPendingStandaloneArchiveResume } from '../../../utils/archive';
 import { writeSetupConfigToCurrentMessage } from '../../../utils/setupStartGame';
 import {
   buildWorldDifficultyStandaloneLocalContent,
@@ -794,7 +781,6 @@ import {
   type StandaloneLocalContentKind,
   type StandaloneLocalContentRoute,
 } from '../../../utils/standaloneLocalContent';
-import { loadStandaloneRuntimeMessages, loadStandaloneRuntimeSession } from '../../../utils/standaloneRuntime';
 import SetupBackButton from './components/SetupBackButton.vue';
 import { useStandaloneArchiveManager } from '../../../composables/useStandaloneArchiveManager';
 
@@ -848,16 +834,9 @@ const {
   archiveStatusMessage,
   archiveStatusTone,
   archiveInputRef,
-  archiveRefreshTick,
   standaloneArchives,
-  currentArchiveSession,
-  currentArchiveMessages,
-  currentArchiveMessageIds,
   currentArchiveMessageCount,
   currentArchiveVariableSectionCount,
-  currentArchiveMessageIdPreview,
-  setArchiveStatus,
-  refreshStandaloneArchiveList,
   handleArchiveExport,
   handleSaveStandaloneArchive,
   triggerArchiveImport,
@@ -1368,19 +1347,15 @@ async function startGame() {
 
     if (pendingArchiveResume) {
       clearPendingStandaloneArchiveResume();
-      markSetupCompleted();
       statDataStore.refreshData('archive-resume-ready');
       emit('complete');
       notify.success(t('setup.standalone.archiveResumeReady'));
       return;
     }
 
-    const parsedStatData = await writeSetupConfigToCurrentMessage(klona(setupStore.config), 'setup.start-game');
+    await writeSetupConfigToCurrentMessage(klona(setupStore.config), 'setup.start-game');
 
     statDataStore.refreshData('setup.start-game');
-
-    // 提交成功后立即标记开局完成，避免异步刷新短时回退到向导页
-    markSetupCompleted();
 
     // 先进入主游戏界面，再在主界面里继续等待开场消息生成
     emit('complete');

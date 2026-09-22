@@ -71,22 +71,20 @@ import OverlayPanel from './components/layout/OverlayPanel.vue';
 import RightPanel from './components/layout/RightPanel.vue';
 import SetupWizard from './components/setup/SetupWizard.vue';
 import { useFullscreen } from './composables/useFullscreen';
-import { useI18n } from './i18n';
 import { useSetupStore } from './stores/setup';
 import { useSettingsStore } from './stores/settings';
-import { useStatDataStore } from './stores/statData';
 import { getStandaloneArchiveRestoredEventName, type StandaloneArchiveRestoreOutcome } from './utils/archive';
 import { getDesktopExtraHeight, getLayoutViewportWidth, isMobileLayoutWidth } from './utils/layoutBreakpoints';
-import { isSetupCompleted, markSetupCompleted } from './utils/setupProgress';
 import { ensureStandaloneRuntimeBootstrapFromStores } from './utils/standaloneRuntime';
 import { loadStandaloneStatData } from './utils/standaloneStatData';
 
 const settingsStore = useSettingsStore();
 const setupStore = useSetupStore();
-const { t } = useI18n();
-const statDataStore = useStatDataStore();
 
-const setupCompleted = ref(isSetupCompleted());
+// 本会话内是否已经进入游戏。
+// 打开页面一律先给配置界面首页，不做「该进游戏还是该进配置界面」的自动判定：
+// 想接着上次玩，自己点「继续游戏」挑快照。
+const inGame = ref(false);
 const forceShowWizard = ref(false);
 const STANDALONE_ARCHIVE_RESTORED_EVENT = getStandaloneArchiveRestoredEventName();
 
@@ -97,49 +95,24 @@ function handleStandaloneArchiveRestored(event: Event) {
     return;
   }
 
-  setupCompleted.value = outcome.resumedImmediately;
+  inGame.value = outcome.resumedImmediately;
   forceShowWizard.value = outcome.requiresSettingsResume;
 }
 
-// 判断是否显示配置界面 - 仅在当前 chat 尚未开局时显示
-const showWizard = computed(() => {
-  if (forceShowWizard.value) {
-    return true;
-  }
-
-  // 优先使用“开局完成锁”，避免远端短时旧快照导致回退到向导页
-  if (setupCompleted.value) {
-    return false;
-  }
-
-  const hasPlayerName = Boolean(statDataStore.data.玩家?.姓名?.trim());
-
-  // 向后兼容：历史会话若已有姓名，则自动补记完成锁
-  if (hasPlayerName) {
-    ensureStandaloneRuntimeBootstrapFromStores(loadStandaloneStatData());
-    markSetupCompleted();
-    setupCompleted.value = true;
-    return false;
-  }
-
-  return true;
-});
+// 判断是否显示配置界面
+const showWizard = computed(() => forceShowWizard.value || !inGame.value);
 
 // 处理配置完成事件
 const handleWizardComplete = () => {
   forceShowWizard.value = false;
-  setupCompleted.value = true;
+  inGame.value = true;
   ensureStandaloneRuntimeBootstrapFromStores(loadStandaloneStatData());
 };
 
 const handleResetGame = () => {
   forceShowWizard.value = true;
-  setupCompleted.value = false;
+  inGame.value = false;
 };
-
-if (isSetupCompleted()) {
-  ensureStandaloneRuntimeBootstrapFromStores(loadStandaloneStatData());
-}
 
 watch(
   // 这三样都会影响送进提示词的内容，任一变化就重建会话底稿。

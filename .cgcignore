@@ -24,7 +24,3 @@ __pycache__/
 *.zip
 *.tar
 *.gz
-
-# 历史参考实现：已从 tsconfig / eslint / webpack 三处排除，不参与构建与类型检查，
-# 仅作为「脚本/辅助API(Legacy)」的历史参考保留。排除以免污染 CGC 分析结果。
-legacy-reference/

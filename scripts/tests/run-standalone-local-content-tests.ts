@@ -76,7 +76,6 @@ import {
 } from '../../src/stores/settings';
 import { getPresets, loadPresetsBundle } from '../../src/utils/preset-loader';
 import { useNotificationStore } from '../../src/stores/notification';
-import { isSetupCompleted, clearSetupCompleted, markSetupCompleted } from '../../src/utils/setupProgress';
 import { useSetupStore } from '../../src/stores/setup';
 import { useMessageActions } from '../../src/composables/useMessageActions';
 import { useStatDataStore } from '../../src/stores/statData';
@@ -256,7 +255,6 @@ function resetStandaloneTestEnvironment() {
   mockEventBus.clear();
   localStorage.clear();
   clearPendingStandaloneArchiveResume();
-  clearSetupCompleted();
   clearStandaloneRuntimeState();
   clearStandaloneStatData();
   setActivePinia(createPinia());
@@ -1538,7 +1536,6 @@ async function testRestoreStandaloneArchiveRestoresRuntimeAndStores(): Promise<v
     requiresSettingsResume: false,
   });
   assert.equal(reloadCallCount, 0);
-  assert.equal(isSetupCompleted(), true);
   assert.equal(seeded.setupStore.selectedPreset?.name, '恢复前预设');
   assert.equal(seeded.settingsStore.standaloneLocalContent.enabledAssets['plot-online-mode'], false);
   assert.equal('variable-update-thought-template' in seeded.settingsStore.standaloneLocalContent.enabledAssets, false);
@@ -1601,7 +1598,6 @@ async function testImportStandaloneArchiveFileWritesListAndRestoresState(): Prom
     requiresSettingsResume: false,
   });
   assert.equal(reloadCallCount, 0);
-  assert.equal(isSetupCompleted(), true);
   assert.ok(restoredSession);
   assert.equal(restoredSession.stat_data.玩家.姓名, '导入来源角色');
   assert.equal(setupStore.selectedPreset?.name, '导入来源预设');
@@ -1787,7 +1783,6 @@ async function testRestoreStandaloneArchiveRequiresApiSetupBeforeResumingOnClean
   const pendingResume = loadPendingStandaloneArchiveResume();
   const restoredSession = loadStandaloneRuntimeSession();
 
-  assert.equal(isSetupCompleted(), false);
   assert.ok(pendingResume);
   assert.equal(pendingResume?.archiveId, savedEntry.id);
   assert.equal(setupStore.currentPage, 'settings');
@@ -1827,7 +1822,6 @@ async function testImportStandaloneArchiveRequiresApiSetupBeforeResumingOnCleanB
   const pendingResume = loadPendingStandaloneArchiveResume();
   const restoredSession = loadStandaloneRuntimeSession();
 
-  assert.equal(isSetupCompleted(), false);
   assert.ok(pendingResume);
   assert.equal(pendingResume?.archiveId, exportedPayload.archiveId);
   assert.equal(exportedPayload.currentChatId, exportedPayload.session.id);
@@ -1891,24 +1885,6 @@ async function testImportStandaloneArchiveRejectsOldArchiveVersion(): Promise<vo
 
   await assert.rejects(importArchiveFile(importFile), /当前仅支持导入这套完整快照归档文件，不支持旧版存档文件/);
   assert.equal(listStandaloneArchives().length, 0);
-}
-
-function testSetupCompletedStateStaysScopedPerChat(): void {
-  resetStandaloneTestEnvironment();
-
-  const chatA = createSeededStandaloneRuntimeSession({});
-  const chatB = createSeededStandaloneRuntimeSession({});
-
-  persistStandaloneRuntimeSession(chatA);
-  assert.equal(isSetupCompleted(), false);
-  markSetupCompleted();
-  assert.equal(isSetupCompleted(), true);
-
-  persistStandaloneRuntimeSession(chatB);
-  assert.equal(isSetupCompleted(), false);
-
-  persistStandaloneRuntimeSession(chatA);
-  assert.equal(isSetupCompleted(), true);
 }
 
 async function testVariableUpdateFormatPromptBlockAlwaysPresentInFixedMode(): Promise<void> {
@@ -4893,7 +4869,6 @@ async function run(): Promise<void> {
     ],
     ['import standalone archive rejects old archive version', testImportStandaloneArchiveRejectsOldArchiveVersion],
     ['pending archive resume state round trip', testPendingArchiveResumeStateRoundTrip],
-    ['setup completed state stays scoped per chat', testSetupCompletedStateStaysScopedPerChat],
   ] as const;
 
   const filter = process.env.TEST_FILTER?.trim();

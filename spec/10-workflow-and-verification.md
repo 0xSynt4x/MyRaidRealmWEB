@@ -15,26 +15,24 @@ pnpm check:i18n   # 改动语言文件时必跑
 
 ```text
 Checkout → Setup pnpm → Setup Node(.nvmrc) → Install
-  → Typecheck → Lint → Test → Build → Upload dist/index.html
+  → Typecheck → Lint → Test → Build
 ```
 
 - Test 放在 Build **之前**：测试不过就别浪费构建时间。
 - 🔴 **CI 不跑 Prettier。** 仓库里有存量格式失败（未整体格式化），
   所以「CI 绿」不代表格式没问题，也**不要**用「CI 会格式化」当理由。
 - 同一分支的重复推送只保留最新一次运行（`concurrency.cancel-in-progress`）。
+- 🔴 **CI 不产出可下载的构建产物。** 以前有一步 `actions/upload-artifact` 上传
+  `dist/index.html`，已随「只走线上分发」的定位一起删除——构建只用于验证，产物由部署流程产出。
 
-## 发布流程
+## 部署流程
 
-`.github/workflows/release.yml`，推 `v*` tag 触发：typecheck → build → 建 GitHub Release。
+分发只有「整目录部署到线上」一条路，**没有** tag / GitHub Release 通道
+（历史上的 `.github/workflows/release.yml` 已删除）。
 
-```bash
-# 确保 CHANGELOG.md 已更新
-git tag v1.2.3
-git push origin v1.2.3
-```
-
-⚠️ Release 只附 `dist/index.html`，不含 `dist/assets/` 与 `dist/preset-package/`，
-详见 `11-known-issues.md`。
+- 主产物 `dist/`（含 `assets/` 与 `preset-package/`）部署到 **Cloudflare Pages**。
+- 部署前先本地跑一遍 `pnpm build` 确认产物完整；只拿 `dist/index.html` 分发会缺图、缺预设。
+- 详见 `02-build-and-deploy.md` 的「部署」一节。
 
 ## 测试
 

@@ -102,6 +102,14 @@
     <audio ref="bgmRef" class="bgm-audio" :src="bgmUrl" loop preload="auto"></audio>
 
     <input ref="archiveInput" type="file" accept=".json,application/json" hidden @change="handleArchiveFileChange" />
+
+    <!-- 「继续游戏」的快照选择浮层：只负责挑一个恢复，不做任何存档管理 -->
+    <SnapshotPickerDialog
+      :visible="snapshotPickerVisible"
+      :archives="snapshotArchives"
+      @close="closeSnapshotPicker"
+      @select="handleSnapshotSelect"
+    />
   </div>
 </template>
 
@@ -117,7 +125,9 @@ import {
   getStandaloneArchiveFeedbackMessageKey,
   listStandaloneArchives,
   restoreStandaloneArchiveById,
+  type StandaloneArchiveListItem,
 } from '../../../utils/archive';
+import SnapshotPickerDialog from './components/SnapshotPickerDialog.vue';
 
 const emit = defineEmits<{
   start: [];
@@ -175,6 +185,10 @@ const pageRef = ref<HTMLElement | null>(null);
 const bgmRef = ref<HTMLAudioElement | null>(null);
 const musicCtlRef = ref<HTMLElement | null>(null);
 const volumeBarRef = ref<HTMLElement | null>(null);
+
+/** 快照选择浮层：是否可见 + 打开那一刻读到的快照列表 */
+const snapshotPickerVisible = ref(false);
+const snapshotArchives = ref<StandaloneArchiveListItem[]>([]);
 
 /** 过场进行中：挡住重复触发 */
 const isLeaving = ref(false);
@@ -385,15 +399,28 @@ function handleStart() {
   void nextTick(() => emit('start'));
 }
 
+/**
+ * 「继续游戏」：不再直接恢复最新那一个，而是列出快照让玩家自己挑。
+ * 列表在打开浮层这一刻读一次就存下来，之后不再重读 ——
+ * 免得玩家看到的条目和点下去恢复的那份对不上。
+ */
 function handleContinueClick() {
-  const latestArchive = listStandaloneArchives()[0];
-  if (!latestArchive) {
-    notify.info(t('setup.standalone.archiveEmpty'));
-    return;
-  }
+  snapshotArchives.value = listStandaloneArchives();
+  snapshotPickerVisible.value = true;
+}
+
+function closeSnapshotPicker() {
+  snapshotPickerVisible.value = false;
+}
+
+/** 选中某个快照：先收浮层再恢复（恢复成功会切页 / 整个向导一起卸掉） */
+function handleSnapshotSelect(archiveId: string) {
+  const archive = snapshotArchives.value.find(item => item.id === archiveId);
+  snapshotPickerVisible.value = false;
+  if (!archive) return;
 
   try {
-    const outcome = restoreStandaloneArchiveById(latestArchive.id);
+    const outcome = restoreStandaloneArchiveById(archiveId);
     notify.success(
       t(
         getStandaloneArchiveFeedbackMessageKey({
@@ -401,7 +428,7 @@ function handleContinueClick() {
           mode: 'restore',
           outcome,
         }),
-        { summary: formatArchiveSummaryForToast(latestArchive.summary) },
+        { summary: formatArchiveSummaryForToast(archive.summary) },
       ),
     );
   } catch (error) {

@@ -15,7 +15,7 @@
 - [ ] 本地已运行 `pnpm typecheck` 且通过
 - [ ] 本地已运行 `pnpm lint` 且无 error
 - [ ] 本地已运行 `pnpm build` 且成功
-- [ ] 涉及行为变更时已在浏览器中手动验证 `dist/index.html`
+- [ ] 涉及行为变更时已在浏览器中手动验证（本地起静态服务器访问整个 `dist/`，或线上页面）
 - [ ] 已按需更新 `CHANGELOG.md`
 
 ## 相关 Issue / Related issues

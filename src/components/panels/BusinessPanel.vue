@@ -336,7 +336,6 @@ function getStatusIconClass(status: string): string {
 // 删除商业情报（使用统一删除函数）
 function openDeleteIntel(key: string) {
   deleteItem({
-    typeName: '商业情报',
     displayName: key,
     onDelete: () =>
       statDataActions.mutateStatData('business.delete-intel', draft => {

@@ -98,7 +98,7 @@ import { useNotificationStore } from '../../stores/notification';
 import { useSetupStore } from '../../stores/setup';
 import { useStatDataStore } from '../../stores/statData';
 import { clearPendingStandaloneArchiveResume } from '../../utils/archive';
-import { clearSetupCompleted } from '../../utils/setupProgress';
+import { clearLocalGameState } from '../../utils/localGameState';
 import { saveCurrentArchive } from '../../utils/archive';
 import { getWeatherIcon } from '../../utils/weatherFamily';
 
@@ -224,7 +224,7 @@ async function handleResetGame() {
 
   try {
     clearPendingStandaloneArchiveResume();
-    clearSetupCompleted();
+    clearLocalGameState();
     setupStore.reset();
     messagesStore.clearMessages();
     emit('reset-game');

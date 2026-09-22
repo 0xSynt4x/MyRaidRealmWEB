@@ -33,7 +33,6 @@ dist/
 **「单文件」的准确含义**：`index.html` 里 JS 与 CSS 全部内联，没有外部脚本 / 样式请求。
 但**图片与音频不是内联的**——它们以同级相对路径放在 `dist/assets/`。
 所以分发时要把整个 `dist/` 一起带走，只拿 `index.html` 会缺图。
-（`release.yml` 目前只把 `dist/index.html` 发到 GitHub Release，这一点与「整目录分发」不一致，见 `11-known-issues.md`。）
 
 ## 内联是怎么做到的
 
@@ -86,7 +85,8 @@ dist/
 
 - 主产物 `dist/` 部署到 **Cloudflare Pages**，自定义域名 `myraidrealms.cc.cd`。
 - 预设包随 `dist/` 一起部署，走同域路径（详见 `07-presets.md`）。
-- 仓库推 `v*` tag 时 `release.yml` 会跑 typecheck + build 并把 `dist/index.html` 发到 GitHub Release。
+- 🔴 **分发只有「整目录部署到线上」这一条路**，没有「下载单个 HTML 到本地玩」的通道。
+  `dist/index.html` 引用了同级 `assets/`（30 个文件）与 `preset-package/`，脱离它们打不开完整游戏。
 
 ## 构建相关硬约束
 

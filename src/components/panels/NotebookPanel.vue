@@ -205,11 +205,9 @@ const todoCount = computed(() => sortedTodo.value.length);
 
 // 删除（使用统一删除函数）
 function openDeleteConfirm(type: 'crisis' | 'opportunity' | 'todo', key: string) {
-  const typeNameMap = { crisis: '潜在危机', opportunity: '当前机遇', todo: '待办事项' } as const;
   const typePathMap = { crisis: '潜在危机', opportunity: '当前机遇', todo: '待办事项' } as const;
 
   deleteItem({
-    typeName: typeNameMap[type],
     displayName: key,
     onDelete: () =>
       statDataActions.removeStatDataAtPath(`notebook.delete.${type}`, `玩家.记事本.${typePathMap[type]}.${key}`),

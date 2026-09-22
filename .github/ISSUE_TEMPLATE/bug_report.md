@@ -26,8 +26,8 @@ assignees: ''
 
 ## 环境 / Environment
 
-- 使用方式 / Usage: [ ] 下载的 index.html  [ ] 自行构建 / self-built
-- 版本 / Version (Release tag):
+- 使用方式 / Usage: [ ] 线上网页  [ ] 自行构建 / online site  [ ] self-built
+- 线上版本或提交 / Online version or commit:
 - 浏览器 / Browser:
 - 操作系统 / OS:
 - 使用的 AI 接口 / AI provider (如 OpenAI / 兼容接口):

@@ -43,10 +43,3 @@ jobs:
 
       - name: Build
         run: pnpm build
-
-      - name: Upload build artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: index-html
-          path: dist/index.html
-          if-no-files-found: error

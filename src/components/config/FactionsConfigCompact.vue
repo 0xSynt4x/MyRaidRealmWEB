@@ -126,15 +126,6 @@ const editingFaction = computed(() => {
   return config.value.世界.势力网络[editingName.value];
 });
 
-const editingPlayerRelation = computed(() => {
-  if (editingName.value === null) return null;
-  // 确保对象存在
-  if (!config.value.玩家.势力关系) {
-    return null;
-  }
-  return config.value.玩家.势力关系[editingName.value] || null;
-});
-
 // 确保玩家势力关系对象存在
 function ensurePlayerRelationExists(name: string) {
   if (!config.value.玩家.势力关系) {

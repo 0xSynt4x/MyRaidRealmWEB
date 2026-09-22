@@ -8,7 +8,6 @@ import { useMessagesStore } from '../stores/messages';
 import { useSettingsStore } from '../stores/settings';
 import { useSetupStore } from '../stores/setup';
 import { useStatDataStore } from '../stores/statData';
-import { clearSetupCompletedFlag, markSetupCompleted } from './setupProgress';
 import {
   commitStandaloneRuntimeStateFromStores,
   ensureStandaloneRuntimeBaselineFromStores,
@@ -432,7 +431,6 @@ function applyStandaloneArchiveRestoreFlow(outcome: StandaloneArchiveRestoreOutc
 
   if (outcome.resumedImmediately) {
     clearPendingStandaloneArchiveResume();
-    markSetupCompleted();
     return;
   }
 
@@ -440,7 +438,6 @@ function applyStandaloneArchiveRestoreFlow(outcome: StandaloneArchiveRestoreOutc
     archiveId: outcome.archiveId,
     restoredAt: new Date().toISOString(),
   });
-  clearSetupCompletedFlag();
   setupStore.goToPage('settings');
 }
 

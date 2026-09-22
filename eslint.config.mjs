@@ -17,7 +17,6 @@ export default tseslint.config(
       'node_modules/**',
       'dist/**',
       'assets-design/**',
-      'legacy-reference/**',
       '**/*.d.ts',
       // 本地排查脚本/截图目录。.gitignore 里已经忽略它，但 ESLint 不读 .gitignore，
       // 不显式排除的话本机 lint 会被几百条临时脚本噪音淹没，掩盖源码里的真实错误。

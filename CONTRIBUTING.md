@@ -52,8 +52,8 @@ pnpm lint:fix       # 自动修复可修复的 lint 问题
 - 各子系统的工程细则见 [`spec/README.md`](./spec/README.md)（索引 → `spec/NN-*.md`），
   改对应模块前先扫一眼那篇，能省掉不少试错。
 - AI 编码代理的工作准则见 [`AGENTS.md`](./AGENTS.md)。
-- 独立版边界：不要引入 SillyTavern / MVU / 酒馆脚本依赖，
-  也不要把 `legacy-reference/` 当作入口，详见 README「发布边界」。
+- 独立版边界：所有能力都在本仓的网页源码、运行时与 standalone 资产里实现，
+  不引入任何外部运行时或脚本依赖。
 
 ## 提交信息
 
@@ -64,21 +64,18 @@ pnpm lint:fix       # 自动修复可修复的 lint 问题
 - `docs: 更新 README`
 - `chore: 升级依赖`
 
-## 发布流程
+## 部署流程
 
-发布由 tag 触发（见 `.github/workflows/release.yml`）：
+分发只有「整目录部署到线上」一条路，**没有** tag / GitHub Release 通道
+（历史上的 `.github/workflows/release.yml` 已删除）。
 
-```bash
-# 确保 CHANGELOG.md 已更新
-git tag v1.2.3
-git push origin v1.2.3
-```
+1. 更新 `CHANGELOG.md`。
+2. 本地跑 `pnpm build`，确认 `dist/` 里同时有 `index.html`、`assets/`、`preset-package/`。
+3. 把 `dist/` **整个目录**部署到 Cloudflare Pages（自定义域名 `myraidrealms.cc.cd`）。
 
-推送 tag 后，CI 会自动类型检查、构建并把 `dist/index.html` 发布到对应 Release。
-
-> ⚠️ Release 只附 `dist/index.html`，**不含** `dist/assets/`（图片音频）与 `dist/preset-package/`。
-> 从 Release 单独下载这个 HTML 打开会缺图、也加载不到开局预设。
-> 正式分发走 Cloudflare Pages 的整目录部署。
+> ⚠️ 只拿 `dist/index.html` 分发会缺图、也加载不到开局预设——它引用了同级
+> `assets/`（30 个文件）与 `preset-package/`。玩家一律通过线上网址访问，
+> **不支持**下载 HTML 到本地玩。
 
 ## 已知技术债
 

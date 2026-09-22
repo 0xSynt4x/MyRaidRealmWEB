@@ -13,6 +13,3 @@ src/诸界穿越预设.json
 
 # GitHub issue 模板（内容表单，markdown 结构与注释有语义）
 .github/ISSUE_TEMPLATE/
-
-# 旧实现存档，不作为入口、不参与工具链
-legacy-reference/

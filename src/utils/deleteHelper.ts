@@ -7,8 +7,6 @@ import { useNotificationStore } from '../stores/notification';
  * 删除配置选项
  */
 export interface DeleteOptions {
-  /** 删除对象的类型名称(用于提示) */
-  typeName: string;
   /** 删除对象的显示名称 */
   displayName: string;
   /** 删除操作的回调函数 */
@@ -29,7 +27,7 @@ export interface DeleteOptions {
  * @returns Promise<boolean> 是否成功删除
  */
 export async function confirmDelete(options: DeleteOptions): Promise<boolean> {
-  const { typeName, displayName, onDelete, onSuccess, needConfirm = true, showToast = true, confirmMessage } = options;
+  const { displayName, onDelete, onSuccess, needConfirm = true, showToast = true, confirmMessage } = options;
 
   if (needConfirm) {
     const notificationStore = useNotificationStore();
