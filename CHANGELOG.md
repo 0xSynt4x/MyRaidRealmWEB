@@ -87,6 +87,15 @@
   缺 key 兜底逻辑拼出来的鬼东西。中英各补一份，覆盖首页 / 设置页 / 设置面板 / 开局向导 /
   存档管理 5 个调用点。同批清掉两个已无引用的文案 key（`setup.standalone.archiveEmpty`、
   `contentCenter.archive.noMessageIds`）。
+- **修掉世界书在提示词里被注入两遍。** 拼「系统协议块」时会把 `route=main` 的本地内容块整批拼进去，
+  但排除名单里只有「当前变量快照」一种，**漏了世界书** —— 而世界书本来还有一条独立通道
+  （`resolveStandaloneMainWorldbookPrompt` → 主链路里单独成条），于是同一份世界书进了两处。
+  实测真实内置预设（卡普阿）：整条提示词 8988 字符，世界书那 3081 字符**出现 2 次**
+  （系统块 1 次 + 独立条目 1 次），每次请求白送约 1/3 的提示词。
+  修法：把「是不是世界书块」的判据抽成 `isStandaloneMainWorldbookBlock()`，系统协议块拼装与
+  独立注入通道共用同一份判据。修后实测：世界书出现 **1 次**，提示词 8988 → **5905 字符**。
+  同批删掉测试文件里从未接进跑器的 `testMainPromptInjectsWorldbookBeforeRecentHistory`
+  （世界书先后顺序不是要求）。
 
 ## [1.0.1] - 2026-07-07
 

@@ -14,6 +14,7 @@ import {
   type ParsedTaggedAssistantReply,
 } from '../src/utils/taggedReply';
 import {
+  isStandaloneMainWorldbookBlock,
   renderResolvedStandaloneLocalContentEntry,
   resolveStandaloneLocalContentBlocks,
   resolveStandaloneLocalContentEntries,
@@ -286,7 +287,11 @@ function resolvePromptMessageRole(prompt: StandalonePresetPromptDefinition): 'sy
 
 function buildStandaloneMainProtocolBlock(localContentBlocks: string[], mainPresetBlock: string): string {
   const protocolLocalContentBlocks = localContentBlocks.filter(
-    block => !/^\[本地内容:当前变量快照\]/.test(block.trim()),
+    block =>
+      !/^\[本地内容:当前变量快照\]/.test(block.trim()) &&
+      // 世界书走独立注入通道（resolveStandaloneMainWorldbookPrompt → 主链路里单独成条），
+      // 这里再拼一次会让同一份世界书在提示词里出现两遍。
+      !isStandaloneMainWorldbookBlock(block),
   );
 
   return normalizeLineEndings(`

@@ -2169,38 +2169,6 @@ async function testMainPromptSkipsDuplicatedMappedPresetSections(): Promise<void
   assert.equal(orderedTitles.includes('Chat History'), false);
 }
 
-async function testMainPromptInjectsWorldbookBeforeRecentHistory(): Promise<void> {
-  const input = createStandaloneTurnInput({
-    selectedPreset: {
-      id: 'wb-before-history',
-      name: 'WB顺序测试',
-      icon: '🧪',
-      category: '测试',
-      tags: [],
-      description: '验证主链路中的WB顺序。',
-      config: {} as PresetConfig['config'],
-      localContentEntries: [
-        {
-          name: '[WB]顺序验证条目',
-          content: '这是一条应该出现在最近历史之前的WB内容',
-          kind: 'worldbook',
-          route: 'main',
-          enabled: true,
-        },
-      ],
-    },
-  });
-
-  const prompt = buildMainTurnPrompt(input);
-  const statIndex = prompt.messages.findIndex(message => message.content.includes('[当前变量快照 stat_data]'));
-  const wbIndex = prompt.messages.findIndex(message => message.content.includes('[本地内容:[WB]顺序验证条目]'));
-  const historyIndex = prompt.messages.findIndex(message => message.content === '第一句');
-
-  assert.ok(statIndex > -1);
-  assert.ok(wbIndex > statIndex);
-  assert.ok(historyIndex > wbIndex);
-}
-
 async function testBuiltInCapuaPresetCarriesRegisteredWorldbookIntoMainPrompt(): Promise<void> {
   const builtInPresets = attachRegisteredWorldbooksToBuiltInPresets(capuaBloodSandPresets);
   assert.equal(builtInPresets.length, 1);

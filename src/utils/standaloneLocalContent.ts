@@ -551,11 +551,18 @@ export function resolveStandaloneLocalContentBlocks(input: {
     .filter((block): block is string => Boolean(block));
 }
 
+/**
+ * 判断一个已渲染的本地内容块是不是「世界书」条目。
+ *
+ * 世界书有独立注入通道（`resolveStandaloneMainWorldbookPrompt` → 主链路里单独成条），
+ * 系统协议块拼装时必须用同一个判据把它排除，否则同一份世界书会在提示词里出现两遍。
+ */
+export function isStandaloneMainWorldbookBlock(block: string): boolean {
+  return /^\[本地内容:.*\]/.test(block) && /\[WB\]/.test(block);
+}
+
 export function resolveStandaloneMainWorldbookPrompt(renderedBlocks: string[]): string {
-  return renderedBlocks
-    .filter(block => /^\[本地内容:.*\]/.test(block) && /\[WB\]/.test(block))
-    .join('\n\n')
-    .trim();
+  return renderedBlocks.filter(isStandaloneMainWorldbookBlock).join('\n\n').trim();
 }
 
 export function resolveStandaloneBuiltinLocalContentRenderedContent(input: {
