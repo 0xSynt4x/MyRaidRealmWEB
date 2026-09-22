@@ -1,8 +1,5 @@
 import { Schema } from '../schema/schema';
-import {
-  commitStandaloneRuntimeState,
-  resolveStandaloneRuntimeSessionStatData,
-} from '../src/utils/standaloneRuntime';
+import { commitStandaloneRuntimeState, resolveStandaloneRuntimeSessionStatData } from '../src/utils/standaloneRuntime';
 
 const STANDALONE_STAT_DATA_STORAGE_KEY = 'th1980s:standalone-stat-data';
 

@@ -268,10 +268,6 @@ export function isStandaloneLocalTurnActive(): boolean {
   return activeStandaloneTurnController !== null;
 }
 
-function formatNamedPromptBlock(_title: string, content: string): string {
-  return content.trim();
-}
-
 function resolvePromptMessageRole(prompt: StandalonePresetPromptDefinition): 'system' | 'user' | 'assistant' {
   if (prompt.role === 'assistant') {
     return 'assistant';
@@ -449,8 +445,7 @@ function buildStandaloneOrderedMainMessages(input: {
         return;
       }
 
-      const title = prompt.name?.trim() || prompt.identifier;
-      mainPresetBlock = formatNamedPromptBlock(`[原版预设:${title}]`, content);
+      mainPresetBlock = content.trim();
       return;
     }
 
@@ -496,9 +491,7 @@ function buildStandaloneOrderedMainMessages(input: {
 
     const directContent =
       typeof prompt.content === 'string' ? normalizeStandalonePresetPromptContent(prompt.content, input.statData) : '';
-    const resolvedContent = directContent
-      ? formatNamedPromptBlock(`[原版预设:${prompt.name?.trim() || prompt.identifier}]`, directContent)
-      : '';
+    const resolvedContent = directContent.trim();
 
     if (!resolvedContent) {
       return;
@@ -559,53 +552,6 @@ function normalizeStandalonePresetPromptContent(content: string, statData?: Stan
 function resolveOrderedStandalonePresetPrompts(): ResolvedStandalonePresetPrompt[] {
   const standalonePresetDocument = parseStandaloneTavernPresetDocument(getActiveStandaloneTavernPresetDocument());
   return resolveOrderedStandaloneTavernPrompts(standalonePresetDocument);
-}
-
-function resolveStandalonePresetSections(includeFullPreset: boolean): {
-  systemBlocks: string[];
-  userBlocks: string[];
-} {
-  const orderedPrompts = resolveOrderedStandalonePresetPrompts();
-  const systemBlocks: string[] = [];
-  const userBlocks: string[] = [];
-
-  orderedPrompts.forEach(prompt => {
-    if (!prompt.enabledInOrder || typeof prompt.identifier !== 'string') {
-      return;
-    }
-
-    if (STANDALONE_PRESET_SKIP_IDENTIFIERS.has(prompt.identifier)) {
-      return;
-    }
-
-    if (!includeFullPreset && !STANDALONE_PRESET_COMPACT_IDENTIFIERS.has(prompt.identifier)) {
-      return;
-    }
-
-    if (prompt.role === 'assistant') {
-      return;
-    }
-
-    const content = typeof prompt.content === 'string' ? normalizeStandalonePresetPromptContent(prompt.content) : '';
-    if (!content) {
-      return;
-    }
-
-    const title = prompt.name?.trim() || prompt.identifier;
-    const block = formatNamedPromptBlock(`[原版预设:${title}]`, content);
-
-    if (prompt.role === 'system' || prompt.system_prompt) {
-      systemBlocks.push(block);
-      return;
-    }
-
-    userBlocks.push(block);
-  });
-
-  return {
-    systemBlocks,
-    userBlocks,
-  };
 }
 
 function toApiLabel(api: ApiConfig): string {

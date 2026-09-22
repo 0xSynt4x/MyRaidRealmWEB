@@ -1,4 +1,7 @@
-import { normalizeOpenAiCompatibleApiUrl, normalizeOpenAiCompatibleChatCompletionsApiUrl } from './openAiCompatibleApiUrl';
+import {
+  normalizeOpenAiCompatibleApiUrl,
+  normalizeOpenAiCompatibleChatCompletionsApiUrl,
+} from './openAiCompatibleApiUrl';
 
 type RecordLike = Record<string, unknown>;
 

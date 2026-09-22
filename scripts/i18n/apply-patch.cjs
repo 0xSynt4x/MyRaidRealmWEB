@@ -23,9 +23,7 @@ const path = require('path');
 const ROOT = path.resolve(__dirname, '../..');
 const FILE = path.join(ROOT, 'src/i18n/index.ts');
 const BACKUP = path.join(ROOT, 'Temp/i18n-index.bak.ts');
-const patchFile = process.argv[2]
-  ? path.resolve(process.cwd(), process.argv[2])
-  : path.join(ROOT, 'Temp/en-patch.txt');
+const patchFile = process.argv[2] ? path.resolve(process.cwd(), process.argv[2]) : path.join(ROOT, 'Temp/en-patch.txt');
 
 const src = fs.readFileSync(FILE, 'utf8');
 
@@ -44,26 +42,26 @@ function parse(block) {
 
 const zh = parse(src.slice(zhStart, enStart));
 const en = parse(src.slice(enStart, enEnd));
-const missing = new Set([...zh.keys()].filter((k) => !en.has(k)));
+const missing = new Set([...zh.keys()].filter(k => !en.has(k)));
 
 const patch = fs.readFileSync(patchFile, 'utf8').replace(/\r\n/g, '\n');
 const patchKeys = patch
   .split('\n')
-  .map((l) => {
+  .map(l => {
     const m = l.match(/^\s+'([^']+)':/);
     return m ? m[1] : null;
   })
   .filter(Boolean);
 
 // —— 对账 ——
-const redundant = patchKeys.filter((k) => !missing.has(k));
-const untouched = [...missing].filter((k) => !patchKeys.includes(k));
+const redundant = patchKeys.filter(k => !missing.has(k));
+const untouched = [...missing].filter(k => !patchKeys.includes(k));
 
 console.log('patch keys =', patchKeys.length, '| real missing =', missing.size);
 if (redundant.length || untouched.length) {
   console.log('!! 对账失败，未写入任何内容');
-  redundant.forEach((k) => console.log('   REDUNDANT（英文块已有，必须从补丁里删）: ' + k));
-  untouched.forEach((k) => console.log('   UNTRANSLATED（缺失但补丁没翻）: ' + k));
+  redundant.forEach(k => console.log('   REDUNDANT（英文块已有，必须从补丁里删）: ' + k));
+  untouched.forEach(k => console.log('   UNTRANSLATED（缺失但补丁没翻）: ' + k));
   process.exit(1);
 }
 

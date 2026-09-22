@@ -38,7 +38,7 @@ function parse(block) {
 
 const zh = parse(src.slice(zhStart, enStart));
 const en = parse(src.slice(enStart, enEnd));
-const missing = [...zh.keys()].filter((k) => !en.has(k));
+const missing = [...zh.keys()].filter(k => !en.has(k));
 
 const groups = new Map();
 for (const k of missing) {

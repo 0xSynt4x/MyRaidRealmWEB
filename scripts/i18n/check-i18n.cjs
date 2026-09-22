@@ -80,8 +80,8 @@ let exitCode = 0;
 for (const p of pairs) {
   const zh = keysOf(p.zh);
   const en = keysOf(p.en);
-  const missing = [...zh].filter((k) => !en.has(k));
-  const extra = [...en].filter((k) => !zh.has(k));
+  const missing = [...zh].filter(k => !en.has(k));
+  const extra = [...en].filter(k => !zh.has(k));
   const ok = missing.length === 0 && extra.length === 0;
   if (!ok) exitCode = 1;
   summary.push(
@@ -90,9 +90,9 @@ for (const p of pairs) {
   if (!ok) {
     problems.push(`[${p.name}] key 不对齐：英文缺 ${missing.length} 条、多 ${extra.length} 条`);
     report.push(`## ${p.name} —— 英文缺的 key（会回退显示中文）`);
-    missing.forEach((k) => report.push('  ' + k));
+    missing.forEach(k => report.push('  ' + k));
     report.push(`## ${p.name} —— 英文多出来的 key`);
-    extra.forEach((k) => report.push('  ' + k));
+    extra.forEach(k => report.push('  ' + k));
   }
 }
 
@@ -113,7 +113,7 @@ summary.push(`英文块残留中文值        ${String(zhLeft.length).padStart(4
 if (zhLeft.length) {
   // 专有名词（如社区名）属有意保留，只提醒不判失败
   report.push('## 英文块里值仍含中文（专有名词可忽略）');
-  zhLeft.forEach((r) => report.push('  ' + r));
+  zhLeft.forEach(r => report.push('  ' + r));
 }
 
 // ③ 占位符（只查 messages —— 另外两张表的值是嵌套对象，没有占位符）
@@ -128,7 +128,7 @@ function valuesOf(block) {
 }
 const zhVals = valuesOf(msgPair.zh);
 const enVals = valuesOf(msgPair.en);
-const phOf = (s) => [...(s.match(/\{[a-zA-Z0-9_]+\}/g) || [])].sort().join(',');
+const phOf = s => [...(s.match(/\{[a-zA-Z0-9_]+\}/g) || [])].sort().join(',');
 const phBad = [];
 for (const [k, v] of zhVals) {
   const e = enVals.get(k);
@@ -140,24 +140,20 @@ summary.push(`占位符不一致            ${String(phBad.length).padStart(4)} 
 if (phBad.length) {
   problems.push(`[messages] 占位符不一致 ${phBad.length} 条`);
   report.push('## 占位符不一致');
-  phBad.forEach((r) => report.push('  ' + r));
+  phBad.forEach(r => report.push('  ' + r));
 }
 
 // —— 输出 ——
 console.log('=== i18n check ===');
-summary.forEach((s) => console.log('  ' + s));
+summary.forEach(s => console.log('  ' + s));
 console.log('  result: ' + (exitCode === 0 ? 'PASS' : 'FAIL'));
 if (problems.length) {
   console.log('--- problems ---');
-  problems.forEach((p) => console.log('  ' + p));
+  problems.forEach(p => console.log('  ' + p));
 }
 
 fs.mkdirSync(path.dirname(REPORT), { recursive: true });
-fs.writeFileSync(
-  REPORT,
-  ['# i18n 体检报告', '', ...summary, '', ...report].join('\n') + '\n',
-  'utf8',
-);
+fs.writeFileSync(REPORT, ['# i18n 体检报告', '', ...summary, '', ...report].join('\n') + '\n', 'utf8');
 console.log('report -> Temp/i18n-report.txt');
 
 process.exit(exitCode);
