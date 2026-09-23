@@ -64,12 +64,26 @@ pnpm lint:fix       # 自动修复可修复的 lint 问题
 - `docs: 更新 README`
 - `chore: 升级依赖`
 
+## Changelog 约定
+
+`CHANGELOG.md` **按提交记录**，不是按版本或按部署记录。
+
+- **每次提交都要补一条**，和代码放在同一个工作区里一起改，不要攒一批事后补。
+- 一条记录对应一次提交，按时间从早到晚排列；同一天的提交归在同一个日期小节（`## YYYY-MM-DD`）下。
+- 条目标题写成 `### \`<短哈希>\` — <提交标题>`，正文用 `Added`/`Changed`/`Fixed`/`Removed`
+  分类列出改动。合并提交（merge）也要留一条，写明合并了哪两条线、冲突怎么解的。
+- 内容写「改了什么 + 为什么 + 影响哪个功能」，关键处带上实测数据（体积、字符数、条数）；
+  纯排版、依赖升级这类改动一行带过即可。
+- 短哈希在提交之后才存在，所以顺序是：改代码 + 写 changelog（标题先留 `### — <提交标题>`）→
+  提交 → `git log -1 --format=%h` 取哈希回填 → 回填本身并入下一次提交。
+  允许最新一条暂时缺哈希，**不允许**缺条目。
+
 ## 部署流程
 
 分发只有「整目录部署到线上」一条路，**没有** tag / GitHub Release 通道
 （历史上的 `.github/workflows/release.yml` 已删除）。
 
-1. 更新 `CHANGELOG.md`。
+1. 确认 `CHANGELOG.md` 已按上一节的约定补齐（按提交、逐条）。
 2. 本地跑 `pnpm build`，确认 `dist/` 里同时有 `index.html`、`assets/`、`preset-package/`。
 3. 把 `dist/` **整个目录**部署到 Cloudflare Pages（自定义域名 `myraidrealms.cc.cd`）。
 

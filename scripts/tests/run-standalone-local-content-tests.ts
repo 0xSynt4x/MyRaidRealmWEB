@@ -4986,7 +4986,10 @@ async function run(): Promise<void> {
     ['archive summary toast formatting escapes html', testArchiveSummaryToastFormattingEscapesHtml],
     ['archive feedback message key selection', testArchiveFeedbackMessageKeySelection],
     ['standalone archive round trip drops debug trace', testStandaloneArchiveRoundTripDropsDebugTrace],
-    ['assistant api malformed reply trace is dropped from archive', testAssistantApiMalformedReplyTraceIsDroppedFromArchive],
+    [
+      'assistant api malformed reply trace is dropped from archive',
+      testAssistantApiMalformedReplyTraceIsDroppedFromArchive,
+    ],
     ['messages store prunes legacy streaming raw response text', testMessagesStorePrunesLegacyStreamingRawResponseText],
     ['standalone archive debug traces are pruned on startup', testStandaloneArchiveDebugTracesArePrunedOnStartup],
     ['imported tavern preset drops unused top level fields', testImportedTavernPresetDropsUnusedTopLevelFields],
