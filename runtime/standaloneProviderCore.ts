@@ -348,7 +348,9 @@ export async function requestStandaloneProviderTextCore(
         transport_mode: 'streaming',
         request_messages: messages,
         request_body_text: requestBodyText,
-        raw_response_text: streamingResult.rawTranscript,
+        // 🔴 不落盘：流式原始抄本是整条 SSE 的逐字节转录（一个字要裹 150-200 字节的 JSON 包装），
+        // 体积可达正文的上百倍，而它只被调试面板在正文提取失败时当兜底用。正文已由 extracted_text 保存。
+        raw_response_text: '',
         extracted_text: streamingResult.text,
         error_message: null,
       },

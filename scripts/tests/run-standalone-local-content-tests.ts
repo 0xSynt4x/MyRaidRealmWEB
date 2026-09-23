@@ -11,6 +11,7 @@ import {
   importArchiveFile,
   listStandaloneArchives,
   loadPendingStandaloneArchiveResume,
+  pruneStandaloneArchiveDebugTraces,
   restoreStandaloneArchiveById,
   saveStandaloneArchiveSnapshot,
   type StandaloneArchiveFile,
@@ -4385,7 +4386,7 @@ function testArchiveFeedbackMessageKeySelection(): void {
   );
 }
 
-async function testStandaloneArchiveRoundTripPreservesDebugTrace(): Promise<void> {
+async function testStandaloneArchiveRoundTripDropsDebugTrace(): Promise<void> {
   const seeded = await seedStandaloneArchiveScenario({
     playerName: '调试归档角色',
     sendFullPreset: true,
@@ -4448,15 +4449,10 @@ async function testStandaloneArchiveRoundTripPreservesDebugTrace(): Promise<void
   await flushScheduledUiEffects();
 
   const restoredAssistantMessage = seeded.messagesStore.messages.find(message => message.role === 'assistant');
-  assert.ok(restoredAssistantMessage?.debug_trace?.main_pass);
-  assert.ok(restoredAssistantMessage?.debug_trace?.variable_update_pass);
-  assert.ok(restoredAssistantMessage?.debug_trace?.assistant_api_pass);
-  assert.equal(restoredAssistantMessage?.debug_trace?.main_pass?.api_label, 'openai_compatible:archive-main-model');
-  assert.match(restoredAssistantMessage?.debug_trace?.variable_update_pass?.raw_response_text ?? '', /UpdateVariable/);
-  assert.equal(
-    restoredAssistantMessage?.debug_trace?.assistant_api_pass?.api_label,
-    'openai_compatible:archive-script-assistant-model',
-  );
+  // 存档不打包调试记录：正文等内容照常恢复，调试记录应在打包时被剔除
+  assert.ok(restoredAssistantMessage);
+  assert.ok(restoredAssistantMessage?.content_text);
+  assert.equal(restoredAssistantMessage?.debug_trace, undefined);
 }
 
 function testMessagesStoreAssistantApiDebugTraceEventBridge(): void {
@@ -4494,7 +4490,68 @@ function testMessagesStoreAssistantApiDebugTraceEventBridge(): void {
   assert.equal(updatedMessage?.debug_trace?.assistant_api_pass?.api_label, 'openai_compatible:event-bridge-model');
 }
 
-async function testAssistantApiMalformedReplyTracePersistsInArchive(): Promise<void> {
+/**
+ * 老数据自愈：流式响应的原始抄本（整条 SSE 转录，体积可达正文上百倍）在读到时就该被抹掉，
+ * 而非流式的原始响应要保留——否则会把有用的排查信息一起清掉。
+ */
+function testMessagesStorePrunesLegacyStreamingRawResponseText(): void {
+  resetStandaloneTestEnvironment();
+  const messagesStore = useMessagesStore();
+
+  messagesStore.appendStandaloneMessage({
+    role: 'assistant',
+    raw_content: '<contenttext>自愈正文</contenttext>',
+    content_text: '自愈正文',
+    formatted: '自愈正文',
+    action_options: [],
+  });
+
+  const legacyStreamTranscript = `${'data: {"choices":[{"delta":{"content":"一"}}]}\n'.repeat(50)}data: [DONE]\n`;
+  messagesStore.patchMessageRecord(0, {
+    debug_trace: {
+      main_pass: {
+        api_label: 'openai_compatible:legacy-stream-model',
+        api_mode: 'openai_compatible',
+        requested_at: '2026-09-01T00:00:00.000Z',
+        transport_mode: 'streaming',
+        request_messages: [{ role: 'user', content: '老数据' }],
+        request_body_text: '{"model":"legacy-stream-model"}',
+        raw_response_text: legacyStreamTranscript,
+        extracted_text: '自愈正文',
+        error_message: null,
+      },
+      variable_update_pass: {
+        api_label: 'openai_compatible:legacy-non-stream-model',
+        api_mode: 'openai_compatible',
+        requested_at: '2026-09-01T00:01:00.000Z',
+        transport_mode: 'non_streaming',
+        request_messages: [{ role: 'user', content: '老数据' }],
+        request_body_text: '{"model":"legacy-non-stream-model"}',
+        raw_response_text: '{"choices":[{"message":{"content":"<UpdateVariable>[]</UpdateVariable>"}}]}',
+        extracted_text: '<UpdateVariable>[]</UpdateVariable>',
+        error_message: null,
+      },
+    },
+  });
+
+  // 重新加载一次，触发自愈
+  messagesStore.loadAllMessages();
+
+  const reloaded = messagesStore.getMessage(0);
+  assert.equal(reloaded?.debug_trace?.main_pass?.raw_response_text, '');
+  assert.equal(
+    reloaded?.debug_trace?.variable_update_pass?.raw_response_text,
+    '{"choices":[{"message":{"content":"<UpdateVariable>[]</UpdateVariable>"}}]}',
+  );
+
+  // 盘上也要跟着瘦下来，不能只在内存里清
+  const persisted = JSON.parse(localStorage.getItem('th1980s:standalone-runtime-messages') ?? '{}') as {
+    records?: Array<{ debug_trace?: { main_pass?: { raw_response_text?: string } } }>;
+  };
+  assert.equal(persisted.records?.[0]?.debug_trace?.main_pass?.raw_response_text, '');
+}
+
+async function testAssistantApiMalformedReplyTraceIsDroppedFromArchive(): Promise<void> {
   const seeded = await seedStandaloneArchiveScenario({
     playerName: '坏格式调试角色',
     sendFullPreset: true,
@@ -4527,10 +4584,63 @@ async function testAssistantApiMalformedReplyTracePersistsInArchive(): Promise<v
   await flushScheduledUiEffects();
 
   const restoredAssistantMessage = seeded.messagesStore.messages.find(message => message.role === 'assistant');
-  assert.equal(
-    restoredAssistantMessage?.debug_trace?.assistant_api_pass?.error_message,
-    '辅助 API 回复中未找到 <UpdateVariable> 标签内容',
-  );
+  // 存档不打包调试记录：坏格式回复的排查信息同样不进存档
+  assert.ok(restoredAssistantMessage);
+  assert.equal(restoredAssistantMessage?.debug_trace, undefined);
+}
+
+/**
+ * 老存档自愈：历史存档里打包的调试记录在启动时被剔掉，且只跑一次（靠标记跳过）。
+ */
+async function testStandaloneArchiveDebugTracesArePrunedOnStartup(): Promise<void> {
+  resetStandaloneTestEnvironment();
+  await seedStandaloneArchiveScenario({
+    playerName: '自愈存档角色',
+    sendFullPreset: true,
+    presetName: '自愈存档预设',
+  });
+
+  const savedEntry = saveStandaloneArchiveSnapshot();
+  const storageKey = `th1980s:standalone-archive:${savedEntry.id}`;
+
+  const injectLegacyDebugTrace = () => {
+    const payload = JSON.parse(localStorage.getItem(storageKey) ?? '{}') as {
+      floorSnapshots?: Array<Record<string, unknown>>;
+    };
+    payload.floorSnapshots?.forEach(snapshot => {
+      snapshot.debug_trace = {
+        main_pass: {
+          api_label: 'openai_compatible:legacy-archive-model',
+          api_mode: 'openai_compatible',
+          requested_at: '2026-09-01T00:00:00.000Z',
+          transport_mode: 'streaming',
+          request_messages: [{ role: 'user', content: '老存档' }],
+          request_body_text: '{"model":"legacy-archive-model"}',
+          raw_response_text: 'data: {"choices":[{"delta":{"content":"一"}}]}\n',
+          extracted_text: '老存档正文',
+          error_message: null,
+        },
+      };
+    });
+    localStorage.setItem(storageKey, JSON.stringify(payload));
+  };
+
+  injectLegacyDebugTrace();
+  pruneStandaloneArchiveDebugTraces();
+
+  const prunedPayload = JSON.parse(localStorage.getItem(storageKey) ?? '{}') as {
+    floorSnapshots?: Array<{ debug_trace?: unknown }>;
+  };
+  assert.ok(prunedPayload.floorSnapshots?.length);
+  assert.ok(prunedPayload.floorSnapshots?.every(snapshot => !snapshot.debug_trace));
+
+  // 只跑一次：留了标记，之后再塞老数据也不会被处理
+  injectLegacyDebugTrace();
+  pruneStandaloneArchiveDebugTraces();
+  const untouchedPayload = JSON.parse(localStorage.getItem(storageKey) ?? '{}') as {
+    floorSnapshots?: Array<{ debug_trace?: unknown }>;
+  };
+  assert.ok(untouchedPayload.floorSnapshots?.some(snapshot => snapshot.debug_trace));
 }
 
 /**
@@ -4805,8 +4915,10 @@ async function run(): Promise<void> {
     ],
     ['archive summary toast formatting escapes html', testArchiveSummaryToastFormattingEscapesHtml],
     ['archive feedback message key selection', testArchiveFeedbackMessageKeySelection],
-    ['standalone archive round trip preserves debug trace', testStandaloneArchiveRoundTripPreservesDebugTrace],
-    ['assistant api malformed reply trace persists in archive', testAssistantApiMalformedReplyTracePersistsInArchive],
+    ['standalone archive round trip drops debug trace', testStandaloneArchiveRoundTripDropsDebugTrace],
+    ['assistant api malformed reply trace is dropped from archive', testAssistantApiMalformedReplyTraceIsDroppedFromArchive],
+    ['messages store prunes legacy streaming raw response text', testMessagesStorePrunesLegacyStreamingRawResponseText],
+    ['standalone archive debug traces are pruned on startup', testStandaloneArchiveDebugTracesArePrunedOnStartup],
     [
       'save standalone archive snapshot persists index and payload',
       testSaveStandaloneArchiveSnapshotPersistsIndexAndPayload,

@@ -96,6 +96,39 @@ function persistSelectedPreset(preset: PresetConfig | null): void {
   }
 }
 
+/**
+ * 清掉旧会话遗留的预设记忆。
+ *
+ * 预设记忆按会话 id 存（`th1980s:selected-preset:<会话 id>`），换局后旧 key 再没人读，
+ * 但会一直占着本地存储。这里只保留当前会话那一份，其余删掉。
+ *
+ * 没有会话时不动手：那时算不出当前 key，不能判断哪些是过期的。
+ */
+function pruneStaleSelectedPresetStorage(): void {
+  try {
+    const currentStorageKey = getSelectedPresetStorageKey();
+    if (!currentStorageKey) {
+      return;
+    }
+
+    const keyPrefix = `${SELECTED_PRESET_STORAGE_KEY_PREFIX}:`;
+    const staleKeys: string[] = [];
+    for (let index = 0; index < localStorage.length; index += 1) {
+      const key = localStorage.key(index);
+      if (key && key.startsWith(keyPrefix) && key !== currentStorageKey) {
+        staleKeys.push(key);
+      }
+    }
+
+    staleKeys.forEach(key => localStorage.removeItem(key));
+    if (staleKeys.length > 0) {
+      console.info(`[Setup] 已清理旧会话遗留的预设记忆 count=${staleKeys.length}`);
+    }
+  } catch (error) {
+    console.warn('[Setup] 清理旧会话预设记忆失败:', error);
+  }
+}
+
 export const useSetupStore = defineStore('setup', () => {
   // ===== 页面状态 =====
   const currentPage = ref<SetupPage>('home');
@@ -103,6 +136,8 @@ export const useSetupStore = defineStore('setup', () => {
 
   // ===== 预设状态 =====
   const selectedPreset = ref<PresetConfig | null>(loadStoredSelectedPreset());
+  // 启动时顺手清掉旧会话遗留的预设记忆（换局后那些 key 再没人读）
+  pruneStaleSelectedPresetStorage();
 
   // ===== 玩家手填的世界书条目 =====
   // 没选预设时（比如 AI 生成开局）用；存在会话里，跟着存档走，不跨会话串。
@@ -525,6 +560,8 @@ export const useSetupStore = defineStore('setup', () => {
    */
   function flushSelectedPresetToStorage(): void {
     persistSelectedPreset(selectedPreset.value ? klona(selectedPreset.value) : null);
+    // 新会话已建立，上一局那份预设记忆再没人读，顺手清掉
+    pruneStaleSelectedPresetStorage();
   }
 
   /** 同上：会话建立后补写手填的世界书条目 */

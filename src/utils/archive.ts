@@ -103,6 +103,7 @@ export function getStandaloneArchiveRestoredEventName(): string {
 
 const STANDALONE_ARCHIVE_INDEX_STORAGE_KEY = 'th1980s:standalone-archive-index';
 const STANDALONE_ARCHIVE_STORAGE_KEY_PREFIX = 'th1980s:standalone-archive:';
+const STANDALONE_ARCHIVE_DEBUG_PRUNE_FLAG_KEY = 'th1980s:standalone-archive-debug-pruned';
 
 function buildArchiveFileName(date: Date): string {
   const iso = date
@@ -197,7 +198,12 @@ function buildStandaloneRuntimeMessagesFromArchivePayload(payload: StandaloneArc
   return {
     session_id: payload.currentChatId,
     next_message_id: payload.currentMessageIds.length > 0 ? Math.max(...payload.currentMessageIds) + 1 : 0,
-    records: payload.currentMessageIds.map(messageId => klona(floorSnapshotsById.get(messageId)!)),
+    records: payload.currentMessageIds.map(messageId => {
+      // 旧存档里可能带着调试记录，这里一并丢掉，免得恢复后又把数 MB 的调试信息写回本地
+      const record = klona(floorSnapshotsById.get(messageId)!);
+      delete record.debug_trace;
+      return record;
+    }),
   };
 }
 
@@ -301,6 +307,27 @@ function writeStandaloneArchivePayload(payload: StandaloneArchiveFile): void {
   localStorage.setItem(buildStandaloneArchiveStorageKey(payload.archiveId), JSON.stringify(payload));
 }
 
+/**
+ * 剔掉一份存档载荷里的调试记录，返回是否真的动过。
+ *
+ * 调试记录是排查用的临时信息，跟存档语义无关，老版本会把它一起打包（单条可达数 MB）。
+ */
+function pruneArchivePayloadDebugTraces(payload: StandaloneArchiveFile): boolean {
+  if (!payload || !Array.isArray(payload.floorSnapshots)) {
+    return false;
+  }
+
+  let changed = false;
+  for (const snapshot of payload.floorSnapshots) {
+    if (snapshot.debug_trace) {
+      delete snapshot.debug_trace;
+      changed = true;
+    }
+  }
+
+  return changed;
+}
+
 function readStandaloneArchivePayload(archiveId: string): StandaloneArchiveFile | null {
   try {
     const stored = localStorage.getItem(buildStandaloneArchiveStorageKey(archiveId));
@@ -347,9 +374,12 @@ function buildStandaloneArchivePayload(): StandaloneArchiveFile {
   const bootstrap = ensureStandaloneRuntimeBaselineFromStores(loadStandaloneStatData());
   const runtimeMessages = loadStandaloneRuntimeMessages() ?? bootstrap.messages;
   assertStandaloneArchiveSnapshotConsistency(bootstrap.session, runtimeMessages);
-  const floorSnapshots = runtimeMessages.records.map(record =>
-    klona(StandaloneRuntimeMessageRecordSchema.parse(record)),
-  );
+  const floorSnapshots = runtimeMessages.records.map(record => {
+    // 🔴 存档不打包调试记录：它是排查用的临时信息，单条可达数 MB，与存档语义无关。
+    const parsed = klona(StandaloneRuntimeMessageRecordSchema.parse(record));
+    delete parsed.debug_trace;
+    return parsed;
+  });
   const currentMessageIds = floorSnapshots.map(record => record.message_id);
   const archiveId = createStandaloneArchiveId();
   const createdAt = new Date().toISOString();
@@ -472,6 +502,46 @@ export function deleteStandaloneArchive(archiveId: string): void {
   writeStandaloneArchiveIndex(nextIndex);
 }
 
+/**
+ * 一次性自愈：把已经存在盘上的存档里的调试记录剔掉。
+ *
+ * 新存档本来就不带调试记录（见 buildStandaloneArchivePayload），所以这里只处理历史数据。
+ * 处理完写个标记，之后启动直接跳过，不再把所有存档重读一遍。
+ */
+export function pruneStandaloneArchiveDebugTraces(): void {
+  try {
+    if (localStorage.getItem(STANDALONE_ARCHIVE_DEBUG_PRUNE_FLAG_KEY)) {
+      return;
+    }
+
+    let prunedCount = 0;
+    for (const item of readStandaloneArchiveIndex()) {
+      const storageKey = buildStandaloneArchiveStorageKey(item.id);
+      const stored = localStorage.getItem(storageKey);
+      if (!stored) {
+        continue;
+      }
+
+      try {
+        const payload = JSON.parse(stored) as StandaloneArchiveFile;
+        if (pruneArchivePayloadDebugTraces(payload)) {
+          localStorage.setItem(storageKey, JSON.stringify(payload));
+          prunedCount += 1;
+        }
+      } catch (error) {
+        console.warn('[Archive] 清理该存档的调试记录失败，已跳过:', item.id, error);
+      }
+    }
+
+    localStorage.setItem(STANDALONE_ARCHIVE_DEBUG_PRUNE_FLAG_KEY, new Date().toISOString());
+    if (prunedCount > 0) {
+      console.info(`[Archive] 已清理 ${prunedCount} 个历史存档里的调试记录`);
+    }
+  } catch (error) {
+    console.warn('[Archive] 清理历史存档调试记录失败:', error);
+  }
+}
+
 export function downloadStandaloneArchiveById(archiveId: string): void {
   const payload = readStandaloneArchivePayload(archiveId);
   if (!payload) {
@@ -515,6 +585,8 @@ export async function importArchiveFile(file: File): Promise<StandaloneArchiveRe
   const parsed = JSON.parse(text) as unknown;
 
   if (isStandaloneArchiveFile(parsed)) {
+    // 老存档可能带着调试记录，导入时归一化掉，别让它再落盘
+    pruneArchivePayloadDebugTraces(parsed);
     writeStandaloneArchivePayload(parsed);
     const importedEntry = buildStandaloneArchiveListItem(parsed);
     const nextIndex = readStandaloneArchiveIndex().filter(item => item.id !== importedEntry.id);

@@ -134,6 +134,37 @@ export const useMessagesStore = defineStore('messages', () => {
     };
   }
 
+  /**
+   * 抹掉老数据里「流式响应的原始抄本」。
+   *
+   * 老版本会把整条 SSE 的逐字节转录存进调试记录（一个字要裹 150-200 字节的 JSON 包装），
+   * 体积可达正文的上百倍。读到老数据时顺手清掉，紧接着的写回就完成了自愈，
+   * 用户不需要做任何操作。
+   *
+   * 只清流式：非流式的原始响应本来就是一次完整 JSON，不大且排查时有用，保留。
+   */
+  function pruneOversizedStreamingRawFromTrace(
+    trace: StandaloneAssistantDebugTrace | undefined,
+  ): StandaloneAssistantDebugTrace | undefined {
+    if (!trace) {
+      return trace;
+    }
+
+    let pruned = false;
+    for (const pass of [trace.main_pass, trace.variable_update_pass, trace.assistant_api_pass]) {
+      if (pass && pass.transport_mode === 'streaming' && pass.raw_response_text) {
+        pass.raw_response_text = '';
+        pruned = true;
+      }
+    }
+
+    if (pruned) {
+      console.info('[MessagesStore] 已抹掉老数据里流式响应的原始抄本');
+    }
+
+    return trace;
+  }
+
   function loadStandaloneMessages() {
     const { messages: bootstrappedMessages } = ensureStandaloneRuntimeBootstrapFromStores(loadStandaloneStatData());
     const runtimeMessages = loadStandaloneRuntimeMessages() ?? bootstrappedMessages;
@@ -143,6 +174,7 @@ export const useMessagesStore = defineStore('messages', () => {
       createdAt: record.createdAt ?? new Date().toISOString(),
       stat_data_snapshot:
         typeof record.stat_data_snapshot === 'undefined' ? undefined : Schema.parse(record.stat_data_snapshot),
+      debug_trace: pruneOversizedStreamingRawFromTrace((record as MessageRecord).debug_trace),
     }));
     const displayReadyRecords = normalizedRecords.map(normalizeRecordForDisplay);
     messages.value = repairStandaloneSnapshots(dedupeMessageRecords(displayReadyRecords));
