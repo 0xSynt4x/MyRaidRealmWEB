@@ -81,6 +81,7 @@ import {
 import { getDesktopExtraHeight, getLayoutViewportWidth, isMobileLayoutWidth } from './utils/layoutBreakpoints';
 import { ensureStandaloneRuntimeBootstrapFromStores } from './utils/standaloneRuntime';
 import { loadStandaloneStatData } from './utils/standaloneStatData';
+import { pruneStandaloneTavernPresetLibraryOversizedFields } from './utils/standaloneTavernPreset';
 
 const settingsStore = useSettingsStore();
 const setupStore = useSetupStore();
@@ -88,6 +89,10 @@ const setupStore = useSetupStore();
 // 启动时做一次存储维护：老版本的存档会把调试记录一起打包，顺手剔掉。
 // 只跑一次，处理完留标记，之后启动直接跳过。
 pruneStandaloneArchiveDebugTraces();
+
+// 同一次维护里顺手做掉：老版本导入的酒馆预设是整份存盘的，里面带着我们从不读的扩展字段
+// （单份能占近 1 MB）。这里把库里每份裁一遍，也只跑一次。
+pruneStandaloneTavernPresetLibraryOversizedFields();
 
 // 本会话内是否已经进入游戏。
 // 打开页面一律先给配置界面首页，不做「该进游戏还是该进配置界面」的自动判定：

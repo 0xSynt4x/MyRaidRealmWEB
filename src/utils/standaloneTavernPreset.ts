@@ -77,6 +77,7 @@ export type StandaloneRuntimePromptAssetSnapshot = {
 const STANDALONE_TAVERN_PRESET_SOURCE_NAME = '诸界穿越预设.json';
 const STANDALONE_TAVERN_PRESET_LIBRARY_STORAGE_KEY = 'th1980s:standalone-tavern-preset-library';
 const STANDALONE_TAVERN_PRESET_OVERRIDE_STORAGE_KEY = 'th1980s:standalone-tavern-preset-override';
+const STANDALONE_TAVERN_PRESET_LIBRARY_SLIMMED_FLAG_KEY = 'th1980s:standalone-tavern-preset-library-slimmed';
 export const STANDALONE_TAVERN_PRESET_BUILTIN_ID = 'builtin:standalone-main';
 
 const STANDALONE_TAVERN_PRESET_PREVIEW_LENGTH = 160;
@@ -154,6 +155,35 @@ function createEmptyPresetLibrary(): StandaloneTavernPresetLibrary {
 
 function cloneTavernPresetDocument(document: StandaloneTavernPresetDocument): StandaloneTavernPresetDocument {
   return JSON.parse(JSON.stringify(document)) as StandaloneTavernPresetDocument;
+}
+
+/** 预设文档里我们真正会读的顶层字段：提示词条目 + 排序表，其余一律不留。 */
+const STANDALONE_TAVERN_PRESET_DOCUMENT_KEEP_KEYS = new Set(['prompts', 'prompt_order']);
+
+/**
+ * 把酒馆预设文档裁成「只留用得上的部分」。
+ *
+ * 原始酒馆预设 JSON 里除了提示词条目和排序表，还带着 extensions（正则脚本、内嵌世界书、
+ * 插件配置）等一大堆字段，我们一处都没读 —— 见过单份里 extensions 就占 960 KB，
+ * 而真正用到的内容只有几十 KB。这里把顶层裁掉，体积能降一个数量级。
+ *
+ * 只动顶层：prompts 里每条的字段原样保留，不碰提示词内容。
+ */
+export function slimStandaloneTavernPresetDocument(
+  document: StandaloneTavernPresetDocument,
+): StandaloneTavernPresetDocument {
+  const slim: StandaloneTavernPresetDocument = {};
+  if (Array.isArray(document?.prompts)) {
+    slim.prompts = document.prompts;
+  }
+  if (Array.isArray(document?.prompt_order)) {
+    slim.prompt_order = document.prompt_order;
+  }
+  return slim;
+}
+
+function isStandaloneTavernPresetDocumentSlim(document: StandaloneTavernPresetDocument): boolean {
+  return Object.keys(document ?? {}).every(key => STANDALONE_TAVERN_PRESET_DOCUMENT_KEEP_KEYS.has(key));
 }
 
 function migrateLegacyImportedPreset(): ImportedStandaloneTavernPreset | null {
@@ -261,7 +291,8 @@ export function saveImportedStandaloneTavernPreset(input: {
     id: `imported:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`,
     sourceName: input.sourceName.trim() || '导入的酒馆预设.json',
     importedAt: new Date().toISOString(),
-    document: input.document,
+    // 只留提示词条目和排序表：原始预设里的 extensions 等字段我们从不读，白占几百 KB
+    document: slimStandaloneTavernPresetDocument(input.document),
   };
 
   const library = loadStandaloneTavernPresetLibrary();
@@ -298,7 +329,8 @@ export function updateImportedStandaloneTavernPreset(input: {
     return {
       ...preset,
       sourceName: input.sourceName?.trim() || preset.sourceName,
-      document: cloneTavernPresetDocument(input.document),
+      // 保存编辑时同样只留用得上的部分，免得旧数据里的冗余字段又被写回去
+      document: slimStandaloneTavernPresetDocument(cloneTavernPresetDocument(input.document)),
     };
   });
 
@@ -318,6 +350,44 @@ export function saveImportedStandaloneTavernPresetText(input: {
 
 export function clearImportedStandaloneTavernPreset(): void {
   persistStandaloneTavernPresetLibrary(createEmptyPresetLibrary());
+}
+
+/**
+ * 清掉老数据里预设文档的「用不上的字段」。
+ *
+ * 早先导入的预设是整份原样存盘的，里面的 extensions（正则脚本、内嵌世界书、插件配置）
+ * 一份就能占近 1 MB，而我们从不读它。这里把库里每份文档裁一遍再写回。
+ * 只跑一次：处理完留标记，之后启动直接跳过。
+ */
+export function pruneStandaloneTavernPresetLibraryOversizedFields(): void {
+  if (!canUseLocalStorage()) {
+    return;
+  }
+
+  try {
+    if (localStorage.getItem(STANDALONE_TAVERN_PRESET_LIBRARY_SLIMMED_FLAG_KEY)) {
+      return;
+    }
+
+    const library = loadStandaloneTavernPresetLibrary();
+    let slimmedCount = 0;
+    const importedPresets = library.importedPresets.map(preset => {
+      if (isStandaloneTavernPresetDocumentSlim(preset.document)) {
+        return preset;
+      }
+      slimmedCount += 1;
+      return { ...preset, document: slimStandaloneTavernPresetDocument(preset.document) };
+    });
+
+    if (slimmedCount > 0) {
+      persistStandaloneTavernPresetLibrary({ ...library, importedPresets });
+      console.info(`[StandaloneTavernPreset] 已裁掉老预设里用不上的字段 count=${slimmedCount}`);
+    }
+
+    localStorage.setItem(STANDALONE_TAVERN_PRESET_LIBRARY_SLIMMED_FLAG_KEY, new Date().toISOString());
+  } catch (error) {
+    console.warn('[StandaloneTavernPreset] 清理预设库冗余字段失败:', error);
+  }
 }
 
 export function selectStandaloneTavernPreset(presetId: string): void {

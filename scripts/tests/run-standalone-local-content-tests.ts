@@ -97,6 +97,12 @@ import {
   resolveStandaloneStageSummaryProgress,
 } from '../../src/utils/stageSummaryArchive';
 import { DEFAULT_STAGE_SUMMARY_THRESHOLD, normalizeStageSummaryThreshold } from '../../src/utils/stageSummaryThreshold';
+import {
+  loadStandaloneTavernPresetLibrary,
+  pruneStandaloneTavernPresetLibraryOversizedFields,
+  saveImportedStandaloneTavernPreset,
+  type StandaloneTavernPresetDocument,
+} from '../../src/utils/standaloneTavernPreset';
 
 const STANDALONE_ARCHIVE_STORAGE_KEY_PREFIX = 'th1980s:standalone-archive:';
 // 预设记忆是「跟着会话走」的：键 = th1980s:selected-preset:<会话id>。
@@ -4644,6 +4650,70 @@ async function testStandaloneArchiveDebugTracesArePrunedOnStartup(): Promise<voi
 }
 
 /**
+ * 导入预设时只留用得上的字段：提示词条目 + 排序表，原始预设里的 extensions 不落盘。
+ * 那些扩展字段（正则脚本、内嵌世界书、插件配置）我们一处都没读，单份能占近 1 MB。
+ */
+async function testImportedTavernPresetDropsUnusedTopLevelFields(): Promise<void> {
+  resetStandaloneTestEnvironment();
+
+  const fatDocument = {
+    prompts: [{ identifier: 'main', name: '主提示词', enabled: true, role: 'system', content: '正文内容' }],
+    prompt_order: [{ order: [{ identifier: 'main', enabled: true }] }],
+    extensions: { regex_scripts: [{ scriptName: '大脚本', findRegex: 'x'.repeat(5000) }] },
+  } as unknown as StandaloneTavernPresetDocument;
+
+  saveImportedStandaloneTavernPreset({ sourceName: '带扩展字段的预设.json', document: fatDocument });
+
+  const library = loadStandaloneTavernPresetLibrary();
+  assert.equal(library.importedPresets.length, 1);
+  const savedDocument = library.importedPresets[0].document as Record<string, unknown>;
+  assert.deepEqual(Object.keys(savedDocument).sort(), ['prompt_order', 'prompts']);
+  assert.equal(savedDocument.extensions, undefined);
+  // 提示词内容原样保留
+  assert.equal((savedDocument.prompts as Array<{ content: string }>)[0].content, '正文内容');
+}
+
+/**
+ * 预设库自愈：老数据里整份存盘的预设，启动时被裁掉冗余字段，且只跑一次（靠标记跳过）。
+ */
+async function testStandaloneTavernPresetLibraryIsSlimmedOnStartup(): Promise<void> {
+  resetStandaloneTestEnvironment();
+
+  const legacyLibrary = {
+    activePresetId: 'builtin:standalone-main',
+    importedPresets: [
+      {
+        id: 'imported:legacy:1',
+        sourceName: '老预设.json',
+        importedAt: '2026-09-01T00:00:00.000Z',
+        document: {
+          prompts: [{ identifier: 'main', name: '主提示词', enabled: true, role: 'system', content: '老正文' }],
+          prompt_order: [{ order: [{ identifier: 'main', enabled: true }] }],
+          extensions: { blob: 'z'.repeat(20000) },
+        },
+      },
+    ],
+  };
+  const storageKey = 'th1980s:standalone-tavern-preset-library';
+  localStorage.setItem(storageKey, JSON.stringify(legacyLibrary));
+
+  pruneStandaloneTavernPresetLibraryOversizedFields();
+
+  const slimmed = loadStandaloneTavernPresetLibrary();
+  assert.equal(slimmed.importedPresets.length, 1);
+  const slimmedDocument = slimmed.importedPresets[0].document as Record<string, unknown>;
+  assert.deepEqual(Object.keys(slimmedDocument).sort(), ['prompt_order', 'prompts']);
+  assert.equal((slimmedDocument.prompts as Array<{ content: string }>)[0].content, '老正文');
+
+  // 只跑一次：留了标记，之后再塞老数据也不会被处理
+  localStorage.setItem(storageKey, JSON.stringify(legacyLibrary));
+  pruneStandaloneTavernPresetLibraryOversizedFields();
+  const untouched = loadStandaloneTavernPresetLibrary();
+  const untouchedDocument = untouched.importedPresets[0].document as Record<string, unknown>;
+  assert.ok(untouchedDocument.extensions);
+}
+
+/**
  * 单条测试的超时上限。
  *
  * 为什么必须有：有条测试会死等一个永远不来的结果（假请求不理会取消信号）。
@@ -4919,6 +4989,8 @@ async function run(): Promise<void> {
     ['assistant api malformed reply trace is dropped from archive', testAssistantApiMalformedReplyTraceIsDroppedFromArchive],
     ['messages store prunes legacy streaming raw response text', testMessagesStorePrunesLegacyStreamingRawResponseText],
     ['standalone archive debug traces are pruned on startup', testStandaloneArchiveDebugTracesArePrunedOnStartup],
+    ['imported tavern preset drops unused top level fields', testImportedTavernPresetDropsUnusedTopLevelFields],
+    ['standalone tavern preset library is slimmed on startup', testStandaloneTavernPresetLibraryIsSlimmedOnStartup],
     [
       'save standalone archive snapshot persists index and payload',
       testSaveStandaloneArchiveSnapshotPersistsIndexAndPayload,
