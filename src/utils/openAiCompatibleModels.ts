@@ -3,10 +3,26 @@ import { normalizeStandaloneOpenAiModelsApiUrl, normalizeStandaloneOpenAiApiUrl 
 type ModelApiInput = {
   apiurl: string;
   key?: string;
+  /** 是否随请求发送 OpenCode Go 会话标识请求头 */
+  openCodeGoSession?: boolean;
+  /** 会话标识值；同一会话保持稳定 */
+  sessionId?: string;
 };
 
 function extractModelIds(data: any): string[] {
   return Array.isArray(data?.data) ? data.data.map((model: any) => model?.id).filter(Boolean) : [];
+}
+
+/** 拉模型列表与生成回复要保持同一套请求头，避免「能生成但取不到模型」 */
+function buildModelRequestHeaders(api: ModelApiInput): Record<string, string> {
+  const headers: Record<string, string> = {};
+  if (api.key) {
+    headers.Authorization = `Bearer ${api.key}`;
+  }
+  if (api.openCodeGoSession) {
+    headers['x-opencode-session'] = api.sessionId || 'standalone-session';
+  }
+  return headers;
 }
 
 async function fetchModelsViaSillyTavernBackend(api: ModelApiInput): Promise<string[] | null> {
@@ -15,7 +31,9 @@ async function fetchModelsViaSillyTavernBackend(api: ModelApiInput): Promise<str
     return null;
   }
 
-  const customHeaders = api.key ? `Authorization: Bearer ${api.key}` : '';
+  const customHeaders = Object.entries(buildModelRequestHeaders(api))
+    .map(([name, value]) => `${name}: ${value}`)
+    .join('\n');
   const response = await fetch('/api/backends/chat-completions/status', {
     method: 'POST',
     headers: getRequestHeaders(),
@@ -35,9 +53,9 @@ async function fetchModelsViaSillyTavernBackend(api: ModelApiInput): Promise<str
 }
 
 async function fetchModelsDirectly(api: ModelApiInput): Promise<string[]> {
-  const headers = api.key ? { Authorization: `Bearer ${api.key}` } : undefined;
+  const headers = buildModelRequestHeaders(api);
   const response = await fetch(normalizeStandaloneOpenAiModelsApiUrl(api.apiurl), {
-    headers,
+    headers: Object.keys(headers).length > 0 ? headers : undefined,
   });
 
   if (!response.ok) {

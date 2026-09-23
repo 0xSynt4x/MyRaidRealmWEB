@@ -175,6 +175,12 @@
                         <i :class="['ti', isLoadingById[api.id] ? 'ti-loader-2 ti-spin' : 'ti-download']"></i>
                       </button>
                     </div>
+
+                    <div class="config-row">
+                      <label><i class="ti ti-plug"></i> {{ t('settings.openCodeGoSession') }}</label>
+                      <input v-model="api.openCodeGoSession" type="checkbox" class="config-checkbox" />
+                      <small class="config-row-hint">{{ t('settings.openCodeGoSessionHint') }}</small>
+                    </div>
                   </div>
 
                   <div class="api-card-footer">
@@ -207,13 +213,13 @@
               </div>
               <div class="api-role-list">
                 <div
-                  v-for="(api, index) in apiPool"
+                  v-for="api in mainApiOrderedPool"
                   :key="api.id"
                   :class="['api-role-row', { active: mainApiIds.includes(api.id) }]"
                 >
                   <button class="api-role-toggle" @click="toggleMainApiSelection(api.id)">
-                    <i :class="['ti', mainApiIds.includes(api.id) ? 'ti-square-check' : 'ti-square']"></i>
-                    <span>{{ apiPoolLabel(api, index) }}</span>
+                    <span class="api-role-check"><i class="ti ti-check"></i></span>
+                    <span>{{ apiPoolLabel(api, apiPool.indexOf(api)) }}</span>
                   </button>
                   <template v-if="mainApiIds.includes(api.id)">
                     <span class="api-role-order">
@@ -245,13 +251,13 @@
               </div>
               <div class="api-role-list">
                 <div
-                  v-for="(api, index) in apiPool"
+                  v-for="api in assistantApiOrderedPool"
                   :key="api.id"
                   :class="['api-role-row', { active: assistantApiIds.includes(api.id) }]"
                 >
                   <button class="api-role-toggle" @click="toggleAssistantApiSelection(api.id)">
-                    <i :class="['ti', assistantApiIds.includes(api.id) ? 'ti-square-check' : 'ti-square']"></i>
-                    <span>{{ apiPoolLabel(api, index) }}</span>
+                    <span class="api-role-check"><i class="ti ti-check"></i></span>
+                    <span>{{ apiPoolLabel(api, apiPool.indexOf(api)) }}</span>
                   </button>
                   <template v-if="assistantApiIds.includes(api.id)">
                     <span class="api-role-order">
@@ -959,6 +965,16 @@ function toggleAssistantApiSelection(id: string) {
     ? assistantApiIds.value.filter(item => item !== id)
     : [...assistantApiIds.value, id];
 }
+
+/** 勾选上的按重试顺序排最前，未勾选的按池内顺序跟在后面 —— 这样行号与「第 N 位」才对得上 */
+function orderApisBySelection<T extends { id: string }>(pool: T[], ids: string[]): T[] {
+  const picked = ids.map(id => pool.find(api => api.id === id)).filter((api): api is T => Boolean(api));
+  const rest = pool.filter(api => !ids.includes(api.id));
+  return [...picked, ...rest];
+}
+
+const mainApiOrderedPool = computed(() => orderApisBySelection(apiPool.value, mainApiIds.value));
+const assistantApiOrderedPool = computed(() => orderApisBySelection(apiPool.value, assistantApiIds.value));
 
 /** 主 API / 辅助 API 都是按顺序尝试，所以要能调先后 */
 function moveSelectedId(ids: string[], index: number, offset: number): string[] | null {
@@ -2444,7 +2460,33 @@ async function startGame() {
 }
 
 .api-role-row.active {
-  background: color-mix(in srgb, var(--gradient-subtle) 70%, transparent);
+  background: rgba(var(--accent-primary-rgb), 0.08);
+}
+
+/* 勾选框：图标字体是精简子集，里面没有方形勾选图标，所以这里直接用 CSS 画，
+   否则勾没勾上完全看不出来 */
+.api-role-check {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid var(--text-tertiary);
+  border-radius: 4px;
+  font-size: 11px;
+  line-height: 1;
+  color: transparent;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.api-role-row.active .api-role-check {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: #fff;
 }
 
 .api-role-toggle {
@@ -2545,6 +2587,17 @@ async function startGame() {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.config-row input.config-checkbox {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+.config-row-hint {
+  font-size: 12px;
+  color: var(--text-tertiary);
 }
 
 .config-row.block-row {

@@ -51,6 +51,8 @@ export interface ApiConfig {
   availableModels: string[];
   collapsed: boolean; // 卡片是否折叠
   saved: boolean; // 是否已保存过（用于默认折叠策略）
+  /** 是否随请求发送 OpenCode Go 会话标识请求头 */
+  openCodeGoSession: boolean;
 }
 
 export interface StandaloneLocalContentSettings {
@@ -184,6 +186,7 @@ export function createDefaultApiConfig(): ApiConfig {
     availableModels: [],
     collapsed: false,
     saved: false,
+    openCodeGoSession: false,
   };
 }
 
@@ -197,6 +200,7 @@ export function normalizeApiConfig(input?: Partial<ApiConfig>): ApiConfig {
     availableModels: Array.isArray(input?.availableModels) ? input!.availableModels : [],
     collapsed: (input as ApiConfig | undefined)?.collapsed ?? false,
     saved: (input as ApiConfig | undefined)?.saved ?? false,
+    openCodeGoSession: Boolean(input?.openCodeGoSession),
   };
 
   return normalized;
@@ -245,6 +249,7 @@ export const EMPTY_API_CONFIG: ApiConfig = {
   availableModels: [],
   collapsed: false,
   saved: false,
+  openCodeGoSession: false,
 };
 
 function normalizeApiIdList(input: unknown, pool: ApiConfig[]): string[] {

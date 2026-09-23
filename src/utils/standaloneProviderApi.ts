@@ -48,6 +48,8 @@ export async function requestStandaloneProviderText(
       key: input.api.key,
       model: input.api.model,
       source: input.api.source,
+      openCodeGoSession: input.api.openCodeGoSession,
+      sessionId: input.api.id,
     },
     prompt: input.prompt,
     signal: input.signal,

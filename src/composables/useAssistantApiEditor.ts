@@ -29,6 +29,7 @@ function createEmptyApi(): ApiConfig {
     availableModels: [],
     collapsed: false,
     saved: false,
+    openCodeGoSession: false,
   };
 }
 
@@ -137,7 +138,12 @@ export function useAssistantApiEditor(customApis: Ref<ApiConfig[]>) {
     normalizeApiUrlInPlace(index);
 
     try {
-      const models = await fetchOpenAiCompatibleModelIds(target);
+      const models = await fetchOpenAiCompatibleModelIds({
+        apiurl: target.apiurl,
+        key: target.key,
+        openCodeGoSession: target.openCodeGoSession,
+        sessionId: target.id,
+      });
 
       if (models.length === 0) {
         throw new Error(tCurrent('assistantApi.fetch.noModelsFound'));
