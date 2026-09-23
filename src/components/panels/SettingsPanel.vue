@@ -470,12 +470,6 @@
                     <i :class="['ti', isLoadingById[api.id] ? 'ti-loader-2 ti-spin' : 'ti-download']"></i>
                   </button>
                 </div>
-
-                <div class="config-row full">
-                  <label><i class="ti ti-plug"></i></label>
-                  <input v-model="api.openCodeGoSession" type="checkbox" class="config-checkbox" />
-                  <small class="config-row-hint">{{ t('settings.openCodeGoSession') }}</small>
-                </div>
               </div>
 
               <div class="action-row-combined">
@@ -2744,17 +2738,6 @@ function removeBackgroundImage() {
   align-items: center;
   justify-content: center;
   color: var(--text-secondary);
-}
-
-.config-row input.config-checkbox {
-  flex: none;
-  width: 16px;
-  height: 16px;
-}
-
-.config-row-hint {
-  font-size: 12px;
-  color: var(--text-tertiary);
 }
 
 .config-row input,

@@ -10,10 +10,6 @@ export type StandaloneProviderApiConfig = {
   key: string;
   model: string;
   source: 'openai_compatible';
-  /** 是否随请求发送 OpenCode Go 会话标识请求头 */
-  openCodeGoSession?: boolean;
-  /** 会话标识值；同一会话保持稳定，服务端据此固定后端并命中缓存 */
-  sessionId?: string;
 };
 
 export type StandaloneProviderChatMessage = {
@@ -327,9 +323,6 @@ export async function requestStandaloneProviderTextCore(
   };
   if (input.api.key) {
     headers.Authorization = `Bearer ${input.api.key}`;
-  }
-  if (input.api.openCodeGoSession) {
-    headers['x-opencode-session'] = input.api.sessionId || 'standalone-session';
   }
 
   const response = await fetch(normalizedApiUrl, {

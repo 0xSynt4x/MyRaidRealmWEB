@@ -175,12 +175,6 @@
                         <i :class="['ti', isLoadingById[api.id] ? 'ti-loader-2 ti-spin' : 'ti-download']"></i>
                       </button>
                     </div>
-
-                    <div class="config-row">
-                      <label><i class="ti ti-plug"></i> {{ t('settings.openCodeGoSession') }}</label>
-                      <input v-model="api.openCodeGoSession" type="checkbox" class="config-checkbox" />
-                      <small class="config-row-hint">{{ t('settings.openCodeGoSessionHint') }}</small>
-                    </div>
                   </div>
 
                   <div class="api-card-footer">
@@ -2587,17 +2581,6 @@ async function startGame() {
   display: flex;
   align-items: center;
   gap: 12px;
-}
-
-.config-row input.config-checkbox {
-  width: 16px;
-  height: 16px;
-  flex: none;
-}
-
-.config-row-hint {
-  font-size: 12px;
-  color: var(--text-tertiary);
 }
 
 .config-row.block-row {
