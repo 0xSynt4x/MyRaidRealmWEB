@@ -1246,13 +1246,15 @@ async function testWarnsOnUnknownLegacyWorldbookEntriesWithoutDroppingExistingCo
 
 function createStandaloneTurnInput(overrides: Partial<StandaloneLocalTurnInput> = {}): StandaloneLocalTurnInput {
   return {
-    mainApi: {
-      ...createDefaultApiConfig(),
-      apiurl: 'https://example.com/v1',
-      key: 'test-key',
-      model: 'test-model',
-      source: 'openai_compatible',
-    },
+    mainApis: [
+      {
+        ...createDefaultApiConfig(),
+        apiurl: 'https://example.com/v1',
+        key: 'test-key',
+        model: 'test-model',
+        source: 'openai_compatible',
+      },
+    ],
     assistantApis: [],
     statData: createRenderContext().statData as StandaloneLocalTurnInput['statData'],
     messages: [createMessage()],

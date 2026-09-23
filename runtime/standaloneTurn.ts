@@ -40,8 +40,11 @@ import { applyStandalonePromptMacroReplacements, buildStandaloneCurrentStatDataB
 type StandaloneStatData = ReturnType<typeof Schema.parse>;
 
 export type StandaloneLocalTurnInput = {
-  mainApi: ApiConfig;
+  /** 主 API 候选，按顺序尝试 */
+  mainApis: ApiConfig[];
   assistantApis?: ApiConfig[];
+  /** 前一个失败时是否自动试下一个；缺省 true */
+  autoRetry?: boolean;
   statData: StandaloneStatData;
   messages: MessageRecord[];
   latestUserMessage: MessageRecord;
@@ -85,8 +88,11 @@ const STANDALONE_VARIABLE_UPDATE_TIMEOUT_MS = 60_000;
 const STANDALONE_VARIABLE_UPDATE_TIMEOUT_ERROR_MESSAGE = '变量更新补写超时，请稍后重试。';
 
 export async function runStandaloneVariableUpdatePass(input: {
-  mainApi: ApiConfig;
+  /** 主 API 候选，按顺序尝试 */
+  mainApis: ApiConfig[];
   assistantApis?: ApiConfig[];
+  /** 前一个失败时是否自动试下一个；缺省 true */
+  autoRetry?: boolean;
   statData: StandaloneStatData;
   messages: MessageRecord[];
   latestUserMessage: MessageRecord;
@@ -120,8 +126,9 @@ export async function runStandaloneVariableUpdatePass(input: {
   try {
     const secondPassResult = await requestVariableUpdateSecondPassWithTimeout(
       {
-        mainApi: input.mainApi,
+        mainApis: input.mainApis,
         assistantApis: input.assistantApis,
+        autoRetry: input.autoRetry,
         statData: input.statData,
         messages: input.messages,
         latestUserMessage: input.latestUserMessage,
@@ -163,10 +170,12 @@ export async function runStandaloneVariableUpdatePass(input: {
       }
     }
 
-    const mainApiLabel = toApiLabel(input.mainApi);
+    const mainApiLabel = input.mainApis[0] ? toApiLabel(input.mainApis[0]) : '';
     const usedApiLabel =
       variableUpdateApiLabel && variableUpdateApiLabel !== mainApiLabel
-        ? `${mainApiLabel} + ${variableUpdateApiLabel}`
+        ? mainApiLabel
+          ? `${mainApiLabel} + ${variableUpdateApiLabel}`
+          : variableUpdateApiLabel
         : mainApiLabel;
 
     return {
@@ -596,16 +605,20 @@ function createTimedAbortSignal(input: { parentSignal: AbortSignal; timeoutMs: n
   };
 }
 
-function resolveConfiguredMainApi(mainApi: ApiConfig): ApiConfig | null {
-  if (hasCompleteStandaloneApiConfig(mainApi)) {
-    return mainApi;
-  }
-
-  return null;
+/** 挑出配置完整、能真正发起请求的主 API 候选 */
+function resolveConfiguredMainApis(mainApis: ApiConfig[] | undefined): ApiConfig[] {
+  return (mainApis ?? []).filter(api => hasCompleteStandaloneApiConfig(api));
 }
 
 function resolveConfiguredAssistantApis(assistantApis: ApiConfig[] | undefined): ApiConfig[] {
   return (assistantApis ?? []).filter(api => hasCompleteStandaloneApiConfig(api));
+}
+
+/**
+ * 按「自动重试」开关裁剪候选：关掉时只留第一条，失败就直接报错，不再往后找。
+ */
+function limitApiCandidates<T>(candidates: T[], autoRetry: boolean | undefined): T[] {
+  return autoRetry === false ? candidates.slice(0, 1) : candidates;
 }
 
 export function buildMainTurnPrompt(input: StandaloneLocalTurnInput): StandalonePromptMessagesBundle {
@@ -930,7 +943,7 @@ async function requestVariableUpdateSecondPass(
     selectedPreset: input.selectedPreset ?? null,
   });
 
-  const candidateApis = resolveConfiguredAssistantApis(input.assistantApis);
+  const candidateApis = limitApiCandidates(resolveConfiguredAssistantApis(input.assistantApis), input.autoRetry);
 
   if (candidateApis.length === 0) {
     return {
@@ -1010,8 +1023,8 @@ export function cancelStandaloneLocalTurn(): void {
 }
 
 export async function runStandaloneLocalTurn(input: StandaloneLocalTurnInput): Promise<StandaloneLocalTurnOutcome> {
-  const configuredMainApi = resolveConfiguredMainApi(input.mainApi);
-  if (!configuredMainApi) {
+  const candidateMainApis = limitApiCandidates(resolveConfiguredMainApis(input.mainApis), input.autoRetry);
+  if (candidateMainApis.length === 0) {
     throw new Error('未找到已保存且完整可用的 API 配置');
   }
 
@@ -1021,134 +1034,151 @@ export async function runStandaloneLocalTurn(input: StandaloneLocalTurnInput): P
 
   const controller = new AbortController();
   activeStandaloneTurnController = controller;
-  const mainApiLabel = toApiLabel(configuredMainApi);
   let deferControllerCleanup = false;
 
   try {
-    try {
-      const prompt = buildMainTurnPrompt(input);
-      const mainReply = await requestAssistantReply(
-        configuredMainApi,
-        prompt,
-        controller.signal,
-        input.onMainReplyPartialText,
-      );
-      const rawReply = normalizeLineEndings(mainReply.text);
-      const sanitizedMainReply = normalizeLineEndings(stripUpdateVariableBlocks(rawReply));
+    const prompt = buildMainTurnPrompt(input);
+    const failures: string[] = [];
+    let lastErrorMessage = '';
 
-      const mainReplyApplyResult = applyVariableUpdateFromReply(input.statData, sanitizedMainReply);
-      const mainDebugTrace = mergeStandaloneAssistantDebugTrace(undefined, {
-        main_pass: {
-          ...mainReply.debugTrace,
-          extracted_text: sanitizedMainReply,
-        },
-      });
-      const assistantMessage = buildAssistantMessagePayload(
-        mainReplyApplyResult.parsedReply,
-        sanitizedMainReply,
-        mainDebugTrace,
-      );
-      const assistantContentText = mainReplyApplyResult.parsedReply.contentText.trim() || sanitizedMainReply;
-      if (!assistantContentText.trim()) {
-        throw new Error('主 API 未返回正文内容，请检查模型是否按要求输出 <contenttext> 正文块');
-      }
+    // 主 API 可以有多个候选：第一个失败就换下一个；关掉自动重试时只剩一个
+    for (let index = 0; index < candidateMainApis.length; index += 1) {
+      const candidateApi = candidateMainApis[index]!;
+      const candidateApiLabel = toApiLabel(candidateApi);
 
-      deferControllerCleanup = true;
+      try {
+        const mainReply = await requestAssistantReply(
+          candidateApi,
+          prompt,
+          controller.signal,
+          input.onMainReplyPartialText,
+        );
+        const rawReply = normalizeLineEndings(mainReply.text);
+        const sanitizedMainReply = normalizeLineEndings(stripUpdateVariableBlocks(rawReply));
 
-      const finalizeVariableUpdate = (async (): Promise<StandaloneVariableUpdatePhaseOutcome> => {
-        await new Promise<void>(resolve => setTimeout(resolve, 0));
-
-        let applyResult = mainReplyApplyResult;
-        let effectiveRawReply = sanitizedMainReply;
-        let variableUpdateWarning: string | null = null;
-        let variableUpdateApiLabel: string | null = null;
-        let variableUpdateStatus: StandaloneVariableUpdateStatus = 'running';
-        let debugTrace = mainDebugTrace;
-
-        try {
-          const secondPassResult = await requestVariableUpdateSecondPassWithTimeout(
-            input,
-            assistantContentText,
-            controller.signal,
-          );
-          variableUpdateApiLabel = secondPassResult.usedApiLabel;
-          if (secondPassResult.debugTrace) {
-            debugTrace = mergeStandaloneAssistantDebugTrace(debugTrace, {
-              variable_update_pass: secondPassResult.debugTrace,
-            });
-          }
-
-          if (!secondPassResult.updateBlock) {
-            variableUpdateWarning = secondPassResult.warning ?? '补写变量更新失败';
-            variableUpdateStatus = variableUpdateWarning ? 'failed' : 'skipped';
-          } else {
-            const mergedRawReply = replaceOrAppendUpdateVariableBlock(sanitizedMainReply, secondPassResult.updateBlock);
-            const mergedApplyResult = applyVariableUpdateFromReply(input.statData, mergedRawReply);
-
-            if (mergedApplyResult.errorMessage) {
-              variableUpdateWarning = mergedApplyResult.errorMessage;
-              variableUpdateStatus = 'failed';
-            } else {
-              applyResult = mergedApplyResult;
-              effectiveRawReply = mergedRawReply;
-              variableUpdateWarning = null;
-              variableUpdateStatus = applyResult.variableUpdateApplied ? 'success' : 'skipped';
-            }
-          }
-        } catch (error) {
-          if (controller.signal.aborted) {
-            throw error;
-          }
-
-          variableUpdateWarning = error instanceof Error ? error.message : String(error);
-          variableUpdateStatus = 'failed';
+        const mainReplyApplyResult = applyVariableUpdateFromReply(input.statData, sanitizedMainReply);
+        const mainDebugTrace = mergeStandaloneAssistantDebugTrace(undefined, {
+          main_pass: {
+            ...mainReply.debugTrace,
+            extracted_text: sanitizedMainReply,
+          },
+        });
+        const assistantMessage = buildAssistantMessagePayload(
+          mainReplyApplyResult.parsedReply,
+          sanitizedMainReply,
+          mainDebugTrace,
+        );
+        const assistantContentText = mainReplyApplyResult.parsedReply.contentText.trim() || sanitizedMainReply;
+        if (!assistantContentText.trim()) {
+          throw new Error('主 API 未返回正文内容，请检查模型是否按要求输出 <contenttext> 正文块');
         }
 
-        const usedApiLabel =
-          variableUpdateApiLabel && variableUpdateApiLabel !== mainApiLabel
-            ? `${mainApiLabel} + ${variableUpdateApiLabel}`
-            : mainApiLabel;
+        deferControllerCleanup = true;
+
+        const finalizeVariableUpdate = (async (): Promise<StandaloneVariableUpdatePhaseOutcome> => {
+          await new Promise<void>(resolve => setTimeout(resolve, 0));
+
+          let applyResult = mainReplyApplyResult;
+          let effectiveRawReply = sanitizedMainReply;
+          let variableUpdateWarning: string | null = null;
+          let variableUpdateApiLabel: string | null = null;
+          let variableUpdateStatus: StandaloneVariableUpdateStatus = 'running';
+          let debugTrace = mainDebugTrace;
+
+          try {
+            const secondPassResult = await requestVariableUpdateSecondPassWithTimeout(
+              input,
+              assistantContentText,
+              controller.signal,
+            );
+            variableUpdateApiLabel = secondPassResult.usedApiLabel;
+            if (secondPassResult.debugTrace) {
+              debugTrace = mergeStandaloneAssistantDebugTrace(debugTrace, {
+                variable_update_pass: secondPassResult.debugTrace,
+              });
+            }
+
+            if (!secondPassResult.updateBlock) {
+              variableUpdateWarning = secondPassResult.warning ?? '补写变量更新失败';
+              variableUpdateStatus = variableUpdateWarning ? 'failed' : 'skipped';
+            } else {
+              const mergedRawReply = replaceOrAppendUpdateVariableBlock(
+                sanitizedMainReply,
+                secondPassResult.updateBlock,
+              );
+              const mergedApplyResult = applyVariableUpdateFromReply(input.statData, mergedRawReply);
+
+              if (mergedApplyResult.errorMessage) {
+                variableUpdateWarning = mergedApplyResult.errorMessage;
+                variableUpdateStatus = 'failed';
+              } else {
+                applyResult = mergedApplyResult;
+                effectiveRawReply = mergedRawReply;
+                variableUpdateWarning = null;
+                variableUpdateStatus = applyResult.variableUpdateApplied ? 'success' : 'skipped';
+              }
+            }
+          } catch (error) {
+            if (controller.signal.aborted) {
+              throw error;
+            }
+
+            variableUpdateWarning = error instanceof Error ? error.message : String(error);
+            variableUpdateStatus = 'failed';
+          }
+
+          const usedApiLabel =
+            variableUpdateApiLabel && variableUpdateApiLabel !== candidateApiLabel
+              ? `${candidateApiLabel} + ${variableUpdateApiLabel}`
+              : candidateApiLabel;
+
+          return {
+            assistantMessage: {
+              ...buildAssistantMessagePayload(applyResult.parsedReply, effectiveRawReply, debugTrace),
+              variable_update_status: variableUpdateStatus,
+              variable_update_warning: variableUpdateWarning,
+            },
+            nextStatData: applyResult.nextStatData,
+            variableUpdateApplied: applyResult.variableUpdateApplied,
+            variableUpdateWarning,
+            variableUpdateStatus,
+            usedApiLabel,
+          };
+        })().finally(() => {
+          if (activeStandaloneTurnController === controller) {
+            activeStandaloneTurnController = null;
+          }
+        });
 
         return {
           assistantMessage: {
-            ...buildAssistantMessagePayload(applyResult.parsedReply, effectiveRawReply, debugTrace),
-            variable_update_status: variableUpdateStatus,
-            variable_update_warning: variableUpdateWarning,
+            ...assistantMessage,
+            variable_update_status: 'running',
+            variable_update_warning: null,
           },
-          nextStatData: applyResult.nextStatData,
-          variableUpdateApplied: applyResult.variableUpdateApplied,
-          variableUpdateWarning,
-          variableUpdateStatus,
-          usedApiLabel,
+          usedApiLabel: candidateApiLabel,
+          finalizeVariableUpdate,
         };
-      })().finally(() => {
-        if (activeStandaloneTurnController === controller) {
-          activeStandaloneTurnController = null;
+      } catch (error) {
+        if (controller.signal.aborted) {
+          throw new Error('standalone_local_turn_aborted');
         }
-      });
 
-      return {
-        assistantMessage: {
-          ...assistantMessage,
-          variable_update_status: 'running',
-          variable_update_warning: null,
-        },
-        usedApiLabel: mainApiLabel,
-        finalizeVariableUpdate,
-      };
-    } catch (error) {
-      const message = normalizeRemoteApiErrorMessage(error);
-      if (controller.signal.aborted) {
-        throw new Error('standalone_local_turn_aborted');
+        const message = normalizeRemoteApiErrorMessage(error);
+        lastErrorMessage = message;
+        failures.push(`${candidateApiLabel}: ${message}`);
+
+        console.warn('[StandaloneLocalTurn] 主 API 调用失败:', {
+          source: candidateApi.source,
+          model: candidateApi.model,
+          message,
+          attempt: index + 1,
+          totalAttempts: candidateMainApis.length,
+        });
       }
-
-      console.warn('[StandaloneLocalTurn] 主 API 调用失败:', {
-        source: configuredMainApi.source,
-        model: configuredMainApi.model,
-        message,
-      });
-      throw new Error(message || '独立模式主 API 调用失败');
     }
+
+    throw new Error(failures.length > 1 ? failures.join(' | ') : lastErrorMessage || '独立模式主 API 调用失败');
   } finally {
     if (!deferControllerCleanup && activeStandaloneTurnController === controller) {
       activeStandaloneTurnController = null;

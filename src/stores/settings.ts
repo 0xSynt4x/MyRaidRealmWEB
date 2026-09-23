@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { DEFAULT_LOCALE, isLocale, setCurrentLocale, syncDocumentLocale, type Locale } from '../i18n';
 import {
   normalizeOpenAiCompatibleApiUrl,
@@ -219,6 +219,100 @@ function hasValidApiContent(config: Partial<ApiConfig> | ApiConfig | undefined):
   return Boolean(config.apiurl || config.key || config.model);
 }
 
+/**
+ * 统一 API 池：主 API 与辅助 API 都从同一个列表里挑，配置只存一份。
+ *
+ * 老版本是「一条主 API + 一个辅助 API 列表」两份互不相干的配置，
+ * 迁移时合并进池，再分别记下两处各选中了谁。
+ */
+export interface ApiPoolSettings {
+  apiPool: ApiConfig[];
+  /** 主 API 选中项，按尝试顺序排列 */
+  mainApiIds: string[];
+  /** 辅助 API 选中项，按尝试顺序排列 */
+  assistantApiIds: string[];
+  /** 前一个失败时是否自动试下一个 */
+  autoRetry: boolean;
+}
+
+/** 主 API 一条都没选中时对外给出的空配置；模块级常量，保证引用稳定 */
+export const EMPTY_API_CONFIG: ApiConfig = {
+  id: 'standalone-empty-api',
+  apiurl: '',
+  key: '',
+  model: '',
+  source: 'openai_compatible',
+  availableModels: [],
+  collapsed: false,
+  saved: false,
+};
+
+function normalizeApiIdList(input: unknown, pool: ApiConfig[]): string[] {
+  if (!Array.isArray(input)) return [];
+
+  const availableIds = new Set(pool.map(api => api.id));
+  const result: string[] = [];
+
+  input.forEach(value => {
+    if (typeof value !== 'string') return;
+    if (!availableIds.has(value)) return;
+    if (result.includes(value)) return;
+    result.push(value);
+  });
+
+  return result;
+}
+
+export function resolveStoredApiPoolSettings(stored: Record<string, any> | null | undefined): ApiPoolSettings {
+  const pool: ApiConfig[] = [];
+  const seenIds = new Set<string>();
+
+  const adopt = (raw: unknown): string | null => {
+    if (!raw || typeof raw !== 'object') return null;
+    const normalized = normalizeApiConfig(raw as Partial<ApiConfig>);
+    if (!hasValidApiContent(normalized)) return null;
+    if (seenIds.has(normalized.id)) return normalized.id;
+    seenIds.add(normalized.id);
+    pool.push(normalized);
+    return normalized.id;
+  };
+
+  const hasStoredPool = Array.isArray(stored?.apiPool);
+  if (hasStoredPool) {
+    stored!.apiPool.forEach((item: unknown) => adopt(item));
+  }
+
+  let mainApiIds = normalizeApiIdList(stored?.mainApiIds, pool);
+  let assistantApiIds = normalizeApiIdList(stored?.assistantApiIds, pool);
+
+  // 池字段不存在 → 说明还是老结构，把老的两份配置搬进来
+  if (!hasStoredPool) {
+    const legacyMainId = adopt(stored?.mainApi);
+    const legacyAssistantIds = (Array.isArray(stored?.assistantApis) ? stored!.assistantApis : [])
+      .map((item: unknown) => adopt(item))
+      .filter((id: string | null): id is string => Boolean(id));
+
+    if (mainApiIds.length === 0 && legacyMainId) {
+      mainApiIds = [legacyMainId];
+    }
+    if (assistantApiIds.length === 0 && legacyAssistantIds.length > 0) {
+      assistantApiIds = legacyAssistantIds;
+    }
+  }
+
+  // 池至少留一条空卡，界面上才有东西可编辑
+  if (pool.length === 0) {
+    pool.push(createDefaultApiConfig());
+  }
+
+  return {
+    apiPool: pool,
+    mainApiIds,
+    assistantApiIds,
+    autoRetry: stored?.apiAutoRetry !== false,
+  };
+}
+
 export const useSettingsStore = defineStore('settings', () => {
   // 从 localStorage 加载初始设置
   const loadFromStorage = () => {
@@ -273,17 +367,70 @@ export const useSettingsStore = defineStore('settings', () => {
       : normalizeStageSummaryThreshold(stored.stageSummaryThreshold),
   );
 
-  const mainApi = ref<ApiConfig>(
-    hasValidApiContent(stored.mainApi)
-      ? normalizeApiConfig(stored.mainApi as Partial<ApiConfig>)
-      : normalizeApiConfig(),
-  );
+  const initialApiPoolSettings = resolveStoredApiPoolSettings(stored);
 
-  const assistantApis = ref<ApiConfig[]>(
-    Array.isArray(stored.assistantApis) && stored.assistantApis.length > 0
-      ? stored.assistantApis.map((item: ApiConfig) => normalizeApiConfig(item))
-      : [createDefaultApiConfig()],
-  );
+  /** 唯一的 API 配置列表：主 API 与辅助 API 都从这里挑 */
+  const apiPool = ref<ApiConfig[]>(initialApiPoolSettings.apiPool);
+  /** 主 API 选中项（按尝试顺序） */
+  const mainApiIds = ref<string[]>(initialApiPoolSettings.mainApiIds);
+  /** 辅助 API 选中项（按尝试顺序） */
+  const assistantApiIds = ref<string[]>(initialApiPoolSettings.assistantApiIds);
+  /** 前一个失败时是否自动试下一个 */
+  const apiAutoRetry = ref<boolean>(initialApiPoolSettings.autoRetry);
+
+  const pickApisFromPool = (ids: string[]): ApiConfig[] => {
+    const byId = new Map(apiPool.value.map(api => [api.id, api]));
+    return ids.map(id => byId.get(id)).filter((api): api is ApiConfig => Boolean(api));
+  };
+
+  /** 主 API 候选列表；运行时按顺序尝试 */
+  const mainApis = computed(() => pickApisFromPool(mainApiIds.value));
+
+  /**
+   * 辅助 API 候选列表。
+   * 赋值时把内容写回池并重设勾选，兼容「给列表整体赋值」的旧写法。
+   */
+  const assistantApis = computed<ApiConfig[]>({
+    get: () => pickApisFromPool(assistantApiIds.value),
+    set: values => {
+      const nextPool = [...apiPool.value];
+      const nextIds: string[] = [];
+
+      values.forEach(value => {
+        const normalized = normalizeApiConfig(value);
+        const index = nextPool.findIndex(api => api.id === normalized.id);
+        if (index >= 0) {
+          nextPool[index] = normalized;
+        } else {
+          nextPool.push(normalized);
+        }
+        nextIds.push(normalized.id);
+      });
+
+      apiPool.value = nextPool;
+      assistantApiIds.value = nextIds;
+    },
+  });
+
+  /**
+   * 主 API 第一条的兼容读法。
+   * 赋值时写回池并把它设成唯一的主 API，兼容「给主 API 整体赋值」的旧写法。
+   */
+  const mainApi = computed<ApiConfig>({
+    get: () => mainApis.value[0] ?? EMPTY_API_CONFIG,
+    set: value => {
+      const normalized = normalizeApiConfig(value);
+      const index = apiPool.value.findIndex(api => api.id === normalized.id);
+
+      if (index >= 0) {
+        apiPool.value[index] = normalized;
+      } else {
+        apiPool.value = [...apiPool.value, normalized];
+      }
+
+      mainApiIds.value = [normalized.id];
+    },
+  });
 
   // 背景图片配置 - 确保合并默认值，防止旧数据缺少字段
   const defaultBackgroundImage: BackgroundImageConfig = {
@@ -327,9 +474,9 @@ export const useSettingsStore = defineStore('settings', () => {
     }
   };
 
-  const getNormalizedAssistantApis = () => assistantApis.value.map(item => normalizeApiConfig(item));
+  const getNormalizedApiPool = () => apiPool.value.map(item => normalizeApiConfig(item));
 
-  // 自动保存非 API 设置；辅助 API 改为显式保存
+  // 自动保存非 API 设置；API 池内容改为显式保存
   const saveBasicSettingsToStorage = () => {
     saveStoragePatch({
       locale: locale.value,
@@ -350,20 +497,28 @@ export const useSettingsStore = defineStore('settings', () => {
     });
   };
 
-  const persistMainApi = () => {
-    mainApi.value = normalizeApiConfig(mainApi.value);
+  /** 保存 API 池内容（点每张卡片的「保存」时调用），顺带把两处选择一起落盘 */
+  const persistApiPool = () => {
+    apiPool.value = getNormalizedApiPool();
     return saveStoragePatch({
-      mainApi: mainApi.value,
+      apiPool: apiPool.value,
+      mainApiIds: mainApiIds.value,
+      assistantApiIds: assistantApiIds.value,
+      apiAutoRetry: apiAutoRetry.value,
+      // 老字段清掉，避免下次启动又走一遍迁移
+      mainApi: undefined,
+      assistantApis: undefined,
+      customApis: undefined,
+      customApi: undefined,
     });
   };
 
-  const persistAssistantApis = () => {
-    const normalizedApis = getNormalizedAssistantApis();
-    assistantApis.value = normalizedApis;
+  /** 只保存「谁当主 API / 谁当辅助 API / 要不要自动重试」，不动池里正在编辑的内容 */
+  const persistApiSelection = () => {
     return saveStoragePatch({
-      assistantApis: normalizedApis,
-      customApis: undefined,
-      customApi: undefined,
+      mainApiIds: mainApiIds.value,
+      assistantApiIds: assistantApiIds.value,
+      apiAutoRetry: apiAutoRetry.value,
     });
   };
 
@@ -390,6 +545,15 @@ export const useSettingsStore = defineStore('settings', () => {
     {
       deep: true,
     },
+  );
+
+  // 勾选主 API / 辅助 API、切换自动重试开关 → 立即落盘（池里的编辑内容仍走显式保存）
+  watch(
+    [mainApiIds, assistantApiIds, apiAutoRetry],
+    () => {
+      persistApiSelection();
+    },
+    { deep: true },
   );
 
   // 「本地 ComfyUI 生图」开关一开，AI 就开始在正文里写生图提示词；一关就停
@@ -440,11 +604,16 @@ export const useSettingsStore = defineStore('settings', () => {
     worldDifficulty,
     stageSummaryThreshold,
     mainApi,
+    mainApis,
     assistantApis,
+    apiPool,
+    mainApiIds,
+    assistantApiIds,
+    apiAutoRetry,
     backgroundImage,
     standaloneLocalContent,
     comfyUi,
-    persistMainApi,
-    persistAssistantApis,
+    persistApiPool,
+    persistApiSelection,
   };
 });

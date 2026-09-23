@@ -193,8 +193,9 @@ export function useMessageActions() {
       const stageSummaryState = resolveStandaloneStageSummaryState();
 
       const outcome = await runStandaloneLocalTurn({
-        mainApi: settingsStore.mainApi,
+        mainApis: settingsStore.mainApis,
         assistantApis: settingsStore.assistantApis,
+        autoRetry: settingsStore.apiAutoRetry,
         statData: turnStartStatData,
         messages: messagesStore.messages,
         latestUserMessage,
@@ -548,8 +549,9 @@ export function useMessageActions() {
 
     try {
       const phaseOutcome = await runStandaloneVariableUpdatePass({
-        mainApi: settingsStore.mainApi,
+        mainApis: settingsStore.mainApis,
         assistantApis: settingsStore.assistantApis,
+        autoRetry: settingsStore.apiAutoRetry,
         statData: replayBaseStatData,
         messages: messagesStore.messages,
         latestUserMessage,

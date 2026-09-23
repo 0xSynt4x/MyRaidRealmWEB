@@ -405,8 +405,8 @@ function applyStandaloneArchivePayloadToStores(payload: StandaloneArchiveFile): 
   Object.assign(setupStore.config, Schema.parse(klona(payload.currentVariableSnapshot)));
 
   settingsStore.standaloneLocalContent = klona(normalizedStandaloneLocalContent);
-  settingsStore.mainApi = { ...settingsStore.mainApi };
-  void settingsStore.persistMainApi();
+  // API 池与两处选择重新规范化落盘
+  void settingsStore.persistApiPool();
   persistStandaloneStatData(payload.currentVariableSnapshot);
   commitStandaloneRuntimeStateFromStores({
     statData: payload.currentVariableSnapshot,

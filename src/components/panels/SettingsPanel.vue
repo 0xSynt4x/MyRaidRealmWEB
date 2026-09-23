@@ -7,11 +7,8 @@
       <button :class="{ active: currentTab === 'textToImage' }" @click="currentTab = 'textToImage'">
         {{ t('settings.tab.textToImage') }}
       </button>
-      <button :class="{ active: currentTab === 'mainApi' }" @click="currentTab = 'mainApi'">
-        {{ t('settings.tab.mainApi') }}
-      </button>
-      <button :class="{ active: currentTab === 'assistantApi' }" @click="currentTab = 'assistantApi'">
-        {{ t('settings.tab.assistantApi') }}
+      <button :class="{ active: currentTab === 'api' }" @click="currentTab = 'api'">
+        {{ t('settings.tab.api') }}
       </button>
       <button :class="{ active: currentTab === 'worldbook' }" @click="currentTab = 'worldbook'">
         {{ t('settings.tab.worldbookManager') }}
@@ -400,81 +397,8 @@
       <ComfyUiSettingsCard />
     </div>
 
-    <!-- ==================== 辅助 API 配置标签页（保持不变） ==================== -->
-    <div v-show="currentTab === 'mainApi'" class="api-dashboard">
-      <div class="dash-card compact">
-        <div class="card-header">
-          <i class="ti ti-brain"></i>
-          <span>{{ t('settings.mainApiTitle') }}</span>
-        </div>
-        <p class="api-header-desc">{{ t('settings.mainApiDesc') }}</p>
-
-        <div class="api-list single-api-list">
-          <div class="api-item">
-            <div class="api-item-head">
-              <div class="api-item-title static-title">
-                <i class="ti ti-message-dots"></i>
-                <span>{{ t('settings.mainApiCardTitle') }}</span>
-                <small v-if="mainApi.model">{{ mainApi.model }}</small>
-              </div>
-            </div>
-
-            <div class="api-item-body">
-              <div class="config-grid">
-                <div class="config-row">
-                  <label><i class="ti ti-cloud"></i></label>
-                  <select v-model="mainApi.source" @change="handleMainApiSourceChange">
-                    <option value="openai_compatible">OpenAI</option>
-                  </select>
-                </div>
-
-                <div class="config-row full">
-                  <label><i class="ti ti-link"></i></label>
-                  <input v-model="mainApi.apiurl" type="text" :placeholder="t('settings.apiUrlPlaceholder')" />
-                </div>
-
-                <div class="config-row full">
-                  <label><i class="ti ti-key"></i></label>
-                  <input v-model="mainApi.key" type="password" :placeholder="t('settings.apiKeyPlaceholder')" />
-                </div>
-
-                <div class="config-row full">
-                  <label><i class="ti ti-cpu"></i></label>
-                  <select v-if="mainApi.availableModels.length > 0" v-model="mainApi.model" class="model-select">
-                    <option value="" disabled>{{ t('settings.selectModel') }}</option>
-                    <option v-for="model in mainApi.availableModels" :key="model" :value="model">{{ model }}</option>
-                  </select>
-                  <input
-                    v-else
-                    v-model="mainApi.model"
-                    type="text"
-                    :placeholder="t('settings.modelPlaceholder')"
-                    class="model-select"
-                  />
-                  <button class="inline-icon-btn" :disabled="isLoadingMainApi" @click="fetchMainApiModels">
-                    <i :class="['ti', isLoadingMainApi ? 'ti-loader-2 ti-spin' : 'ti-download']"></i>
-                  </button>
-                </div>
-              </div>
-
-              <div class="action-row-combined">
-                <button class="icon-btn primary save-btn-inline" @click="saveMainApiCard">
-                  <i class="ti ti-check"></i>
-                  <span>{{ t('settings.saveThisApi') }}</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div v-if="saveResult" :class="['result-bar', saveResult.success ? 'success' : 'error']">
-          <i :class="['ti', saveResult.success ? 'ti-circle-check' : 'ti-circle-x']"></i>
-          <span>{{ saveResult.message }}</span>
-        </div>
-      </div>
-    </div>
-
-    <div v-show="currentTab === 'assistantApi'" class="api-dashboard">
+    <!-- ==================== API 配置标签页 ==================== -->
+    <div v-show="currentTab === 'api'" class="api-dashboard">
       <div class="dash-card compact">
         <div class="card-header">
           <i class="ti ti-server"></i>
@@ -486,7 +410,7 @@
         <p class="api-header-desc">{{ t('settings.apiListDesc') }}</p>
 
         <div class="api-list">
-          <div v-for="(api, index) in assistantApis" :key="api.id" class="api-item">
+          <div v-for="(api, index) in apiPool" :key="api.id" class="api-item">
             <div class="api-item-head">
               <button class="api-item-title" @click="toggleCollapse(index)">
                 <i :class="['ti', api.collapsed ? 'ti-chevron-right' : 'ti-chevron-down']"></i>
@@ -497,14 +421,14 @@
                 <button class="inline-icon-btn" :disabled="index === 0" @click="moveApiUp(index)">
                   <i class="ti ti-arrow-up"></i>
                 </button>
-                <button
-                  class="inline-icon-btn"
-                  :disabled="index === assistantApis.length - 1"
-                  @click="moveApiDown(index)"
-                >
+                <button class="inline-icon-btn" :disabled="index === apiPool.length - 1" @click="moveApiDown(index)">
                   <i class="ti ti-arrow-down"></i>
                 </button>
-                <button class="inline-icon-btn danger" :disabled="assistantApis.length <= 1" @click="removeApi(index)">
+                <button
+                  class="inline-icon-btn danger"
+                  :disabled="apiPool.length <= 1"
+                  @click="removeApiAndDetach(index)"
+                >
                   <i class="ti ti-trash"></i>
                 </button>
               </div>
@@ -562,6 +486,96 @@
           <i :class="['ti', saveResult.success ? 'ti-circle-check' : 'ti-circle-x']"></i>
           <span>{{ saveResult.message }}</span>
         </div>
+      </div>
+
+      <div class="dash-card compact">
+        <div class="card-header">
+          <i class="ti ti-adjustments"></i>
+          <span>{{ t('settings.apiUsageTitle') }}</span>
+        </div>
+        <p class="api-header-desc">{{ t('settings.apiUsageDesc') }}</p>
+
+        <div class="api-role-block">
+          <div class="api-role-head">
+            <span>{{ t('settings.mainApiRoleLabel') }}</span>
+            <small>{{ t('settings.mainApiRoleHint') }}</small>
+          </div>
+          <div class="api-role-list">
+            <div
+              v-for="(api, index) in apiPool"
+              :key="api.id"
+              :class="['api-role-row', { active: mainApiIds.includes(api.id) }]"
+            >
+              <button class="api-role-toggle" @click="toggleMainApiSelection(api.id)">
+                <i :class="['ti', mainApiIds.includes(api.id) ? 'ti-square-check' : 'ti-square']"></i>
+                <span>{{ apiPoolLabel(api, index) }}</span>
+              </button>
+              <template v-if="mainApiIds.includes(api.id)">
+                <span class="api-role-order">
+                  {{ t('settings.apiOrderBadge', { index: mainApiIds.indexOf(api.id) + 1 }) }}
+                </span>
+                <button
+                  class="inline-icon-btn"
+                  :disabled="mainApiIds.indexOf(api.id) === 0"
+                  @click="moveMainApiSelection(mainApiIds.indexOf(api.id), -1)"
+                >
+                  <i class="ti ti-arrow-up"></i>
+                </button>
+                <button
+                  class="inline-icon-btn"
+                  :disabled="mainApiIds.indexOf(api.id) === mainApiIds.length - 1"
+                  @click="moveMainApiSelection(mainApiIds.indexOf(api.id), 1)"
+                >
+                  <i class="ti ti-arrow-down"></i>
+                </button>
+              </template>
+            </div>
+          </div>
+        </div>
+
+        <div class="api-role-block">
+          <div class="api-role-head">
+            <span>{{ t('settings.assistantApiRoleLabel') }}</span>
+            <small>{{ t('settings.assistantApiRoleHint') }}</small>
+          </div>
+          <div class="api-role-list">
+            <div
+              v-for="(api, index) in apiPool"
+              :key="api.id"
+              :class="['api-role-row', { active: assistantApiIds.includes(api.id) }]"
+            >
+              <button class="api-role-toggle" @click="toggleAssistantApiSelection(api.id)">
+                <i :class="['ti', assistantApiIds.includes(api.id) ? 'ti-square-check' : 'ti-square']"></i>
+                <span>{{ apiPoolLabel(api, index) }}</span>
+              </button>
+              <template v-if="assistantApiIds.includes(api.id)">
+                <span class="api-role-order">
+                  {{ t('settings.apiOrderBadge', { index: assistantApiIds.indexOf(api.id) + 1 }) }}
+                </span>
+                <button
+                  class="inline-icon-btn"
+                  :disabled="assistantApiIds.indexOf(api.id) === 0"
+                  @click="moveAssistantApiSelection(assistantApiIds.indexOf(api.id), -1)"
+                >
+                  <i class="ti ti-arrow-up"></i>
+                </button>
+                <button
+                  class="inline-icon-btn"
+                  :disabled="assistantApiIds.indexOf(api.id) === assistantApiIds.length - 1"
+                  @click="moveAssistantApiSelection(assistantApiIds.indexOf(api.id), 1)"
+                >
+                  <i class="ti ti-arrow-down"></i>
+                </button>
+              </template>
+            </div>
+          </div>
+        </div>
+
+        <label class="api-auto-retry-row">
+          <input v-model="apiAutoRetry" type="checkbox" />
+          <span>{{ t('settings.apiAutoRetry') }}</span>
+          <small>{{ t('settings.apiAutoRetryHint') }}</small>
+        </label>
       </div>
     </div>
 
@@ -1044,7 +1058,6 @@ import { storeToRefs } from 'pinia';
 import { klona } from 'klona';
 import type { LocalContentEntryConfig } from '../../presets/types';
 import { useAssistantApiEditor } from '../../composables/useAssistantApiEditor';
-import { useSingleApiEditor } from '../../composables/useSingleApiEditor';
 import { useI18n } from '../../i18n';
 import { notify } from '../../utils/notify';
 import {
@@ -1066,13 +1079,13 @@ import ComfyUiSettingsCard from './ComfyUiSettingsCard.vue';
 import { useStandaloneArchiveManager } from '../../composables/useStandaloneArchiveManager';
 import { STAGE_SUMMARY_THRESHOLD_OPTIONS } from '../../utils/stageSummaryThreshold';
 
-const currentTab = ref<'ui' | 'textToImage' | 'mainApi' | 'assistantApi' | 'worldbook' | 'archive'>('ui');
+const currentTab = ref<'ui' | 'textToImage' | 'api' | 'worldbook' | 'archive'>('ui');
 const showDeclaration = ref(false);
 const { t } = useI18n();
 
 const settingsStore = useSettingsStore();
 const setupStore = useSetupStore();
-const { persistMainApi, persistAssistantApis } = settingsStore;
+const { persistApiPool } = settingsStore;
 const {
   locale,
   theme,
@@ -1083,8 +1096,10 @@ const {
   autoScroll,
   actionOptionBehavior,
   onlineModeEnabled,
-  mainApi,
-  assistantApis,
+  apiPool,
+  mainApiIds,
+  assistantApiIds,
+  apiAutoRetry,
   backgroundImage,
   worldDifficulty,
   standaloneLocalContent,
@@ -1092,6 +1107,7 @@ const {
 } = storeToRefs(settingsStore);
 const { selectedPreset } = storeToRefs(setupStore);
 
+// 顶部列表编辑的是唯一的 API 池；主 API / 辅助 API 只是从池里勾选
 const {
   addApi,
   removeApi,
@@ -1102,13 +1118,7 @@ const {
   fetchAvailableModels,
   markApiSaved,
   expandNextApi,
-} = useAssistantApiEditor(assistantApis);
-
-const {
-  handleSourceChange: handleMainApiSourceChange,
-  fetchAvailableModels: fetchMainApiAvailableModels,
-  markApiSaved: markMainApiSaved,
-} = useSingleApiEditor(mainApi);
+} = useAssistantApiEditor(apiPool);
 
 const statDataStore = useStatDataStore();
 const statDataActions = useStatDataActions();
@@ -1227,7 +1237,6 @@ const lineHeightLabels = computed<Record<number, string>>(() => ({
 
 const saveResult = ref<{ success: boolean; message: string } | null>(null);
 const isLoadingById = ref<Record<string, boolean>>({});
-const isLoadingMainApi = ref(false);
 
 const WORLD_DIFFICULTIES: WorldDifficulty[] = ['最简单', '简单', '普通', '困难', '地狱'];
 
@@ -1577,15 +1586,15 @@ function handleAddApi() {
 }
 
 function moveApiUp(index: number) {
-  const previousApis = klona(assistantApis.value);
+  const previousPool = klona(apiPool.value);
   const moved = moveUp(index);
   if (!moved) {
     return;
   }
 
-  const persisted = persistAssistantApis();
+  const persisted = persistApiPool();
   if (!persisted) {
-    assistantApis.value = previousApis;
+    apiPool.value = previousPool;
     const message = t('settings.apiSaveStorageFailed');
     saveResult.value = { success: false, message };
     notify.error(message);
@@ -1596,15 +1605,15 @@ function moveApiUp(index: number) {
 }
 
 function moveApiDown(index: number) {
-  const previousApis = klona(assistantApis.value);
+  const previousPool = klona(apiPool.value);
   const moved = moveDown(index);
   if (!moved) {
     return;
   }
 
-  const persisted = persistAssistantApis();
+  const persisted = persistApiPool();
   if (!persisted) {
-    assistantApis.value = previousApis;
+    apiPool.value = previousPool;
     const message = t('settings.apiSaveStorageFailed');
     saveResult.value = { success: false, message };
     notify.error(message);
@@ -1612,6 +1621,64 @@ function moveApiDown(index: number) {
   }
 
   saveResult.value = null;
+}
+
+/** 池里某条 API 被删掉时，顺手把两处勾选里的它摘掉 */
+function removeApiAndDetach(index: number) {
+  const removedId = apiPool.value[index]?.id;
+  removeApi(index);
+
+  if (!removedId) {
+    return;
+  }
+
+  mainApiIds.value = mainApiIds.value.filter(id => id !== removedId);
+  assistantApiIds.value = assistantApiIds.value.filter(id => id !== removedId);
+}
+
+function toggleMainApiSelection(id: string) {
+  mainApiIds.value = mainApiIds.value.includes(id)
+    ? mainApiIds.value.filter(item => item !== id)
+    : [...mainApiIds.value, id];
+}
+
+function toggleAssistantApiSelection(id: string) {
+  assistantApiIds.value = assistantApiIds.value.includes(id)
+    ? assistantApiIds.value.filter(item => item !== id)
+    : [...assistantApiIds.value, id];
+}
+
+/** 主 API / 辅助 API 都按顺序尝试，所以要能调先后 */
+function moveSelectedId(ids: string[], index: number, offset: number): string[] | null {
+  const target = index + offset;
+  if (index < 0 || index >= ids.length || target < 0 || target >= ids.length) {
+    return null;
+  }
+
+  const next = [...ids];
+  const current = next[index]!;
+  next[index] = next[target]!;
+  next[target] = current;
+  return next;
+}
+
+function moveMainApiSelection(index: number, offset: number) {
+  const next = moveSelectedId(mainApiIds.value, index, offset);
+  if (next) {
+    mainApiIds.value = next;
+  }
+}
+
+function moveAssistantApiSelection(index: number, offset: number) {
+  const next = moveSelectedId(assistantApiIds.value, index, offset);
+  if (next) {
+    assistantApiIds.value = next;
+  }
+}
+
+/** 池里每条 API 的显示名：优先模型名，其次序号 */
+function apiPoolLabel(api: { id: string; model: string }, index: number) {
+  return api.model || t('settings.apiCardTitle', { index: index + 1 });
 }
 
 function handleCardSourceChange(index: number) {
@@ -1642,53 +1709,8 @@ async function fetchModels(index: number, id: string) {
   }
 }
 
-async function fetchMainApiModels() {
-  isLoadingMainApi.value = true;
-
-  try {
-    const result = await fetchMainApiAvailableModels();
-
-    if (result.success) {
-      saveResult.value = { success: true, message: result.message };
-      notify.success(result.message);
-    } else {
-      saveResult.value = { success: false, message: result.message };
-      notify.error(result.message);
-    }
-  } catch (error) {
-    const message = t('assistantApi.fetch.failed', {
-      error: error instanceof Error ? error.message : String(error),
-    });
-    saveResult.value = { success: false, message };
-    notify.error(message);
-  } finally {
-    isLoadingMainApi.value = false;
-  }
-}
-
-function saveMainApiCard() {
-  const result = markMainApiSaved();
-  if (!result.valid) {
-    saveResult.value = { success: false, message: result.message };
-    notify.warning(result.message);
-    return;
-  }
-
-  const persisted = persistMainApi();
-  if (!persisted) {
-    const message = t('settings.apiSaveStorageFailed');
-    saveResult.value = { success: false, message };
-    notify.error(message);
-    return;
-  }
-
-  const message = t('settings.mainApiSaved');
-  saveResult.value = { success: true, message };
-  notify.success(message);
-}
-
 function saveApiCard(index: number) {
-  const previousApis = klona(assistantApis.value);
+  const previousPool = klona(apiPool.value);
   const result = markApiSaved(index);
   if (!result.valid) {
     saveResult.value = { success: false, message: result.message };
@@ -1696,9 +1718,9 @@ function saveApiCard(index: number) {
     return;
   }
 
-  const persisted = persistAssistantApis();
+  const persisted = persistApiPool();
   if (!persisted) {
-    assistantApis.value = previousApis;
+    apiPool.value = previousPool;
     const message = t('settings.apiSaveStorageFailed');
     saveResult.value = { success: false, message };
     notify.error(message);
@@ -2783,6 +2805,95 @@ function removeBackgroundImage() {
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+/* ─── 使用方式：主 API / 辅助 API 勾选 ─── */
+.api-role-block {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  background: var(--card-bg);
+}
+
+.api-role-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.api-role-head small {
+  font-size: var(--text-xs);
+  font-weight: 400;
+  color: var(--text-tertiary);
+}
+
+.api-role-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.api-role-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px;
+  border-radius: var(--radius-sm);
+}
+
+.api-role-row.active {
+  background: var(--control-bg);
+}
+
+.api-role-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.api-role-toggle span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.api-role-order {
+  flex-shrink: 0;
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+.api-auto-retry-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--glass-border);
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.api-auto-retry-row small {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
 }
 
 .api-item {
