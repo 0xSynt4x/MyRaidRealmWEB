@@ -145,6 +145,11 @@ export const StandaloneRuntimeMessageRecordSchema = z.object({
     .string()
     .min(1)
     .default(() => new Date().toISOString()),
+  /**
+   * 本次回复实际用到的模型名。
+   * 必须是 optional —— 旧存档没有这个键，缺了要能正常读进来，只是展示时回退到占位文案。
+   */
+  model: z.string().optional(),
 });
 
 export const StandaloneRuntimeMessagesSchema = z.object({

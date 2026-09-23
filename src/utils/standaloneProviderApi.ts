@@ -19,6 +19,8 @@ export type StandaloneProviderChatMessage = {
 export type StandaloneProviderReply = {
   text: string;
   debugTrace: StandaloneAiDebugPassTrace;
+  /** 服务端回传的模型名，拿不到时为 undefined */
+  model?: string;
 };
 
 type RequestStandaloneProviderTextInput = {
@@ -58,6 +60,7 @@ export async function requestStandaloneProviderText(
 
   return {
     text: reply.text,
+    model: reply.model,
     debugTrace: reply.debugTrace as StandaloneAiDebugPassTrace,
   };
 }

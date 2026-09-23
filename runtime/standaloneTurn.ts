@@ -907,6 +907,7 @@ function buildAssistantMessagePayload(
   parsedReply: ParsedTaggedAssistantReply,
   rawContent: string,
   debugTrace?: StandaloneAssistantDebugTrace,
+  model?: string,
 ) {
   const contentText = parsedReply.contentText.trim() || rawContent.trim();
   const createdAt = new Date().toISOString();
@@ -923,6 +924,7 @@ function buildAssistantMessagePayload(
     createdAt,
     variable_update_warning: null,
     debug_trace: debugTrace,
+    model,
   };
 }
 
@@ -1067,6 +1069,7 @@ export async function runStandaloneLocalTurn(input: StandaloneLocalTurnInput): P
           mainReplyApplyResult.parsedReply,
           sanitizedMainReply,
           mainDebugTrace,
+          mainReply.model,
         );
         const assistantContentText = mainReplyApplyResult.parsedReply.contentText.trim() || sanitizedMainReply;
         if (!assistantContentText.trim()) {
@@ -1134,7 +1137,7 @@ export async function runStandaloneLocalTurn(input: StandaloneLocalTurnInput): P
 
           return {
             assistantMessage: {
-              ...buildAssistantMessagePayload(applyResult.parsedReply, effectiveRawReply, debugTrace),
+              ...buildAssistantMessagePayload(applyResult.parsedReply, effectiveRawReply, debugTrace, mainReply.model),
               variable_update_status: variableUpdateStatus,
               variable_update_warning: variableUpdateWarning,
             },

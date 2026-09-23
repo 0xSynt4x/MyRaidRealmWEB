@@ -37,6 +37,11 @@ export type StandaloneProviderReplyDebugTrace = {
 export type StandaloneProviderReply = {
   text: string;
   debugTrace: StandaloneProviderReplyDebugTrace;
+  /**
+   * 服务端在响应里回传的模型名（OpenAI 兼容协议下流式 chunk 与非流式响应体都带）。
+   * 拿不到时为 undefined —— 它只用于界面展示，缺失时展示层回退到占位文案。
+   */
+  model?: string;
 };
 
 export type RequestStandaloneProviderTextCoreInput = {
@@ -148,6 +153,23 @@ function extractOpenAiResponseText(payload: unknown): string {
   return text;
 }
 
+/**
+ * 从 OpenAI 兼容响应里取出服务端回传的模型名。
+ * 流式时每个 chunk 都带；非流式时响应体顶层带。拿不到就返回 undefined。
+ */
+function extractOpenAiResponseModel(payload: unknown): string | undefined {
+  if (!isRecord(payload)) {
+    return undefined;
+  }
+
+  const model = payload.model;
+  if (typeof model === 'string' && model.trim()) {
+    return model.trim();
+  }
+
+  return undefined;
+}
+
 async function readErrorResponseText(response: Response, logPrefix: string): Promise<string> {
   try {
     const text = await response.text();
@@ -198,13 +220,15 @@ function extractOpenAiDeltaText(payload: unknown): string {
 async function readOpenAiStreamingResponse(
   response: Response,
   onPartialText: (text: string) => void,
-): Promise<{ text: string; rawTranscript: string }> {
+): Promise<{ text: string; rawTranscript: string; model?: string }> {
   const reader = response.body?.getReader();
   if (!reader) {
     const rawResponseText = await response.text();
+    const parsedPayload = JSON.parse(rawResponseText) as unknown;
     return {
-      text: extractOpenAiResponseText(JSON.parse(rawResponseText) as unknown),
+      text: extractOpenAiResponseText(parsedPayload),
       rawTranscript: rawResponseText,
+      model: extractOpenAiResponseModel(parsedPayload),
     };
   }
 
@@ -212,6 +236,7 @@ async function readOpenAiStreamingResponse(
   let buffer = '';
   let accumulatedText = '';
   let rawTranscript = '';
+  let responseModel: string | undefined;
 
   while (true) {
     const { done, value } = await reader.read();
@@ -238,6 +263,12 @@ async function readOpenAiStreamingResponse(
 
       try {
         const payload = JSON.parse(payloadText);
+        // 模型名要在 continue 之前抓：首个 chunk 通常只有 role、没有正文增量
+        const chunkModel = extractOpenAiResponseModel(payload);
+        if (chunkModel) {
+          responseModel = chunkModel;
+        }
+
         const deltaText = extractOpenAiDeltaText(payload);
         if (!deltaText) {
           continue;
@@ -260,6 +291,11 @@ async function readOpenAiStreamingResponse(
     if (payloadText && payloadText !== '[DONE]') {
       try {
         const payload = JSON.parse(payloadText);
+        const chunkModel = extractOpenAiResponseModel(payload);
+        if (chunkModel) {
+          responseModel = chunkModel;
+        }
+
         const deltaText = extractOpenAiDeltaText(payload);
         if (deltaText) {
           accumulatedText += deltaText;
@@ -273,9 +309,11 @@ async function readOpenAiStreamingResponse(
 
   if (!accumulatedText.trim() && rawTranscript.trim()) {
     try {
+      const parsedPayload = JSON.parse(rawTranscript) as unknown;
       return {
-        text: extractOpenAiResponseText(JSON.parse(rawTranscript) as unknown),
+        text: extractOpenAiResponseText(parsedPayload),
         rawTranscript,
+        model: extractOpenAiResponseModel(parsedPayload) ?? responseModel,
       };
     } catch {
       // keep original streaming result when transcript is not a full JSON payload
@@ -285,6 +323,7 @@ async function readOpenAiStreamingResponse(
   return {
     text: accumulatedText,
     rawTranscript,
+    model: responseModel,
   };
 }
 
@@ -341,6 +380,7 @@ export async function requestStandaloneProviderTextCore(
     const streamingResult = await readOpenAiStreamingResponse(response, input.onPartialText);
     return {
       text: streamingResult.text,
+      model: streamingResult.model,
       debugTrace: {
         api_label: apiLabel,
         api_mode: apiMode,
@@ -363,6 +403,7 @@ export async function requestStandaloneProviderTextCore(
 
   return {
     text: extractedText,
+    model: extractOpenAiResponseModel(parsedPayload),
     debugTrace: {
       api_label: apiLabel,
       api_mode: apiMode,

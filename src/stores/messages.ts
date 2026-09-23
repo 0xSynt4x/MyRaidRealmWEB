@@ -48,6 +48,11 @@ export interface MessageRecord {
   variable_update_warning?: string | null;
   debug_trace?: StandaloneAssistantDebugTrace;
   generated_images?: MessageGeneratedImage[];
+  /**
+   * 本次回复实际用到的模型名（服务端响应里回传的那个，不是设置里填的）。
+   * 只用于楼层头展示；拿不到或旧存档没有时为 undefined，展示层回退到占位文案。
+   */
+  model?: string;
 }
 
 interface MainReplyStreamingContext {

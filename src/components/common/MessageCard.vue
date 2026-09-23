@@ -312,6 +312,13 @@ const showVariableUpdateSection = computed(() => {
   return Boolean(updateFormatted.value || variableUpdateStatusInfo.value || props.message.variable_update_warning);
 });
 
+// AI 楼层的名称：优先用本次回复实际用到的模型名，拿不到才回退到占位文案
+// 服务端回传的名字可能带目录前缀（例如「[公益]官方/deepseek」），只取最后一段
+const assistantFloorName = computed(() => {
+  const segments = (props.message.model ?? '').split('/').filter(Boolean);
+  return segments[segments.length - 1] || t('messageCard.ai');
+});
+
 // 楼层文本（简化格式：#楼层号 + 图标 + 名称）
 const floorText = computed(() => {
   if (props.message.role === 'user') {
@@ -319,7 +326,7 @@ const floorText = computed(() => {
     const playerName = statDataStore.data.玩家.姓名 || t('messageCard.player');
     return `#${props.message.message_id} ${playerName}`;
   }
-  return `#${props.message.message_id} ${t('messageCard.ai')}`;
+  return `#${props.message.message_id} ${assistantFloorName.value}`;
 });
 
 const floorIconClass = computed(() => (props.message.role === 'user' ? 'ti-user' : 'ti-robot'));
