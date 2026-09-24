@@ -43,7 +43,32 @@ pnpm test   # node scripts/tests/run-standalone-local-content-tests.cjs
 🔴 **「CI 绿」≠「测试全过」。** 这个跑器出现过**假绿**：
 没有看门狗时 node 会静默退出 0，看起来通过实际什么都没跑。
 
-判据要看**日志里的 `✔` 条数与结束汇总行**，不要只看退出码。
+判据要看**日志里的 `✔` 条数、`✖` 条数与结束汇总行**，不要只看退出码。
+
+🔴 **还要盯「总数」。** 用例里抛未捕获异常会让进程**中途退出**，排在后面的用例根本不会跑 ——
+表现是「`✔` 条数比平时少一大截」而不是「`✖` 变多」，只看失败数会低估问题。
+拿不准正常总数时，先在 `main` 上跑一遍做基线（当前基线是 **94 条**）。
+
+### 测试环境的替身清单
+
+测试跑在 Node 里，没有浏览器。跑器用 `Object.defineProperty(globalThis, ...)` 垫了这些：
+
+| 全局名                  | 替身          | 说明                                                                                                                      |
+| ----------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `localStorage`          | 内存 Map 版   | 挂在 `globalThis` 上                                                                                                      |
+| `window`                | **部分替身**  | 只有 `document` / `parent` / `location` / `dispatchEvent` / `setTimeout` / `clearTimeout` / `frameElement` / `innerWidth` |
+| `document`              | 极简替身      | `documentElement.lang` / `body.appendChild` / `createElement` / `querySelector`                                           |
+| `File`                  | 继承 `Blob`   | 带 `name` / `lastModified`                                                                                                |
+| `toastr`                | 空实现        | 四个方法都是空函数                                                                                                        |
+| `eventOn` / `eventEmit` | mock 事件总线 | 存在 `Map` 里，没有真实事件循环                                                                                           |
+
+`fetch` 由各用例按需替换，测完在 `finally` 里还原。
+
+🔴 **`window` 是部分替身，它上面没有 `localStorage`。**
+代码里写 `window.localStorage`，浏览器里等价于 `localStorage`，测试里却是 `undefined` ——
+再被 `try/catch` 一吞就变成**静默读空**：不报错、不打日志，极难定位。
+
+**铁律：拿这些 mock 的东西一律写裸全局名（`localStorage`）或 `globalThis.xxx`，不要写 `window.xxx`。**
 
 ### 测试环境的三条铁律
 
@@ -57,8 +82,10 @@ pnpm test   # node scripts/tests/run-standalone-local-content-tests.cjs
   ESLint 不读 `.gitignore`，漏了本地 lint 会被几百条临时脚本噪音淹没，
   掩盖源码里的真实错误。
 - 🔴 **测试文件不在 `tsconfig.json` 的 `include` 里**（只含 `src` / `runtime` / `schema` / `*.d.ts`），
-  所以 `vue-tsc` **查不出**测试文件里的「重复函数实现」这类错误。
-  改测试文件时要靠运行、不能只靠类型检查。
+  所以 `vue-tsc` **查不出**测试文件里的错误 —— 不只「重复函数实现」，
+  **接口误用也一并漏掉**：公开函数从同步改成异步后，调用方漏了 `await`、拿 Promise 当对象用，
+  类型上本该直接报错，却查不出来，一直拖到运行时才炸。
+  所以**改公开函数签名时必须手动全局搜调用点**，改测试文件时要靠运行、不能只靠类型检查。
 
 ## 产物验收
 
