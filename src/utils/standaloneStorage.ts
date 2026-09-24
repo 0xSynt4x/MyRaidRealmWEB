@@ -33,7 +33,6 @@ import {
   StorageQuotaError,
   StorageUnavailableError,
   closeStandaloneDatabase,
-  idbClear,
   idbDelete,
   idbGet,
   idbKeys,
@@ -51,6 +50,11 @@ const MIGRATED_FIXED_KEYS = [
   'th1980s:standalone-runtime-messages',
   'th1980s:standalone-stat-data',
   'th1980s:standalone-archive-index',
+  'th1980s:standalone-tavern-preset-library',
+  // 老格式的单份导入预设：读一次并进库里，之后被删掉
+  'th1980s:standalone-tavern-preset-override',
+  // 「已裁剪过」标记：不同步读写的话每次启动都会重裁一遍
+  'th1980s:standalone-tavern-preset-library-slimmed',
 ] as const;
 
 /**
@@ -228,7 +232,40 @@ export async function initializeStandaloneStorage(): Promise<StandaloneStorageMi
     });
   }
 
+  // 不 await：申请持久化的快慢取决于浏览器，不该拖住应用挂载。
+  void requestPersistentStorage();
+
   return getStandaloneStorageMigrationReport();
+}
+
+/**
+ * 申请持久化存储。
+ *
+ * 容量变大不等于更不容易丢：localStorage 满了只是拒绝写入、不动已有数据，
+ * 而 IndexedDB 在磁盘压力下**可能被整体回收**。这个 API 只是「申请」，
+ * 浏览器可以拒绝（Firefox 会弹权限、Safari 通常直接拒），所以：
+ *
+ * - 失败一律忽略，只记一条日志，不影响任何功能；
+ * - 拿到授权也不代表数据一定安全，导出存档仍是唯一可靠的备份手段。
+ */
+async function requestPersistentStorage(): Promise<void> {
+  try {
+    const storageManager = typeof navigator === 'undefined' ? undefined : navigator.storage;
+    if (!storageManager?.persist) {
+      return;
+    }
+
+    if (await storageManager.persisted?.()) {
+      return;
+    }
+
+    const granted = await storageManager.persist();
+    if (!granted) {
+      console.info('[Storage] 浏览器未授予持久化存储，数据在磁盘压力下仍可能被回收');
+    }
+  } catch (error) {
+    console.info('[Storage] 申请持久化存储失败（不影响功能）:', error);
+  }
 }
 
 /**
@@ -239,8 +276,10 @@ export async function initializeStandaloneStorage(): Promise<StandaloneStorageMi
 async function migrateOneKey(key: string): Promise<boolean> {
   const existing = await idbGet(key);
   if (existing !== null) {
-    // 已经搬过了，把可能残留的旧副本清掉（上次搬到一半失败会留下）
-    safeLocalRemove(key);
+    // 已经搬过了。这里**不能**顺手把 localStorage 副本删掉 ——
+    // 它可能是上次落盘失败时兜底写下的、比 IndexedDB 里更新的数据。
+    // 只有确认 IndexedDB 里是本次会话刚写成功的最新值，才轮得到清理，
+    // 而那由 writeStorageSync / removeStorageSync 负责，不归迁移管。
     return false;
   }
 
@@ -266,6 +305,17 @@ async function migrateOneKey(key: string): Promise<boolean> {
  * 同步读写（小数据，走内存缓存）
  * ------------------------------------------------------------------ */
 
+/** 开发期标记：生产构建时被 DefinePlugin 折叠成 false，整段自检会被摇掉。 */
+declare const __STANDALONE_DEV__: boolean | undefined;
+
+function isDevelopmentBuild(): boolean {
+  try {
+    return typeof __STANDALONE_DEV__ !== 'undefined' && __STANDALONE_DEV__ === true;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * 同步读一个小数据 key。
  *
@@ -273,9 +323,19 @@ async function migrateOneKey(key: string): Promise<boolean> {
  * 降级模式下直接读 localStorage。
  *
  * 返回 null 表示「没有这条数据」，与 localStorage.getItem 语义一致。
+ *
+ * 🔴 **只有进了缓存名单的 key 才有值。** 漏加名单不会报错，只会永远读到空 ——
+ * 开发构建下这里会直接抛错，把静默失效变成显式失败。
  */
 export function readStorageSync<T = unknown>(key: string): T | null {
   if (storageMode === 'indexeddb') {
+    if (isDevelopmentBuild() && !CACHED_KEY_SET.has(key)) {
+      throw new Error(
+        `[Storage] ${key} 不在内存缓存名单里，同步读永远返回 null。` +
+          `请把它加进 standaloneStorage.ts 的 MIGRATED_FIXED_KEYS。`,
+      );
+    }
+
     const cached = memoryCache.get(key);
     return cached === undefined ? null : (cached as T);
   }
@@ -422,40 +482,17 @@ export async function listKeysByPrefixAsync(prefix: string): Promise<string[]> {
 }
 
 /* ------------------------------------------------------------------ *
- * 清空
+ * 重置（测试与排障）
  * ------------------------------------------------------------------ */
 
 /**
- * 清掉本层管理的所有数据。「重置游戏」走这里。
+ * 测试与排障用：重置模块状态，让下次 initialize 重新走一遍迁移。
  *
- * 会同时清内存缓存、IndexedDB 和 localStorage 残留 —— 少清一边都会导致
- * 重置后刷新又把旧数据读回来。
+ * 🔴 **只重置内存里的连接与缓存，不动任何持久化数据。**
+ * 这里刻意不提供「清空存储」的接口 —— 存储层管着存档载荷，
+ * 而存档只能由用户在设置面板里手动删。将来要接重置流程，
+ * 也请走 `clearLocalGameState()`（只清会话 + 消息 + 统计变量，保留存档）。
  */
-export async function clearStandaloneStorage(): Promise<void> {
-  memoryCache.clear();
-
-  // 固定 key 一律清
-  for (const key of MIGRATED_FIXED_KEYS) {
-    safeLocalRemove(key);
-  }
-
-  // 前缀 key 也清（存档载荷）
-  for (const key of collectLocalKeysByPrefix()) {
-    safeLocalRemove(key);
-  }
-
-  if (storageMode !== 'indexeddb') {
-    return;
-  }
-
-  try {
-    await idbClear();
-  } catch (error) {
-    console.warn('[Storage] 清空 IndexedDB 失败:', error);
-  }
-}
-
-/** 测试与排障用：重置模块状态，让下次 initialize 重新走一遍迁移。 */
 export function resetStandaloneStorageForTesting(): void {
   memoryCache.clear();
   storageMode = 'uninitialized';
@@ -476,7 +513,6 @@ export function installStandaloneStorageBridge(): void {
     readSync: readStorageSync,
     readLarge: readLargeAsync,
     listKeys: listKeysByPrefixAsync,
-    clear: clearStandaloneStorage,
     reset: resetStandaloneStorageForTesting,
   };
 }
