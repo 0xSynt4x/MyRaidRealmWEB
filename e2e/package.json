@@ -1,0 +1,13 @@
+{
+  "name": "myraidrealm-e2e",
+  "private": true,
+  "description": "Playwright 端到端测试：验证容器里的部署产物与本地存储迁移。依赖全部在容器内安装，宿主不需要 node/npm。",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0"
+  }
+}
