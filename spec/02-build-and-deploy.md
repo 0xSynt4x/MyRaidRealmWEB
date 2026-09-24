@@ -88,6 +88,59 @@ dist/
 - 🔴 **分发只有「整目录部署到线上」这一条路**，没有「下载单个 HTML 到本地玩」的通道。
   `dist/index.html` 引用了同级 `assets/`（30 个文件）与 `preset-package/`，脱离它们打不开完整游戏。
 
+## 容器化运行与 e2e 验证
+
+除 Cloudflare Pages 外，仓内还带一套容器化方案，用于**本地起完整环境并跑端到端测试**。
+依赖解析、构建、运行全部在容器内完成 —— **宿主只需要 docker，不需要装 node 或 pnpm**
+（本仓 pin 的是 `pnpm@11.5.2`，宿主环境不一定装得上）。
+
+| 文件                 | 作用                                                                |
+| -------------------- | ------------------------------------------------------------------- |
+| `Dockerfile`         | 多阶段构建：`node:22-alpine` 构建 → `nginx:alpine` 运行              |
+| `docker-compose.yml` | 一条命令起环境，对外 **8080**                                        |
+| `nginx.conf`         | 静态托管；`index.html` 不缓存，带哈希的资源长缓存；开 gzip          |
+| `.dockerignore`      | 挡掉 `node_modules` / `dist` / `.git` / `e2e`，避免构建上下文爆炸    |
+| `e2e/`               | Playwright 用例与配置（见下）                                        |
+
+```bash
+docker compose up --build     # 构建并启动 → http://localhost:8080
+docker compose logs -f        # 看日志
+docker compose down           # 停掉（镜像保留，下次 up 秒起）
+```
+
+构建阶段用的是 `pnpm build`，所以「预设包必须排在后」这条顺序约束（见开头）自动生效。
+运行镜像里**只有 `dist/` 产物**，源码、依赖、构建工具都不进去。
+
+🔴 **改了源码必须重新 build 镜像**，`docker compose restart` 不会带上新代码。
+
+### e2e
+
+`e2e/` 用 Playwright 测**容器里的部署产物**，不是开发服务器。默认打 `http://127.0.0.1:8080`，
+可用 `PLAYWRIGHT_BASE_URL` 覆盖。浏览器直接用官方 Playwright 镜像自带的，不需要额外下载。
+
+```bash
+docker run --rm --network host --ipc=host \
+  -v "$PWD/e2e:/e2e" -w /e2e \
+  mcr.microsoft.com/playwright:v1.63.0-noble npx playwright test
+```
+
+覆盖两组用例：**部署冒烟**（渲染、无运行时错误、静态资源可达、缓存策略、本地存储可用）
+与**存储迁移**（老数据搬进 IndexedDB 且清掉旧副本、迁移后刷新仍读得到、6MB 载荷读写完整）。
+
+🔴 **`pnpm build` 不做类型检查** —— webpack 的 `ts-loader` 开着 `transpileOnly: true`。
+构建通过**不等于**类型正确，类型问题要靠单独跑 `pnpm typecheck`（`vue-tsc --noEmit`）发现。
+
+### 环境注意
+
+若宿主家目录不可写，`docker compose build` 会因为写不了 `~/.docker/buildx/` 而失败。
+把 buildx 状态目录指到仓内即可：
+
+```bash
+BUILDX_CONFIG="$PWD/.docker-buildx" docker compose build
+```
+
+（`.docker-buildx/` 已在 `.gitignore` 中。）
+
 ## 构建相关硬约束
 
 1. 产物必须能**断网启动**，零外部 CDN 依赖。唯一允许的外链是 `src/global.css` 里的字体 `@import`。

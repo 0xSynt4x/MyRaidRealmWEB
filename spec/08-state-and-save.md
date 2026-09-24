@@ -41,9 +41,49 @@
 
 解析在 `src/utils/taggedReply.ts`（用正则取 `<JSONPatch>` 块内容）。
 
-## 存档
+## 本地存储
 
-🔴 **不使用 IndexedDB。** 全部走 localStorage + JSON 导入导出。
+数据分两处放，按「大不大、会不会长」来分：
+
+| 数据                                                  | 位置        | 理由                                       |
+| ----------------------------------------------------- | ----------- | ------------------------------------------ |
+| 会话、消息、`stat_data`、存档载荷、存档索引           | **IndexedDB** | 量大且随游戏推进持续增长                 |
+| 设置、BGM 偏好、徽章、预设记忆、待恢复标记、裁剪标记  | localStorage  | 都是小配置，搬进 IndexedDB 不解决任何问题  |
+
+**为什么必须分开**：localStorage 只有 5MB，而且是**硬上限**、写入失败同步抛错。
+实测聊一回合就能吃掉六成配额（消息 3.91 MB，其中 98.7% 是调试记录），
+再聊一两回合必然触顶，表现为存档失败、数据悄悄丢。IndexedDB 配额按磁盘比例给（几百 MB 起），
+是这类数据的正确归宿。设置类小数据留在 localStorage，还顺带保住了首屏同步读语言的链路
+（见 `04-i18n.md`）。
+
+实现在 `src/utils/standaloneStorage.ts`（存储层）与 `src/utils/standaloneIndexedDb.ts`（IndexedDB 封装）。
+后者是手写的 Promise 薄封装，**没有引入第三方库**——硬边界要求零外部运行时依赖，而这里只需要 KV 读写。
+
+### 两条关键设计
+
+**1. 启动时一次性迁移，之后运行期不再碰 localStorage。**
+
+`src/index.ts` 在挂载应用**之前** `await initializeStandaloneStorage()`：
+把老用户 localStorage 里的数据搬进 IndexedDB，**先写成功再删旧副本**，搬完即清。
+
+🔴 **这个顺序不能变。** 会话 id、消息楼层、统计变量都在存储层后面，
+初始化晚一步就会读到空数据，表现为「存档打不开、聊天记录消失」。
+
+**2. 小数据进内存缓存，读接口保持同步。**
+
+会话、消息、`stat_data`、存档索引在启动时一次性读进内存，之后**同步读缓存、写时同步更新缓存并异步落盘**。
+
+这样做的收益是 `loadStandaloneRuntimeSession()` 这类被 store 初始化和 `computed` 调用的函数
+**签名保持不变**，避开了「Vue 的 `computed` 不能 await」引发的整棵组件树异步化。
+存档载荷（单个可达数 MB）不进缓存，走 `readLargeAsync` / `writeLargeAsync` 按需异步读写。
+
+### 降级与兜底
+
+- IndexedDB 不可用（Safari 无痕模式等）时**整体退回 localStorage 路径**：容量还是 5MB，但功能不中断、数据不丢。
+- 落盘失败时先打日志，**再尝试写 localStorage 兜底**，不静默丢数据。
+- 启动迁移失败时，那一个 key 留在 localStorage 里继续可用，不影响其他 key，也不中断启动。
+
+## 存档
 
 | 常量                                          | 用途                 |
 | --------------------------------------------- | -------------------- |
@@ -54,8 +94,9 @@
 实现在 `src/utils/archive.ts`，界面层封装在 `composables/useStandaloneArchiveManager.ts`。
 
 - 支持多存档 + JSON 导入导出。
-- 如果将来需要长期大存档，再考虑 IndexedDB、压缩或减少 debug 信息体积——
-  **当前明确不引入**。
+- 存档**载荷**放 IndexedDB，读写是**异步**的（`saveStandaloneArchiveSnapshot` /
+  `restoreStandaloneArchiveById` / `deleteStandaloneArchive` / `downloadStandaloneArchiveById`
+  都返回 Promise）。**存档索引**小而读得频繁，走内存缓存，`listStandaloneArchives()` 仍是同步的。
 
 ## 状态所有权
 
@@ -65,13 +106,16 @@
 | 消息                                      | `stores/messages.ts`                                                                          |
 | 变量                                      | `stores/statData.ts` + `stores/statDataActions.ts`；运行时读写走 `runtime/standaloneState.ts` |
 | 存档                                      | `src/utils/archive.ts`                                                                        |
+| 本地存储（落盘入口）                      | `src/utils/standaloneStorage.ts`，底层是 `src/utils/standaloneIndexedDb.ts`                   |
 
-🔴 **不要从组件里绕过 store 直接改 `stat_data` 或 localStorage。**
+🔴 **不要从组件里绕过 store 直接改 `stat_data`，也不要绕过 `standaloneStorage.ts` 直接碰 IndexedDB 或 localStorage。**
 前端权威状态的判定在 `src/utils/frontendAuthoritativeState.ts`，别在别处再实现一套。
 
 ## 相关约束
 
 1. 改 Schema → 同步 `schema.json`，并检查存档导入是否兼容。
 2. 变量更新的规则/格式只有那两个 txt 是正式口径。
-3. 不引入 IndexedDB。
-4. 设置持久化的 localStorage key 是历史名，**不要改**（改了老用户设置全丢）。
+3. 设置持久化的 localStorage key 是历史名，**不要改**（改了老用户设置全丢）。
+4. 新增需要持久化的数据，**先判断该进 IndexedDB 还是 localStorage**（见「本地存储」的取舍表），
+   并同步更新 `standaloneStorage.ts` 的迁移清单——漏了清单里的 key，老用户的数据不会跟着搬过去。
+5. 存储 key 的字符串一律**不要改**：迁移逻辑靠前缀识别老数据，改了会让老用户数据读不回来。

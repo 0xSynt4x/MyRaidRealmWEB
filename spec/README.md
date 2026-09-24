@@ -32,7 +32,9 @@ runtime/ —— 组装提示词 → 调模型 → 流式接收 → 解析回复�
   ↓
 utils/ —— 本地内容注入、世界书、存档、格式化、生图、提示
   ↓
-localStorage（存档）+ dist/index.html 单文件产物
+standaloneStorage.ts —— 小数据进内存缓存 / 大数据落 IndexedDB（localStorage 只留设置）
+  ↓
+dist/index.html 单文件产物
 ```
 
 ## 3. 细则索引
