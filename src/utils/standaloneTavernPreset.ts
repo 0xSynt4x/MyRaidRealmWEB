@@ -1,4 +1,5 @@
 import rawStandaloneMainPreset from '../诸界穿越预设.json?raw';
+import { readStorageSync, removeStorageSync, writeStorageSync } from './standaloneStorage';
 
 export type StandaloneTavernPromptDefinition = {
   identifier?: string;
@@ -119,10 +120,6 @@ export function parseStandaloneTavernPresetDocument(
 
 export const standaloneTavernPresetDocument = parseStandaloneTavernPresetDocument(rawStandaloneMainPreset);
 
-function canUseLocalStorage() {
-  return typeof localStorage !== 'undefined';
-}
-
 function createBuiltinStandaloneTavernPresetItem(): StandaloneTavernPresetLibraryItem {
   return {
     id: STANDALONE_TAVERN_PRESET_BUILTIN_ID,
@@ -187,18 +184,14 @@ function isStandaloneTavernPresetDocumentSlim(document: StandaloneTavernPresetDo
 }
 
 function migrateLegacyImportedPreset(): ImportedStandaloneTavernPreset | null {
-  if (!canUseLocalStorage()) {
+  const stored = readStorageSync<Record<string, unknown> | null>(STANDALONE_TAVERN_PRESET_OVERRIDE_STORAGE_KEY);
+  if (!stored) {
     return null;
   }
 
   try {
-    const stored = localStorage.getItem(STANDALONE_TAVERN_PRESET_OVERRIDE_STORAGE_KEY);
-    if (!stored) {
-      return null;
-    }
-
     return normalizeImportedPreset({
-      ...JSON.parse(stored),
+      ...stored,
       id: `imported:legacy:${Date.now()}`,
     });
   } catch (error) {
@@ -208,31 +201,26 @@ function migrateLegacyImportedPreset(): ImportedStandaloneTavernPreset | null {
 }
 
 function persistStandaloneTavernPresetLibrary(library: StandaloneTavernPresetLibrary): void {
-  if (!canUseLocalStorage()) {
-    return;
-  }
-
-  localStorage.setItem(STANDALONE_TAVERN_PRESET_LIBRARY_STORAGE_KEY, JSON.stringify(library));
-  localStorage.removeItem(STANDALONE_TAVERN_PRESET_OVERRIDE_STORAGE_KEY);
+  writeStorageSync(STANDALONE_TAVERN_PRESET_LIBRARY_STORAGE_KEY, library);
+  // 老格式的单份导入预设已经并进库里，清掉它。
+  removeStorageSync(STANDALONE_TAVERN_PRESET_OVERRIDE_STORAGE_KEY);
 }
 
 export function loadStandaloneTavernPresetLibrary(): StandaloneTavernPresetLibrary {
-  if (!canUseLocalStorage()) {
-    return createEmptyPresetLibrary();
-  }
+  const stored = readStorageSync<Partial<StandaloneTavernPresetLibrary> | null>(
+    STANDALONE_TAVERN_PRESET_LIBRARY_STORAGE_KEY,
+  );
 
   try {
-    const stored = localStorage.getItem(STANDALONE_TAVERN_PRESET_LIBRARY_STORAGE_KEY);
     if (stored) {
-      const parsed = JSON.parse(stored) as Partial<StandaloneTavernPresetLibrary>;
-      const importedPresets = Array.isArray(parsed.importedPresets)
-        ? parsed.importedPresets
+      const importedPresets = Array.isArray(stored.importedPresets)
+        ? stored.importedPresets
             .map(normalizeImportedPreset)
             .filter((preset): preset is ImportedStandaloneTavernPreset => Boolean(preset))
         : [];
       const activePresetId =
-        typeof parsed.activePresetId === 'string' && parsed.activePresetId.trim()
-          ? parsed.activePresetId
+        typeof stored.activePresetId === 'string' && stored.activePresetId.trim()
+          ? stored.activePresetId
           : STANDALONE_TAVERN_PRESET_BUILTIN_ID;
       return {
         activePresetId,
@@ -360,12 +348,8 @@ export function clearImportedStandaloneTavernPreset(): void {
  * 只跑一次：处理完留标记，之后启动直接跳过。
  */
 export function pruneStandaloneTavernPresetLibraryOversizedFields(): void {
-  if (!canUseLocalStorage()) {
-    return;
-  }
-
   try {
-    if (localStorage.getItem(STANDALONE_TAVERN_PRESET_LIBRARY_SLIMMED_FLAG_KEY)) {
+    if (readStorageSync(STANDALONE_TAVERN_PRESET_LIBRARY_SLIMMED_FLAG_KEY)) {
       return;
     }
 
@@ -384,7 +368,7 @@ export function pruneStandaloneTavernPresetLibraryOversizedFields(): void {
       console.info(`[StandaloneTavernPreset] 已裁掉老预设里用不上的字段 count=${slimmedCount}`);
     }
 
-    localStorage.setItem(STANDALONE_TAVERN_PRESET_LIBRARY_SLIMMED_FLAG_KEY, new Date().toISOString());
+    writeStorageSync(STANDALONE_TAVERN_PRESET_LIBRARY_SLIMMED_FLAG_KEY, new Date().toISOString());
   } catch (error) {
     console.warn('[StandaloneTavernPreset] 清理预设库冗余字段失败:', error);
   }
@@ -401,10 +385,6 @@ export function selectStandaloneTavernPreset(presetId: string): void {
 }
 
 export function deleteImportedStandaloneTavernPreset(presetId: string): void {
-  if (!canUseLocalStorage()) {
-    return;
-  }
-
   const library = loadStandaloneTavernPresetLibrary();
   const importedPresets = library.importedPresets.filter(preset => preset.id !== presetId);
   persistStandaloneTavernPresetLibrary({

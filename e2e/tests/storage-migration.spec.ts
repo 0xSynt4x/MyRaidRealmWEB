@@ -201,4 +201,66 @@ test.describe('本地存储迁移', () => {
       archiveKey,
     );
   });
+
+  test('酒馆预设库会被搬到 IndexedDB，且迁移后仍能同步读到', async ({ page }) => {
+    await page.goto('/');
+
+    const libraryKey = 'th1980s:standalone-tavern-preset-library';
+    const legacyLibrary = {
+      activePresetId: 'imported:e2e-legacy',
+      importedPresets: [
+        {
+          id: 'imported:e2e-legacy',
+          sourceName: 'e2e 老预设',
+          importedAt: new Date().toISOString(),
+          document: {
+            prompts: [{ identifier: 'main', name: '主提示', content: '老用户的预设内容' }],
+            prompt_order: [{ character_id: 100000, order: [{ identifier: 'main', enabled: true }] }],
+          },
+        },
+      ],
+    };
+
+    await page.evaluate(
+      ([key, library]) => {
+        window.localStorage.setItem(key, JSON.stringify(library));
+      },
+      [libraryKey, legacyLibrary] as const,
+    );
+
+    await page.reload();
+    await page.waitForFunction(
+      bridge => Boolean((window as unknown as Record<string, unknown>)[bridge]),
+      STORAGE_BRIDGE,
+    );
+
+    const migrated = await page.evaluate(
+      bridge =>
+        (
+          (window as unknown as Record<string, unknown>)[bridge] as {
+            report: () => StorageReport;
+          }
+        )
+          .report()
+          .migratedKeys.includes('th1980s:standalone-tavern-preset-library'),
+      STORAGE_BRIDGE,
+    );
+    expect(migrated, '酒馆预设库应当出现在迁移清单里').toBe(true);
+
+    // 旧副本要清掉 —— 它正是会随导入数量持续增长、能撑爆 5MB 的那块数据。
+    const leftover = await page.evaluate(key => window.localStorage.getItem(key), libraryKey);
+    expect(leftover, 'localStorage 里的预设库旧副本应已清除').toBeNull();
+
+    // 关键：迁移后仍然是同步可读的（调用方里有一批 computed 和回合逻辑）。
+    const readBack = await page.evaluate(
+      bridge =>
+        (
+          (window as unknown as Record<string, unknown>)[bridge] as {
+            readSync: (key: string) => { activePresetId?: string } | null;
+          }
+        ).readSync('th1980s:standalone-tavern-preset-library'),
+      STORAGE_BRIDGE,
+    );
+    expect(readBack?.activePresetId, '迁移过来的预设库应当仍能同步读到').toBe('imported:e2e-legacy');
+  });
 });

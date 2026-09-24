@@ -257,6 +257,9 @@ export default (_env: unknown, argv: { mode?: 'development' | 'production' }): w
       __VUE_OPTIONS_API__: false,
       __VUE_PROD_DEVTOOLS__: false,
       __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: false,
+      // 开发期自检开关（见 src/utils/standaloneStorage.ts 的缓存名单检查）。
+      // 生产构建折成 false，自检那一段会被压缩器摇掉，不进产物。
+      __STANDALONE_DEV__: JSON.stringify(argv.mode !== 'production'),
     }),
   ],
   optimization: {
