@@ -1,6 +1,25 @@
 # 07 · 预设体系与预设包投递
 
-## 预设是什么
+## 预设有两种，存储归属完全不同
+
+🔴 **别混。这两种"预设"的数据来源、存储位置、生命周期都不一样。**
+
+| 类型 | 是什么 | 存哪 |
+| ---- | ------ | ---- |
+| **开局预设** | 项目自带的世界观预设（见下一节） | **不落盘** —— 运行时从 `dist/preset-package/index.js` 动态加载，每次都要读 |
+| **酒馆预设** | **兼容酒馆（SillyTavern）格式的预设**，由用户导入，收在本地预设库里 | **本地持久化，进 IndexedDB**（key `th1980s:standalone-tavern-preset-library`） |
+
+- **开局预设不进 IndexedDB，也不进 localStorage。** 它没有"落盘"这一步 —— 是项目资产，不是用户数据。
+- **酒馆预设是用户数据**：用户导入多少就存多少，会随使用持续增长。整个预设库序列化成一个字符串存在**单个 key** 里，留在 5MB 的 localStorage 里导入多了早晚撑爆，所以必须进 IndexedDB。
+- 酒馆预设导入时会被裁剪成只留 `prompts` + `prompt_order`：原始预设里的 `extensions`（正则脚本、内嵌世界书、插件配置）我们从不读，单份能占近 1MB。
+- ⚠️ **迁移进度**：酒馆预设库目前仍写在 localStorage，**目标位置是 IndexedDB** —— 新代码一律按目标位置处理，不要再往 localStorage 上加依赖。
+
+另外两个容易混进来的概念，都是**小配置**，留在 localStorage：
+
+- **预设记忆**（`src/stores/setup.ts`，key `th1980s:selected-preset:<会话 id>`）—— 记录"这一局选了哪个预设"，换局后会清理。
+- **预设收藏 / 分组**（`src/utils/preset-favorites.ts` / `src/utils/preset-groups.ts`）—— 只影响界面组织。
+
+## 开局预设是什么
 
 开局预设 = 一套世界观 + 角色 + 主提示词 + 本地内容开关 + 世界资料挂接。
 当前约 **38 个世界观预设 + 21 个 Workshop 世界包**。
