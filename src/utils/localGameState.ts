@@ -3,7 +3,7 @@ import { clearStandaloneStatData } from './standaloneStatData';
 
 /**
  * 清空本机留存的一局数据：运行时会话 + 统计数据。
- * 「重置游戏」走这里，清完等于回到没开过局的状态。
+ * 「回到首页」走这里，清完等于回到没开过局的状态。
  */
 export function clearLocalGameState(): void {
   try {

@@ -570,7 +570,7 @@ export const useSetupStore = defineStore('setup', () => {
   }
 
   /**
-   * 会话被整个换掉之后（导入存档、重置游戏），把手填条目重新读一遍。
+   * 会话被整个换掉之后（导入存档、回到首页），把手填条目重新读一遍。
    * 条目存在会话里，会话换了就得跟着换，否则面板还显示上一个存档的条目。
    */
   function syncCustomWorldbookEntriesFromSession(): void {

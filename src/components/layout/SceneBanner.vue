@@ -276,7 +276,7 @@ watch(
 // 夜色压暗：先看时间（19 点~次日 6 点），时间文本里没有钟点才看天气词带不带「夜 / 月明 / 星空」
 const 是夜里 = computed(() => isNight(当前时间.value, 当前天气.value));
 
-// —— 三点菜单（原顶栏下拉，四项：刷新变量 / 存档下载 / 重置游戏 / 全屏）——
+// —— 三点菜单（原顶栏下拉，四项：刷新变量 / 存档下载 / 回到首页 / 全屏）——
 const isRefreshing = ref(false);
 const isArchiving = ref(false);
 const isResetting = ref(false);
@@ -378,7 +378,7 @@ async function handleResetGame() {
 
     notificationStore.success(t('header.resetGameSuccess'));
   } catch (error) {
-    console.error('[SceneBanner] 重置游戏失败:', error);
+    console.error('[SceneBanner] 回到首页失败:', error);
     notificationStore.error(
       t('header.resetGameFailed', { error: error instanceof Error ? error.message : String(error) }),
     );

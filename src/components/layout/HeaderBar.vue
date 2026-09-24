@@ -231,7 +231,7 @@ async function handleResetGame() {
 
     notificationStore.success(t('header.resetGameSuccess'));
   } catch (error) {
-    console.error('[HeaderBar] 重置游戏失败:', error);
+    console.error('[HeaderBar] 回到首页失败:', error);
     notificationStore.error(
       t('header.resetGameFailed', { error: error instanceof Error ? error.message : String(error) }),
     );

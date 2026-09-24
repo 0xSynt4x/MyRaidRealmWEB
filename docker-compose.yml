@@ -16,5 +16,5 @@ services:
     image: myraidrealm-app:local
     container_name: myraidrealm-app
     ports:
-      - "8080:8080"
+      - '8080:8080'
     restart: unless-stopped

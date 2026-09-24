@@ -94,13 +94,13 @@ dist/
 依赖解析、构建、运行全部在容器内完成 —— **宿主只需要 docker，不需要装 node 或 pnpm**
 （本仓 pin 的是 `pnpm@11.5.2`，宿主环境不一定装得上）。
 
-| 文件                 | 作用                                                                |
-| -------------------- | ------------------------------------------------------------------- |
-| `Dockerfile`         | 多阶段构建：`node:22-alpine` 构建 → `nginx:alpine` 运行              |
-| `docker-compose.yml` | 一条命令起环境，对外 **8080**                                        |
-| `nginx.conf`         | 静态托管；`index.html` 不缓存，带哈希的资源长缓存；开 gzip          |
-| `.dockerignore`      | 挡掉 `node_modules` / `dist` / `.git` / `e2e`，避免构建上下文爆炸    |
-| `e2e/`               | Playwright 用例与配置（见下）                                        |
+| 文件                 | 作用                                                              |
+| -------------------- | ----------------------------------------------------------------- |
+| `Dockerfile`         | 多阶段构建：`node:22-alpine` 构建 → `nginx:alpine` 运行           |
+| `docker-compose.yml` | 一条命令起环境，对外 **8080**                                     |
+| `nginx.conf`         | 静态托管；`index.html` 不缓存，带哈希的资源长缓存；开 gzip        |
+| `.dockerignore`      | 挡掉 `node_modules` / `dist` / `.git` / `e2e`，避免构建上下文爆炸 |
+| `e2e/`               | Playwright 用例与配置（见下）                                     |
 
 ```bash
 docker compose up --build     # 构建并启动 → http://localhost:8080

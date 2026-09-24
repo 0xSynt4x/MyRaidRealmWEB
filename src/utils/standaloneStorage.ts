@@ -90,7 +90,11 @@ let lastMigrationReport: StandaloneStorageMigrationReport = {
 };
 
 export function getStandaloneStorageMigrationReport(): StandaloneStorageMigrationReport {
-  return { ...lastMigrationReport, migratedKeys: [...lastMigrationReport.migratedKeys], failedKeys: [...lastMigrationReport.failedKeys] };
+  return {
+    ...lastMigrationReport,
+    migratedKeys: [...lastMigrationReport.migratedKeys],
+    failedKeys: [...lastMigrationReport.failedKeys],
+  };
 }
 
 export function getStandaloneStorageMode(): StorageMode {

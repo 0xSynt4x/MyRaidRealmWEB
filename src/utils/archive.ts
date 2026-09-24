@@ -23,7 +23,13 @@ import {
   type StandaloneRuntimeSession,
 } from './standaloneRuntimeSchemas';
 import { loadStandaloneStatData, persistStandaloneStatData } from './standaloneStatData';
-import { readLargeAsync, readStorageSync, removeLargeAsync, writeLargeAsync, writeStorageSync } from './standaloneStorage';
+import {
+  readLargeAsync,
+  readStorageSync,
+  removeLargeAsync,
+  writeLargeAsync,
+  writeStorageSync,
+} from './standaloneStorage';
 
 const STANDALONE_ARCHIVE_PENDING_RESUME_KEY = 'th1980s:standalone-archive-pending-resume';
 const STANDALONE_ARCHIVE_RESTORED_EVENT = 'th1980s:standalone-archive-restored';

@@ -88,6 +88,7 @@ test.describe('本地存储迁移', () => {
   test('迁移过来的数据在刷新后仍然读得到', async ({ page }) => {
     await page.goto('/');
 
+    const legacySessionKey = 'th1980s:standalone-runtime-session';
     const legacyMessagesKey = 'th1980s:standalone-runtime-messages';
     const sessionId = `persist-check-${Date.now()}`;
     const legacySession = {
@@ -105,11 +106,11 @@ test.describe('本地存储迁移', () => {
     const legacyMessages = { session_id: sessionId, next_message_id: 3, records: [] };
 
     await page.evaluate(
-      ([session, messages]) => {
-        window.localStorage.setItem('th1980s:standalone-runtime-session', JSON.stringify(session));
-        window.localStorage.setItem('th1980s:standalone-runtime-messages', JSON.stringify(messages));
+      ([sessionKey, messagesKey, session, messages]) => {
+        window.localStorage.setItem(sessionKey, JSON.stringify(session));
+        window.localStorage.setItem(messagesKey, JSON.stringify(messages));
       },
-      [legacySession, legacyMessages] as const,
+      [legacySessionKey, legacyMessagesKey, legacySession, legacyMessages] as const,
     );
 
     await page.reload();
@@ -155,9 +156,9 @@ test.describe('本地存储迁移', () => {
         const unit = 'abcdefghijklmnopqrstuvwxyz0123456789';
         const payload = unit.repeat(Math.ceil(bytes / unit.length)).slice(0, bytes);
 
-        const bridge = (window as unknown as Record<string, unknown>)[
-          '__MYRAIDREALM_STORAGE__'
-        ] as { readLarge: (key: string) => Promise<string | null> };
+        const bridge = (window as unknown as Record<string, unknown>)['__MYRAIDREALM_STORAGE__'] as {
+          readLarge: (key: string) => Promise<string | null>;
+        };
 
         // 直接走底层 IndexedDB 封装写入 —— 存储桥没有暴露写接口，
         // 用 indexedDB 原生 API 验证「这块数据确实放得下」。

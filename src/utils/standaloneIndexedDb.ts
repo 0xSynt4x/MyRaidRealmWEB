@@ -212,7 +212,7 @@ export async function idbKeys(): Promise<string[]> {
   }
 }
 
-/** 关掉缓存的连接。重置游戏或测试时用，下次访问会重新开库。 */
+/** 关掉缓存的连接。回到首页或测试时用，下次访问会重新开库。 */
 export function closeStandaloneDatabase(): void {
   const pending = dbPromise;
   dbPromise = null;
