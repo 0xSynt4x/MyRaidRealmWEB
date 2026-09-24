@@ -70,6 +70,12 @@ test.describe('部署', () => {
     // 带哈希的资源可以长缓存。
     const asset = await request.get('/assets/banner/amb-01-mist.54c02957.webp');
     expect(asset.headers()['cache-control']).toContain('immutable');
+
+    // 预设包是**固定文件名**，不能长缓存 —— 否则重新部署后老用户拿不到新预设。
+    const preset = await request.get('/preset-package/index.js');
+    expect(preset.status(), '预设包应当可达').toBe(200);
+    expect(preset.headers()['cache-control'], '预设包不能配 immutable').not.toContain('immutable');
+    expect(preset.headers()['cache-control']).toContain('no-cache');
   });
 
   test('本地存储可写入且刷新后保留', async ({ page }) => {
