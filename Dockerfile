@@ -37,6 +37,10 @@ FROM nginx:alpine AS runtime
 # 只搬构建产物，源码、依赖、构建工具都不进运行镜像。
 COPY --from=builder /app/dist /usr/share/nginx/html
 
+# 删掉 sourcemap：JS/CSS 已经内联进 index.html，这两个 .map 只是构建残留，
+# 却占了产物一半以上的体积（实测 9.5MB / 18MB），白白增加部署与回源带宽。
+RUN rm -f /usr/share/nginx/html/*.map
+
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 8080

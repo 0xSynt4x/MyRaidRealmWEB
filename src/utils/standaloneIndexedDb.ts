@@ -212,17 +212,6 @@ export async function idbKeys(): Promise<string[]> {
   }
 }
 
-export async function idbClear(): Promise<void> {
-  try {
-    const db = await getDatabase();
-    const transaction = db.transaction(STORE_NAME, 'readwrite');
-    transaction.objectStore(STORE_NAME).clear();
-    await promisifyTransaction(transaction);
-  } catch (error) {
-    throw normalizeError(error, '清空数据库失败');
-  }
-}
-
 /** 关掉缓存的连接。重置游戏或测试时用，下次访问会重新开库。 */
 export function closeStandaloneDatabase(): void {
   const pending = dbPromise;
