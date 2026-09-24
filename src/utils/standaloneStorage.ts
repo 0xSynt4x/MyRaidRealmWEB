@@ -99,11 +99,17 @@ export function getStandaloneStorageMode(): StorageMode {
 
 /* ------------------------------------------------------------------ *
  * localStorage 访问垫片
+ *
+ * 🔴 这里一律用裸 `localStorage`，**不要写成 `window.localStorage`**。
+ * 浏览器里两者等价，但非浏览器环境（单元测试的替身）只往 `globalThis` 上挂了
+ * `localStorage`，`window` 替身里没有这个属性 —— 写成 `window.localStorage`
+ * 会拿到 undefined，而下面的 try/catch 会把 TypeError 一起吞掉，
+ * 表现成「读永远是空、写永远失败」，页面里完全看不出来。
  * ------------------------------------------------------------------ */
 
 function safeLocalGet(key: string): string | null {
   try {
-    return window.localStorage.getItem(key);
+    return localStorage.getItem(key);
   } catch {
     return null;
   }
@@ -111,7 +117,7 @@ function safeLocalGet(key: string): string | null {
 
 function safeLocalSet(key: string, value: string): boolean {
   try {
-    window.localStorage.setItem(key, value);
+    localStorage.setItem(key, value);
     return true;
   } catch {
     return false;
@@ -120,7 +126,7 @@ function safeLocalSet(key: string, value: string): boolean {
 
 function safeLocalRemove(key: string): void {
   try {
-    window.localStorage.removeItem(key);
+    localStorage.removeItem(key);
   } catch {
     // 删不掉不影响正确性：读取已经以 IndexedDB 为准
   }
@@ -131,8 +137,8 @@ function collectLocalKeysByPrefix(): string[] {
   const matched: string[] = [];
 
   try {
-    for (let index = 0; index < window.localStorage.length; index += 1) {
-      const key = window.localStorage.key(index);
+    for (let index = 0; index < localStorage.length; index += 1) {
+      const key = localStorage.key(index);
       if (key && MIGRATED_KEY_PREFIXES.some(prefix => key.startsWith(prefix))) {
         matched.push(key);
       }
@@ -399,11 +405,14 @@ function handleWriteFailure(key: string, value: unknown, error: unknown): void {
     console.error(`[Storage] ${key} 写入失败:`, error);
   }
 
-  // 兜底：至少留一份在 localStorage。可能同样失败（配额也是 5MB），
-  // 但比完全丢掉强，而且用户下次打开还能从这份恢复。
+  // 兜底：把这次改动写一份进 localStorage，至少保证数据还在磁盘上。
+  // ⚠️ 这份兜底**不会自动生效**：IndexedDB 模式下，下次启动只从 IndexedDB
+  // 填内存缓存，localStorage 里这份不会被读回。它只是「数据没丢」的保险，
+  // 恢复要靠排障手段（比如清掉 IndexedDB 里对应的 key 再刷新）。
+  // localStorage 同样可能写不进（配额也是 5MB），那这次改动就真的没落盘。
   const fallback = safeLocalSet(key, JSON.stringify(value));
   if (fallback) {
-    console.warn(`[Storage] 已把 ${key} 兜底写入 localStorage`);
+    console.warn(`[Storage] 已把 ${key} 兜底写入 localStorage（该副本不会被自动读回，仅保证数据不丢）`);
   } else {
     console.error(`[Storage] ${key} 兜底写入 localStorage 同样失败，这次改动未能持久化`);
   }
@@ -464,8 +473,8 @@ export async function listKeysByPrefixAsync(prefix: string): Promise<string[]> {
     const collected = new Set<string>();
 
     try {
-      for (let index = 0; index < window.localStorage.length; index += 1) {
-        const key = window.localStorage.key(index);
+      for (let index = 0; index < localStorage.length; index += 1) {
+        const key = localStorage.key(index);
         if (key && (key.startsWith(prefix) || legacyPrefixes.some(item => key.startsWith(item)))) {
           collected.add(key);
         }
