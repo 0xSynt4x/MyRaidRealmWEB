@@ -23,6 +23,7 @@ import {
   type StandaloneRuntimeSession,
 } from './standaloneRuntimeSchemas';
 import { loadStandaloneStatData, persistStandaloneStatData } from './standaloneStatData';
+import { readLargeAsync, readStorageSync, removeLargeAsync, writeLargeAsync, writeStorageSync } from './standaloneStorage';
 
 const STANDALONE_ARCHIVE_PENDING_RESUME_KEY = 'th1980s:standalone-archive-pending-resume';
 const STANDALONE_ARCHIVE_RESTORED_EVENT = 'th1980s:standalone-archive-restored';
@@ -286,12 +287,7 @@ function isStandaloneArchiveFile(data: unknown): data is StandaloneArchiveFile {
 
 function readStandaloneArchiveIndex(): StandaloneArchiveListItem[] {
   try {
-    const stored = localStorage.getItem(STANDALONE_ARCHIVE_INDEX_STORAGE_KEY);
-    if (!stored) {
-      return [];
-    }
-
-    const parsed = JSON.parse(stored);
+    const parsed = readStorageSync<unknown>(STANDALONE_ARCHIVE_INDEX_STORAGE_KEY);
     return Array.isArray(parsed) ? (parsed as StandaloneArchiveListItem[]) : [];
   } catch (error) {
     console.warn('[Archive] 读取独立模式存档目录失败:', error);
@@ -300,11 +296,11 @@ function readStandaloneArchiveIndex(): StandaloneArchiveListItem[] {
 }
 
 function writeStandaloneArchiveIndex(index: StandaloneArchiveListItem[]): void {
-  localStorage.setItem(STANDALONE_ARCHIVE_INDEX_STORAGE_KEY, JSON.stringify(index));
+  writeStorageSync(STANDALONE_ARCHIVE_INDEX_STORAGE_KEY, index);
 }
 
-function writeStandaloneArchivePayload(payload: StandaloneArchiveFile): void {
-  localStorage.setItem(buildStandaloneArchiveStorageKey(payload.archiveId), JSON.stringify(payload));
+async function writeStandaloneArchivePayload(payload: StandaloneArchiveFile): Promise<void> {
+  await writeLargeAsync(buildStandaloneArchiveStorageKey(payload.archiveId), payload);
 }
 
 /**
@@ -328,14 +324,13 @@ function pruneArchivePayloadDebugTraces(payload: StandaloneArchiveFile): boolean
   return changed;
 }
 
-function readStandaloneArchivePayload(archiveId: string): StandaloneArchiveFile | null {
+async function readStandaloneArchivePayload(archiveId: string): Promise<StandaloneArchiveFile | null> {
   try {
-    const stored = localStorage.getItem(buildStandaloneArchiveStorageKey(archiveId));
-    if (!stored) {
+    const parsed = await readLargeAsync<unknown>(buildStandaloneArchiveStorageKey(archiveId));
+    if (parsed === null) {
       return null;
     }
 
-    const parsed = JSON.parse(stored) as unknown;
     if (!isStandaloneArchiveFile(parsed)) {
       console.warn('[Archive] 独立模式存档格式无效，已忽略:', archiveId);
       return null;
@@ -496,8 +491,8 @@ export function listStandaloneArchives(): StandaloneArchiveListItem[] {
   return readStandaloneArchiveIndex().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
-export function deleteStandaloneArchive(archiveId: string): void {
-  localStorage.removeItem(buildStandaloneArchiveStorageKey(archiveId));
+export async function deleteStandaloneArchive(archiveId: string): Promise<void> {
+  await removeLargeAsync(buildStandaloneArchiveStorageKey(archiveId));
   const nextIndex = readStandaloneArchiveIndex().filter(item => item.id !== archiveId);
   writeStandaloneArchiveIndex(nextIndex);
 }
@@ -508,7 +503,7 @@ export function deleteStandaloneArchive(archiveId: string): void {
  * 新存档本来就不带调试记录（见 buildStandaloneArchivePayload），所以这里只处理历史数据。
  * 处理完写个标记，之后启动直接跳过，不再把所有存档重读一遍。
  */
-export function pruneStandaloneArchiveDebugTraces(): void {
+export async function pruneStandaloneArchiveDebugTraces(): Promise<void> {
   try {
     if (localStorage.getItem(STANDALONE_ARCHIVE_DEBUG_PRUNE_FLAG_KEY)) {
       return;
@@ -517,15 +512,11 @@ export function pruneStandaloneArchiveDebugTraces(): void {
     let prunedCount = 0;
     for (const item of readStandaloneArchiveIndex()) {
       const storageKey = buildStandaloneArchiveStorageKey(item.id);
-      const stored = localStorage.getItem(storageKey);
-      if (!stored) {
-        continue;
-      }
 
       try {
-        const payload = JSON.parse(stored) as StandaloneArchiveFile;
-        if (pruneArchivePayloadDebugTraces(payload)) {
-          localStorage.setItem(storageKey, JSON.stringify(payload));
+        const payload = await readLargeAsync<StandaloneArchiveFile>(storageKey);
+        if (payload && pruneArchivePayloadDebugTraces(payload)) {
+          await writeLargeAsync(storageKey, payload);
           prunedCount += 1;
         }
       } catch (error) {
@@ -542,8 +533,8 @@ export function pruneStandaloneArchiveDebugTraces(): void {
   }
 }
 
-export function downloadStandaloneArchiveById(archiveId: string): void {
-  const payload = readStandaloneArchivePayload(archiveId);
+export async function downloadStandaloneArchiveById(archiveId: string): Promise<void> {
+  const payload = await readStandaloneArchivePayload(archiveId);
   if (!payload) {
     throw new Error('未找到对应的本地存档');
   }
@@ -551,9 +542,9 @@ export function downloadStandaloneArchiveById(archiveId: string): void {
   triggerJsonDownload(buildArchiveFileName(new Date(payload.createdAt)), payload);
 }
 
-export function saveStandaloneArchiveSnapshot(): StandaloneArchiveListItem {
+export async function saveStandaloneArchiveSnapshot(): Promise<StandaloneArchiveListItem> {
   const payload = buildStandaloneArchivePayload();
-  writeStandaloneArchivePayload(payload);
+  await writeStandaloneArchivePayload(payload);
 
   const nextEntry = buildStandaloneArchiveListItem(payload);
   const nextIndex = readStandaloneArchiveIndex().filter(item => item.id !== nextEntry.id);
@@ -567,8 +558,8 @@ export function exportStandaloneCurrentArchive(): void {
   triggerJsonDownload(buildArchiveFileName(new Date(payload.createdAt)), payload);
 }
 
-export function restoreStandaloneArchiveById(archiveId: string): StandaloneArchiveRestoreOutcome {
-  const payload = readStandaloneArchivePayload(archiveId);
+export async function restoreStandaloneArchiveById(archiveId: string): Promise<StandaloneArchiveRestoreOutcome> {
+  const payload = await readStandaloneArchivePayload(archiveId);
   if (!payload) {
     throw new Error('未找到对应的本地存档');
   }
@@ -587,7 +578,7 @@ export async function importArchiveFile(file: File): Promise<StandaloneArchiveRe
   if (isStandaloneArchiveFile(parsed)) {
     // 老存档可能带着调试记录，导入时归一化掉，别让它再落盘
     pruneArchivePayloadDebugTraces(parsed);
-    writeStandaloneArchivePayload(parsed);
+    await writeStandaloneArchivePayload(parsed);
     const importedEntry = buildStandaloneArchiveListItem(parsed);
     const nextIndex = readStandaloneArchiveIndex().filter(item => item.id !== importedEntry.id);
     nextIndex.push(importedEntry);

@@ -112,7 +112,7 @@ export function useStandaloneArchiveManager() {
 
     isSavingStandaloneArchive.value = true;
     try {
-      const archive = saveStandaloneArchiveSnapshot();
+      const archive = await saveStandaloneArchiveSnapshot();
       refreshStandaloneArchiveList();
       const message = tCurrent('contentCenter.archive.saveStandaloneSuccess', {
         summary: formatArchiveSummaryForToast(archive.summary),
@@ -220,7 +220,7 @@ export function useStandaloneArchiveManager() {
 
     isRestoringArchiveId.value = archiveId;
     try {
-      const outcome = restoreStandaloneArchiveById(archiveId);
+      const outcome = await restoreStandaloneArchiveById(archiveId);
       refreshStandaloneArchiveList();
       const restoredArchive = standaloneArchives.value.find(item => item.id === archiveId);
       const message = tCurrent(
@@ -248,9 +248,9 @@ export function useStandaloneArchiveManager() {
     }
   }
 
-  function handleDownloadStandaloneArchive(archiveId: string) {
+  async function handleDownloadStandaloneArchive(archiveId: string) {
     try {
-      downloadStandaloneArchiveById(archiveId);
+      await downloadStandaloneArchiveById(archiveId);
       setArchiveStatus(tCurrent('contentCenter.archive.exportSavedSuccess'));
     } catch (error) {
       const message = tCurrent('contentCenter.archive.actionFailed', {
@@ -274,7 +274,7 @@ export function useStandaloneArchiveManager() {
     }
 
     try {
-      deleteStandaloneArchive(archiveId);
+      await deleteStandaloneArchive(archiveId);
       refreshStandaloneArchiveList();
       setArchiveStatus(tCurrent('contentCenter.archive.deleteSuccess'));
       notify.success(tCurrent('contentCenter.archive.deleteSuccess'));

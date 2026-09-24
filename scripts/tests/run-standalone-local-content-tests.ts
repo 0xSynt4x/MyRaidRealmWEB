@@ -688,7 +688,7 @@ async function testArchiveStandaloneStageSummaryCompressesPendingSummaries(): Pr
   assert.equal(session?.stage_summary, '合并后的阶段总结');
   assert.equal(session?.stage_summary_archived_until_message_id, 11);
 
-  const savedEntry = saveStandaloneArchiveSnapshot();
+  const savedEntry = await saveStandaloneArchiveSnapshot();
   const payload = readStoredArchivePayload(savedEntry.id);
   assert.equal(payload.session.stage_summary, '合并后的阶段总结');
   assert.equal(payload.session.stage_summary_archived_until_message_id, 11);
@@ -1468,7 +1468,7 @@ async function testSaveStandaloneArchiveSnapshotPersistsIndexAndPayload(): Promi
     sendFullPreset: true,
   });
 
-  const entry = saveStandaloneArchiveSnapshot();
+  const entry = await saveStandaloneArchiveSnapshot();
   const archives = listStandaloneArchives();
   const payload = readStoredArchivePayload(entry.id);
 
@@ -1501,7 +1501,7 @@ async function testRestoreStandaloneArchiveRestoresRuntimeAndStores(): Promise<v
     sendFullPreset: true,
     presetName: '恢复前预设',
   });
-  const savedEntry = saveStandaloneArchiveSnapshot();
+  const savedEntry = await saveStandaloneArchiveSnapshot();
 
   seeded.setupStore.selectedPreset = createArchivePreset({
     id: 'mutated-preset',
@@ -1531,7 +1531,7 @@ async function testRestoreStandaloneArchiveRestoresRuntimeAndStores(): Promise<v
     sendFullPreset: true,
   });
 
-  const restoreOutcome = restoreStandaloneArchiveById(savedEntry.id);
+  const restoreOutcome = await restoreStandaloneArchiveById(savedEntry.id);
   await flushScheduledUiEffects();
 
   const restoredSession = loadStandaloneRuntimeSession();
@@ -1563,7 +1563,7 @@ async function testImportStandaloneArchiveFileWritesListAndRestoresState(): Prom
     sendFullPreset: true,
     presetName: '导入来源预设',
   });
-  const savedEntry = saveStandaloneArchiveSnapshot();
+  const savedEntry = await saveStandaloneArchiveSnapshot();
   const exportedPayload = readStoredArchivePayload(savedEntry.id);
 
   resetStandaloneTestEnvironment();
@@ -1759,12 +1759,12 @@ async function testArchiveRestoreRehydratesRegisteredWorldbooksForStoredPreset()
   });
   await nextTick();
 
-  const savedEntry = saveStandaloneArchiveSnapshot();
+  const savedEntry = await saveStandaloneArchiveSnapshot();
 
   setupStore.selectedPreset = null;
   messagesStore.clearMessages();
 
-  restoreStandaloneArchiveById(savedEntry.id);
+  await restoreStandaloneArchiveById(savedEntry.id);
   await flushScheduledUiEffects();
 
   assert.equal(setupStore.selectedPreset?.id, 'gaokao-simulator');
@@ -1777,7 +1777,7 @@ async function testRestoreStandaloneArchiveRequiresApiSetupBeforeResumingOnClean
     sendFullPreset: true,
     presetName: '待补接口预设',
   });
-  const savedEntry = saveStandaloneArchiveSnapshot();
+  const savedEntry = await saveStandaloneArchiveSnapshot();
   const payload = readStoredArchivePayload(savedEntry.id);
 
   resetStandaloneTestEnvironment();
@@ -1786,7 +1786,7 @@ async function testRestoreStandaloneArchiveRequiresApiSetupBeforeResumingOnClean
   const setupStore = useSetupStore();
   const messagesStore = useMessagesStore();
 
-  const restoreOutcome = restoreStandaloneArchiveById(savedEntry.id);
+  const restoreOutcome = await restoreStandaloneArchiveById(savedEntry.id);
   await flushScheduledUiEffects();
 
   const pendingResume = loadPendingStandaloneArchiveResume();
@@ -1815,7 +1815,7 @@ async function testImportStandaloneArchiveRequiresApiSetupBeforeResumingOnCleanB
     sendFullPreset: true,
     presetName: '导入待补接口预设',
   });
-  const savedEntry = saveStandaloneArchiveSnapshot();
+  const savedEntry = await saveStandaloneArchiveSnapshot();
   const exportedPayload = readStoredArchivePayload(savedEntry.id);
 
   resetStandaloneTestEnvironment();
@@ -4448,10 +4448,10 @@ async function testStandaloneArchiveRoundTripDropsDebugTrace(): Promise<void> {
     },
   });
 
-  const savedEntry = saveStandaloneArchiveSnapshot();
+  const savedEntry = await saveStandaloneArchiveSnapshot();
   seeded.messagesStore.clearMessages();
 
-  restoreStandaloneArchiveById(savedEntry.id);
+  await restoreStandaloneArchiveById(savedEntry.id);
   await flushScheduledUiEffects();
 
   const restoredAssistantMessage = seeded.messagesStore.messages.find(message => message.role === 'assistant');
@@ -4583,10 +4583,10 @@ async function testAssistantApiMalformedReplyTraceIsDroppedFromArchive(): Promis
     },
   });
 
-  const savedEntry = saveStandaloneArchiveSnapshot();
+  const savedEntry = await saveStandaloneArchiveSnapshot();
   seeded.messagesStore.clearMessages();
 
-  restoreStandaloneArchiveById(savedEntry.id);
+  await restoreStandaloneArchiveById(savedEntry.id);
   await flushScheduledUiEffects();
 
   const restoredAssistantMessage = seeded.messagesStore.messages.find(message => message.role === 'assistant');
@@ -4606,7 +4606,7 @@ async function testStandaloneArchiveDebugTracesArePrunedOnStartup(): Promise<voi
     presetName: '自愈存档预设',
   });
 
-  const savedEntry = saveStandaloneArchiveSnapshot();
+  const savedEntry = await saveStandaloneArchiveSnapshot();
   const storageKey = `th1980s:standalone-archive:${savedEntry.id}`;
 
   const injectLegacyDebugTrace = () => {
@@ -4632,7 +4632,7 @@ async function testStandaloneArchiveDebugTracesArePrunedOnStartup(): Promise<voi
   };
 
   injectLegacyDebugTrace();
-  pruneStandaloneArchiveDebugTraces();
+  await pruneStandaloneArchiveDebugTraces();
 
   const prunedPayload = JSON.parse(localStorage.getItem(storageKey) ?? '{}') as {
     floorSnapshots?: Array<{ debug_trace?: unknown }>;
@@ -4642,7 +4642,7 @@ async function testStandaloneArchiveDebugTracesArePrunedOnStartup(): Promise<voi
 
   // 只跑一次：留了标记，之后再塞老数据也不会被处理
   injectLegacyDebugTrace();
-  pruneStandaloneArchiveDebugTraces();
+  await pruneStandaloneArchiveDebugTraces();
   const untouchedPayload = JSON.parse(localStorage.getItem(storageKey) ?? '{}') as {
     floorSnapshots?: Array<{ debug_trace?: unknown }>;
   };

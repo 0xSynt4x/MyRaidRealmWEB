@@ -414,13 +414,13 @@ function closeSnapshotPicker() {
 }
 
 /** 选中某个快照：先收浮层再恢复（恢复成功会切页 / 整个向导一起卸掉） */
-function handleSnapshotSelect(archiveId: string) {
+async function handleSnapshotSelect(archiveId: string) {
   const archive = snapshotArchives.value.find(item => item.id === archiveId);
   snapshotPickerVisible.value = false;
   if (!archive) return;
 
   try {
-    const outcome = restoreStandaloneArchiveById(archiveId);
+    const outcome = await restoreStandaloneArchiveById(archiveId);
     notify.success(
       t(
         getStandaloneArchiveFeedbackMessageKey({

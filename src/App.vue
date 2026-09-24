@@ -88,7 +88,8 @@ const setupStore = useSetupStore();
 
 // 启动时做一次存储维护：老版本的存档会把调试记录一起打包，顺手剔掉。
 // 只跑一次，处理完留标记，之后启动直接跳过。
-pruneStandaloneArchiveDebugTraces();
+// 存档载荷现在放在 IndexedDB 里，读写得等异步完成，这里不阻塞挂载。
+void pruneStandaloneArchiveDebugTraces();
 
 // 同一次维护里顺手做掉：老版本导入的酒馆预设是整份存盘的，里面带着我们从不读的扩展字段
 // （单份能占近 1 MB）。这里把库里每份裁一遍，也只跑一次。

@@ -1,17 +1,18 @@
 import { Schema } from '../schema/schema';
 import { commitStandaloneRuntimeState, resolveStandaloneRuntimeSessionStatData } from '../src/utils/standaloneRuntime';
+import { readStorageSync, removeStorageSync, writeStorageSync } from '../src/utils/standaloneStorage';
 
 const STANDALONE_STAT_DATA_STORAGE_KEY = 'th1980s:standalone-stat-data';
 
 export type StandaloneCurrentStatData = ReturnType<typeof Schema.parse>;
 
 function readLegacyStandaloneStatData(): StandaloneCurrentStatData | null {
-  const stored = localStorage.getItem(STANDALONE_STAT_DATA_STORAGE_KEY);
-  if (!stored) {
+  const stored = readStorageSync<unknown>(STANDALONE_STAT_DATA_STORAGE_KEY);
+  if (stored === null) {
     return null;
   }
 
-  return Schema.parse(JSON.parse(stored));
+  return Schema.parse(stored);
 }
 
 export function readStandaloneCurrentStatData(): StandaloneCurrentStatData {
@@ -39,12 +40,12 @@ export function writeStandaloneCurrentStatData(statData: StandaloneCurrentStatDa
   commitStandaloneRuntimeState({
     statData: parsed,
   });
-  localStorage.setItem(STANDALONE_STAT_DATA_STORAGE_KEY, JSON.stringify(parsed));
+  writeStorageSync(STANDALONE_STAT_DATA_STORAGE_KEY, parsed);
   return parsed;
 }
 
 export function clearStandaloneCurrentStatData(): void {
-  localStorage.removeItem(STANDALONE_STAT_DATA_STORAGE_KEY);
+  removeStorageSync(STANDALONE_STAT_DATA_STORAGE_KEY);
 }
 
 export function seedStandaloneCurrentStatData(nextStatData: unknown): StandaloneCurrentStatData {

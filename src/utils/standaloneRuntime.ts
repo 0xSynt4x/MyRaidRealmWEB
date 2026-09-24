@@ -8,6 +8,7 @@ import {
   type StandaloneRuntimeSession,
 } from './standaloneRuntimeSchemas';
 import { createStandaloneRuntimePromptAssetSnapshot } from './standaloneTavernPreset';
+import { readStorageSync, removeStorageSync, writeStorageSync } from './standaloneStorage';
 
 const STANDALONE_RUNTIME_SESSION_STORAGE_KEY = 'th1980s:standalone-runtime-session';
 const STANDALONE_RUNTIME_MESSAGES_STORAGE_KEY = 'th1980s:standalone-runtime-messages';
@@ -238,12 +239,12 @@ export function restoreStandaloneRuntimeState(input: StandaloneRuntimeRestoreInp
 
 export function loadStandaloneRuntimeSession(): StandaloneRuntimeSession | null {
   try {
-    const stored = localStorage.getItem(STANDALONE_RUNTIME_SESSION_STORAGE_KEY);
-    if (!stored) {
+    const stored = readStorageSync<unknown>(STANDALONE_RUNTIME_SESSION_STORAGE_KEY);
+    if (stored === null) {
       return null;
     }
 
-    return StandaloneRuntimeSessionSchema.parse(JSON.parse(stored));
+    return StandaloneRuntimeSessionSchema.parse(stored);
   } catch (error) {
     console.warn('[1980s-standalone] 读取本地 runtime session 失败，已回退为新会话:', error);
     return null;
@@ -262,10 +263,7 @@ export function resolveStandaloneRuntimeSessionStatData(): ReturnType<
 }
 
 export function persistStandaloneRuntimeSession(session: StandaloneRuntimeSession): void {
-  localStorage.setItem(
-    STANDALONE_RUNTIME_SESSION_STORAGE_KEY,
-    JSON.stringify(StandaloneRuntimeSessionSchema.parse(session)),
-  );
+  writeStorageSync(STANDALONE_RUNTIME_SESSION_STORAGE_KEY, StandaloneRuntimeSessionSchema.parse(session));
 }
 
 export function patchStandaloneRuntimeSessionContext(
@@ -321,12 +319,12 @@ export function persistStandaloneStageSummary(input: StandaloneStageSummaryState
 
 export function loadStandaloneRuntimeMessages(): StandaloneRuntimeMessages | null {
   try {
-    const stored = localStorage.getItem(STANDALONE_RUNTIME_MESSAGES_STORAGE_KEY);
-    if (!stored) {
+    const stored = readStorageSync<unknown>(STANDALONE_RUNTIME_MESSAGES_STORAGE_KEY);
+    if (stored === null) {
       return null;
     }
 
-    return StandaloneRuntimeMessagesSchema.parse(JSON.parse(stored));
+    return StandaloneRuntimeMessagesSchema.parse(stored);
   } catch (error) {
     console.warn('[1980s-standalone] 读取本地 runtime messages 失败，已回退为空消息集:', error);
     return null;
@@ -334,18 +332,15 @@ export function loadStandaloneRuntimeMessages(): StandaloneRuntimeMessages | nul
 }
 
 export function persistStandaloneRuntimeMessages(messages: StandaloneRuntimeMessages): void {
-  localStorage.setItem(
-    STANDALONE_RUNTIME_MESSAGES_STORAGE_KEY,
-    JSON.stringify(StandaloneRuntimeMessagesSchema.parse(messages)),
-  );
+  writeStorageSync(STANDALONE_RUNTIME_MESSAGES_STORAGE_KEY, StandaloneRuntimeMessagesSchema.parse(messages));
 }
 
 export function clearStandaloneRuntimeMessages(): void {
-  localStorage.removeItem(STANDALONE_RUNTIME_MESSAGES_STORAGE_KEY);
+  removeStorageSync(STANDALONE_RUNTIME_MESSAGES_STORAGE_KEY);
 }
 
 export function clearStandaloneRuntimeSession(): void {
-  localStorage.removeItem(STANDALONE_RUNTIME_SESSION_STORAGE_KEY);
+  removeStorageSync(STANDALONE_RUNTIME_SESSION_STORAGE_KEY);
 }
 
 export function clearStandaloneRuntimeState(): void {

@@ -9,8 +9,19 @@ dist/
 .sisyphus/
 .workbuddy-ai/
 
+# buildx 状态目录。
+# 默认位置是 ~/.docker/buildx，但某些环境下家目录只读会导致
+# `docker compose build` 直接失败，这时把 BUILDX_CONFIG 指到仓库内。
+.docker-buildx/
+
 # 本地临时工作目录（排查脚本、截图、探测产物）
 Temp/
+
+# 本地工具目录（gh CLI 等，家目录只读时放这里）
+.tools/
+
+# 沙盒：项目副本 + Docker + e2e 的试验场，改坏了不影响主仓库，不应进版本控制
+sandbox/
 
 # 设计文档与创作素材（仅本地保留，不随代码仓库公开）
 docs/

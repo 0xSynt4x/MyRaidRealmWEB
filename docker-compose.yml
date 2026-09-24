@@ -1,0 +1,20 @@
+# docker-compose：一条命令起完整环境。
+#
+#   docker compose up --build     # 构建并启动
+#   docker compose logs -f        # 看日志
+#   docker compose down           # 停掉（镜像保留）
+#
+# 改了源码要重新构建：docker compose up --build
+#
+# 对外端口 8080，容器内 nginx 监听 8080。
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: myraidrealm-app:local
+    container_name: myraidrealm-app
+    ports:
+      - "8080:8080"
+    restart: unless-stopped

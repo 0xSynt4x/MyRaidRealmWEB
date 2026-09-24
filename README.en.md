@@ -154,6 +154,11 @@ The chain-of-thought template is folded into the `<Analysis>` section and is not
 
 ## Save Strategy
 
-For now, the browser local-storage save plus JSON import/export approach is kept as a short-term solution.
+Saves live in the browser's **IndexedDB**, with support for multiple save slots and JSON import/export.
 
-If large long-term saves are needed later, consider IndexedDB, compression, or reducing debug-info size.
+Session, messages, variable snapshots and save payloads — everything that grows as the game progresses —
+goes into IndexedDB; small configuration such as settings, volume and UI preferences stays in localStorage.
+The reason is that localStorage is capped at a hard 5MB and can hit that limit after a round or two,
+while IndexedDB's quota scales with available disk space.
+
+Existing local data is migrated automatically at startup, with no manual action required.
