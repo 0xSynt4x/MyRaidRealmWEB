@@ -78,10 +78,11 @@
 | 多选一（药丸） | `.chip-group` + `.chip` |
 
 - 标签写 `.row-label`，卡片说明写 `.card-hint`。
-- 一组开关要分组时，用带组标题的分组块（`.snapshot-trim-group` + `.snapshot-trim-group-title`），
-  **别用网格平铺** —— 平铺看不出层次，也看不出哪些是子项。
+- 需要「标签靠左、控件靠右」整行铺满时，用 `display: flex` + `justify-content: space-between`，
+  **别把控件直接跟在文字后面** —— 标签长短不一会让同一张卡里的控件参差不齐。
+- 一组开关要分组时用带组标题的分组块，**别用网格平铺** —— 平铺看不出层次，也看不出哪些是子项。
 - 禁用态加 `is-disabled` 类（降透明度），别只靠 `:disabled` 属性。
-- 子项缩进用 `.snapshot-trim-row--child` 那类写法，不要靠空格。
+- 子项缩进用专门的修饰类加 `padding-left`，不要靠空格。
 
 🔴 **新增设置项时字号必须 `calc(Npx * var(--ui-font-scale))`。** 写死 px 会让这一项在用户调字号档位时纹丝不动，
 跟整个界面脱节。

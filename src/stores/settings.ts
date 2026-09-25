@@ -644,7 +644,7 @@ export const useSettingsStore = defineStore('settings', () => {
     }),
   );
 
-  /** 发送前快照裁剪的开关组；默认全开，总开关一关即回到改动前行为 */
+  /** 发送前快照裁剪的用户设置；目前只有「只发在场 NPC」一项，默认打开 */
   const snapshotTrim = ref<StandaloneSnapshotTrimSettings>(
     normalizeStandaloneSnapshotTrimSettings(stored.snapshotTrim),
   );

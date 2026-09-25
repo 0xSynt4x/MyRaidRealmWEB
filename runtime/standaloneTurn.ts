@@ -51,13 +51,10 @@ import {
 type StandaloneStatData = ReturnType<typeof Schema.parse>;
 
 /** 组装写入层护栏：`_` 前缀一律拦；生存系统关闭时才拦生存状态。 */
-function resolveStandalonePatchGuard(
-  statData: StandaloneStatData,
-  settings: StandaloneSnapshotTrimSettings,
-): VariableUpdatePatchGuard {
+function resolveStandalonePatchGuard(statData: StandaloneStatData): VariableUpdatePatchGuard {
   return {
-    blockUnderscoreKeys: settings.enabled && settings.blockUnderscorePatch,
-    blockSurvivalPaths: settings.enabled && settings.blockSurvivalPatch && isStandaloneSurvivalDisabled(statData),
+    blockUnderscoreKeys: true,
+    blockSurvivalPaths: isStandaloneSurvivalDisabled(statData),
   };
 }
 
@@ -131,8 +128,7 @@ export async function runStandaloneVariableUpdatePass(input: {
   const sanitizedAssistantRawContent = normalizeLineEndings(
     stripUpdateVariableBlocks(input.targetAssistantMessage.raw_content),
   );
-  const trimSettings = input.snapshotTrim ?? DEFAULT_STANDALONE_SNAPSHOT_TRIM_SETTINGS;
-  const patchGuard = resolveStandalonePatchGuard(input.statData, trimSettings);
+  const patchGuard = resolveStandalonePatchGuard(input.statData);
   const baseApplyResult = applyVariableUpdateFromReply(input.statData, sanitizedAssistantRawContent, patchGuard);
   let applyResult = baseApplyResult;
   let effectiveRawReply = sanitizedAssistantRawContent;
@@ -1059,7 +1055,7 @@ export async function runStandaloneLocalTurn(input: StandaloneLocalTurnInput): P
   const controller = new AbortController();
   activeStandaloneTurnController = controller;
   let deferControllerCleanup = false;
-  const patchGuard = resolveStandalonePatchGuard(input.statData, input.snapshotTrim ?? DEFAULT_STANDALONE_SNAPSHOT_TRIM_SETTINGS);
+  const patchGuard = resolveStandalonePatchGuard(input.statData);
 
   try {
     const prompt = buildMainTurnPrompt(input);

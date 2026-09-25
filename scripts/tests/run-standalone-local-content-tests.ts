@@ -4850,7 +4850,7 @@ function testStandaloneSnapshotTrimFollowsChainRules(): void {
     商城: { 物品: { 商品1: { 价格: 100 } }, 技能: { 技能1: { 价格: 500 } } },
   };
 
-  const settings = normalizeStandaloneSnapshotTrimSettings({ enabled: true });
+  const settings = normalizeStandaloneSnapshotTrimSettings({});
   const main = buildStandaloneSnapshotForChain({ statData, settings, chain: 'main' });
   const update = buildStandaloneSnapshotForChain({
     statData,
@@ -4898,7 +4898,7 @@ function testStandaloneSnapshotTrimKeepsEveryNpcWhenNothingMatches(): void {
       NPC_2: { 姓名: '王丽' },
     },
   };
-  const settings = normalizeStandaloneSnapshotTrimSettings({ enabled: true });
+  const settings = normalizeStandaloneSnapshotTrimSettings({});
 
   // 正文里一个名字都没提到 → 整轮不裁 NPC
   const noMatch = buildStandaloneSnapshotForChain({
@@ -4923,7 +4923,7 @@ function testStandaloneSnapshotTrimKeepsEveryNpcWhenNothingMatches(): void {
 }
 
 function testStandaloneSnapshotTrimSurvivalModes(): void {
-  const settings = normalizeStandaloneSnapshotTrimSettings({ enabled: true });
+  const settings = normalizeStandaloneSnapshotTrimSettings({});
   const buildFor = (mode: string) =>
     buildStandaloneSnapshotForChain({
       statData: {
@@ -4953,65 +4953,68 @@ function testStandaloneSnapshotTrimSurvivalModes(): void {
   assert.equal(isStandaloneSurvivalDisabled({}), true);
 }
 
-function testStandaloneSnapshotTrimMasterSwitchKeepsUnconditionalTrims(): void {
+function testStandaloneSnapshotTrimAlwaysApplies(): void {
   const statData = {
     设置: { 生存系统模式: '关闭' },
     玩家: { 姓名: '测试玩家', 生存状态: { 血量: 90, 体力值: 70, 饥饿值: 60, 口渴值: 50 } },
-    人物档案: { NPC_1: { 姓名: '老周', $time: 2 } },
+    人物档案: { NPC_1: { 姓名: '老周', $time: 2 }, NPC_2: { 姓名: '王丽', $time: 3 } },
     商城: { 物品: { 商品1: { 价格: 100 } }, 技能: { 技能1: { 价格: 500 } } },
     $foo: 1,
   };
-  const disabled = normalizeStandaloneSnapshotTrimSettings({ enabled: false });
-  const result = buildStandaloneSnapshotForChain({ statData, settings: disabled, chain: 'main' });
-  const snapshot = result.snapshot as Record<string, any>;
+  const settings = normalizeStandaloneSnapshotTrimSettings({});
 
-  // 总开关关闭：可选项一律不生效（不紧凑、不剔「设置」、不塌商城、不裁 NPC）
-  assert.equal(result.compact, false);
-  assert.equal('设置' in snapshot, true);
-  assert.deepEqual(Object.keys(snapshot['商城']), ['物品', '技能']);
-  assert.deepEqual(Object.keys(snapshot['人物档案']), ['NPC_1']);
-  assert.equal(snapshot['商城']['物品']['商品1']['价格'], 100);
+  // 正文链：紧凑输出、剔 `$` 前缀、剔「设置」、商城塌成两个空路径、生存状态按模式裁
+  const main = buildStandaloneSnapshotForChain({ statData, settings, chain: 'main' });
+  const mainSnapshot = main.snapshot as Record<string, any>;
+  assert.equal(main.compact, true);
+  assert.equal('$foo' in mainSnapshot, false);
+  assert.equal('$time' in mainSnapshot['人物档案']['NPC_1'], false);
+  assert.equal('设置' in mainSnapshot, false);
+  assert.deepEqual(mainSnapshot['商城'], { 物品: {}, 技能: {} });
+  assert.equal('生存状态' in mainSnapshot['玩家'], false);
+  // 正文链不裁 NPC
+  assert.deepEqual(Object.keys(mainSnapshot['人物档案']), ['NPC_1', 'NPC_2']);
 
-  // 但两项无条件项照常生效：`$` 前缀剔除 + 生存状态按模式裁
-  assert.equal('$foo' in snapshot, false);
-  assert.equal('$time' in snapshot['人物档案']['NPC_1'], false);
-  assert.equal('生存状态' in snapshot['玩家'], false);
+  // 辅助链：保留「设置」，按在场名单裁 NPC
+  const update = buildStandaloneSnapshotForChain({
+    statData,
+    settings,
+    chain: 'variable_update',
+    texts: ['老周推门进来。'],
+  });
+  const updateSnapshot = update.snapshot as Record<string, any>;
+  assert.equal('设置' in updateSnapshot, true);
+  assert.deepEqual(Object.keys(updateSnapshot['人物档案']), ['NPC_1']);
 
   // 真状态一个字节都不能动
   assert.equal(statData['玩家']['生存状态']['血量'], 90);
   assert.equal(statData['$foo'], 1);
   assert.equal(statData['商城']['物品']['商品1']['价格'], 100);
+  assert.deepEqual(Object.keys(statData['人物档案']), ['NPC_1', 'NPC_2']);
 }
 
-function testStandaloneSnapshotTrimDefaultsToDisabled(): void {
-  const settings = normalizeStandaloneSnapshotTrimSettings({});
+function testStandaloneSnapshotTrimDefaultsToEnabled(): void {
+  // 唯一开关默认打开；其余裁剪没有开关，永远生效
+  assert.equal(normalizeStandaloneSnapshotTrimSettings({}).trimNpc, true);
+  assert.equal(normalizeStandaloneSnapshotTrimSettings({ trimNpc: false }).trimNpc, false);
+  assert.equal(normalizeStandaloneSnapshotTrimSettings({ trimNpc: 'yes' }).trimNpc, true);
 
-  // 总开关默认关；子开关默认全开（用户一开总开关就要完整效果）
-  assert.equal(settings.enabled, false);
-  assert.equal(settings.compactJson, true);
-  assert.equal(settings.trimNpc, true);
-  assert.equal(settings.blockUnderscorePatch, true);
-
-  // 默认设置下：可选项全部不生效（不紧凑、不剔「设置」、不裁 NPC）
+  // 关掉「只发在场 NPC」后辅助链也不裁 NPC —— 其余裁剪照旧
   const statData = {
     设置: { 生存系统模式: '关闭' },
     玩家: { 姓名: '测试玩家', 生存状态: { 血量: 90 } },
     人物档案: { NPC_1: { 姓名: '老周' }, NPC_2: { 姓名: '王丽' } },
     $foo: 1,
   };
-  const result = buildStandaloneSnapshotForChain({
+  const snapshot = buildStandaloneSnapshotForChain({
     statData,
-    settings,
+    settings: normalizeStandaloneSnapshotTrimSettings({ trimNpc: false }),
     chain: 'variable_update',
-    texts: ['测试玩家走进来。'],
-  });
-  const snapshot = result.snapshot as Record<string, any>;
+    texts: ['老周推开门。'],
+  }).snapshot as Record<string, any>;
 
-  assert.equal(result.compact, false);
-  assert.equal('设置' in snapshot, true);
   assert.deepEqual(Object.keys(snapshot['人物档案']), ['NPC_1', 'NPC_2']);
-
-  // 但两项无条件项照常生效
+  assert.equal('设置' in snapshot, true);
   assert.equal('$foo' in snapshot, false);
   assert.equal('生存状态' in snapshot['玩家'], false);
 }
@@ -5329,10 +5332,10 @@ async function run(): Promise<void> {
     ['snapshot trim keeps every npc when nothing matches', testStandaloneSnapshotTrimKeepsEveryNpcWhenNothingMatches],
     ['snapshot trim survival modes', testStandaloneSnapshotTrimSurvivalModes],
     [
-      'snapshot trim master switch keeps unconditional trims',
-      testStandaloneSnapshotTrimMasterSwitchKeepsUnconditionalTrims,
+      'snapshot trim always applies',
+      testStandaloneSnapshotTrimAlwaysApplies,
     ],
-    ['snapshot trim defaults to disabled', testStandaloneSnapshotTrimDefaultsToDisabled],
+    ['snapshot trim defaults to enabled', testStandaloneSnapshotTrimDefaultsToEnabled],
     ['patch guard drops underscore and survival paths', testStandalonePatchGuardDropsUnderscoreAndSurvivalPaths],
     ['variable update format hides survival rules by mode', testVariableUpdateFormatHidesSurvivalRulesByMode],
   ] as const;

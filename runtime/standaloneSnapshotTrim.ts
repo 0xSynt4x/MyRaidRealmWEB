@@ -7,7 +7,8 @@
  *    「设置」（生存系统模式、积分触发开关）与「人物档案」（生成重要/普通/关注 NPC 列表）。
  *    若把同一份整形结果也喂给规则渲染，会出现「生存模式被当成关闭」「NPC 总数渲染为 0」。
  *    因此渲染上下文始终使用原始完整数据，只有快照走整形结果。
- * 3. 每一项裁剪都独立开关，任何一项出问题可以单独关掉，不影响其他项。
+ * 3. 除「NPC 按在场裁」外，所有裁剪都无条件生效，不设开关 —— 它们要么是正确性要求，
+ *    要么是纯收益无风险的整形。唯一的用户开关是「只发在场 NPC」，且只作用于辅助链。
  */
 
 type PlainRecord = Record<string, unknown>;
@@ -257,58 +258,24 @@ export function isStandaloneSurvivalDisabled(statData: unknown): boolean {
 }
 
 /**
- * 快照整形的全部开关。
+ * 快照整形的用户设置。
  *
- * 🔴 **`$` 前缀剔除与生存状态按模式裁不在这里** —— 那两项无条件生效，见
- * `buildStandaloneSnapshotForChain`。写进开关只会让它们被误关掉。
- *
- * 🔴 **总开关 `enabled` 默认关闭。** 剩下的裁剪会改变发给模型的内容，
- * 属于「用户明确知道自己在开什么」才启用的功能，不做静默默认。
- * 子开关默认全开 —— 用户一旦打开总开关，就是想要完整的裁剪效果。
+ * 🔴 **只剩一个开关。** 其余裁剪全部无条件生效（见 `buildStandaloneSnapshotForChain`）——
+ * 它们要么是正确性要求（`$` 前缀本就不该发给 AI；生存系统关着时那几个数值毫无意义），
+ * 要么是纯收益无风险的整形（紧凑输出、商城只留路径）。做成开关只会被人误关掉，
+ * 从而把「必须做的事」变成「可能没做」。
  */
 export type StandaloneSnapshotTrimSettings = {
-  /** 总开关。关闭时除 `$` 前缀剔除与生存状态裁剪外，其余裁剪一律不生效。 */
-  enabled: boolean;
-  /** 去 JSON 缩进（紧凑输出）。 */
-  compactJson: boolean;
-  /** 剔除「设置」块。只作用于正文链；辅助链必须保留，否则模型无法回写积分触发开关。 */
-  dropSettings: boolean;
-  /** 「商城」只保留「物品」「技能」两个空路径。 */
-  collapseShop: boolean;
-  /** NPC 按本轮在场名单裁剪。只作用于辅助链。 */
+  /** NPC 按本轮在场名单裁剪。只作用于辅助链；正文链全发。 */
   trimNpc: boolean;
-  /** NPC 裁剪时永久保留标记为重要 NPC 的角色。 */
-  keepImportantNpc: boolean;
-  /** NPC 裁剪时永久保留被关注的角色。 */
-  keepFocusedNpc: boolean;
-  /** 写入层丢弃路径中含 `_` 开头字段段的补丁。 */
-  blockUnderscorePatch: boolean;
-  /** 写入层在生存系统关闭时丢弃指向「生存状态」的补丁。 */
-  blockSurvivalPatch: boolean;
 };
 
 export const DEFAULT_STANDALONE_SNAPSHOT_TRIM_SETTINGS: StandaloneSnapshotTrimSettings = {
-  enabled: false,
-  compactJson: true,
-  dropSettings: true,
-  collapseShop: true,
   trimNpc: true,
-  keepImportantNpc: true,
-  keepFocusedNpc: true,
-  blockUnderscorePatch: true,
-  blockSurvivalPatch: true,
 };
 
 const STANDALONE_SNAPSHOT_TRIM_BOOLEAN_KEYS = [
-  'enabled',
-  'compactJson',
-  'dropSettings',
-  'collapseShop',
   'trimNpc',
-  'keepImportantNpc',
-  'keepFocusedNpc',
-  'blockUnderscorePatch',
-  'blockSurvivalPatch',
 ] as const satisfies readonly (keyof StandaloneSnapshotTrimSettings)[];
 
 /** 从持久化数据里读取开关；缺失或类型不对的项回落到默认值。 */
@@ -339,15 +306,10 @@ export type StandaloneSnapshotTrimResult = {
 /**
  * 按链路组装发送用快照。
  *
- * 🔴 **两项无条件生效，与总开关无关**（见 `buildStandaloneSnapshotForChain`）：
- * 剔除 `$` 前缀键、生存状态按模式裁。它们是正确性要求而非偏好 ——
- * `$` 前缀本就不该发给 AI；生存系统关着时那几个数值在游戏里毫无意义，
- * 发给正文只会诱导它写出「你的血量是 100」这类出戏内容。
- *
- * 其余各项仍受总开关控制：
- * - 总开关关闭 → 只做上面两项，其余原样（美化输出）。
- * - 正文链：剔除「设置」、不裁 NPC。
- * - 辅助链：保留「设置」、按在场名单裁 NPC。
+ * 🔴 **除「NPC 按在场裁」外，所有裁剪都无条件生效。**
+ * - 紧凑 JSON、剔 `$` 前缀键、商城塌成空路径、生存状态按模式裁：两条链都做。
+ * - 剔「设置」块：只做正文链；辅助链必须保留，否则模型无法回写积分触发开关。
+ * - NPC 按在场裁：只做辅助链，且受唯一开关 `trimNpc` 控制（正文链全发）。
  */
 export function buildStandaloneSnapshotForChain(input: {
   statData: unknown;
@@ -356,43 +318,24 @@ export function buildStandaloneSnapshotForChain(input: {
   /** 待扫描文本（本轮正文 + 玩家输入）。只有辅助链的 NPC 裁剪会用到。 */
   texts?: string[];
 }): StandaloneSnapshotTrimResult {
-  const { settings } = input;
-
-  // 无条件项：任何情况下都执行，不受总开关控制。
-  const baseline = {
-    dropDollarKeys: true,
-    survivalMode: resolveSurvivalMode(input.statData),
-  } as const;
-
-  if (!settings.enabled) {
-    return {
-      snapshot: trimStandaloneSnapshot(input.statData, {
-        ...baseline,
-        dropSettings: false,
-        collapseShop: false,
-        presentNpcIds: null,
-      }),
-      compact: false,
-    };
-  }
-
   const presentNpcIds =
-    input.chain === 'variable_update' && settings.trimNpc
+    input.chain === 'variable_update' && input.settings.trimNpc
       ? collectPresentNpcIds({
           statData: input.statData,
           texts: input.texts ?? [],
-          keepImportant: settings.keepImportantNpc,
-          keepFocused: settings.keepFocusedNpc,
+          keepImportant: true,
+          keepFocused: true,
         })
       : null;
 
   return {
     snapshot: trimStandaloneSnapshot(input.statData, {
-      ...baseline,
-      dropSettings: settings.dropSettings && input.chain === 'main',
-      collapseShop: settings.collapseShop,
+      dropDollarKeys: true,
+      dropSettings: input.chain === 'main',
+      collapseShop: true,
+      survivalMode: resolveSurvivalMode(input.statData),
       presentNpcIds,
     }),
-    compact: settings.compactJson,
+    compact: true,
   };
 }

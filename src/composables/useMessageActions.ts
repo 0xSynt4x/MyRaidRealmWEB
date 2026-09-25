@@ -53,10 +53,9 @@ export function useMessageActions() {
 
   /** 写入层护栏：`_` 前缀一律拦；生存系统关闭时才拦生存状态。与运行时同一套判据。 */
   function resolveSnapshotTrimPatchGuard(statData: ReturnType<typeof Schema.parse>): VariableUpdatePatchGuard {
-    const trim = settingsStore.snapshotTrim;
     return {
-      blockUnderscoreKeys: trim.enabled && trim.blockUnderscorePatch,
-      blockSurvivalPaths: trim.enabled && trim.blockSurvivalPatch && isStandaloneSurvivalDisabled(statData),
+      blockUnderscoreKeys: true,
+      blockSurvivalPaths: isStandaloneSurvivalDisabled(statData),
     };
   }
 
