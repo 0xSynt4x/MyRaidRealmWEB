@@ -259,23 +259,22 @@ export function isStandaloneSurvivalDisabled(statData: unknown): boolean {
 /**
  * 快照整形的全部开关。
  *
- * 🔴 **总开关 `enabled` 默认关闭。** 这项裁剪会改变发给模型的内容，
+ * 🔴 **`$` 前缀剔除与生存状态按模式裁不在这里** —— 那两项无条件生效，见
+ * `buildStandaloneSnapshotForChain`。写进开关只会让它们被误关掉。
+ *
+ * 🔴 **总开关 `enabled` 默认关闭。** 剩下的裁剪会改变发给模型的内容，
  * 属于「用户明确知道自己在开什么」才启用的功能，不做静默默认。
  * 子开关默认全开 —— 用户一旦打开总开关，就是想要完整的裁剪效果。
  */
 export type StandaloneSnapshotTrimSettings = {
-  /** 总开关。关闭时快照与补丁行为完全回到改动前。 */
+  /** 总开关。关闭时除 `$` 前缀剔除与生存状态裁剪外，其余裁剪一律不生效。 */
   enabled: boolean;
   /** 去 JSON 缩进（紧凑输出）。 */
   compactJson: boolean;
-  /** 递归剔除 `$` 前缀键（酒馆助手约定：不发送给 AI）。 */
-  dropDollarKeys: boolean;
   /** 剔除「设置」块。只作用于正文链；辅助链必须保留，否则模型无法回写积分触发开关。 */
   dropSettings: boolean;
   /** 「商城」只保留「物品」「技能」两个空路径。 */
   collapseShop: boolean;
-  /** 生存状态按生存系统模式裁剪。 */
-  trimSurvival: boolean;
   /** NPC 按本轮在场名单裁剪。只作用于辅助链。 */
   trimNpc: boolean;
   /** NPC 裁剪时永久保留标记为重要 NPC 的角色。 */
@@ -291,10 +290,8 @@ export type StandaloneSnapshotTrimSettings = {
 export const DEFAULT_STANDALONE_SNAPSHOT_TRIM_SETTINGS: StandaloneSnapshotTrimSettings = {
   enabled: false,
   compactJson: true,
-  dropDollarKeys: true,
   dropSettings: true,
   collapseShop: true,
-  trimSurvival: true,
   trimNpc: true,
   keepImportantNpc: true,
   keepFocusedNpc: true,
@@ -305,10 +302,8 @@ export const DEFAULT_STANDALONE_SNAPSHOT_TRIM_SETTINGS: StandaloneSnapshotTrimSe
 const STANDALONE_SNAPSHOT_TRIM_BOOLEAN_KEYS = [
   'enabled',
   'compactJson',
-  'dropDollarKeys',
   'dropSettings',
   'collapseShop',
-  'trimSurvival',
   'trimNpc',
   'keepImportantNpc',
   'keepFocusedNpc',
@@ -344,7 +339,13 @@ export type StandaloneSnapshotTrimResult = {
 /**
  * 按链路组装发送用快照。
  *
- * - 总开关关闭 → 原样返回（美化输出），完整回到改动前行为。
+ * 🔴 **两项无条件生效，与总开关无关**（见 `buildStandaloneSnapshotForChain`）：
+ * 剔除 `$` 前缀键、生存状态按模式裁。它们是正确性要求而非偏好 ——
+ * `$` 前缀本就不该发给 AI；生存系统关着时那几个数值在游戏里毫无意义，
+ * 发给正文只会诱导它写出「你的血量是 100」这类出戏内容。
+ *
+ * 其余各项仍受总开关控制：
+ * - 总开关关闭 → 只做上面两项，其余原样（美化输出）。
  * - 正文链：剔除「设置」、不裁 NPC。
  * - 辅助链：保留「设置」、按在场名单裁 NPC。
  */
@@ -357,8 +358,22 @@ export function buildStandaloneSnapshotForChain(input: {
 }): StandaloneSnapshotTrimResult {
   const { settings } = input;
 
+  // 无条件项：任何情况下都执行，不受总开关控制。
+  const baseline = {
+    dropDollarKeys: true,
+    survivalMode: resolveSurvivalMode(input.statData),
+  } as const;
+
   if (!settings.enabled) {
-    return { snapshot: input.statData, compact: false };
+    return {
+      snapshot: trimStandaloneSnapshot(input.statData, {
+        ...baseline,
+        dropSettings: false,
+        collapseShop: false,
+        presentNpcIds: null,
+      }),
+      compact: false,
+    };
   }
 
   const presentNpcIds =
@@ -373,10 +388,9 @@ export function buildStandaloneSnapshotForChain(input: {
 
   return {
     snapshot: trimStandaloneSnapshot(input.statData, {
-      dropDollarKeys: settings.dropDollarKeys,
+      ...baseline,
       dropSettings: settings.dropSettings && input.chain === 'main',
       collapseShop: settings.collapseShop,
-      survivalMode: settings.trimSurvival ? resolveSurvivalMode(input.statData) : '',
       presentNpcIds,
     }),
     compact: settings.compactJson,

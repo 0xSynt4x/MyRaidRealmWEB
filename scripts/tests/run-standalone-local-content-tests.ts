@@ -4953,13 +4953,34 @@ function testStandaloneSnapshotTrimSurvivalModes(): void {
   assert.equal(isStandaloneSurvivalDisabled({}), true);
 }
 
-function testStandaloneSnapshotTrimMasterSwitchRestoresLegacyBehaviour(): void {
-  const statData = { 设置: { 生存系统模式: '关闭' }, 玩家: { 姓名: '测试玩家' }, $foo: 1 };
+function testStandaloneSnapshotTrimMasterSwitchKeepsUnconditionalTrims(): void {
+  const statData = {
+    设置: { 生存系统模式: '关闭' },
+    玩家: { 姓名: '测试玩家', 生存状态: { 血量: 90, 体力值: 70, 饥饿值: 60, 口渴值: 50 } },
+    人物档案: { NPC_1: { 姓名: '老周', $time: 2 } },
+    商城: { 物品: { 商品1: { 价格: 100 } }, 技能: { 技能1: { 价格: 500 } } },
+    $foo: 1,
+  };
   const disabled = normalizeStandaloneSnapshotTrimSettings({ enabled: false });
   const result = buildStandaloneSnapshotForChain({ statData, settings: disabled, chain: 'main' });
+  const snapshot = result.snapshot as Record<string, any>;
 
+  // 总开关关闭：可选项一律不生效（不紧凑、不剔「设置」、不塌商城、不裁 NPC）
   assert.equal(result.compact, false);
-  assert.equal(result.snapshot, statData);
+  assert.equal('设置' in snapshot, true);
+  assert.deepEqual(Object.keys(snapshot['商城']), ['物品', '技能']);
+  assert.deepEqual(Object.keys(snapshot['人物档案']), ['NPC_1']);
+  assert.equal(snapshot['商城']['物品']['商品1']['价格'], 100);
+
+  // 但两项无条件项照常生效：`$` 前缀剔除 + 生存状态按模式裁
+  assert.equal('$foo' in snapshot, false);
+  assert.equal('$time' in snapshot['人物档案']['NPC_1'], false);
+  assert.equal('生存状态' in snapshot['玩家'], false);
+
+  // 真状态一个字节都不能动
+  assert.equal(statData['玩家']['生存状态']['血量'], 90);
+  assert.equal(statData['$foo'], 1);
+  assert.equal(statData['商城']['物品']['商品1']['价格'], 100);
 }
 
 function testStandaloneSnapshotTrimDefaultsToDisabled(): void {
@@ -4971,17 +4992,28 @@ function testStandaloneSnapshotTrimDefaultsToDisabled(): void {
   assert.equal(settings.trimNpc, true);
   assert.equal(settings.blockUnderscorePatch, true);
 
-  // 默认设置下发给模型的快照 = 原始数据 + 美化输出，与改动前逐字一致
-  const statData = { 设置: { 生存系统模式: '关闭' }, 玩家: { 姓名: '测试玩家' }, $foo: 1 };
+  // 默认设置下：可选项全部不生效（不紧凑、不剔「设置」、不裁 NPC）
+  const statData = {
+    设置: { 生存系统模式: '关闭' },
+    玩家: { 姓名: '测试玩家', 生存状态: { 血量: 90 } },
+    人物档案: { NPC_1: { 姓名: '老周' }, NPC_2: { 姓名: '王丽' } },
+    $foo: 1,
+  };
   const result = buildStandaloneSnapshotForChain({
     statData,
     settings,
     chain: 'variable_update',
     texts: ['测试玩家走进来。'],
   });
+  const snapshot = result.snapshot as Record<string, any>;
 
   assert.equal(result.compact, false);
-  assert.equal(result.snapshot, statData);
+  assert.equal('设置' in snapshot, true);
+  assert.deepEqual(Object.keys(snapshot['人物档案']), ['NPC_1', 'NPC_2']);
+
+  // 但两项无条件项照常生效
+  assert.equal('$foo' in snapshot, false);
+  assert.equal('生存状态' in snapshot['玩家'], false);
 }
 
 function testStandalonePatchGuardDropsUnderscoreAndSurvivalPaths(): void {
@@ -5297,8 +5329,8 @@ async function run(): Promise<void> {
     ['snapshot trim keeps every npc when nothing matches', testStandaloneSnapshotTrimKeepsEveryNpcWhenNothingMatches],
     ['snapshot trim survival modes', testStandaloneSnapshotTrimSurvivalModes],
     [
-      'snapshot trim master switch restores legacy behaviour',
-      testStandaloneSnapshotTrimMasterSwitchRestoresLegacyBehaviour,
+      'snapshot trim master switch keeps unconditional trims',
+      testStandaloneSnapshotTrimMasterSwitchKeepsUnconditionalTrims,
     ],
     ['snapshot trim defaults to disabled', testStandaloneSnapshotTrimDefaultsToDisabled],
     ['patch guard drops underscore and survival paths', testStandalonePatchGuardDropsUnderscoreAndSurvivalPaths],

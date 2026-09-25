@@ -422,14 +422,6 @@
           </div>
 
           <div class="snapshot-trim-row" :class="{ 'is-disabled': !snapshotTrim.enabled }">
-            <span class="snapshot-trim-label">{{ t('settings.snapshotTrim.dropDollarKeys') }}</span>
-            <label class="toggle-switch">
-              <input v-model="snapshotTrim.dropDollarKeys" type="checkbox" :disabled="!snapshotTrim.enabled" />
-              <span class="toggle-track"></span>
-            </label>
-          </div>
-
-          <div class="snapshot-trim-row" :class="{ 'is-disabled': !snapshotTrim.enabled }">
             <span class="snapshot-trim-label">{{ t('settings.snapshotTrim.dropSettings') }}</span>
             <label class="toggle-switch">
               <input v-model="snapshotTrim.dropSettings" type="checkbox" :disabled="!snapshotTrim.enabled" />
@@ -441,14 +433,6 @@
             <span class="snapshot-trim-label">{{ t('settings.snapshotTrim.collapseShop') }}</span>
             <label class="toggle-switch">
               <input v-model="snapshotTrim.collapseShop" type="checkbox" :disabled="!snapshotTrim.enabled" />
-              <span class="toggle-track"></span>
-            </label>
-          </div>
-
-          <div class="snapshot-trim-row" :class="{ 'is-disabled': !snapshotTrim.enabled }">
-            <span class="snapshot-trim-label">{{ t('settings.snapshotTrim.trimSurvival') }}</span>
-            <label class="toggle-switch">
-              <input v-model="snapshotTrim.trimSurvival" type="checkbox" :disabled="!snapshotTrim.enabled" />
               <span class="toggle-track"></span>
             </label>
           </div>
