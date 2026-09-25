@@ -114,6 +114,7 @@ export class NovelAiImageError extends Error {
     | 'unreachable'
     | 'timeout'
     | 'aborted'
+    | 'missing-key'
     | 'unauthorized'
     | 'payment-required'
     | 'content-rejected'
@@ -326,7 +327,7 @@ export async function generateNovelAiImage(options: NovelAiGenerateOptions): Pro
   }
 
   if (!options.apiKey.trim()) {
-    throw new NovelAiImageError('unauthorized', 'empty-key');
+    throw new NovelAiImageError('missing-key', 'empty-key');
   }
 
   const timeoutMs = options.timeoutMs ?? NOVELAI_DEFAULT_TIMEOUT_MS;
