@@ -29,8 +29,6 @@ type SendStandaloneUserMessageOptions = {
   scriptedTurn?: StandaloneScriptedTurnInput;
 };
 
-const STANDALONE_VARIABLE_UPDATE_TIMEOUT_ERROR_MESSAGE = '变量更新补写超时，请稍后重试。';
-
 /**
  * 消息操作 Composable
  *
@@ -105,11 +103,6 @@ export function useMessageActions() {
   function isAbortLikeError(error: unknown): boolean {
     const message = error instanceof Error ? error.message : String(error);
     return /abort|aborted|cancel|stopped/i.test(message);
-  }
-
-  function isVariableUpdateTimeoutError(error: unknown): boolean {
-    const message = error instanceof Error ? error.message : String(error);
-    return message.includes(STANDALONE_VARIABLE_UPDATE_TIMEOUT_ERROR_MESSAGE);
   }
 
   function markStandaloneVariableUpdateInterrupted(input: { reason: string; messageId: number }) {
@@ -253,20 +246,11 @@ export function useMessageActions() {
             messageId: appendedAssistantMessage.message_id,
             errorMessage,
           });
-          if (isVariableUpdateTimeoutError(error)) {
-            notificationStore.warning(
-              settingsStore.locale === 'en'
-                ? `Reply received, but variable update timed out: ${errorMessage}`
-                : `正文已收到，但变量更新超时：${errorMessage}`,
-              5000,
-            );
-          } else {
-            notificationStore.error(
-              settingsStore.locale === 'en'
-                ? `Reply received, but variable update failed: ${errorMessage}`
-                : `正文已收到，但变量更新失败：${errorMessage}`,
-            );
-          }
+          notificationStore.error(
+            settingsStore.locale === 'en'
+              ? `Reply received, but variable update failed: ${errorMessage}`
+              : `正文已收到，但变量更新失败：${errorMessage}`,
+          );
         }
       } finally {
         emitStandaloneGenerationState(false, reason);
@@ -587,20 +571,11 @@ export function useMessageActions() {
         messageId: targetAssistantMessage.message_id,
         errorMessage,
       });
-      if (isVariableUpdateTimeoutError(error)) {
-        notificationStore.warning(
-          settingsStore.locale === 'en'
-            ? `Variable update timed out: ${errorMessage}`
-            : `变量更新超时：${errorMessage}`,
-          5000,
-        );
-      } else {
-        notificationStore.error(
-          settingsStore.locale === 'en'
-            ? `Failed to update variables: ${errorMessage}`
-            : `更新变量失败：${errorMessage}`,
-        );
-      }
+      notificationStore.error(
+        settingsStore.locale === 'en'
+          ? `Failed to update variables: ${errorMessage}`
+          : `更新变量失败：${errorMessage}`,
+      );
       return false;
     }
   }

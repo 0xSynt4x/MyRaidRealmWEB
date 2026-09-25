@@ -84,9 +84,6 @@ export type StandaloneVariableUpdatePhaseOutcome = {
   usedApiLabel: string;
 };
 
-const STANDALONE_VARIABLE_UPDATE_TIMEOUT_MS = 60_000;
-const STANDALONE_VARIABLE_UPDATE_TIMEOUT_ERROR_MESSAGE = '变量更新补写超时，请稍后重试。';
-
 export async function runStandaloneVariableUpdatePass(input: {
   /** 主 API 候选，按顺序尝试 */
   mainApis: ApiConfig[];
@@ -124,7 +121,7 @@ export async function runStandaloneVariableUpdatePass(input: {
   activeStandaloneTurnController = controller;
 
   try {
-    const secondPassResult = await requestVariableUpdateSecondPassWithTimeout(
+    const secondPassResult = await requestVariableUpdateSecondPass(
       {
         mainApis: input.mainApis,
         assistantApis: input.assistantApis,
@@ -572,39 +569,6 @@ function toApiLabel(api: ApiConfig): string {
   return `${api.source}:${api.model}`;
 }
 
-function createTimedAbortSignal(input: { parentSignal: AbortSignal; timeoutMs: number; timeoutMessage: string }) {
-  const controller = new AbortController();
-  let didTimeout = false;
-  const onParentAbort = () => {
-    if (!controller.signal.aborted) {
-      controller.abort(input.parentSignal.reason);
-    }
-  };
-
-  if (input.parentSignal.aborted) {
-    onParentAbort();
-  } else {
-    input.parentSignal.addEventListener('abort', onParentAbort, { once: true });
-  }
-
-  const timeoutId = setTimeout(() => {
-    didTimeout = true;
-    if (!controller.signal.aborted) {
-      controller.abort(new Error(input.timeoutMessage));
-    }
-  }, input.timeoutMs);
-
-  return {
-    signal: controller.signal,
-    didTimeout: () => didTimeout,
-    timeoutError: new Error(input.timeoutMessage),
-    cleanup: () => {
-      clearTimeout(timeoutId);
-      input.parentSignal.removeEventListener('abort', onParentAbort);
-    },
-  };
-}
-
 /** 挑出配置完整、能真正发起请求的主 API 候选 */
 function resolveConfiguredMainApis(mainApis: ApiConfig[] | undefined): ApiConfig[] {
   return (mainApis ?? []).filter(api => hasCompleteStandaloneApiConfig(api));
@@ -992,34 +956,6 @@ async function requestVariableUpdateSecondPass(
   };
 }
 
-async function requestVariableUpdateSecondPassWithTimeout(
-  input: StandaloneLocalTurnInput,
-  assistantContentText: string,
-  signal: AbortSignal,
-): Promise<VariableUpdateSecondPassResult> {
-  const timedSignal = createTimedAbortSignal({
-    parentSignal: signal,
-    timeoutMs: STANDALONE_VARIABLE_UPDATE_TIMEOUT_MS,
-    timeoutMessage: STANDALONE_VARIABLE_UPDATE_TIMEOUT_ERROR_MESSAGE,
-  });
-
-  try {
-    return await requestVariableUpdateSecondPass(input, assistantContentText, timedSignal.signal);
-  } catch (error) {
-    if (signal.aborted) {
-      throw error;
-    }
-
-    if (timedSignal.didTimeout()) {
-      throw timedSignal.timeoutError;
-    }
-
-    throw error;
-  } finally {
-    timedSignal.cleanup();
-  }
-}
-
 export function cancelStandaloneLocalTurn(): void {
   activeStandaloneTurnController?.abort();
 }
@@ -1089,7 +1025,7 @@ export async function runStandaloneLocalTurn(input: StandaloneLocalTurnInput): P
           let debugTrace = mainDebugTrace;
 
           try {
-            const secondPassResult = await requestVariableUpdateSecondPassWithTimeout(
+            const secondPassResult = await requestVariableUpdateSecondPass(
               input,
               assistantContentText,
               controller.signal,

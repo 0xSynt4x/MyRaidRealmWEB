@@ -97,8 +97,12 @@ export function useComfyUiImageGeneration() {
         return t('novelaiError.timeout');
       case 'aborted':
         return t('novelaiError.aborted');
+      case 'missing-key':
+        return t('novelaiError.missingKey');
       case 'unauthorized':
-        return t('novelaiError.unauthorized');
+        // 站点返回的原始说明必须带出去 —— 它常直接写明原因（token 无效 / 来源不被允许 等），
+        // 只回一句「Key 无效」会把最有用的排查线索吞掉。
+        return t('novelaiError.unauthorized', detail);
       case 'payment-required':
         return t('novelaiError.paymentRequired');
       case 'content-rejected':

@@ -3707,22 +3707,17 @@ async function testManualRefreshLatestAssistantVariableUpdateRunsSecondPass(): P
   }
 }
 
-async function testManualRefreshLatestAssistantVariableUpdateTimeoutClearsRunningState(): Promise<void> {
+async function testManualRefreshLatestAssistantVariableUpdateFailureClearsRunningState(): Promise<void> {
   resetStandaloneTestEnvironment();
   const originalFetch = globalThis.fetch;
 
-  globalThis.fetch = ((input: string | URL | Request, init?: RequestInit) => {
-    void input;
-    return new Promise<Response>((_, reject) => {
-      const signal = init?.signal;
-      if (signal) {
-        signal.addEventListener('abort', () => {
-          const reason = signal.reason;
-          reject(reason instanceof Error ? reason : new Error(String(reason ?? 'aborted-by-test')));
-        });
-      }
-    });
-  }) as typeof fetch;
+  globalThis.fetch = (async () =>
+    createMockFetchResponse({
+      ok: false,
+      status: 500,
+      statusText: 'Internal Server Error',
+      textData: 'assistant upstream error',
+    })) as typeof fetch;
 
   try {
     const settingsStore = useSettingsStore();
@@ -3750,14 +3745,6 @@ async function testManualRefreshLatestAssistantVariableUpdateTimeoutClearsRunnin
     ];
     setupStore.selectedPreset = null;
 
-    const originalSetTimeout = globalThis.setTimeout;
-    const originalWindowSetTimeout = window.setTimeout;
-    const fastTimeout = ((handler: TimerHandler, _timeout?: number, ...args: any[]) =>
-      originalSetTimeout(handler, 0, ...args)) as typeof setTimeout;
-
-    globalThis.setTimeout = fastTimeout;
-    window.setTimeout = fastTimeout;
-
     messagesStore.appendStandaloneMessage({
       role: 'user',
       raw_content: '我想继续推进剧情',
@@ -3775,21 +3762,17 @@ async function testManualRefreshLatestAssistantVariableUpdateTimeoutClearsRunnin
       variable_update_warning: '旧错误',
     });
 
-    try {
-      const refreshed = await actions.refreshLatestAssistantVariableUpdate('manual_variable_refresh_timeout');
-      assert.equal(refreshed, false);
-      await flushScheduledUiEffects(8);
-    } finally {
-      globalThis.setTimeout = originalSetTimeout;
-      window.setTimeout = originalWindowSetTimeout;
-    }
+    // 补写请求失败不再抛错，只是把失败写进 warning 后走完收尾，所以流程本身返回 true。
+    const refreshed = await actions.refreshLatestAssistantVariableUpdate('manual_variable_refresh_failure');
+    assert.equal(refreshed, true);
+    await flushScheduledUiEffects(8);
 
     const updatedMessage = messagesStore.getMessage(assistantMessage.message_id);
     assert.equal(updatedMessage?.variable_update_status, 'failed');
     assert.equal(messagesStore.standaloneAssistantGenerationBusy, false);
     assert.equal(messagesStore.hasRunningVariableUpdate, false);
     assert.equal(messagesStore.isStandaloneGenerationLocked, false);
-    assert.match(updatedMessage?.variable_update_warning ?? '', /变量更新补写超时/);
+    assert.match(updatedMessage?.variable_update_warning ?? '', /HTTP 500/);
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -4253,7 +4236,7 @@ async function testStandaloneMessageActionsClearBusyStateWhenSuccessSideEffectTh
   }
 }
 
-async function testStandaloneMessageActionsClearBusyStateAfterVariableUpdateTimeout(): Promise<void> {
+async function testStandaloneMessageActionsClearBusyStateAfterVariableUpdateRequestFailure(): Promise<void> {
   resetStandaloneTestEnvironment();
   const originalFetch = globalThis.fetch;
 
@@ -4261,15 +4244,14 @@ async function testStandaloneMessageActionsClearBusyStateAfterVariableUpdateTime
     const body = JSON.parse(String(init?.body ?? '{}'));
 
     if (isStandaloneVariableUpdateRequest(body)) {
-      return new Promise<Response>((_, reject) => {
-        const signal = init?.signal;
-        if (signal) {
-          signal.addEventListener('abort', () => {
-            const reason = signal.reason;
-            reject(reason instanceof Error ? reason : new Error(String(reason ?? 'aborted-by-test')));
-          });
-        }
-      });
+      return Promise.resolve(
+        createMockFetchResponse({
+          ok: false,
+          status: 500,
+          statusText: 'Internal Server Error',
+          textData: 'assistant upstream error',
+        }),
+      );
     }
 
     return Promise.resolve(
@@ -4313,22 +4295,9 @@ async function testStandaloneMessageActionsClearBusyStateAfterVariableUpdateTime
     ];
     setupStore.selectedPreset = null;
 
-    const originalSetTimeout = globalThis.setTimeout;
-    const originalWindowSetTimeout = window.setTimeout;
-    const fastTimeout = ((handler: TimerHandler, _timeout?: number, ...args: any[]) =>
-      originalSetTimeout(handler, 0, ...args)) as typeof setTimeout;
-
-    globalThis.setTimeout = fastTimeout;
-    window.setTimeout = fastTimeout;
-
-    try {
-      const sent = await actions.sendStandaloneUserMessage('测试变量超时后的收尾', 'variable_update_timeout_test');
-      assert.equal(sent, true);
-      await flushScheduledUiEffects(8);
-    } finally {
-      globalThis.setTimeout = originalSetTimeout;
-      window.setTimeout = originalWindowSetTimeout;
-    }
+    const sent = await actions.sendStandaloneUserMessage('测试变量失败后的收尾', 'variable_update_request_failure_test');
+    assert.equal(sent, true);
+    await flushScheduledUiEffects(8);
 
     assert.equal(messagesStore.standaloneAssistantGenerationBusy, false);
     assert.equal(messagesStore.hasRunningVariableUpdate, false);
@@ -4342,7 +4311,7 @@ async function testStandaloneMessageActionsClearBusyStateAfterVariableUpdateTime
     assert.ok(lastAssistantMessage);
     assert.equal(lastAssistantMessage?.content_text, '主回复已到达');
     assert.equal(lastAssistantMessage?.variable_update_status, 'failed');
-    assert.match(lastAssistantMessage?.variable_update_warning ?? '', /变量更新补写超时/);
+    assert.match(lastAssistantMessage?.variable_update_warning ?? '', /HTTP 500/);
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -4796,20 +4765,19 @@ async function testStandaloneTavernPresetLibraryIsSlimmedOnStartup(): Promise<vo
 /**
  * 单条测试的超时上限。
  *
- * 为什么必须有：有条测试会死等一个永远不来的结果（假请求不理会取消信号）。
+ * 为什么必须有：一旦有测试挂住（比如死等一个永远不来的结果），
  * 没有超时的话，事件循环一空 node 就以「成功」退出，**后面所有测试被静默吞掉、
  * CI 还显示绿**。加上它，挂住的测试会变成一条明确的失败，后面的照跑。
  *
- * 默认 90 秒：产品里有一条 60 秒的「变量更新补写超时」，测试要靠它触发，
- * 上限压太低会把这类测试误判成挂住。可用 STANDALONE_TEST_TIMEOUT_MS 临时覆盖。
+ * 可用 STANDALONE_TEST_TIMEOUT_MS 临时覆盖。
  */
 const STANDALONE_TEST_TIMEOUT_MS = Number(process.env.STANDALONE_TEST_TIMEOUT_MS) || 90_000;
 
 /**
  * 看门狗必须用「测试跑之前就抓好的」定时器。
  *
- * 有条测试会把 `globalThis.setTimeout` 换成 0ms 版来快进产品的 60 秒超时；
- * 如果看门狗现取 `setTimeout`，就会被它顺手加速成 0ms，秒判「超时」——
+ * 有些测试会替换 `globalThis.setTimeout`（例如快进防抖窗口）；
+ * 如果看门狗现取 `setTimeout`，就会被它们顺手改掉，秒判「超时」——
  * 变成被测对象把裁判也一起改了。这里在模块加载时就抓死。
  */
 const standaloneTestSetTimeout = globalThis.setTimeout;
@@ -5037,8 +5005,8 @@ async function run(): Promise<void> {
       testManualRefreshLatestAssistantVariableUpdateRunsSecondPass,
     ],
     [
-      'manual refresh latest assistant variable update timeout clears running state',
-      testManualRefreshLatestAssistantVariableUpdateTimeoutClearsRunningState,
+      'manual refresh latest assistant variable update failure clears running state',
+      testManualRefreshLatestAssistantVariableUpdateFailureClearsRunningState,
     ],
     ['standalone resend prefers selected user snapshot', testStandaloneResendPrefersSelectedUserMessageSnapshot],
     [
@@ -5054,8 +5022,8 @@ async function run(): Promise<void> {
       testStandaloneMessageActionsClearBusyStateWhenSuccessSideEffectThrows,
     ],
     [
-      'standalone message actions clear busy state after variable update timeout',
-      testStandaloneMessageActionsClearBusyStateAfterVariableUpdateTimeout,
+      'standalone message actions clear busy state after variable update request failure',
+      testStandaloneMessageActionsClearBusyStateAfterVariableUpdateRequestFailure,
     ],
     [
       'standalone delete blocks formal deletion without snapshot',

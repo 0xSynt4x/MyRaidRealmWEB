@@ -31,11 +31,20 @@
           <i class="ti ti-refresh"></i>{{ t('messageImage.reload') }}
         </button>
       </div>
-      <button v-else class="image-slot-frame" :title="t('messageImage.viewOriginal')" @click="openViewer">
+      <button
+        v-else-if="!imageCollapsed"
+        class="image-slot-frame"
+        :title="t('messageImage.viewOriginal')"
+        @click="openViewer"
+      >
         <img :key="reloadKey" :src="displayUrl" :alt="prompt" loading="lazy" @error="loadFailed = true" />
       </button>
       <div class="image-slot-bar">
-        <span class="image-slot-hint"><i class="ti ti-photo"></i>{{ t('messageImage.generated') }}</span>
+        <!-- 已生成的插图可以收起来：图占地方时点一下收掉，只留这一行 -->
+        <button v-if="!loadFailed" class="image-slot-toggle" @click="imageCollapsed = !imageCollapsed">
+          <i class="ti" :class="imageCollapsed ? 'ti-photo' : 'ti-photo-off'"></i>
+          {{ imageCollapsed ? t('messageImage.expandImage') : t('messageImage.collapseImage') }}
+        </button>
         <button class="image-slot-btn" :disabled="disabled" @click="emit('generate')">
           <i class="ti ti-refresh"></i>{{ t('messageImage.regenerate') }}
         </button>
@@ -94,6 +103,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 const promptExpanded = ref(false);
+const imageCollapsed = ref(false);
 const viewerVisible = ref(false);
 const loadFailed = ref(false);
 const reloadKey = ref(0);
@@ -131,13 +141,12 @@ async function resolveStoredImage() {
   }
 }
 
-watch(
-  () => props.image?.url,
-  () => {
-    loadFailed.value = false;
-    reloadKey.value += 1;
-  },
-);
+watch(displayUrl, () => {
+  loadFailed.value = false;
+  reloadKey.value += 1;
+  // 新图来了就自动展开，别让重画出来的图一开始是收着的
+  imageCollapsed.value = false;
+});
 
 watch(() => props.image?.imageId, resolveStoredImage, { immediate: true });
 
@@ -308,6 +317,11 @@ function retryLoad() {
   font-size: calc(11px * var(--ui-font-scale));
   color: var(--accent-primary);
   cursor: pointer;
+}
+
+/* 图片底栏里的折叠按钮要挨着左边排（上面那条 margin-left:auto 是给提示词头部把开关推到右端用的） */
+.image-slot-bar .image-slot-toggle {
+  margin-left: 0;
 }
 
 .image-slot-error {
