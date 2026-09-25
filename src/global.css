@@ -292,19 +292,36 @@
 }
 
 /* 原生下拉弹层跟随主题
-   弹层由浏览器自己绘制，组件里的 .xxx-select 样式管不到它，必须单独给 option 定底色和字色。
+   弹层由浏览器自己绘制，组件里的 .xxx-select 样式管不到它，必须单独给 option / optgroup 定底色和字色。
    默认 / 金属 / 古卷 三个主题之前漏了这条 → 深色界面会弹出浅色列表。
+
+   🔴 分组标题（optgroup）那一行也必须给底色：不给的话它跟着**弹层底**走，
+   而弹层底色取自 select 自己的 background-color —— select 底色半透明时，
+   那一行就会透出后面的内容，看着就是「某些配色不跟主题」。
+
    各主题块里的同名规则优先级更高，仍可覆盖这里。 */
-option {
+option,
+optgroup {
   background-color: var(--bg-card-solid);
   color: var(--text-primary);
 }
 
+/* 分组标题用次级字色，跟选项正文区分开；子项 option 有自己的 color，不受这条影响 */
+optgroup {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
 /* 暗色主题下拉框修复 */
 [data-theme='dark'] select,
-[data-theme='dark'] option {
+[data-theme='dark'] option,
+[data-theme='dark'] optgroup {
   background-color: var(--bg-card-solid);
   color: var(--text-primary);
+}
+
+[data-theme='dark'] optgroup {
+  color: var(--text-secondary);
 }
 
 /* ========== 金属色主题（银灰拉丝） ========== */

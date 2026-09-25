@@ -1,28 +1,50 @@
 <template>
   <div class="setting-card comfy-card">
-    <h3 class="card-title"><i class="ti ti-wand"></i>{{ t('settings.card.comfyui') }}</h3>
-
-    <!-- 这条一直显示：不开这个权限，网页根本发不出请求 -->
-    <div class="comfy-notice">
-      <i class="ti ti-world"></i>
-      <div class="comfy-notice-body">
-        <p class="comfy-notice-title">{{ t('settings.comfyui.localNetworkTitle') }}</p>
-        <p>{{ t('settings.comfyui.localNetworkBody') }}</p>
-      </div>
-    </div>
+    <h3 class="card-title"><i class="ti ti-wand"></i>{{ t('settings.card.imageGeneration') }}</h3>
 
     <div class="setting-row">
-      <span class="row-label">{{ t('settings.comfyui.enable') }}</span>
+      <span class="row-label">{{ t('settings.imageGeneration.enable') }}</span>
       <label class="toggle-switch">
-        <input v-model="comfyUi.enabled" type="checkbox" />
+        <input v-model="imageGeneration.enabled" type="checkbox" />
         <span class="toggle-track"></span>
       </label>
       <span class="row-value status">
-        {{ comfyUi.enabled ? t('settings.comfyui.enabledHint') : t('settings.comfyui.disabledHint') }}
+        {{
+          imageGeneration.enabled
+            ? t('settings.imageGeneration.enabledHint')
+            : t('settings.imageGeneration.disabledHint')
+        }}
       </span>
     </div>
 
-    <template v-if="comfyUi.enabled">
+    <template v-if="imageGeneration.enabled">
+      <div class="setting-row stacked">
+        <span class="row-label">{{ t('settings.imageGeneration.backend') }}</span>
+        <div class="backend-options">
+          <label class="backend-option">
+            <input v-model="imageGeneration.backend" type="radio" value="comfyui" />
+            <span>{{ t('settings.imageGeneration.backendComfyUi') }}</span>
+          </label>
+          <label class="backend-option">
+            <input v-model="imageGeneration.backend" type="radio" value="novelai" />
+            <span>{{ t('settings.imageGeneration.backendNovelAi') }}</span>
+          </label>
+        </div>
+        <span class="row-value status">{{ t('settings.imageGeneration.backendHint') }}</span>
+      </div>
+    </template>
+
+    <!-- ─────────────── 本地 ComfyUI ─────────────── -->
+    <template v-if="imageGeneration.enabled && isComfyUiBackend">
+      <!-- 这条只在 ComfyUI 下显示：不开这个权限，网页根本发不出请求 -->
+      <div class="comfy-notice">
+        <i class="ti ti-world"></i>
+        <div class="comfy-notice-body">
+          <p class="comfy-notice-title">{{ t('settings.comfyui.localNetworkTitle') }}</p>
+          <p>{{ t('settings.comfyui.localNetworkBody') }}</p>
+        </div>
+      </div>
+
       <div class="setting-row">
         <span class="row-label">{{ t('settings.comfyui.serverUrl') }}</span>
         <input
@@ -186,6 +208,33 @@
         <p>{{ t('settings.comfyui.helpUsage') }}</p>
       </div>
     </template>
+
+    <!-- ─────────────── NovelAI 兼容接口 ─────────────── -->
+    <NovelAiSettingsSection v-if="imageGeneration.enabled && isNovelAiBackend" />
+
+    <!-- 云端图片存在本机浏览器里，换机器打开存档看不到 —— 这里给个手动清理入口 -->
+    <template v-if="imageGeneration.enabled">
+      <div class="comfy-divider">{{ t('settings.imageGeneration.cacheSection') }}</div>
+
+      <div class="setting-row">
+        <span class="row-label">{{ t('settings.imageGeneration.cacheUsage') }}</span>
+        <span class="row-value status">{{ cacheUsageText }}</span>
+        <button class="chip" :disabled="cacheUsage.count === 0" @click="browserVisible = true">
+          <i class="ti ti-photo"></i>{{ t('settings.imageGeneration.browseCache') }}
+        </button>
+        <button class="chip" :disabled="isClearingCache" @click="handleClearImageCache">
+          <i class="ti" :class="isClearingCache ? 'ti-loader-2 ti-spin' : 'ti-trash'"></i>
+          {{ t('settings.imageGeneration.clearCache') }}
+        </button>
+      </div>
+
+      <p class="comfy-hint">
+        <i class="ti ti-info-circle"></i>
+        <span>{{ t('settings.imageGeneration.cacheHint') }}</span>
+      </p>
+    </template>
+
+    <GeneratedImageBrowser :visible="browserVisible" @close="browserVisible = false" @changed="refreshCacheUsage" />
   </div>
 </template>
 
@@ -204,13 +253,72 @@ import {
   normalizeComfyUiBaseUrl,
 } from '../../utils/comfyuiClient';
 import { COMFYUI_STYLE_PRESETS, CUSTOM_STYLE_PRESET_ID, getStylePresetPrompt } from '../../utils/comfyuiStylePresets';
+import { clearGeneratedImages, formatByteSize, getGeneratedImageStorageUsage } from '../../utils/imageStorage';
+import GeneratedImageBrowser from './GeneratedImageBrowser.vue';
+import NovelAiSettingsSection from './NovelAiSettingsSection.vue';
 
 type Tone = 'ok' | 'error' | 'idle' | 'pending';
 
 const { t } = useI18n();
 const settingsStore = useSettingsStore();
 const notificationStore = useNotificationStore();
-const { comfyUi } = storeToRefs(settingsStore);
+const { comfyUi, imageGeneration } = storeToRefs(settingsStore);
+
+/** 下半部分按当前后端二选一显示；配置各自记住，切回来不丢 */
+const isComfyUiBackend = computed(() => imageGeneration.value.backend === 'comfyui');
+const isNovelAiBackend = computed(() => imageGeneration.value.backend === 'novelai');
+
+/* ── 云端图片缓存：显示占用 + 一键清空 ── */
+
+const cacheUsage = ref({ count: 0, bytes: 0 });
+const isClearingCache = ref(false);
+const browserVisible = ref(false);
+
+const cacheUsageText = computed(() =>
+  t('settings.imageGeneration.cacheUsageValue', {
+    count: cacheUsage.value.count,
+    size: formatByteSize(cacheUsage.value.bytes),
+  }),
+);
+
+async function refreshCacheUsage() {
+  try {
+    cacheUsage.value = await getGeneratedImageStorageUsage({ refresh: true });
+  } catch (error) {
+    console.warn('[Image] 统计生图缓存占用失败:', error);
+  }
+}
+
+async function handleClearImageCache() {
+  if (isClearingCache.value) return;
+
+  const confirmed = window.confirm(t('settings.imageGeneration.clearCacheConfirm', { count: cacheUsage.value.count }));
+  if (!confirmed) return;
+
+  isClearingCache.value = true;
+  try {
+    const cleared = await clearGeneratedImages();
+    cacheUsage.value = { count: 0, bytes: 0 };
+    notificationStore.success(
+      t('settings.imageGeneration.clearCacheDone', {
+        count: cleared.count,
+        size: formatByteSize(cleared.bytes),
+      }),
+    );
+  } catch (error) {
+    console.error('[Image] 清空生图缓存失败:', error);
+    notificationStore.error(t('settings.imageGeneration.clearCacheFailed'));
+  } finally {
+    isClearingCache.value = false;
+  }
+}
+
+// 统计要把图读出来量一遍，别卡住设置面板的首帧 —— 让出一帧再算
+onMounted(() => {
+  window.setTimeout(() => {
+    void refreshCacheUsage();
+  }, 0);
+});
 
 const workflowDraft = ref(comfyUi.value.workflowJson);
 const isTesting = ref(false);
@@ -253,11 +361,11 @@ watch(workflowDraft, value => {
   scheduleAnalysis();
 });
 
-// 打开总开关时，顺手把还没转成功的工作流再转一次
+// 打开生图总开关、或从 NovelAI 切回 ComfyUI 时，顺手把还没转成功的工作流再转一次
 watch(
-  () => comfyUi.value.enabled,
-  enabled => {
-    if (enabled && workflowDraft.value.trim() && analysisTone.value !== 'ok') {
+  [() => imageGeneration.value.enabled, isComfyUiBackend],
+  ([enabled, comfyUiActive]) => {
+    if (enabled && comfyUiActive && workflowDraft.value.trim() && analysisTone.value !== 'ok') {
       scheduleAnalysis(true);
     }
   },
@@ -528,6 +636,42 @@ onMounted(() => {
 }
 
 /* 本地网络授权提示：一直可见，不藏在开关后面 */
+/* 后端单选：两个横排的圆点选项 */
+.backend-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.backend-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  font-size: calc(12px * var(--ui-font-scale));
+  color: var(--text-secondary);
+  background: var(--bg-primary);
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all var(--motion-fast);
+}
+
+.backend-option:hover {
+  border-color: rgba(var(--accent-primary-rgb), 0.4);
+}
+
+.backend-option:has(input:checked) {
+  color: var(--accent-primary);
+  border-color: rgba(var(--accent-primary-rgb), 0.5);
+  background: rgba(var(--accent-primary-rgb), 0.08);
+}
+
+.backend-option input {
+  margin: 0;
+  accent-color: var(--accent-primary);
+}
+
 .comfy-notice {
   display: flex;
   align-items: flex-start;
@@ -708,9 +852,13 @@ onMounted(() => {
   text-align: center;
 }
 
+/* 🔴 下拉框底色必须**不透明**：Chrome 拿 select 的 background-color 铺原生弹层的底，
+   半透明的话弹层会透出后面的内容（分组标题那一行尤其明显）。
+   上面那条共用规则给的是半透明的 --input-bg/--glass-border，这里必须覆盖掉。 */
 .comfy-select {
   flex: 1;
   min-width: 0;
+  background: var(--bg-card-solid);
 }
 
 .comfy-textarea {

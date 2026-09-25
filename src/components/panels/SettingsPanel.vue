@@ -394,7 +394,7 @@
 
     <!-- ==================== 文生图标签页 ==================== -->
     <div v-show="currentTab === 'textToImage'" class="ui-settings">
-      <ComfyUiSettingsCard />
+      <ImageGenerationSettingsCard />
     </div>
 
     <!-- ==================== API 配置标签页 ==================== -->
@@ -1075,7 +1075,7 @@ import { useStatDataStore } from '../../stores/statData';
 import { useStatDataActions } from '../../stores/statDataActions';
 import { useSetupStore } from '../../stores/setup';
 import DeclarationModal from './DeclarationModal.vue';
-import ComfyUiSettingsCard from './ComfyUiSettingsCard.vue';
+import ImageGenerationSettingsCard from './ImageGenerationSettingsCard.vue';
 import { useStandaloneArchiveManager } from '../../composables/useStandaloneArchiveManager';
 import { STAGE_SUMMARY_THRESHOLD_OPTIONS } from '../../utils/stageSummaryThreshold';
 

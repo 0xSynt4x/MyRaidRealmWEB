@@ -24,8 +24,14 @@ import { parseStreamingTaggedAssistantReply, parseTaggedAssistantReply } from '.
  */
 export interface MessageGeneratedImage {
   status: 'idle' | 'running' | 'done' | 'error';
+  /** 本地 ComfyUI：图片在 ComfyUI 服务上的地址 */
   url?: string;
   filename?: string;
+  /**
+   * 云端出图：图片存在本机 IndexedDB 里的编号。
+   * 旧存档没有这个字段 —— 读取时按「有编号走仓库、无编号走 url」两条路处理。
+   */
+  imageId?: string;
   prompt: string;
   error?: string;
 }

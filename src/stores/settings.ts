@@ -22,6 +22,7 @@ import {
   NO_STYLE_PRESET_ID,
   findStylePreset,
 } from '../utils/comfyuiStylePresets';
+import { findImageStylePreset } from '../utils/imageStylePresets';
 import { DEFAULT_STAGE_SUMMARY_THRESHOLD, normalizeStageSummaryThreshold } from '../utils/stageSummaryThreshold';
 
 export type Theme = 'light' | 'dark' | 'steelcool' | 'solarized' | 'everforest1980s' | 'wuxia';
@@ -58,10 +59,8 @@ export interface StandaloneLocalContentSettings {
   builtinAssetRouteOverrides: StandaloneBuiltinAssetRouteOverrideMap;
 }
 
-/** 本地 ComfyUI 生图配置 */
+/** 本地 ComfyUI 生图配置（开关已上移到「生图总开关」，这里只剩后端自己的参数） */
 export interface ComfyUiSettings {
-  /** 功能总开关 */
-  enabled: boolean;
   /** 服务地址，形如 http://127.0.0.1:8188 */
   baseUrl: string;
   /** 玩家粘贴的工作流原文（API 格式或 ComfyUI 界面格式都行） */
@@ -93,7 +92,6 @@ export const DEFAULT_COMFYUI_BASE_URL = 'http://127.0.0.1:8188';
 export function createDefaultComfyUiSettings(): ComfyUiSettings {
   const defaultPreset = COMFYUI_STYLE_PRESETS[0];
   return {
-    enabled: false,
     baseUrl: DEFAULT_COMFYUI_BASE_URL,
     workflowJson: '',
     workflowApiJson: '',
@@ -119,7 +117,6 @@ function normalizeComfyUiSize(value: unknown, fallback: number): number {
 export function normalizeComfyUiSettings(input?: Partial<ComfyUiSettings> | null): ComfyUiSettings {
   const defaults = createDefaultComfyUiSettings();
   return {
-    enabled: Boolean(input?.enabled ?? defaults.enabled),
     baseUrl: typeof input?.baseUrl === 'string' && input.baseUrl.trim() ? input.baseUrl.trim() : defaults.baseUrl,
     workflowJson: typeof input?.workflowJson === 'string' ? input.workflowJson : '',
     workflowApiJson: typeof input?.workflowApiJson === 'string' ? input.workflowApiJson : '',
@@ -143,10 +140,185 @@ function normalizeStylePresetId(value: unknown, fallback: string): string {
   return findStylePreset(value) ? value : fallback;
 }
 
+/** 生图后端：本地 ComfyUI 走本机服务，NovelAI 走云端兼容接口 */
+export type ImageBackend = 'comfyui' | 'novelai';
+
+/** 生图总开关 + 当前生效的后端 */
+export interface ImageGenerationSettings {
+  /** 关掉后 AI 不写生图提示词，消息里也不显示出图按钮 */
+  enabled: boolean;
+  backend: ImageBackend;
+}
+
+export function createDefaultImageGenerationSettings(): ImageGenerationSettings {
+  return { enabled: false, backend: 'comfyui' };
+}
+
+export function normalizeImageBackend(value: unknown): ImageBackend {
+  return value === 'novelai' ? 'novelai' : 'comfyui';
+}
+
+/**
+ * 老配置迁移：早期版本没有「生图总开关 + 后端」这一层，
+ * 那时 ComfyUI 的开关就是生图总开关 —— 开着就迁成「总开关开 + 后端 ComfyUI」，玩家无感。
+ */
+export function resolveStoredImageGenerationSettings(
+  stored: Record<string, any> | null | undefined,
+): ImageGenerationSettings {
+  const raw = stored?.imageGeneration;
+  if (raw && typeof raw === 'object') {
+    return {
+      enabled: Boolean(raw.enabled ?? false),
+      backend: normalizeImageBackend(raw.backend),
+    };
+  }
+
+  return {
+    enabled: Boolean(stored?.comfyUi?.enabled ?? false),
+    backend: 'comfyui',
+  };
+}
+
+/** NovelAI 尺寸只有三档：实测兼容站按宽高比自动归类，填别的会被悄悄换成这三档之一 */
+export type NovelAiSizeId = 'square' | 'portrait' | 'landscape';
+
+export interface NovelAiSizeOption {
+  id: NovelAiSizeId;
+  width: number;
+  height: number;
+}
+
+export const NOVELAI_SIZE_OPTIONS: NovelAiSizeOption[] = [
+  { id: 'square', width: 1024, height: 1024 },
+  { id: 'portrait', width: 920, height: 1536 },
+  { id: 'landscape', width: 1536, height: 920 },
+];
+
+/** 负面提示词预设档位：0 重 / 1 轻 / 2 Furry / 3 Human / 4 无 */
+export type NovelAiUcPreset = 0 | 1 | 2 | 3 | 4;
+
+export const NOVELAI_UC_PRESET_VALUES: NovelAiUcPreset[] = [0, 1, 2, 3, 4];
+
+/** NovelAI 出图参数（地址既能填官方，也能填兼容站） */
+export interface NovelAiSettings {
+  /** 接口地址，填到路径前缀为止；程序只补 /ai/generate-image */
+  baseUrl: string;
+  /** API Key，只存本机 localStorage，不进存档 */
+  apiKey: string;
+  model: string;
+  sizeId: NovelAiSizeId;
+  steps: number;
+  scale: number;
+  sampler: string;
+  noiseSchedule: string;
+  ucPreset: NovelAiUcPreset;
+  qualityToggle: boolean;
+  cfgRescale: number;
+  /** 负向提示词；留空表示只用 ucPreset 那套内置负面 */
+  negativePrompt: string;
+  /** 画风预置 id：内置预置 / custom（自定义）/ none（不拼画风） */
+  stylePresetId: string;
+  /** 实际拼在提示词前面的画风内容 */
+  stylePrompt: string;
+}
+
+export const DEFAULT_NOVELAI_MODEL = 'nai-diffusion-4-5-full';
+export const DEFAULT_NOVELAI_SAMPLER = 'k_euler_ancestral';
+export const DEFAULT_NOVELAI_NOISE_SCHEDULE = 'karras';
+
+export function createDefaultNovelAiSettings(): NovelAiSettings {
+  return {
+    baseUrl: '',
+    apiKey: '',
+    model: DEFAULT_NOVELAI_MODEL,
+    sizeId: 'portrait',
+    steps: 28,
+    scale: 5,
+    sampler: DEFAULT_NOVELAI_SAMPLER,
+    noiseSchedule: DEFAULT_NOVELAI_NOISE_SCHEDULE,
+    ucPreset: 0,
+    qualityToggle: true,
+    cfgRescale: 0,
+    negativePrompt: '',
+    stylePresetId: NO_STYLE_PRESET_ID,
+    stylePrompt: '',
+  };
+}
+
+/** 把数字夹进区间；非数字或 NaN 时落回默认值 */
+function clampNumber(value: unknown, fallback: number, min: number, max: number): number {
+  const numeric = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(numeric)) return fallback;
+  return Math.min(max, Math.max(min, numeric));
+}
+
+function normalizeNovelAiSizeId(value: unknown): NovelAiSizeId {
+  return NOVELAI_SIZE_OPTIONS.some(option => option.id === value) ? (value as NovelAiSizeId) : 'portrait';
+}
+
+function normalizeNovelAiUcPreset(value: unknown): NovelAiUcPreset {
+  const numeric = clampNumber(value, 0, 0, 4);
+  return Math.round(numeric) as NovelAiUcPreset;
+}
+
+/** 只认 NovelAI 那组已知预置 id；未知或空值落到「不用画风」 */
+function normalizeNovelAiStylePresetId(value: unknown): string {
+  if (typeof value !== 'string' || !value) return NO_STYLE_PRESET_ID;
+  if (value === NO_STYLE_PRESET_ID || value === CUSTOM_STYLE_PRESET_ID) return value;
+  return findImageStylePreset('novelai', value) ? value : NO_STYLE_PRESET_ID;
+}
+
+/**
+ * 画风内容取哪一份。
+ *
+ * 选中内置预置时**以代码里的文本为准** —— 预置文本改了（比如去掉 `1980s (style)` 这类
+ * 硬写的标签），老玩家下次进来就跟着更新，不会被存在设置里的旧文本一直压着。
+ * 只有「自定义 / 不用」才用玩家自己存的那份。
+ */
+function resolveNovelAiStylePrompt(presetId: string, stored: unknown, fallback: string): string {
+  if (presetId !== NO_STYLE_PRESET_ID && presetId !== CUSTOM_STYLE_PRESET_ID) {
+    const preset = findImageStylePreset('novelai', presetId);
+    if (preset) return preset.prompt;
+  }
+  return typeof stored === 'string' ? stored : fallback;
+}
+
+export function normalizeNovelAiSettings(input?: Partial<NovelAiSettings> | null): NovelAiSettings {
+  const defaults = createDefaultNovelAiSettings();
+  const stylePresetId = normalizeNovelAiStylePresetId(input?.stylePresetId);
+  return {
+    baseUrl: typeof input?.baseUrl === 'string' ? input.baseUrl.trim() : defaults.baseUrl,
+    apiKey: typeof input?.apiKey === 'string' ? input.apiKey : defaults.apiKey,
+    model: typeof input?.model === 'string' && input.model.trim() ? input.model.trim() : defaults.model,
+    sizeId: normalizeNovelAiSizeId(input?.sizeId),
+    // 步数范围给宽（1–50）：不同站、不同模型代次的可选范围不一样，别写死 8–12
+    steps: Math.round(clampNumber(input?.steps, defaults.steps, 1, 50)),
+    scale: clampNumber(input?.scale, defaults.scale, 0, 20),
+    sampler: typeof input?.sampler === 'string' && input.sampler.trim() ? input.sampler.trim() : defaults.sampler,
+    noiseSchedule:
+      typeof input?.noiseSchedule === 'string' && input.noiseSchedule.trim()
+        ? input.noiseSchedule.trim()
+        : defaults.noiseSchedule,
+    ucPreset: normalizeNovelAiUcPreset(input?.ucPreset),
+    qualityToggle: Boolean(input?.qualityToggle ?? defaults.qualityToggle),
+    cfgRescale: clampNumber(input?.cfgRescale, defaults.cfgRescale, 0, 1),
+    negativePrompt: typeof input?.negativePrompt === 'string' ? input.negativePrompt : defaults.negativePrompt,
+    stylePresetId,
+    stylePrompt: resolveNovelAiStylePrompt(stylePresetId, input?.stylePrompt, defaults.stylePrompt),
+  };
+}
+
+/** 按尺寸档位取实际宽高 */
+export function resolveNovelAiSize(sizeId: string): NovelAiSizeOption {
+  return NOVELAI_SIZE_OPTIONS.find(option => option.id === sizeId) ?? NOVELAI_SIZE_OPTIONS[1];
+}
+
 export function resolveStoredStandaloneLocalContentSettings(input: {
   storedSettings?: Partial<StandaloneLocalContentSettings> | null;
-  /** 是否让 AI 在正文里写生图提示词（现在由「本地 ComfyUI 生图」开关统一决定） */
+  /** 是否让 AI 在正文里写生图提示词（由「生图总开关」统一决定） */
   imagePromptEnabled?: boolean;
+  /** 当前后端 —— 决定开哪一条生图提示词规则（两条互斥） */
+  imageBackend?: ImageBackend;
   onlineModeEnabled?: boolean;
 }): StandaloneLocalContentSettings {
   let enabledAssets = applyFixedVariableUpdateStandaloneLocalContent({
@@ -154,7 +326,11 @@ export function resolveStoredStandaloneLocalContentSettings(input: {
     ...(input.storedSettings?.enabledAssets || {}),
   });
 
-  enabledAssets = applyTextToImageToStandaloneLocalContent(enabledAssets, input.imagePromptEnabled ?? false);
+  enabledAssets = applyTextToImageToStandaloneLocalContent(
+    enabledAssets,
+    input.imagePromptEnabled ?? false,
+    input.imageBackend ?? 'comfyui',
+  );
   enabledAssets = applyOnlineModeToStandaloneLocalContent(enabledAssets, input.onlineModeEnabled ?? false);
   enabledAssets = applyWorldDifficultyToStandaloneLocalContent(enabledAssets);
   const builtinAssetRouteOverrides = normalizeStandaloneBuiltinAssetRouteOverrides(
@@ -446,13 +622,20 @@ export const useSettingsStore = defineStore('settings', () => {
     ...(stored.backgroundImage || {}),
   });
 
-  // 本地 ComfyUI 生图配置（它的开关同时决定 AI 要不要在正文里写生图提示词）
+  // 生图总开关与后端选择（两条后端二选一，配置各自保留）
+  const imageGeneration = ref<ImageGenerationSettings>(resolveStoredImageGenerationSettings(stored));
+
+  // 本地 ComfyUI 生图配置
   const comfyUi = ref<ComfyUiSettings>(normalizeComfyUiSettings(stored.comfyUi));
+
+  // NovelAI 兼容接口配置（Key 与地址只在本机，不进存档）
+  const novelAi = ref<NovelAiSettings>(normalizeNovelAiSettings(stored.novelAi));
 
   const standaloneLocalContent = ref<StandaloneLocalContentSettings>(
     resolveStoredStandaloneLocalContentSettings({
       storedSettings: stored.standaloneLocalContent,
-      imagePromptEnabled: comfyUi.value.enabled,
+      imagePromptEnabled: imageGeneration.value.enabled,
+      imageBackend: imageGeneration.value.backend,
       onlineModeEnabled: onlineModeEnabled.value,
     }),
   );
@@ -493,7 +676,9 @@ export const useSettingsStore = defineStore('settings', () => {
       stageSummaryThreshold: stageSummaryThreshold.value,
       backgroundImage: backgroundImage.value,
       standaloneLocalContent: standaloneLocalContent.value,
+      imageGeneration: imageGeneration.value,
       comfyUi: comfyUi.value,
+      novelAi: novelAi.value,
     });
   };
 
@@ -539,7 +724,9 @@ export const useSettingsStore = defineStore('settings', () => {
       stageSummaryThreshold,
       backgroundImage,
       standaloneLocalContent,
+      imageGeneration,
       comfyUi,
+      novelAi,
     ],
     saveBasicSettingsToStorage,
     {
@@ -556,13 +743,18 @@ export const useSettingsStore = defineStore('settings', () => {
     { deep: true },
   );
 
-  // 「本地 ComfyUI 生图」开关一开，AI 就开始在正文里写生图提示词；一关就停
+  // 生图总开关一开，AI 就开始在正文里写生图提示词；一关就停。
+  // 后端切换时两条提示词规则互斥自动切：NAI 用标签流那条，ComfyUI 用自然语言那条。
   watch(
-    () => comfyUi.value.enabled,
-    enabled => {
+    [() => imageGeneration.value.enabled, () => imageGeneration.value.backend],
+    ([enabled, backend]) => {
       standaloneLocalContent.value = {
         ...standaloneLocalContent.value,
-        enabledAssets: applyTextToImageToStandaloneLocalContent(standaloneLocalContent.value.enabledAssets, enabled),
+        enabledAssets: applyTextToImageToStandaloneLocalContent(
+          standaloneLocalContent.value.enabledAssets,
+          enabled,
+          backend,
+        ),
       };
     },
   );
@@ -612,7 +804,9 @@ export const useSettingsStore = defineStore('settings', () => {
     apiAutoRetry,
     backgroundImage,
     standaloneLocalContent,
+    imageGeneration,
     comfyUi,
+    novelAi,
     persistApiPool,
     persistApiSelection,
   };

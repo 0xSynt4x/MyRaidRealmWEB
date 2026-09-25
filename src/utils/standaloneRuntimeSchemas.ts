@@ -115,11 +115,17 @@ export const StandaloneRuntimeSessionSchema = z
 
 export const StandaloneRuntimeMessageRoleSchema = z.enum(['user', 'assistant']);
 
-/** 本地 ComfyUI 生成的插图记录，索引与正文里第 N 个生图提示词对应 */
+/** 生图记录，索引与正文里第 N 个生图提示词对应 */
 export const StandaloneRuntimeGeneratedImageSchema = z.object({
   status: z.enum(['idle', 'running', 'done', 'error']).default('idle'),
+  /** 本地 ComfyUI：图片在 ComfyUI 服务上的地址 */
   url: z.string().optional(),
   filename: z.string().optional(),
+  /**
+   * 云端出图：图片存在本机 IndexedDB 里的编号。
+   * 🔴 必须 optional —— 老存档里只有 url、没有编号，缺了要能正常读进来。
+   */
+  imageId: z.string().optional(),
   prompt: z.string().default(''),
   error: z.string().optional(),
 });

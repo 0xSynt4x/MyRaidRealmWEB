@@ -598,7 +598,7 @@
         {
             "identifier": "a0ec4c1c-01d0-49af-9411-7e85a742fe6b",
             "name": "⛔ 哈基米摆尾",
-            "enabled": true,
+            "enabled": false,
             "injection_position": 0,
             "injection_depth": 4,
             "injection_order": 100,
@@ -850,11 +850,11 @@
                 },
                 {
                     "identifier": "547f9afc-dc18-47a9-9ef9-5c2424bac440",
-                    "enabled": true
+                    "enabled": false
                 },
                 {
                     "identifier": "a0ec4c1c-01d0-49af-9411-7e85a742fe6b",
-                    "enabled": true
+                    "enabled": false
                 },
                 {
                     "identifier": "47f77220-9dcb-49c4-a47a-3b3bf3a5a727",

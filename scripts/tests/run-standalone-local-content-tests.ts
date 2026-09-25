@@ -1997,6 +1997,86 @@ async function testStandaloneFeatureLocalContentBlocksFollowDedicatedToggles(): 
   assert.ok(!disabledBlocks.some(block => block.includes('[本地内容:多人联机规则]')));
 }
 
+async function testTextToImageLocalContentAssetsSwitchWithBackend(): Promise<void> {
+  const baseEnabledMap = {
+    'main-api-prompt': true,
+    'plot-text-to-image': false,
+    'plot-text-to-image-nai': false,
+    'plot-online-mode': false,
+  };
+
+  // 生图总开关关着：两条规则都关（AI 不写提示词）
+  const off = applyTextToImageToStandaloneLocalContent(baseEnabledMap, false, 'novelai');
+  assert.equal(off['plot-text-to-image'], false);
+  assert.equal(off['plot-text-to-image-nai'], false);
+
+  // 开 + 后端 NovelAI：只开标签流那条
+  const novelAiOn = applyTextToImageToStandaloneLocalContent(baseEnabledMap, true, 'novelai');
+  assert.equal(novelAiOn['plot-text-to-image'], false);
+  assert.equal(novelAiOn['plot-text-to-image-nai'], true);
+
+  // 开 + 后端 ComfyUI：只开自然语言那条
+  const comfyUiOn = applyTextToImageToStandaloneLocalContent(baseEnabledMap, true, 'comfyui');
+  assert.equal(comfyUiOn['plot-text-to-image'], true);
+  assert.equal(comfyUiOn['plot-text-to-image-nai'], false);
+
+  // 从 NovelAI 切回 ComfyUI：绝不允许两条同时开着
+  const switched = applyTextToImageToStandaloneLocalContent(novelAiOn, true, 'comfyui');
+  assert.equal(switched['plot-text-to-image'], true);
+  assert.equal(switched['plot-text-to-image-nai'], false);
+}
+
+async function testNovelAiTextToImageBlockFollowsSelectedBackend(): Promise<void> {
+  const baseEnabledMap = {
+    'main-api-prompt': true,
+    'plot-text-to-image': false,
+    'plot-text-to-image-nai': false,
+  };
+
+  const novelAiBlocks = resolveStandaloneLocalContentBlocks({
+    route: 'main',
+    enabledMap: applyTextToImageToStandaloneLocalContent(baseEnabledMap, true, 'novelai'),
+    renderContext: createRenderContext(),
+    preset: null,
+  });
+
+  assert.ok(novelAiBlocks.some(block => block.includes('[本地内容:文生图格式规则（NovelAI）]')));
+  assert.ok(!novelAiBlocks.some(block => block.includes('[本地内容:文生图格式规则]')));
+  assert.ok(novelAiBlocks.some(block => block.includes('Danbooru')));
+
+  const comfyUiBlocks = resolveStandaloneLocalContentBlocks({
+    route: 'main',
+    enabledMap: applyTextToImageToStandaloneLocalContent(baseEnabledMap, true, 'comfyui'),
+    renderContext: createRenderContext(),
+    preset: null,
+  });
+
+  assert.ok(comfyUiBlocks.some(block => block.includes('[本地内容:文生图格式规则]')));
+  assert.ok(!comfyUiBlocks.some(block => block.includes('[本地内容:文生图格式规则（NovelAI）]')));
+}
+
+async function testStoredStandaloneLocalContentSettingsHonourNovelAiBackend(): Promise<void> {
+  const settings = resolveStoredStandaloneLocalContentSettings({
+    storedSettings: { enabledAssets: {} },
+    imagePromptEnabled: true,
+    imageBackend: 'novelai',
+    onlineModeEnabled: false,
+  });
+
+  assert.equal(settings.enabledAssets['plot-text-to-image-nai'], true);
+  assert.equal(settings.enabledAssets['plot-text-to-image'], false);
+
+  // 老存档迁移：没有 imageBackend 字段时按 ComfyUI 处理，行为与改动前一致
+  const legacy = resolveStoredStandaloneLocalContentSettings({
+    storedSettings: { enabledAssets: {} },
+    imagePromptEnabled: true,
+    onlineModeEnabled: false,
+  });
+
+  assert.equal(legacy.enabledAssets['plot-text-to-image'], true);
+  assert.equal(legacy.enabledAssets['plot-text-to-image-nai'], false);
+}
+
 async function testBuildsWorldDifficultyStandaloneLocalContent(): Promise<void> {
   const easiest = buildWorldDifficultyStandaloneLocalContent('最简单');
   const hell = buildWorldDifficultyStandaloneLocalContent('地狱');
@@ -4870,6 +4950,12 @@ async function run(): Promise<void> {
     [
       'standalone feature local content blocks follow dedicated toggles',
       testStandaloneFeatureLocalContentBlocksFollowDedicatedToggles,
+    ],
+    ['text to image local content assets switch with backend', testTextToImageLocalContentAssetsSwitchWithBackend],
+    ['novelai text to image block follows selected backend', testNovelAiTextToImageBlockFollowsSelectedBackend],
+    [
+      'stored local content settings honour novelai backend',
+      testStoredStandaloneLocalContentSettingsHonourNovelAiBackend,
     ],
     ['builds world difficulty standalone local content', testBuildsWorldDifficultyStandaloneLocalContent],
     ['world difficulty blocks follow selected difficulty', testWorldDifficultyBlocksFollowSelectedDifficulty],

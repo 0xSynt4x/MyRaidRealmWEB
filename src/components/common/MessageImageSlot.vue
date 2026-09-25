@@ -3,11 +3,24 @@
     <template v-if="status === 'running'">
       <div class="image-slot-loading">
         <i class="ti ti-loader-2 ti-spin"></i>
-        <span>{{ t('messageImage.generating') }}</span>
+        <span>{{ t('messageImage.generating') }}<template v-if="elapsedSeconds > 0"> · {{ elapsedSeconds }}s</template></span>
       </div>
     </template>
 
-    <template v-else-if="status === 'done' && image?.url">
+    <template v-else-if="status === 'done' && imageMissing">
+      <div class="image-slot-fallback">
+        <i class="ti ti-photo-off image-slot-fallback-icon"></i>
+        <div class="image-slot-fallback-body">
+          <p class="image-slot-fallback-title">{{ t('messageImage.missing') }}</p>
+          <p class="image-slot-fallback-hint">{{ t('messageImage.missingHint') }}</p>
+        </div>
+        <button class="image-slot-btn" :disabled="disabled" @click="emit('generate')">
+          <i class="ti ti-sparkles"></i>{{ t('messageImage.regenerate') }}
+        </button>
+      </div>
+    </template>
+
+    <template v-else-if="status === 'done' && displayUrl">
       <div v-if="loadFailed" class="image-slot-fallback">
         <i class="ti ti-alert-triangle image-slot-fallback-icon"></i>
         <div class="image-slot-fallback-body">
@@ -19,7 +32,7 @@
         </button>
       </div>
       <button v-else class="image-slot-frame" :title="t('messageImage.viewOriginal')" @click="openViewer">
-        <img :key="reloadKey" :src="image.url" :alt="prompt" loading="lazy" @error="loadFailed = true" />
+        <img :key="reloadKey" :src="displayUrl" :alt="prompt" loading="lazy" @error="loadFailed = true" />
       </button>
       <div class="image-slot-bar">
         <span class="image-slot-hint"><i class="ti ti-photo"></i>{{ t('messageImage.generated') }}</span>
@@ -54,18 +67,19 @@
   </div>
 
   <ImageLightbox
-    v-if="image?.url && !loadFailed"
+    v-if="displayUrl && !loadFailed"
     :visible="viewerVisible"
-    :src="image.url"
+    :src="displayUrl"
     :alt="prompt"
     @close="viewerVisible = false"
   />
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from '../../i18n';
 import type { MessageGeneratedImage } from '../../stores/messages';
+import { loadGeneratedImage } from '../../utils/imageStorage';
 import ImageLightbox from './ImageLightbox.vue';
 
 const props = defineProps<{
@@ -86,6 +100,37 @@ const reloadKey = ref(0);
 
 const status = computed(() => props.image?.status ?? 'idle');
 
+/**
+ * 两条取图路径：
+ * - 老消息 / 本地 ComfyUI：记录里直接有地址，拿来就用
+ * - 云端出图：记录里只有编号，图在本机 IndexedDB 里，按编号取
+ */
+const storedImageUrl = ref('');
+const imageMissing = ref(false);
+
+const displayUrl = computed(() => props.image?.url || storedImageUrl.value);
+
+async function resolveStoredImage() {
+  const imageId = props.image?.imageId;
+  storedImageUrl.value = '';
+  imageMissing.value = false;
+
+  if (!imageId || props.image?.url) return;
+
+  try {
+    const stored = await loadGeneratedImage(imageId);
+    if (stored?.dataUrl) {
+      storedImageUrl.value = stored.dataUrl;
+    } else {
+      // 图被清理过、或换了台机器打开存档 —— 给兜底提示，不要报错
+      imageMissing.value = true;
+    }
+  } catch (error) {
+    console.warn('[Image] 读取本机图片失败:', error);
+    imageMissing.value = true;
+  }
+}
+
 watch(
   () => props.image?.url,
   () => {
@@ -94,8 +139,41 @@ watch(
   },
 );
 
+watch(() => props.image?.imageId, resolveStoredImage, { immediate: true });
+
+/** 出图时的计时，让「生成中」不是一句干等的空话 */
+const elapsedSeconds = ref(0);
+let elapsedTimer: ReturnType<typeof setInterval> | null = null;
+
+function stopElapsedTimer() {
+  if (elapsedTimer !== null) {
+    clearInterval(elapsedTimer);
+    elapsedTimer = null;
+  }
+}
+
+watch(
+  status,
+  value => {
+    stopElapsedTimer();
+    if (value !== 'running') {
+      elapsedSeconds.value = 0;
+      return;
+    }
+
+    elapsedSeconds.value = 0;
+    const startedAt = Date.now();
+    elapsedTimer = setInterval(() => {
+      elapsedSeconds.value = Math.floor((Date.now() - startedAt) / 1000);
+    }, 1000);
+  },
+  { immediate: true },
+);
+
+onBeforeUnmount(stopElapsedTimer);
+
 function openViewer() {
-  if (!props.image?.url) return;
+  if (!displayUrl.value) return;
   viewerVisible.value = true;
 }
 

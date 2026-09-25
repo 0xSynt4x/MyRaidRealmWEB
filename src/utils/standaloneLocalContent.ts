@@ -1,11 +1,12 @@
 import type { LocalContentEntryConfig, PresetConfig } from '../presets/types';
-import type { WorldDifficulty } from '../stores/settings';
+import type { ImageBackend, WorldDifficulty } from '../stores/settings';
 
 import {
   currentStatSnapshotTemplate as rawCurrentStatSnapshot,
   mainApiPromptTemplate as rawMainApiPrompt,
   plotLotteryRulesTemplate as rawPlotLotteryRules,
   plotOnlineModeTemplate as rawPlotOnlineMode,
+  plotTextToImageNaiTemplate as rawPlotTextToImageNai,
   plotTextToImageTemplate as rawPlotTextToImage,
   variableUpdateFormatTemplate as rawVariableUpdateFormat,
   variableUpdateRulesTemplate as rawVariableUpdateRules,
@@ -60,7 +61,11 @@ export const VARIABLE_UPDATE_LOCAL_CONTENT_ASSET_IDS = ['variable-update-format'
 
 export const REQUIRED_MAIN_REPLY_LOCAL_CONTENT_ASSET_IDS = ['main-api-prompt'] as const;
 
+/** 本地 ComfyUI 用：自然语言句式的生图提示词规则 */
 export const TEXT_TO_IMAGE_LOCAL_CONTENT_ASSET_IDS = ['plot-text-to-image'] as const;
+
+/** NovelAI 用：Danbooru 标签流的生图提示词规则。与上面那条互斥，选了后端就自动切 */
+export const TEXT_TO_IMAGE_NOVELAI_LOCAL_CONTENT_ASSET_IDS = ['plot-text-to-image-nai'] as const;
 
 export const ONLINE_MODE_LOCAL_CONTENT_ASSET_IDS = ['plot-online-mode'] as const;
 
@@ -70,6 +75,7 @@ export const SETTINGS_MANAGED_LOCAL_CONTENT_ASSET_IDS = [
   ...REQUIRED_MAIN_REPLY_LOCAL_CONTENT_ASSET_IDS,
   ...VARIABLE_UPDATE_LOCAL_CONTENT_ASSET_IDS,
   ...TEXT_TO_IMAGE_LOCAL_CONTENT_ASSET_IDS,
+  ...TEXT_TO_IMAGE_NOVELAI_LOCAL_CONTENT_ASSET_IDS,
   ...ONLINE_MODE_LOCAL_CONTENT_ASSET_IDS,
   ...WORLD_DIFFICULTY_LOCAL_CONTENT_ASSET_IDS,
 ] as const;
@@ -149,11 +155,28 @@ export function applyFixedVariableUpdateStandaloneLocalContent(
   };
 }
 
+/**
+ * 生图提示词规则随后端互斥开关。
+ *
+ * 两条规则只能开一条 —— AI 每轮只在正文里写一套提示词，
+ * NovelAI 吃标签流、ComfyUI 吃自然语言，同时开必然有一条收到错风格的提示词。
+ */
 export function applyTextToImageToStandaloneLocalContent(
   enabledMap: Record<string, boolean>,
   enabled: boolean,
+  backend: ImageBackend = 'comfyui',
 ): Record<string, boolean> {
-  return applyStandaloneLocalContentAssetEnabledState(enabledMap, TEXT_TO_IMAGE_LOCAL_CONTENT_ASSET_IDS, enabled);
+  const withComfyUi = applyStandaloneLocalContentAssetEnabledState(
+    enabledMap,
+    TEXT_TO_IMAGE_LOCAL_CONTENT_ASSET_IDS,
+    enabled && backend === 'comfyui',
+  );
+
+  return applyStandaloneLocalContentAssetEnabledState(
+    withComfyUi,
+    TEXT_TO_IMAGE_NOVELAI_LOCAL_CONTENT_ASSET_IDS,
+    enabled && backend === 'novelai',
+  );
 }
 
 export function applyOnlineModeToStandaloneLocalContent(
@@ -231,6 +254,16 @@ const STANDALONE_LOCAL_CONTENT_MANIFEST: StandaloneLocalContentAsset[] = [
     defaultEnabled: false,
     description: '要求正文在合适段落后输出规定格式的生图提示词。',
     rawContent: rawPlotTextToImage,
+  },
+  {
+    id: 'plot-text-to-image-nai',
+    title: '文生图格式规则（NovelAI）',
+    sourceName: '[mvu_plot]文生图格式-NovelAI(没有生图插件不开).md',
+    kind: 'plot_rule',
+    route: 'main',
+    defaultEnabled: false,
+    description: '要求正文在合适段落后输出 Danbooru 标签流的生图提示词，供 NovelAI 兼容接口使用。',
+    rawContent: rawPlotTextToImageNai,
   },
   {
     id: 'plot-online-mode',
