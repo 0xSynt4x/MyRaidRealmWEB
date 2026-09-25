@@ -5,7 +5,7 @@
     - output only contain exactly one <UpdateVariable> block, with exactly one <Analysis> and one <JSONPatch>
     - the patch must be a valid JSON array of operation objects only, no comments, no trailing commas, no extra text inside <JSONPatch>
     - allowed operations are only: replace, delta, insert, remove, move
-    - do not update any field whose final key starts with `_`
+    - do not update any field whose final key starts with `_` or `$` (system-maintained fields)
     - do not invent new paths: every path must be grounded in existing schema fields or existing runtime keys
     - JSON Pointer must follow RFC 6901 escaping: `~` -> `~0`, `/` -> `~1`
     - for number change on existing number field, prefer `delta`; use `replace` only when setting absolute value is necessary

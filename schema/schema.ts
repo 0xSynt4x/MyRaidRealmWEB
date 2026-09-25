@@ -486,6 +486,15 @@ export const Schema = z.object({
           .prefault([]),
 
         $time: z.coerce.number().prefault(() => Date.now()),
+        /**
+         * 前端维护的人物身份标识：创建那一刻生成，此后「编号重排 / 改名 / 20人裁剪」都不会改变它。
+         * 用途是让前端的身份判断变成确定性的（去重、改名追踪、裁剪记录、排查）。
+         * 🔴 AI 只读不改（`$` 前缀 = 系统维护），也**不作为 AI 的引用手段** —— AI 继续用编号。
+         * 缺失时自动补齐，已存在则原样保留，因此 parse 幂等；老存档缺这个字段照样能读进来。
+         */
+        $id: z
+          .string()
+          .prefault(() => `npc-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`),
       }),
     )
     .transform(data => {

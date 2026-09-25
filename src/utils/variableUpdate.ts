@@ -166,6 +166,49 @@ function insertObjectValue(record: Record<string, unknown>, token: string, value
   record[token] = value;
 }
 
+const NPC_ARCHIVE_KEY = '人物档案';
+const NPC_ID_PATTERN = /^NPC_(\d+)$/;
+
+/**
+ * 路径正好是 `/人物档案/-`：追加建人的哨兵写法。
+ * 与数组追加 `/-` 是同一套语义，AI 不需要学新东西。
+ */
+function isNpcArchiveAppendPath(tokens: string[]): boolean {
+  return tokens.length === 2 && tokens[0] === NPC_ARCHIVE_KEY && tokens[1] === '-';
+}
+
+/**
+ * 路径正好是 `/人物档案/NPC_数字`：直接指向某一名人物的整张档案卡。
+ * 只有这种形态才有明确的身份语义（可分配编号 / 可整体替换）。
+ */
+function isNpcArchiveEntryPath(tokens: string[]): boolean {
+  return tokens.length === 2 && tokens[0] === NPC_ARCHIVE_KEY && NPC_ID_PATTERN.test(tokens[1]);
+}
+
+/**
+ * 取当前档案中最大编号 +1 作为新编号（与前端招聘、Schema 归一化保持同一套规则）。
+ */
+function allocateNextNpcId(archive: Record<string, unknown>): string {
+  let maxId = 0;
+
+  for (const key of Object.keys(archive)) {
+    const match = key.match(NPC_ID_PATTERN);
+    if (!match) continue;
+
+    const id = Number(match[1]);
+    if (Number.isInteger(id) && id > maxId) {
+      maxId = id;
+    }
+  }
+
+  let nextId = maxId + 1;
+  while (`NPC_${nextId}` in archive) {
+    nextId += 1;
+  }
+
+  return `NPC_${nextId}`;
+}
+
 function removeObjectValue(record: Record<string, unknown>, token: string): unknown {
   if (!(token in record)) {
     throw new Error(`Object target key does not exist: ${token}`);
@@ -177,7 +220,8 @@ function removeObjectValue(record: Record<string, unknown>, token: string): unkn
 }
 
 function applyReplace(root: StandaloneStatData, operation: Extract<JsonPatchOperation, { op: 'replace' }>): void {
-  const { container, finalToken } = resolveParentContainer(root, parsePointer(operation.path));
+  const tokens = parsePointer(operation.path);
+  const { container, finalToken } = resolveParentContainer(root, tokens);
 
   if (Array.isArray(container)) {
     setArrayValue(container, finalToken, operation.value);
@@ -185,6 +229,14 @@ function applyReplace(root: StandaloneStatData, operation: Extract<JsonPatchOper
   }
 
   if (isObjectLike(container)) {
+    // FALLBACK③：AI 拿一个「不存在的编号」做整体替换（它以为这人已存在），多半本意就是新建。
+    // 只认「整张档案卡」这一种形态；深层字段的 replace 仍照常报错，不掩盖真正的路径错误。
+    if (isNpcArchiveEntryPath(tokens) && !(finalToken in container) && isObjectLike(operation.value)) {
+      console.warn(`[VariableUpdate] 人物编号 ${finalToken} 不存在，按新建处理：${operation.path}`);
+      insertObjectValue(container, finalToken, operation.value);
+      return;
+    }
+
     setObjectValue(container, finalToken, operation.value);
     return;
   }
@@ -206,7 +258,8 @@ function applyDelta(root: StandaloneStatData, operation: Extract<JsonPatchOperat
 }
 
 function applyInsert(root: StandaloneStatData, operation: Extract<JsonPatchOperation, { op: 'insert' }>): void {
-  const { container, finalToken } = resolveParentContainer(root, parsePointer(operation.path));
+  const tokens = parsePointer(operation.path);
+  const { container, finalToken } = resolveParentContainer(root, tokens);
 
   if (Array.isArray(container)) {
     insertArrayValue(container, finalToken, operation.value);
@@ -214,6 +267,26 @@ function applyInsert(root: StandaloneStatData, operation: Extract<JsonPatchOpera
   }
 
   if (isObjectLike(container)) {
+    // FALLBACK②：追加语法 —— AI 不确定编号、或一次要建多人时的退路，由前端分配编号。
+    // 默认写法仍是 AI 自己写编号（见下一条），这只是并行的一条备用通道。
+    if (isNpcArchiveAppendPath(tokens) && isObjectLike(operation.value)) {
+      const nextNpcId = allocateNextNpcId(container);
+      console.warn(`[VariableUpdate] 人物档案追加建人，已分配编号 ${nextNpcId}：${operation.path}`);
+      insertObjectValue(container, nextNpcId, operation.value);
+      return;
+    }
+
+    // FALLBACK①：AI 自己写编号但该编号已被占用 → 改号，不让整批补丁作废
+    // （连本回合其他变量更新一起丢）。仅对「人物档案/NPC_数字」且值为档案卡时生效。
+    if (isNpcArchiveEntryPath(tokens) && finalToken in container && isObjectLike(operation.value)) {
+      const nextNpcId = allocateNextNpcId(container);
+      console.warn(
+        `[VariableUpdate] 人物编号 ${finalToken} 已被占用，已自动改为 ${nextNpcId}：${operation.path}`,
+      );
+      insertObjectValue(container, nextNpcId, operation.value);
+      return;
+    }
+
     insertObjectValue(container, finalToken, operation.value);
     return;
   }
