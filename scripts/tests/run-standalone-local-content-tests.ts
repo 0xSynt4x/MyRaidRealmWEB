@@ -55,6 +55,12 @@ import {
   buildStandaloneCurrentStatDataBlock,
 } from '../../runtime/standalonePromptUtils';
 import {
+  buildStandaloneSnapshotForChain,
+  isStandaloneSurvivalDisabled,
+  normalizeStandaloneSnapshotTrimSettings,
+} from '../../runtime/standaloneSnapshotTrim';
+import { filterVariableUpdatePatch } from '../../src/utils/variableUpdate';
+import {
   attachRegisteredWorldbooksToBuiltInPresets,
   createRegisteredWorldbookLocalContentEntries,
   rehydratePresetWithRegisteredWorldbooks,
@@ -4831,6 +4837,213 @@ function restoreStandaloneTestGlobals(snapshot: StandaloneTestGlobalSnapshot): v
   }
 }
 
+function testStandaloneSnapshotTrimFollowsChainRules(): void {
+  const statData = {
+    设置: { 生存系统模式: '生存模式', 积分系统: { $保底次数: 3, 抽奖次数: 2 } },
+    世界: { $time: 1, 时间系统: { 当前时间: '1985-03-12' } },
+    玩家: { 姓名: '测试玩家', 生存状态: { 血量: 90, 体力值: 70, 饥饿值: 60, 口渴值: 50 } },
+    人物档案: {
+      NPC_1: { 姓名: '老周', 重要NPC: true, 生存状态: { 血量: 80, 体力值: 60, 饥饿值: 40, 口渴值: 30 }, $time: 2 },
+      NPC_2: { 姓名: '王丽', 重要NPC: false, _关注: false, 生存状态: { 血量: 50, 体力值: 40 }, $time: 3 },
+      NPC_3: { 姓名: '陈叔', 重要NPC: false, _关注: false, 生存状态: { 血量: 30, 体力值: 20 }, $time: 4 },
+    },
+    商城: { 物品: { 商品1: { 价格: 100 } }, 技能: { 技能1: { 价格: 500 } } },
+  };
+
+  const settings = normalizeStandaloneSnapshotTrimSettings({ enabled: true });
+  const main = buildStandaloneSnapshotForChain({ statData, settings, chain: 'main' });
+  const update = buildStandaloneSnapshotForChain({
+    statData,
+    settings,
+    chain: 'variable_update',
+    texts: ['老周推门进来，把帽子放在柜台上。'],
+  });
+
+  const mainSnapshot = main.snapshot as Record<string, any>;
+  const updateSnapshot = update.snapshot as Record<string, any>;
+
+  // 两条链都紧凑输出、都剔 `$` 前缀（含内层）、商城都只留两个空路径
+  assert.equal(main.compact, true);
+  assert.equal(update.compact, true);
+  assert.equal('$time' in (mainSnapshot['世界'] as Record<string, unknown>), false);
+  assert.equal('$time' in (mainSnapshot['人物档案']['NPC_1'] as Record<string, unknown>), false);
+  assert.deepEqual(mainSnapshot['商城'], { 物品: {}, 技能: {} });
+  assert.deepEqual(updateSnapshot['商城'], { 物品: {}, 技能: {} });
+
+  // 正文链：不裁 NPC、剔除「设置」
+  assert.equal('设置' in mainSnapshot, false);
+  assert.deepEqual(Object.keys(mainSnapshot['人物档案']), ['NPC_1', 'NPC_2', 'NPC_3']);
+
+  // 辅助链：保留「设置」（模型要回写积分开关），但「设置」内部的 `$` 字段同样剔除
+  assert.equal('设置' in updateSnapshot, true);
+  assert.deepEqual(Object.keys(updateSnapshot['设置']['积分系统']), ['抽奖次数']);
+  // 辅助链：只留在场 NPC —— 老周被正文提到；另外两人不在场被裁
+  assert.deepEqual(Object.keys(updateSnapshot['人物档案']), ['NPC_1']);
+
+  // 生存模式：两条链都全留生存状态
+  assert.deepEqual(Object.keys(mainSnapshot['玩家']['生存状态']), ['血量', '体力值', '饥饿值', '口渴值']);
+
+  // 真状态与存档一个字节都不能动
+  assert.deepEqual(Object.keys(statData['人物档案']), ['NPC_1', 'NPC_2', 'NPC_3']);
+  assert.equal(statData['设置']['积分系统']['$保底次数'], 3);
+  assert.equal(statData['世界']['$time'], 1);
+}
+
+function testStandaloneSnapshotTrimKeepsEveryNpcWhenNothingMatches(): void {
+  const statData = {
+    设置: { 生存系统模式: '关闭' },
+    玩家: { 姓名: '测试玩家', 生存状态: { 血量: 90 } },
+    人物档案: {
+      NPC_1: { 姓名: '老周' },
+      NPC_2: { 姓名: '王丽' },
+    },
+  };
+  const settings = normalizeStandaloneSnapshotTrimSettings({ enabled: true });
+
+  // 正文里一个名字都没提到 → 整轮不裁 NPC
+  const noMatch = buildStandaloneSnapshotForChain({
+    statData,
+    settings,
+    chain: 'variable_update',
+    texts: ['她靠在窗边，没有回头。'],
+  }).snapshot as Record<string, any>;
+  assert.deepEqual(Object.keys(noMatch['人物档案']), ['NPC_1', 'NPC_2']);
+
+  // 待扫描文本为空 → 同样不裁
+  const noText = buildStandaloneSnapshotForChain({
+    statData,
+    settings,
+    chain: 'variable_update',
+    texts: [],
+  }).snapshot as Record<string, any>;
+  assert.deepEqual(Object.keys(noText['人物档案']), ['NPC_1', 'NPC_2']);
+
+  // 生存关闭 → 玩家与 NPC 的生存状态整块不发
+  assert.equal('生存状态' in noMatch['玩家'], false);
+}
+
+function testStandaloneSnapshotTrimSurvivalModes(): void {
+  const settings = normalizeStandaloneSnapshotTrimSettings({ enabled: true });
+  const buildFor = (mode: string) =>
+    buildStandaloneSnapshotForChain({
+      statData: {
+        设置: { 生存系统模式: mode },
+        玩家: { 姓名: '测试玩家', 生存状态: { 血量: 90, 体力值: 70, 饥饿值: 60, 口渴值: 50 } },
+        人物档案: {
+          NPC_1: { 姓名: '老周', 生存状态: { 血量: 80, 体力值: 60, 饥饿值: 40, 口渴值: 30 } },
+        },
+      },
+      settings,
+      chain: 'main',
+    }).snapshot as Record<string, any>;
+
+  const basic = buildFor('基础模式');
+  assert.deepEqual(Object.keys(basic['玩家']['生存状态']), ['血量', '体力值']);
+  assert.deepEqual(Object.keys(basic['人物档案']['NPC_1']['生存状态']), ['血量', '体力值']);
+
+  const off = buildFor('关闭');
+  assert.equal('生存状态' in off['玩家'], false);
+  assert.equal('生存状态' in off['人物档案']['NPC_1'], false);
+
+  const full = buildFor('生存模式');
+  assert.deepEqual(Object.keys(full['玩家']['生存状态']), ['血量', '体力值', '饥饿值', '口渴值']);
+
+  assert.equal(isStandaloneSurvivalDisabled({ 设置: { 生存系统模式: '关闭' } }), true);
+  assert.equal(isStandaloneSurvivalDisabled({ 设置: { 生存系统模式: '基础模式' } }), false);
+  assert.equal(isStandaloneSurvivalDisabled({}), true);
+}
+
+function testStandaloneSnapshotTrimMasterSwitchRestoresLegacyBehaviour(): void {
+  const statData = { 设置: { 生存系统模式: '关闭' }, 玩家: { 姓名: '测试玩家' }, $foo: 1 };
+  const disabled = normalizeStandaloneSnapshotTrimSettings({ enabled: false });
+  const result = buildStandaloneSnapshotForChain({ statData, settings: disabled, chain: 'main' });
+
+  assert.equal(result.compact, false);
+  assert.equal(result.snapshot, statData);
+}
+
+function testStandaloneSnapshotTrimDefaultsToDisabled(): void {
+  const settings = normalizeStandaloneSnapshotTrimSettings({});
+
+  // 总开关默认关；子开关默认全开（用户一开总开关就要完整效果）
+  assert.equal(settings.enabled, false);
+  assert.equal(settings.compactJson, true);
+  assert.equal(settings.trimNpc, true);
+  assert.equal(settings.blockUnderscorePatch, true);
+
+  // 默认设置下发给模型的快照 = 原始数据 + 美化输出，与改动前逐字一致
+  const statData = { 设置: { 生存系统模式: '关闭' }, 玩家: { 姓名: '测试玩家' }, $foo: 1 };
+  const result = buildStandaloneSnapshotForChain({
+    statData,
+    settings,
+    chain: 'variable_update',
+    texts: ['测试玩家走进来。'],
+  });
+
+  assert.equal(result.compact, false);
+  assert.equal(result.snapshot, statData);
+}
+
+function testStandalonePatchGuardDropsUnderscoreAndSurvivalPaths(): void {
+  const patch = [
+    { op: 'replace' as const, path: '/玩家/生存状态/血量', value: 1 },
+    { op: 'delta' as const, path: '/人物档案/NPC_1/_关注', value: 1 },
+    { op: 'replace' as const, path: '/人物档案/NPC_1/关系数据/好感度', value: 40 },
+    { op: 'move' as const, from: '/人物档案/NPC_1/_关注', to: '/人物档案/NPC_1/关系数据/好感度' },
+  ];
+  const readTarget = (operation: (typeof patch)[number]): string =>
+    'path' in operation ? operation.path : operation.from;
+
+  // 只拦生存状态
+  const survivalOnly = filterVariableUpdatePatch(patch, { blockUnderscoreKeys: false, blockSurvivalPaths: true });
+  assert.deepEqual(survivalOnly.map(readTarget), [
+    '/人物档案/NPC_1/_关注',
+    '/人物档案/NPC_1/关系数据/好感度',
+    '/人物档案/NPC_1/_关注',
+  ]);
+
+  // 两个护栏都开 → 只剩那条正常的好感度写入
+  const both = filterVariableUpdatePatch(patch, { blockUnderscoreKeys: true, blockSurvivalPaths: true });
+  assert.deepEqual(both.map(readTarget), ['/人物档案/NPC_1/关系数据/好感度']);
+
+  // 都不开 → 原样返回
+  assert.equal(filterVariableUpdatePatch(patch, { blockUnderscoreKeys: false, blockSurvivalPaths: false }), patch);
+}
+
+function testVariableUpdateFormatHidesSurvivalRulesByMode(): void {
+  const enabledMap = { 'variable-update-format': true, 'variable-update-rules': false };
+  // 只取「变量输出格式」这一块 —— 同一次请求里还有当前变量快照块，它天然带「生存系统模式」字样，
+  // 混在一起断言会误判。
+  const renderFor = (mode: string): string => {
+    const blocks = resolveStandaloneLocalContentBlocks({
+      route: 'variable_update',
+      enabledMap,
+      preset: null,
+      renderContext: {
+        statData: { 设置: { 生存系统模式: mode }, 玩家: { 姓名: '测试玩家' } },
+        messages: [],
+        latestUserMessage: null,
+        worldDifficulty: '普通',
+      },
+    });
+    return blocks.filter(block => block.startsWith('[本地内容:变量输出格式]')).join('\n');
+  };
+
+  const off = renderFor('关闭');
+  assert.ok(off.includes('变量输出格式'));
+  assert.equal(off.includes('生存'), false);
+  assert.equal(off.toLowerCase().includes('survival'), false);
+
+  const basic = renderFor('基础模式');
+  assert.ok(basic.includes('玩家.生存状态（血量/体力值）'));
+  assert.equal(basic.includes('饥饿值'), false);
+  assert.ok(basic.includes('Focused NPCs (survival system)'));
+  assert.ok(basic.includes('confirm survival changes match action logic'));
+
+  const full = renderFor('生存模式');
+  assert.ok(full.includes('玩家.生存状态（血量/体力值/饥饿值/口渴值）'));
+}
+
 async function run(): Promise<void> {
   const tests = [
     ['passes through plain text', testPassesThroughPlainText],
@@ -5080,6 +5293,16 @@ async function run(): Promise<void> {
     ],
     ['import standalone archive rejects old archive version', testImportStandaloneArchiveRejectsOldArchiveVersion],
     ['pending archive resume state round trip', testPendingArchiveResumeStateRoundTrip],
+    ['snapshot trim follows chain rules', testStandaloneSnapshotTrimFollowsChainRules],
+    ['snapshot trim keeps every npc when nothing matches', testStandaloneSnapshotTrimKeepsEveryNpcWhenNothingMatches],
+    ['snapshot trim survival modes', testStandaloneSnapshotTrimSurvivalModes],
+    [
+      'snapshot trim master switch restores legacy behaviour',
+      testStandaloneSnapshotTrimMasterSwitchRestoresLegacyBehaviour,
+    ],
+    ['snapshot trim defaults to disabled', testStandaloneSnapshotTrimDefaultsToDisabled],
+    ['patch guard drops underscore and survival paths', testStandalonePatchGuardDropsUnderscoreAndSurvivalPaths],
+    ['variable update format hides survival rules by mode', testVariableUpdateFormatHidesSurvivalRulesByMode],
   ] as const;
 
   const filter = process.env.TEST_FILTER?.trim();

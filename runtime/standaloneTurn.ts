@@ -34,10 +34,32 @@ import {
 } from '../src/utils/standaloneProviderApi';
 import { formatMessageContentForDisplay } from '../src/utils/messageFormatting';
 import { normalizeLineEndingsTrimmed as normalizeLineEndings } from '../src/utils/textNormalize';
-import { applyVariableUpdatePatch, parseVariableUpdatePatch } from '../src/utils/variableUpdate';
+import {
+  applyVariableUpdatePatch,
+  filterVariableUpdatePatch,
+  parseVariableUpdatePatch,
+  type VariableUpdatePatchGuard,
+} from '../src/utils/variableUpdate';
 import { applyStandalonePromptMacroReplacements, buildStandaloneCurrentStatDataBlock } from './standalonePromptUtils';
+import {
+  buildStandaloneSnapshotForChain,
+  DEFAULT_STANDALONE_SNAPSHOT_TRIM_SETTINGS,
+  isStandaloneSurvivalDisabled,
+  type StandaloneSnapshotTrimSettings,
+} from './standaloneSnapshotTrim';
 
 type StandaloneStatData = ReturnType<typeof Schema.parse>;
+
+/** 组装写入层护栏：`_` 前缀一律拦；生存系统关闭时才拦生存状态。 */
+function resolveStandalonePatchGuard(
+  statData: StandaloneStatData,
+  settings: StandaloneSnapshotTrimSettings,
+): VariableUpdatePatchGuard {
+  return {
+    blockUnderscoreKeys: settings.enabled && settings.blockUnderscorePatch,
+    blockSurvivalPaths: settings.enabled && settings.blockSurvivalPatch && isStandaloneSurvivalDisabled(statData),
+  };
+}
 
 export type StandaloneLocalTurnInput = {
   /** 主 API 候选，按顺序尝试 */
@@ -54,6 +76,8 @@ export type StandaloneLocalTurnInput = {
   /** 玩家在设置里手动添加的条目；没选预设时靠它把内容送进提示词 */
   localContentCustomEntries?: LocalContentEntryConfig[];
   selectedPreset?: PresetConfig | null;
+  /** 发送前快照裁剪开关；缺省用默认值（全开） */
+  snapshotTrim?: StandaloneSnapshotTrimSettings;
   onMainReplyPartialText?: (text: string) => void;
   scriptedTurn?: StandaloneScriptedTurnInput;
   /** 玩家手动归档出来的整体剧情摘要，空＝还没归档过 */
@@ -100,12 +124,16 @@ export async function runStandaloneVariableUpdatePass(input: {
   /** 玩家在设置里手动添加的条目；没选预设时靠它把内容送进提示词 */
   localContentCustomEntries?: LocalContentEntryConfig[];
   selectedPreset?: PresetConfig | null;
+  /** 发送前快照裁剪开关；缺省用默认值（全开） */
+  snapshotTrim?: StandaloneSnapshotTrimSettings;
 }): Promise<StandaloneVariableUpdatePhaseOutcome> {
   const assistantContentText = input.targetAssistantMessage.content_text.trim();
   const sanitizedAssistantRawContent = normalizeLineEndings(
     stripUpdateVariableBlocks(input.targetAssistantMessage.raw_content),
   );
-  const baseApplyResult = applyVariableUpdateFromReply(input.statData, sanitizedAssistantRawContent);
+  const trimSettings = input.snapshotTrim ?? DEFAULT_STANDALONE_SNAPSHOT_TRIM_SETTINGS;
+  const patchGuard = resolveStandalonePatchGuard(input.statData, trimSettings);
+  const baseApplyResult = applyVariableUpdateFromReply(input.statData, sanitizedAssistantRawContent, patchGuard);
   let applyResult = baseApplyResult;
   let effectiveRawReply = sanitizedAssistantRawContent;
   let variableUpdateWarning: string | null = null;
@@ -134,6 +162,7 @@ export async function runStandaloneVariableUpdatePass(input: {
         localContentBuiltinRouteOverrides: input.localContentBuiltinRouteOverrides,
         localContentCustomEntries: input.localContentCustomEntries,
         selectedPreset: input.selectedPreset,
+        snapshotTrim: input.snapshotTrim,
       },
       assistantContentText,
       controller.signal,
@@ -154,7 +183,7 @@ export async function runStandaloneVariableUpdatePass(input: {
         sanitizedAssistantRawContent,
         secondPassResult.updateBlock,
       );
-      const mergedApplyResult = applyVariableUpdateFromReply(input.statData, mergedRawReply);
+      const mergedApplyResult = applyVariableUpdateFromReply(input.statData, mergedRawReply, patchGuard);
 
       if (mergedApplyResult.errorMessage) {
         variableUpdateWarning = mergedApplyResult.errorMessage;
@@ -418,6 +447,10 @@ function buildStandaloneOrderedMainMessages(input: {
   latestUserMessage: MessageRecord;
   localContentBlocks: string[];
   includeFullPreset: boolean;
+  /** 发送用整形快照；缺省回落到 statData（未开启裁剪时） */
+  snapshotStatData?: unknown;
+  /** 快照是否紧凑输出 */
+  compactSnapshot?: boolean;
   /** 玩家手动归档出来的整体剧情摘要，空＝还没归档过 */
   stageSummary?: string;
   /** 归档水位线：message_id 小于等于它的回合已被上面那段覆盖 */
@@ -450,7 +483,10 @@ function buildStandaloneOrderedMainMessages(input: {
     if (prompt.identifier === 'main') {
       const content =
         typeof prompt.content === 'string'
-          ? normalizeStandalonePresetPromptContent(prompt.content, input.statData)
+          ? normalizeStandalonePresetPromptContent(prompt.content, input.statData, {
+              snapshotStatData: input.snapshotStatData,
+              compactSnapshot: input.compactSnapshot,
+            })
           : '';
       if (!content) {
         return;
@@ -464,7 +500,9 @@ function buildStandaloneOrderedMainMessages(input: {
       if (!statDataInjected) {
         messages.push({
           role: 'user',
-          content: buildStandaloneCurrentStatDataBlock(input.statData),
+          content: buildStandaloneCurrentStatDataBlock(input.snapshotStatData ?? input.statData, {
+            compact: input.compactSnapshot === true,
+          }),
         });
         statDataInjected = true;
       }
@@ -501,7 +539,12 @@ function buildStandaloneOrderedMainMessages(input: {
     }
 
     const directContent =
-      typeof prompt.content === 'string' ? normalizeStandalonePresetPromptContent(prompt.content, input.statData) : '';
+      typeof prompt.content === 'string'
+        ? normalizeStandalonePresetPromptContent(prompt.content, input.statData, {
+            snapshotStatData: input.snapshotStatData,
+            compactSnapshot: input.compactSnapshot,
+          })
+        : '';
     const resolvedContent = directContent.trim();
 
     if (!resolvedContent) {
@@ -522,7 +565,9 @@ function buildStandaloneOrderedMainMessages(input: {
   if (!statDataInjected) {
     messages.push({
       role: 'user',
-      content: buildStandaloneCurrentStatDataBlock(input.statData),
+      content: buildStandaloneCurrentStatDataBlock(input.snapshotStatData ?? input.statData, {
+        compact: input.compactSnapshot === true,
+      }),
     });
     statDataInjected = true;
   }
@@ -550,14 +595,22 @@ function buildStandaloneOrderedMainMessages(input: {
   return messages;
 }
 
-function normalizeStandalonePresetPromptContent(content: string, statData?: StandaloneStatData): string {
+function normalizeStandalonePresetPromptContent(
+  content: string,
+  statData?: StandaloneStatData,
+  snapshot?: { snapshotStatData?: unknown; compactSnapshot?: boolean },
+): string {
   const sanitizedLines = normalizeLineEndings(content)
     .split('\n')
     .filter(line => !/^\s*(忽略之前提示词|ignore previous prompts?)\s*$/i.test(line));
 
   const sanitized = sanitizedLines.join('\n').trim();
 
-  return applyStandalonePromptMacroReplacements(sanitized, { statData });
+  return applyStandalonePromptMacroReplacements(sanitized, {
+    statData,
+    snapshotStatData: snapshot?.snapshotStatData,
+    compactSnapshot: snapshot?.compactSnapshot,
+  });
 }
 
 function resolveOrderedStandalonePresetPrompts(): ResolvedStandalonePresetPrompt[] {
@@ -587,6 +640,13 @@ function limitApiCandidates<T>(candidates: T[], autoRetry: boolean | undefined):
 
 export function buildMainTurnPrompt(input: StandaloneLocalTurnInput): StandalonePromptMessagesBundle {
   const includeFullPreset = true;
+  // 发送用快照：正文链不裁 NPC，只做去缩进、剔 `$`、剔「设置」、商城只留路径、生存状态按模式裁。
+  // renderContext.statData 保持完整数据（预设主提示词的宏与脚本要读它）。
+  const snapshotForSend = buildStandaloneSnapshotForChain({
+    statData: input.statData,
+    settings: input.snapshotTrim ?? DEFAULT_STANDALONE_SNAPSHOT_TRIM_SETTINGS,
+    chain: 'main',
+  });
   const localContentBlocks = resolveStandaloneLocalContentBlocks({
     route: 'main',
     enabledMap: input.localContentEnabledMap,
@@ -598,6 +658,8 @@ export function buildMainTurnPrompt(input: StandaloneLocalTurnInput): Standalone
       messages: input.messages,
       latestUserMessage: input.latestUserMessage,
       worldDifficulty: input.worldDifficulty,
+      snapshotStatData: snapshotForSend.snapshot,
+      compactSnapshot: snapshotForSend.compact,
     },
   });
   const shouldIncludeLotteryRules = input.scriptedTurn?.kind === 'lottery';
@@ -612,6 +674,8 @@ export function buildMainTurnPrompt(input: StandaloneLocalTurnInput): Standalone
       latestUserMessage: input.latestUserMessage,
       localContentBlocks: effectiveLocalContentBlocks,
       includeFullPreset,
+      snapshotStatData: snapshotForSend.snapshot,
+      compactSnapshot: snapshotForSend.compact,
       stageSummary: input.stageSummary,
       archivedUntilMessageId: input.archivedUntilMessageId,
     }),
@@ -669,6 +733,8 @@ export function buildVariableUpdateSecondPassPrompt(input: {
   /** 玩家在设置里手动添加的条目；没选预设时靠它把内容送进提示词 */
   localContentCustomEntries?: LocalContentEntryConfig[];
   selectedPreset?: PresetConfig | null;
+  /** 发送前快照裁剪开关；缺省用默认值（全开） */
+  snapshotTrim?: StandaloneSnapshotTrimSettings;
 }): StandalonePromptMessagesBundle {
   const promptSections = buildStandaloneVariableUpdatePromptSections(input);
   return {
@@ -720,12 +786,26 @@ function buildStandaloneVariableUpdatePromptSections(input: {
   /** 玩家在设置里手动添加的条目；没选预设时靠它把内容送进提示词 */
   localContentCustomEntries?: LocalContentEntryConfig[];
   selectedPreset?: PresetConfig | null;
+  /** 发送前快照裁剪开关；缺省用默认值（全开） */
+  snapshotTrim?: StandaloneSnapshotTrimSettings;
 }): StandaloneVariableUpdatePromptSections {
+  // 发送用快照：按在场名单裁 NPC、按生存模式裁生存状态、剔 `$` 字段。
+  // 注意 renderContext.statData 仍是**完整数据** —— 规则文案的脚本要读「设置」与「人物档案」，
+  // 只有快照宏走这份整形结果。
+  const snapshotForSend = buildStandaloneSnapshotForChain({
+    statData: input.statData,
+    settings: input.snapshotTrim ?? DEFAULT_STANDALONE_SNAPSHOT_TRIM_SETTINGS,
+    chain: 'variable_update',
+    texts: [input.assistantContentText, input.latestUserMessage.content_text, input.latestUserMessage.raw_content],
+  });
+
   const renderContext = {
     statData: input.statData,
     messages: input.messages,
     latestUserMessage: input.latestUserMessage,
     worldDifficulty: input.worldDifficulty,
+    snapshotStatData: snapshotForSend.snapshot,
+    compactSnapshot: snapshotForSend.compact,
   };
 
   const manifest = resolveStandaloneLocalContentEntries({
@@ -759,7 +839,9 @@ function buildStandaloneVariableUpdatePromptSections(input: {
     .map(item => item.block)
     .join('\n\n');
 
-  const variableSnapshotPrompt = buildStandaloneCurrentStatDataBlock(input.statData);
+  const variableSnapshotPrompt = buildStandaloneCurrentStatDataBlock(snapshotForSend.snapshot, {
+    compact: snapshotForSend.compact,
+  });
   const previousUserPrompt = input.latestUserMessage.content_text.trim() || input.latestUserMessage.raw_content.trim();
   const assistantContentPrompt = input.assistantContentText.trim();
   // Fix 4：当商城刷新被触发时，在元指令顶部注入最高优先级任务，避免刷新要求被埋没在
@@ -825,6 +907,7 @@ async function requestAssistantReply(
 function applyVariableUpdateFromReply(
   currentStatData: StandaloneStatData,
   rawReply: string,
+  guard?: VariableUpdatePatchGuard,
 ): VariableUpdateApplyResult {
   const parsedReply = parseTaggedAssistantReply(rawReply);
   const patchText = parsedReply.updateJsonPatchText;
@@ -840,12 +923,14 @@ function applyVariableUpdateFromReply(
 
   try {
     const parsedPatch = parseVariableUpdatePatch(patchText);
-    const nextStatData = applyVariableUpdatePatch(currentStatData, parsedPatch.patch);
+    // 护栏在这里生效：越界操作（`_` 前缀、生存关闭时的生存状态）直接丢弃，不写进真数据。
+    const effectivePatch = guard ? filterVariableUpdatePatch(parsedPatch.patch, guard) : parsedPatch.patch;
+    const nextStatData = applyVariableUpdatePatch(currentStatData, effectivePatch);
 
     return {
       parsedReply,
       nextStatData,
-      variableUpdateApplied: parsedPatch.patch.length > 0,
+      variableUpdateApplied: effectivePatch.length > 0,
       errorMessage: null,
     };
   } catch (error) {
@@ -907,6 +992,7 @@ async function requestVariableUpdateSecondPass(
     localContentBuiltinRouteOverrides: input.localContentBuiltinRouteOverrides,
     localContentCustomEntries: input.localContentCustomEntries,
     selectedPreset: input.selectedPreset ?? null,
+    snapshotTrim: input.snapshotTrim,
   });
 
   const candidateApis = limitApiCandidates(resolveConfiguredAssistantApis(input.assistantApis), input.autoRetry);
@@ -973,6 +1059,7 @@ export async function runStandaloneLocalTurn(input: StandaloneLocalTurnInput): P
   const controller = new AbortController();
   activeStandaloneTurnController = controller;
   let deferControllerCleanup = false;
+  const patchGuard = resolveStandalonePatchGuard(input.statData, input.snapshotTrim ?? DEFAULT_STANDALONE_SNAPSHOT_TRIM_SETTINGS);
 
   try {
     const prompt = buildMainTurnPrompt(input);
@@ -994,7 +1081,7 @@ export async function runStandaloneLocalTurn(input: StandaloneLocalTurnInput): P
         const rawReply = normalizeLineEndings(mainReply.text);
         const sanitizedMainReply = normalizeLineEndings(stripUpdateVariableBlocks(rawReply));
 
-        const mainReplyApplyResult = applyVariableUpdateFromReply(input.statData, sanitizedMainReply);
+        const mainReplyApplyResult = applyVariableUpdateFromReply(input.statData, sanitizedMainReply, patchGuard);
         const mainDebugTrace = mergeStandaloneAssistantDebugTrace(undefined, {
           main_pass: {
             ...mainReply.debugTrace,
@@ -1045,7 +1132,7 @@ export async function runStandaloneLocalTurn(input: StandaloneLocalTurnInput): P
                 sanitizedMainReply,
                 secondPassResult.updateBlock,
               );
-              const mergedApplyResult = applyVariableUpdateFromReply(input.statData, mergedRawReply);
+              const mergedApplyResult = applyVariableUpdateFromReply(input.statData, mergedRawReply, patchGuard);
 
               if (mergedApplyResult.errorMessage) {
                 variableUpdateWarning = mergedApplyResult.errorMessage;

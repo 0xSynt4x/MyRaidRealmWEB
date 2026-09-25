@@ -66,6 +66,26 @@
 间距走 `--ui-space-1..6`；消息区走 `--ui-msg-gap` / `--ui-msg-pad-x` / `--ui-msg-pad-y`。
 圆角：`--ui-radius`（全局，当前 0 = 硬边）+ `--ui-radius-sm/md/lg`。
 
+## 设置项与开关
+
+右侧面板里的设置项一律用**现成范式**，别自造：
+
+| 用途 | 用什么 |
+| --- | --- |
+| 一行「标签 + 控件」 | `.setting-row`（相邻行自动带上分隔线） |
+| 开关 | `.setting-row` + `.toggle-switch` |
+| 多选一（分段） | `.seg-control` |
+| 多选一（药丸） | `.chip-group` + `.chip` |
+
+- 标签写 `.row-label`，卡片说明写 `.card-hint`。
+- 一组开关要分组时，用带组标题的分组块（`.snapshot-trim-group` + `.snapshot-trim-group-title`），
+  **别用网格平铺** —— 平铺看不出层次，也看不出哪些是子项。
+- 禁用态加 `is-disabled` 类（降透明度），别只靠 `:disabled` 属性。
+- 子项缩进用 `.snapshot-trim-row--child` 那类写法，不要靠空格。
+
+🔴 **新增设置项时字号必须 `calc(Npx * var(--ui-font-scale))`。** 写死 px 会让这一项在用户调字号档位时纹丝不动，
+跟整个界面脱节。
+
 ## 图标
 
 🔴 **全项目统一 Tabler Icons 3.47.0**，内联子集在 `src/assets/tabler/tabler-inline.css`。

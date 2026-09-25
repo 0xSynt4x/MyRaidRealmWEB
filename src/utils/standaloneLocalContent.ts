@@ -315,6 +315,8 @@ function renderStandaloneLocalContentAsset(
   });
   const replaced = applyStandalonePromptMacroReplacements(scripted.content, {
     statData: renderContext.statData,
+    snapshotStatData: renderContext.snapshotStatData,
+    compactSnapshot: renderContext.compactSnapshot,
   });
   return {
     content: normalizeLineEndings(replaced),

@@ -254,13 +254,65 @@ export function parseVariableUpdatePatch(patchText: string): VariableUpdateParse
   };
 }
 
+/**
+ * 写入层的补丁护栏。
+ *
+ * 提示词与快照里把某些字段拿掉之后，模型仍可能凭记忆写出指向它们的补丁；补丁是打在**完整数据**
+ * 上的，路径真实存在就照样写得进去。所以必须有一道机制在写入前把它们挡掉。
+ */
+export type VariableUpdatePatchGuard = {
+  /** 路径中任一段以 `_` 开头即丢弃该操作（`_` 前缀约定为前端控制，AI 不可改）。 */
+  blockUnderscoreKeys: boolean;
+  /** 丢弃指向「生存状态」的操作。生存系统关闭时使用。 */
+  blockSurvivalPaths: boolean;
+};
+
+/** 路径解析失败时返回空数组——不拦，交给后续流程按原有方式报错。 */
+function tryParsePointerTokens(path: string): string[] {
+  try {
+    return parsePointer(path);
+  } catch {
+    return [];
+  }
+}
+
+function readOperationPaths(operation: JsonPatchOperation): string[] {
+  return operation.op === 'move' ? [operation.from, operation.to] : [operation.path];
+}
+
+/** 按护栏筛掉不该写入的操作；返回新数组，不修改入参。 */
+export function filterVariableUpdatePatch(
+  patch: JsonPatchOperation[],
+  guard: VariableUpdatePatchGuard,
+): JsonPatchOperation[] {
+  if (!guard.blockUnderscoreKeys && !guard.blockSurvivalPaths) {
+    return patch;
+  }
+
+  return patch.filter(operation => {
+    const tokenLists = readOperationPaths(operation).map(tryParsePointerTokens);
+
+    if (guard.blockUnderscoreKeys && tokenLists.some(tokens => tokens.some(token => token.startsWith('_')))) {
+      return false;
+    }
+
+    if (guard.blockSurvivalPaths && tokenLists.some(tokens => tokens.includes('生存状态'))) {
+      return false;
+    }
+
+    return true;
+  });
+}
+
 export function applyVariableUpdatePatch(
   statData: StandaloneStatData,
   patch: JsonPatchOperation[],
+  guard?: VariableUpdatePatchGuard,
 ): StandaloneStatData {
   const nextState = cloneState(statData);
+  const effectivePatch = guard ? filterVariableUpdatePatch(patch, guard) : patch;
 
-  for (const operation of patch) {
+  for (const operation of effectivePatch) {
     switch (operation.op) {
       case 'replace':
         applyReplace(nextState, operation);

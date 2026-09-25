@@ -24,6 +24,10 @@ import {
 } from '../utils/comfyuiStylePresets';
 import { findImageStylePreset } from '../utils/imageStylePresets';
 import { DEFAULT_STAGE_SUMMARY_THRESHOLD, normalizeStageSummaryThreshold } from '../utils/stageSummaryThreshold';
+import {
+  normalizeStandaloneSnapshotTrimSettings,
+  type StandaloneSnapshotTrimSettings,
+} from '../../runtime/standaloneSnapshotTrim';
 
 export type Theme = 'light' | 'dark' | 'steelcool' | 'solarized' | 'everforest1980s' | 'wuxia';
 export type FontFamily = 'yahei' | 'source-han-sans' | 'lxgw-hazy' | 'hanchan' | 'shanggu';
@@ -640,6 +644,11 @@ export const useSettingsStore = defineStore('settings', () => {
     }),
   );
 
+  /** 发送前快照裁剪的开关组；默认全开，总开关一关即回到改动前行为 */
+  const snapshotTrim = ref<StandaloneSnapshotTrimSettings>(
+    normalizeStandaloneSnapshotTrimSettings(stored.snapshotTrim),
+  );
+
   const saveStoragePatch = (patch: Record<string, unknown>) => {
     try {
       const current = loadFromStorage();
@@ -676,6 +685,7 @@ export const useSettingsStore = defineStore('settings', () => {
       stageSummaryThreshold: stageSummaryThreshold.value,
       backgroundImage: backgroundImage.value,
       standaloneLocalContent: standaloneLocalContent.value,
+      snapshotTrim: snapshotTrim.value,
       imageGeneration: imageGeneration.value,
       comfyUi: comfyUi.value,
       novelAi: novelAi.value,
@@ -724,6 +734,7 @@ export const useSettingsStore = defineStore('settings', () => {
       stageSummaryThreshold,
       backgroundImage,
       standaloneLocalContent,
+      snapshotTrim,
       imageGeneration,
       comfyUi,
       novelAi,
@@ -804,6 +815,7 @@ export const useSettingsStore = defineStore('settings', () => {
     apiAutoRetry,
     backgroundImage,
     standaloneLocalContent,
+    snapshotTrim,
     imageGeneration,
     comfyUi,
     novelAi,

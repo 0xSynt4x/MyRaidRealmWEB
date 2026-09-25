@@ -1,3 +1,5 @@
+import { stringifyStandaloneSnapshot } from './standaloneSnapshotTrim';
+
 type StandaloneMacroRecord = Record<string, unknown>;
 
 const STANDALONE_PROMPT_MACRO_FALLBACKS = {
@@ -44,6 +46,14 @@ export function applyStandalonePromptMacroReplacements(
   template: string,
   input: {
     statData: unknown;
+    /**
+     * 专供 `{{format_message_variable::stat_data}}` 的整形数据。
+     * 缺省回落到 statData —— 调用方若已做发送前裁剪，应把裁剪结果从这里传入，
+     * 让 statData 保持完整（规则文案的脚本要读它）。
+     */
+    snapshotStatData?: unknown;
+    /** 快照是否使用紧凑 JSON。缺省保持原有的美化输出。 */
+    compactSnapshot?: boolean;
     userName?: string;
     charName?: string;
   },
@@ -55,6 +65,7 @@ export function applyStandalonePromptMacroReplacements(
   const resolvedCharName =
     (typeof input.charName === 'string' ? input.charName.trim() : '') || STANDALONE_PROMPT_MACRO_FALLBACKS.char;
   const resolvedScenario = resolveStandaloneMacroScenario(input.statData) || STANDALONE_PROMPT_MACRO_FALLBACKS.scenario;
+  const snapshotSource = input.snapshotStatData ?? input.statData;
 
   return template
     .replace(/\{\{\s*user\s*\}\}/gi, resolvedUserName)
@@ -63,9 +74,18 @@ export function applyStandalonePromptMacroReplacements(
     .replace(/\{\{\s*scenario\s*\}\}/gi, resolvedScenario)
     .replace(/\{\{\s*personality\s*\}\}/gi, STANDALONE_PROMPT_MACRO_FALLBACKS.personality)
     .replace(/\{\{\s*lastChatMessage\s*\}\}/gi, STANDALONE_PROMPT_MACRO_FALLBACKS.lastChatMessage)
-    .replace(/\{\{\s*format_message_variable::stat_data\s*\}\}/gi, JSON.stringify(input.statData ?? {}, null, 2));
+    .replace(
+      /\{\{\s*format_message_variable::stat_data\s*\}\}/gi,
+      stringifyStandaloneSnapshot(snapshotSource, input.compactSnapshot === true),
+    );
 }
 
-export function buildStandaloneCurrentStatDataBlock(statData: unknown): string {
-  return `[当前变量快照 stat_data]\n${JSON.stringify(statData ?? {}, null, 2).trim()}`;
+export function buildStandaloneCurrentStatDataBlock(
+  statData: unknown,
+  options?: {
+    /** 使用紧凑 JSON（去掉缩进）。只影响字符数，语义不变。 */
+    compact?: boolean;
+  },
+): string {
+  return `[当前变量快照 stat_data]\n${stringifyStandaloneSnapshot(statData, options?.compact === true).trim()}`;
 }

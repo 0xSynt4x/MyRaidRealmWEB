@@ -178,16 +178,6 @@ export function useAssistantApiEditor(customApis: Ref<ApiConfig[]>) {
     return { valid: true, message: tCurrent('assistantApi.save.saved') };
   }
 
-  function expandNextApi(index: number) {
-    const next = apis.value[index + 1];
-    if (!next) {
-      return false;
-    }
-
-    next.collapsed = false;
-    return true;
-  }
-
   return {
     apis,
     hasAnyApi,
@@ -201,6 +191,5 @@ export function useAssistantApiEditor(customApis: Ref<ApiConfig[]>) {
     validateAllApis,
     fetchAvailableModels,
     markApiSaved,
-    expandNextApi,
   };
 }

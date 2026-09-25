@@ -7,6 +7,14 @@ export type StandaloneLocalContentRenderContext = {
   messages: MessageRecord[];
   latestUserMessage: MessageRecord | null;
   worldDifficulty: WorldDifficulty;
+  /**
+   * 专供 `{{format_message_variable::stat_data}}` 快照宏使用的整形数据。
+   * 缺省时快照回落到 statData。规则文案脚本始终读 statData（完整数据），
+   * 因此发送前裁剪只能挂在这里，不能替换 statData 本身。
+   */
+  snapshotStatData?: unknown;
+  /** 快照是否使用紧凑 JSON。 */
+  compactSnapshot?: boolean;
 };
 
 type TemplateUtilityContext = {

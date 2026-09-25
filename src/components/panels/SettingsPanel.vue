@@ -4,6 +4,9 @@
       <button :class="{ active: currentTab === 'ui' }" @click="currentTab = 'ui'">
         <i class="ti ti-palette"></i> {{ t('settings.tab.ui') }}
       </button>
+      <button :class="{ active: currentTab === 'features' }" @click="currentTab = 'features'">
+        <i class="ti ti-adjustments"></i> {{ t('settings.tab.features') }}
+      </button>
       <button :class="{ active: currentTab === 'textToImage' }" @click="currentTab = 'textToImage'">
         {{ t('settings.tab.textToImage') }}
       </button>
@@ -181,6 +184,89 @@
         </div>
       </div>
 
+      <!-- ─── 背景图 ─── -->
+      <div class="setting-card">
+        <h3 class="card-title"><i class="ti ti-photo"></i>{{ t('settings.card.backgroundImage') }}</h3>
+
+        <!-- 已有图片 -->
+        <template v-if="backgroundImage.imageUrl">
+          <div class="bg-preview-row">
+            <div class="bg-thumb">
+              <img :src="backgroundImage.imageUrl" :alt="t('settings.backgroundPreviewAlt')" />
+              <button class="bg-remove-btn" :title="t('settings.removeBackgroundImage')" @click="removeBackgroundImage">
+                <i class="ti ti-x"></i>
+              </button>
+            </div>
+            <div class="bg-controls">
+              <div class="bg-ctrl-row">
+                <span class="bg-ctrl-label">{{ t('settings.opacity') }}</span>
+                <input
+                  v-model.number="backgroundImage.opacity"
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="5"
+                  class="range-slider sm"
+                />
+                <span class="bg-ctrl-val">{{ backgroundImage.opacity }}%</span>
+              </div>
+              <div class="bg-option-row">
+                <div class="chip-group sm">
+                  <button
+                    v-for="s in ['cover', 'contain', 'auto'] as const"
+                    :key="s"
+                    :class="['chip mini', { active: backgroundImage.size === s }]"
+                    @click="backgroundImage.size = s"
+                  >
+                    {{ backgroundSizeLabelMap[s] }}
+                  </button>
+                </div>
+                <div class="chip-group sm">
+                  <button
+                    v-for="p in ['top', 'center', 'bottom'] as const"
+                    :key="p"
+                    :class="['chip mini', { active: backgroundImage.position === p }]"
+                    @click="backgroundImage.position = p"
+                  >
+                    {{ backgroundPositionLabelMap[p] }}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </template>
+
+        <!-- 无图片 -->
+        <template v-else>
+          <div class="bg-upload-row">
+            <label class="upload-btn">
+              <i class="ti ti-upload"></i>
+              <span>{{ t('settings.upload') }}</span>
+              <input
+                type="file"
+                accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
+                @change="handleImageUpload"
+              />
+            </label>
+            <div class="url-input-group">
+              <input
+                v-model="imageUrlInput"
+                type="text"
+                :placeholder="t('settings.pasteImageUrl')"
+                class="url-input"
+                @keyup.enter="handleUrlInput"
+              />
+              <button class="url-confirm-btn" :disabled="!imageUrlInput.trim()" @click="handleUrlInput">
+                <i class="ti ti-check"></i>
+              </button>
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
+
+    <!-- ==================== 功能设置标签页 ==================== -->
+    <div v-show="currentTab === 'features'" class="ui-settings">
       <!-- ─── 功能 ─── -->
       <div class="setting-card">
         <h3 class="card-title"><i class="ti ti-adjustments"></i>{{ t('settings.card.features') }}</h3>
@@ -311,84 +397,124 @@
         </div>
       </div>
 
-      <!-- ─── 背景图 ─── -->
+      <!-- ─── 上下文裁剪 ─── -->
       <div class="setting-card">
-        <h3 class="card-title"><i class="ti ti-photo"></i>{{ t('settings.card.backgroundImage') }}</h3>
+        <h3 class="card-title"><i class="ti ti-cut"></i>{{ t('settings.snapshotTrim.title') }}</h3>
+        <p class="card-hint">{{ t('settings.snapshotTrim.hint') }}</p>
 
-        <!-- 已有图片 -->
-        <template v-if="backgroundImage.imageUrl">
-          <div class="bg-preview-row">
-            <div class="bg-thumb">
-              <img :src="backgroundImage.imageUrl" :alt="t('settings.backgroundPreviewAlt')" />
-              <button class="bg-remove-btn" :title="t('settings.removeBackgroundImage')" @click="removeBackgroundImage">
-                <i class="ti ti-x"></i>
-              </button>
-            </div>
-            <div class="bg-controls">
-              <div class="bg-ctrl-row">
-                <span class="bg-ctrl-label">{{ t('settings.opacity') }}</span>
-                <input
-                  v-model.number="backgroundImage.opacity"
-                  type="range"
-                  min="0"
-                  max="100"
-                  step="5"
-                  class="range-slider sm"
-                />
-                <span class="bg-ctrl-val">{{ backgroundImage.opacity }}%</span>
-              </div>
-              <div class="bg-option-row">
-                <div class="chip-group sm">
-                  <button
-                    v-for="s in ['cover', 'contain', 'auto'] as const"
-                    :key="s"
-                    :class="['chip mini', { active: backgroundImage.size === s }]"
-                    @click="backgroundImage.size = s"
-                  >
-                    {{ backgroundSizeLabelMap[s] }}
-                  </button>
-                </div>
-                <div class="chip-group sm">
-                  <button
-                    v-for="p in ['top', 'center', 'bottom'] as const"
-                    :key="p"
-                    :class="['chip mini', { active: backgroundImage.position === p }]"
-                    @click="backgroundImage.position = p"
-                  >
-                    {{ backgroundPositionLabelMap[p] }}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </template>
-
-        <!-- 无图片 -->
-        <template v-else>
-          <div class="bg-upload-row">
-            <label class="upload-btn">
-              <i class="ti ti-upload"></i>
-              <span>{{ t('settings.upload') }}</span>
-              <input
-                type="file"
-                accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
-                @change="handleImageUpload"
-              />
+        <div class="snapshot-trim-grid">
+          <div class="snapshot-trim-row snapshot-trim-row--wide">
+            <span class="snapshot-trim-label">{{ t('settings.snapshotTrim.enabled') }}</span>
+            <label class="toggle-switch">
+              <input v-model="snapshotTrim.enabled" type="checkbox" />
+              <span class="toggle-track"></span>
             </label>
-            <div class="url-input-group">
-              <input
-                v-model="imageUrlInput"
-                type="text"
-                :placeholder="t('settings.pasteImageUrl')"
-                class="url-input"
-                @keyup.enter="handleUrlInput"
-              />
-              <button class="url-confirm-btn" :disabled="!imageUrlInput.trim()" @click="handleUrlInput">
-                <i class="ti ti-check"></i>
-              </button>
-            </div>
           </div>
-        </template>
+
+          <h4 class="snapshot-trim-group-title">{{ t('settings.snapshotTrim.groupSend') }}</h4>
+
+          <div class="snapshot-trim-row" :class="{ 'is-disabled': !snapshotTrim.enabled }">
+            <span class="snapshot-trim-label">{{ t('settings.snapshotTrim.compactJson') }}</span>
+            <label class="toggle-switch">
+              <input v-model="snapshotTrim.compactJson" type="checkbox" :disabled="!snapshotTrim.enabled" />
+              <span class="toggle-track"></span>
+            </label>
+          </div>
+
+          <div class="snapshot-trim-row" :class="{ 'is-disabled': !snapshotTrim.enabled }">
+            <span class="snapshot-trim-label">{{ t('settings.snapshotTrim.dropDollarKeys') }}</span>
+            <label class="toggle-switch">
+              <input v-model="snapshotTrim.dropDollarKeys" type="checkbox" :disabled="!snapshotTrim.enabled" />
+              <span class="toggle-track"></span>
+            </label>
+          </div>
+
+          <div class="snapshot-trim-row" :class="{ 'is-disabled': !snapshotTrim.enabled }">
+            <span class="snapshot-trim-label">{{ t('settings.snapshotTrim.dropSettings') }}</span>
+            <label class="toggle-switch">
+              <input v-model="snapshotTrim.dropSettings" type="checkbox" :disabled="!snapshotTrim.enabled" />
+              <span class="toggle-track"></span>
+            </label>
+          </div>
+
+          <div class="snapshot-trim-row" :class="{ 'is-disabled': !snapshotTrim.enabled }">
+            <span class="snapshot-trim-label">{{ t('settings.snapshotTrim.collapseShop') }}</span>
+            <label class="toggle-switch">
+              <input v-model="snapshotTrim.collapseShop" type="checkbox" :disabled="!snapshotTrim.enabled" />
+              <span class="toggle-track"></span>
+            </label>
+          </div>
+
+          <div class="snapshot-trim-row" :class="{ 'is-disabled': !snapshotTrim.enabled }">
+            <span class="snapshot-trim-label">{{ t('settings.snapshotTrim.trimSurvival') }}</span>
+            <label class="toggle-switch">
+              <input v-model="snapshotTrim.trimSurvival" type="checkbox" :disabled="!snapshotTrim.enabled" />
+              <span class="toggle-track"></span>
+            </label>
+          </div>
+
+          <div class="snapshot-trim-row" :class="{ 'is-disabled': !snapshotTrim.enabled }">
+            <span class="snapshot-trim-label">{{ t('settings.snapshotTrim.trimNpc') }}</span>
+            <label class="toggle-switch">
+              <input v-model="snapshotTrim.trimNpc" type="checkbox" :disabled="!snapshotTrim.enabled" />
+              <span class="toggle-track"></span>
+            </label>
+          </div>
+
+          <div
+            class="snapshot-trim-row"
+            :class="{ 'is-disabled': !snapshotTrim.enabled || !snapshotTrim.trimNpc }"
+          >
+            <span class="snapshot-trim-label">{{ t('settings.snapshotTrim.keepImportantNpc') }}</span>
+            <label class="toggle-switch">
+              <input
+                v-model="snapshotTrim.keepImportantNpc"
+                type="checkbox"
+                :disabled="!snapshotTrim.enabled || !snapshotTrim.trimNpc"
+              />
+              <span class="toggle-track"></span>
+            </label>
+          </div>
+
+          <div
+            class="snapshot-trim-row"
+            :class="{ 'is-disabled': !snapshotTrim.enabled || !snapshotTrim.trimNpc }"
+          >
+            <span class="snapshot-trim-label">{{ t('settings.snapshotTrim.keepFocusedNpc') }}</span>
+            <label class="toggle-switch">
+              <input
+                v-model="snapshotTrim.keepFocusedNpc"
+                type="checkbox"
+                :disabled="!snapshotTrim.enabled || !snapshotTrim.trimNpc"
+              />
+              <span class="toggle-track"></span>
+            </label>
+          </div>
+
+          <h4 class="snapshot-trim-group-title">{{ t('settings.snapshotTrim.groupWrite') }}</h4>
+
+          <div class="snapshot-trim-row" :class="{ 'is-disabled': !snapshotTrim.enabled }">
+            <span class="snapshot-trim-label">{{ t('settings.snapshotTrim.blockUnderscorePatch') }}</span>
+            <label class="toggle-switch">
+              <input
+                v-model="snapshotTrim.blockUnderscorePatch"
+                type="checkbox"
+                :disabled="!snapshotTrim.enabled"
+              />
+              <span class="toggle-track"></span>
+            </label>
+          </div>
+
+          <div class="snapshot-trim-row" :class="{ 'is-disabled': !snapshotTrim.enabled }">
+            <span class="snapshot-trim-label">{{ t('settings.snapshotTrim.blockSurvivalPatch') }}</span>
+            <label class="toggle-switch">
+              <input v-model="snapshotTrim.blockSurvivalPatch" type="checkbox" :disabled="!snapshotTrim.enabled" />
+              <span class="toggle-track"></span>
+            </label>
+          </div>
+        </div>
+
+        <p class="snapshot-trim-note">{{ t('settings.snapshotTrim.note') }}</p>
       </div>
     </div>
 
@@ -1079,7 +1205,7 @@ import ImageGenerationSettingsCard from './ImageGenerationSettingsCard.vue';
 import { useStandaloneArchiveManager } from '../../composables/useStandaloneArchiveManager';
 import { STAGE_SUMMARY_THRESHOLD_OPTIONS } from '../../utils/stageSummaryThreshold';
 
-const currentTab = ref<'ui' | 'textToImage' | 'api' | 'worldbook' | 'archive'>('ui');
+const currentTab = ref<'ui' | 'features' | 'textToImage' | 'api' | 'worldbook' | 'archive'>('ui');
 const showDeclaration = ref(false);
 const { t } = useI18n();
 
@@ -1103,6 +1229,7 @@ const {
   backgroundImage,
   worldDifficulty,
   standaloneLocalContent,
+  snapshotTrim,
   stageSummaryThreshold,
 } = storeToRefs(settingsStore);
 const { selectedPreset } = storeToRefs(setupStore);
@@ -1117,7 +1244,6 @@ const {
   handleSourceChange,
   fetchAvailableModels,
   markApiSaved,
-  expandNextApi,
 } = useAssistantApiEditor(apiPool);
 
 const statDataStore = useStatDataStore();
@@ -1737,7 +1863,6 @@ function saveApiCard(index: number) {
     return;
   }
 
-  expandNextApi(index);
   const message = t('settings.assistantApiSaved');
   saveResult.value = { success: true, message };
   notify.success(message);
@@ -2930,6 +3055,64 @@ function removeBackgroundImage() {
 .api-auto-retry-row small {
   font-size: var(--text-xs);
   color: var(--text-tertiary);
+}
+
+/* ─── 功能设置 · 上下文裁剪 ─── */
+.card-hint {
+  margin: 0 0 var(--ui-space-2) 0;
+  font-size: calc(var(--ui-fs-body) * var(--ui-font-scale));
+  color: var(--ui-dim);
+}
+
+/* 两列网格：每行「标签靠左 + 开关靠右」。列宽用 minmax(0, 1fr)，
+   窄屏（手机）也放得下两列，不会把开关挤出去。 */
+.snapshot-trim-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: var(--ui-space-4);
+  row-gap: var(--ui-space-1);
+  margin-top: var(--ui-space-2);
+}
+
+.snapshot-trim-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ui-space-2);
+  min-height: calc(24px * var(--ui-font-scale));
+}
+
+/* 总开关与组标题横跨两列 */
+.snapshot-trim-row--wide,
+.snapshot-trim-group-title {
+  grid-column: 1 / -1;
+}
+
+.snapshot-trim-label {
+  font-size: calc(var(--ui-fs-body) * var(--ui-font-scale));
+  line-height: 1.35;
+  color: var(--ui-text);
+}
+
+.snapshot-trim-group-title {
+  margin: var(--ui-space-2) 0 0;
+  padding-top: var(--ui-space-2);
+  border-top: 1px solid var(--ui-panel-border);
+  font-size: calc(var(--ui-fs-label) * var(--ui-font-scale));
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--ui-dim);
+}
+
+.snapshot-trim-row.is-disabled {
+  opacity: 0.45;
+}
+
+.snapshot-trim-note {
+  display: block;
+  margin: var(--ui-space-2) 0 0;
+  font-size: calc(var(--ui-fs-body) * var(--ui-font-scale));
+  color: var(--ui-dim);
 }
 
 .api-item {

@@ -655,8 +655,10 @@ function handleNpcClick(npcId: string) {
   border-top: 1px solid transparent;
   border-radius: 0;
   padding: 0 12px;
-  padding-top: var(--ui-space-5);
-  margin-top: var(--ui-space-5);
+  /* 🔴 上留白收起/展开必须是同一个值 —— 用两个值会让展开时标题往上跳。
+     第一张靠下面的 :first-of-type 钉成 0，其余统一 space-3。 */
+  padding-top: var(--ui-space-3);
+  margin-top: var(--ui-space-3);
   box-shadow: none;
   transition: background var(--motion-normal);
 }
@@ -665,12 +667,6 @@ function handleNpcClick(npcId: string) {
   padding-top: 0;
   margin-top: 0;
   border-top: 0;
-}
-
-/* 收起时整体收紧 —— 六块全收起时一屏塞得下所有标题 */
-.info-card:not(.open):not(:first-of-type) {
-  padding-top: var(--ui-space-3);
-  margin-top: var(--ui-space-3);
 }
 
 .info-card:hover {

@@ -1,3 +1,8 @@
+<%_
+  const 生存系统模式 = getvar('stat_data.设置.生存系统模式', { defaults: '关闭' });
+  const 显示血量体力 = 生存系统模式 === '基础模式' || 生存系统模式 === '生存模式';
+  const 显示饥饿口渴 = 生存系统模式 === '生存模式';
+_%>
 ---
 变量输出格式:
   rule:
@@ -37,7 +42,9 @@
 
     [Character Status Quick Check]
     - Important NPCs (must check one by one): {{list all important NPCs and whether present}}
+<%_ if (显示血量体力) { _%>
     - Focused NPCs (survival system): {{list NPCs where _关注=true}}
+<%_ } _%>
     - Current favor / trust state: {{brief relation summary for present NPCs}}
 
     [Variable Update Checklist]
@@ -46,7 +53,9 @@
     - explicitly check at least:
       - 世界.时间系统.当前时间
       - 世界.空间定位.当前位置
-      - 玩家.生存状态（血量/体力值/饥饿值/口渴值）
+<%_ if (显示血量体力) { _%>
+      - 玩家.生存状态（血量/体力值<%_ if (显示饥饿口渴) { _%>/饥饿值/口渴值<%_ } _%>）
+<%_ } _%>
       - 玩家.物品栏 / 货币资源
       - 玩家.技能系统
       - 人物档案（important NPCs one by one）
@@ -72,7 +81,9 @@
     [Legality Check]
     - check path legality and operation legality before finalizing
     - confirm all relationship changes have explicit event support
+<%_ if (显示血量体力) { _%>
     - confirm survival changes match action logic
+<%_ } _%>
     - confirm all present NPC status/location fields are updated when needed
     - if no valid update is needed, explain why and output [] in <JSONPatch>
     </Analysis>

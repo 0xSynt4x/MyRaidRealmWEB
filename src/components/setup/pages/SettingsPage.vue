@@ -803,7 +803,6 @@ const {
   validateApi,
   fetchAvailableModels,
   markApiSaved,
-  expandNextApi,
 } = useAssistantApiEditor(apiPool);
 
 const isLoadingById = ref<Record<string, boolean>>({});
@@ -1304,7 +1303,6 @@ function saveApiCard(index: number) {
     return;
   }
 
-  expandNextApi(index);
   configError.value = '';
   notify.success(t('settings.assistantApiSaved'));
 }

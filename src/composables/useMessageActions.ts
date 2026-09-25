@@ -12,7 +12,12 @@ import { commitStandaloneRuntimeStateFromStores, resolveStandaloneStageSummarySt
 import { resolveStandaloneStageSummaryProgress } from '../utils/stageSummaryArchive';
 import { loadStandaloneStatData } from '../utils/standaloneStatData';
 import { parseUpdateVariableDetails } from '../utils/taggedReply';
-import { applyVariableUpdatePatch, parseVariableUpdatePatch } from '../utils/variableUpdate';
+import {
+  applyVariableUpdatePatch,
+  parseVariableUpdatePatch,
+  type VariableUpdatePatchGuard,
+} from '../utils/variableUpdate';
+import { isStandaloneSurvivalDisabled } from '../../runtime/standaloneSnapshotTrim';
 import {
   FRONTEND_AUTHORITATIVE_FIELD_PATHS,
   preserveFrontendAuthoritativeFields,
@@ -45,6 +50,15 @@ export function useMessageActions() {
   const settingsStore = useSettingsStore();
   const setupStore = useSetupStore();
   const STANDALONE_GENERATION_EVENT = 'th1980s:standalone-generation-state';
+
+  /** 写入层护栏：`_` 前缀一律拦；生存系统关闭时才拦生存状态。与运行时同一套判据。 */
+  function resolveSnapshotTrimPatchGuard(statData: ReturnType<typeof Schema.parse>): VariableUpdatePatchGuard {
+    const trim = settingsStore.snapshotTrim;
+    return {
+      blockUnderscoreKeys: trim.enabled && trim.blockUnderscorePatch,
+      blockSurvivalPaths: trim.enabled && trim.blockSurvivalPatch && isStandaloneSurvivalDisabled(statData),
+    };
+  }
 
   function emitStandaloneGenerationState(active: boolean, reason: string) {
     messagesStore.setStandaloneMainGenerationBusy(active);
@@ -197,6 +211,7 @@ export function useMessageActions() {
         localContentBuiltinRouteOverrides: settingsStore.standaloneLocalContent.builtinAssetRouteOverrides,
         localContentCustomEntries: setupStore.customWorldbookEntries,
         selectedPreset: setupStore.selectedPreset,
+        snapshotTrim: settingsStore.snapshotTrim,
         scriptedTurn: options.scriptedTurn,
         stageSummary: stageSummaryState.stageSummary,
         archivedUntilMessageId: stageSummaryState.archivedUntilMessageId,
@@ -306,7 +321,7 @@ export function useMessageActions() {
 
     try {
       const { patch } = parseVariableUpdatePatch(updateJsonPatchText);
-      return applyVariableUpdatePatch(liveStatData, patch);
+      return applyVariableUpdatePatch(liveStatData, patch, resolveSnapshotTrimPatchGuard(liveStatData));
     } catch (error) {
       console.warn('[useMessageActions] 变量更新补丁重放到实时状态失败，回退到回合基线结果:', error);
       return phaseOutcome.nextStatData;
@@ -545,6 +560,7 @@ export function useMessageActions() {
         localContentBuiltinRouteOverrides: settingsStore.standaloneLocalContent.builtinAssetRouteOverrides,
         localContentCustomEntries: setupStore.customWorldbookEntries,
         selectedPreset: setupStore.selectedPreset,
+        snapshotTrim: settingsStore.snapshotTrim,
       });
 
       applyStandaloneVariableUpdatePhase({
