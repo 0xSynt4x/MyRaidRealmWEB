@@ -14,6 +14,8 @@
         <SetupWizard @complete="handleWizardComplete" />
         <OverlayPanel />
       </div>
+      <!-- 更新日志：版本变过才拦一道，关掉才算看过（详见 utils/changelog） -->
+      <ChangelogModal :visible="showChangelog" @close="handleCloseChangelog" />
     </template>
 
     <!-- 主界面 - 三栏布局 -->
@@ -69,6 +71,7 @@ import MainLayout from './components/layout/MainLayout.vue';
 import MobileBottomNav from './components/layout/MobileBottomNav.vue';
 import OverlayPanel from './components/layout/OverlayPanel.vue';
 import RightPanel from './components/layout/RightPanel.vue';
+import ChangelogModal from './components/panels/ChangelogModal.vue';
 import SetupWizard from './components/setup/SetupWizard.vue';
 import { useFullscreen } from './composables/useFullscreen';
 import { useSetupStore } from './stores/setup';
@@ -78,6 +81,7 @@ import {
   pruneStandaloneArchiveDebugTraces,
   type StandaloneArchiveRestoreOutcome,
 } from './utils/archive';
+import { markChangelogSeen, shouldShowChangelog } from './utils/changelog';
 import { getDesktopExtraHeight, getLayoutViewportWidth, isMobileLayoutWidth } from './utils/layoutBreakpoints';
 import { ensureStandaloneRuntimeBootstrapFromStores } from './utils/standaloneRuntime';
 import { loadStandaloneStatData } from './utils/standaloneStatData';
@@ -115,6 +119,15 @@ function handleStandaloneArchiveRestored(event: Event) {
 
 // 判断是否显示配置界面
 const showWizard = computed(() => forceShowWizard.value || !inGame.value);
+
+// 更新日志弹窗：只在首页拦一道，且当前版本没看过才拦。
+// 看没看过记在本地（详见 utils/changelog），关闭即写标记，之后正常进游戏。
+const showChangelog = ref(shouldShowChangelog());
+
+const handleCloseChangelog = () => {
+  showChangelog.value = false;
+  markChangelogSeen();
+};
 
 // 处理配置完成事件
 const handleWizardComplete = () => {

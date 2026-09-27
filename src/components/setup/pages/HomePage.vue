@@ -110,6 +110,9 @@
       @close="closeSnapshotPicker"
       @select="handleSnapshotSelect"
     />
+
+    <!-- 当前版本号：常驻右下角 -->
+    <div class="version-tag">v{{ appVersion }}</div>
   </div>
 </template>
 
@@ -127,6 +130,7 @@ import {
   restoreStandaloneArchiveById,
   type StandaloneArchiveListItem,
 } from '../../../utils/archive';
+import { getCurrentVersion } from '../../../utils/changelog';
 import SnapshotPickerDialog from './components/SnapshotPickerDialog.vue';
 
 const emit = defineEmits<{
@@ -137,6 +141,9 @@ const emit = defineEmits<{
 
 const { isFullscreen, toggleFullscreen } = useFullscreen();
 const { t } = useI18n();
+
+/** 当前版本号，右下角常驻显示。版本定义在 utils/changelog，跟更新日志同源 */
+const appVersion = getCurrentVersion();
 
 // 封面动态背景（写实底图 + 分层动效）
 const { stageRef, debrisRef, emberRef, flashRef, plateSrc, auroraA, auroraB, glowVar, syncLayout } =
@@ -1094,6 +1101,20 @@ onUnmounted(() => {
 }
 
 /* 按钮区 */
+/* ===== 右下角版本号 ===== */
+/* 封面恒为深色，所以直接用封面自己的墨色，不跟主题令牌 */
+.version-tag {
+  position: absolute;
+  right: 16px;
+  bottom: 12px;
+  z-index: 2;
+  font-size: calc(11px * var(--ui-font-scale));
+  letter-spacing: 1px;
+  color: color-mix(in srgb, var(--cover-ink) 50%, transparent);
+  pointer-events: none;
+  user-select: none;
+}
+
 .action-section {
   position: relative;
   z-index: 2;

@@ -626,9 +626,7 @@
 - 四道检查：`typecheck` ✓ ｜ `test` 105/105 ✓ ｜ `lint` 0 error（17 个存量 warning）✓ ｜ `build` ✓。
   已部署到线上，首页与本地 `dist/index.html` 逐字节一致（3,012,123 字节，sha256 `9047a702…`）。
 
-### — docs: 补齐缺失的 19 条 changelog，并把约定写进仓库内配置
-
-> 短哈希待回填（按约定并入下一次提交）。
+### `934ff0c` — docs: 补齐缺失的 19 条 changelog，并把约定写进仓库内配置
 
 - **Added** `CHANGELOG.md` 补齐 `af459a5`(09-23) 之后的 19 条记录（09-24 ~ 09-27）：
   该约定早在 `40376a1` 就写进 `CONTRIBUTING.md`，但此后一次都没执行，导致 19 个提交全缺。
@@ -643,3 +641,20 @@
   顺带补上模板里漏掉的 `pnpm test` 勾选项（CI 本来就有这道）。
 - **Removed** 不采纳 CI 自动校验：直推 main（有 bypass）时 CI 根本不跑、拦不住主路径；
   且「条目数严格相等」的判据在 squash / merge 场景会误报，不可信的红灯比没有更糟。
+
+### — feat: 首页新增更新日志弹窗与右下角版本号
+
+> 短哈希待回填（按约定并入下一次提交）。
+
+- **Added** 首页（封面页）新增更新日志弹窗：当前版本没看过才弹，点遮罩 / 关闭按钮 / `ESC` 都能关。
+  内容是**玩家视角**的更新日志，与仓库根 `CHANGELOG.md` 分开维护 —— 那份带提交哈希、内部目录名
+  与实现细节，不能直接给玩家看。关闭即写本地标记（`th1980s:changelog-seen-version`），
+  同一版本不再弹。
+- **Added** 首页右下角常驻当前版本号。版本号由更新日志条数推导：最早一条 1.00，之后每追加一条 +0.01，
+  当前 11 条 = `v1.10` —— 以后加日志不用手改版本常量。
+- **Added** `src/utils/changelog.ts`（日志数据 + 版本计算 + 已读判定）与
+  `src/components/panels/ChangelogModal.vue`（弹窗本体）；`src/i18n/index.ts` 补 3 条中英文案。
+- **Changed** 弹窗配色全部走主题令牌（`--glass-bg-heavy` / `--accent-primary` / `--ui-font-scale` 等），
+  6 套主题逐一定义核对过，不学声明弹窗那样硬编码单套暗色。
+- **Changed** 更新日志条目的日期沿用 `YYMMDD`、每条改动限 15 字以内，只写玩家看得见的变化。
+- 四道检查：`typecheck` ✓ ｜ `test` 105/105 ✓ ｜ `lint` 0 error（17 个存量 warning）✓ ｜ `build` ✓。
