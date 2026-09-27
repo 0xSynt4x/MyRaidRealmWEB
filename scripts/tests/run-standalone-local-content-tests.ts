@@ -60,6 +60,7 @@ import {
   normalizeStandaloneSnapshotTrimSettings,
 } from '../../runtime/standaloneSnapshotTrim';
 import { filterVariableUpdatePatch } from '../../src/utils/variableUpdate';
+import { resolvePatchTextWithRescue } from '../../src/utils/variableUpdateRescue';
 import {
   attachRegisteredWorldbooksToBuiltInPresets,
   createRegisteredWorldbookLocalContentEntries,
@@ -5045,6 +5046,66 @@ function testStandalonePatchGuardDropsUnderscoreAndSurvivalPaths(): void {
   assert.equal(filterVariableUpdatePatch(patch, { blockUnderscoreKeys: false, blockSurvivalPaths: false }), patch);
 }
 
+/**
+ * 补丁格式修复层：只整形外壳，不碰内容。
+ *
+ * 覆盖三条：① 合法补丁原样放行（不进修复层）② 五种外壳畸形能救回
+ * ③ 值里本来就有的中文标点必须逐字保留 ④ 结构非法（缺 op）不该硬救。
+ */
+function testVariableUpdatePatchTextRescue(): void {
+  const timePath = '/世界/时间系统/当前时间';
+  const eraPath = '/世界/时间系统/纪元名称';
+  const op = `{"op":"replace","path":"${timePath}","value":"1985-03-02"}`;
+  const good = `[${op}]`;
+
+  // ① 合法补丁：不该被当成修复对象，内容逐字不变
+  const plain = resolvePatchTextWithRescue(good);
+  assert.equal(plain.rescued, false);
+  assert.deepEqual(plain.steps, []);
+  assert.equal(plain.text, good);
+
+  // ② 五种外壳畸形各来一个
+  const cases: Array<[string, string, string]> = [
+    ['代码围栏', '```json\n' + good + '\n```', '去掉代码围栏'],
+    ['全角标点', `［{"op"："replace"，"path"："${timePath}"，"value"："1985-03-02"}］`, '全角标点转半角'],
+    ['夹带说明文字', `好的，本回合变量更新如下：\n${good}\n以上。`, '抠出 JSON 内容'],
+    ['行注释', `[\n// 本回合时间推进\n${op}\n]`, '去掉注释'],
+    ['块注释', `[/* 时间推进 */${op}]`, '去掉注释'],
+    ['尾逗号', `[${op},]`, '去掉多余的逗号'],
+  ];
+
+  for (const [name, malformed, expectedStep] of cases) {
+    const resolution = resolvePatchTextWithRescue(malformed);
+    assert.equal(resolution.rescued, true, `${name} 应该被救回`);
+    assert.ok(resolution.steps.includes(expectedStep), `${name} 的留痕应包含「${expectedStep}」`);
+    // 救回后必须能通过项目真实的补丁校验，并且内容与期望一致
+    assert.deepEqual(JSON.parse(resolution.text), [{ op: 'replace', path: timePath, value: '1985-03-02' }]);
+  }
+
+  // ③ 值里本来就有中文标点：只去尾逗号，值必须逐字保留
+  const valueWithPunctuation = `[{"op":"replace","path":"${eraPath}","value":"他说：“好，明天见”"},]`;
+  const preserved = resolvePatchTextWithRescue(valueWithPunctuation);
+  assert.equal(preserved.rescued, true);
+  assert.deepEqual(preserved.steps, ['去掉多余的逗号']);
+  assert.deepEqual(JSON.parse(preserved.text), [
+    { op: 'replace', path: eraPath, value: '他说：“好，明天见”' },
+  ]);
+
+  // ④ 模型把数组包在对象里 → 取出里层数组，并留下说明
+  const wrapped = `{"patch":${good}}`;
+  const unwrapped = resolvePatchTextWithRescue(wrapped);
+  assert.equal(unwrapped.rescued, true);
+  assert.deepEqual(unwrapped.steps, ['取出被包住的补丁数组']);
+  assert.deepEqual(JSON.parse(unwrapped.text), [{ op: 'replace', path: timePath, value: '1985-03-02' }]);
+
+  // ⑤ 结构非法（JSON 合法但缺 op）：不该硬救，应原样交回让上层按原有口径报错
+  const invalidStructure = `[{"path":"${timePath}","value":"1985-03-02"}]`;
+  const notRescued = resolvePatchTextWithRescue(invalidStructure);
+  assert.equal(notRescued.rescued, false);
+  assert.deepEqual(notRescued.steps, []);
+  assert.equal(notRescued.text, invalidStructure);
+}
+
 function testVariableUpdateFormatHidesSurvivalRulesByMode(): void {
   const enabledMap = { 'variable-update-format': true, 'variable-update-rules': false };
   // 只取「变量输出格式」这一块 —— 同一次请求里还有当前变量快照块，它天然带「生存系统模式」字样，
@@ -5337,6 +5398,7 @@ async function run(): Promise<void> {
     ],
     ['snapshot trim defaults to enabled', testStandaloneSnapshotTrimDefaultsToEnabled],
     ['patch guard drops underscore and survival paths', testStandalonePatchGuardDropsUnderscoreAndSurvivalPaths],
+    ['variable update patch text rescue', testVariableUpdatePatchTextRescue],
     ['variable update format hides survival rules by mode', testVariableUpdateFormatHidesSurvivalRulesByMode],
   ] as const;
 

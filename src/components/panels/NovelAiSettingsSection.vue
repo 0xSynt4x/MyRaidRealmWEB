@@ -195,11 +195,13 @@
 
     <div class="setting-row">
       <span class="row-label">{{ t('settings.novelai.stylePreset') }}</span>
-      <select v-model="novelAi.stylePresetId" class="comfy-select" @change="handleStylePresetChange">
-        <option :value="NO_STYLE_PRESET_ID">{{ t('settings.comfyui.stylePreset.none') }}</option>
-        <option v-for="preset in stylePresets" :key="preset.id" :value="preset.id">{{ t(preset.labelKey) }}</option>
-        <option :value="CUSTOM_STYLE_PRESET_ID">{{ t('settings.comfyui.stylePreset.custom') }}</option>
-      </select>
+        <select v-model="novelAi.stylePresetId" class="comfy-select" @change="handleStylePresetChange">
+          <option :value="NO_STYLE_PRESET_ID">{{ t('settings.comfyui.stylePreset.none') }}</option>
+          <optgroup v-for="group in stylePresetGroups" :key="group.id" :label="t(group.labelKey)">
+            <option v-for="preset in group.presets" :key="preset.id" :value="preset.id">{{ t(preset.labelKey) }}</option>
+          </optgroup>
+          <option :value="CUSTOM_STYLE_PRESET_ID">{{ t('settings.comfyui.stylePreset.custom') }}</option>
+        </select>
     </div>
 
     <div class="setting-row stacked">
@@ -248,7 +250,7 @@ import {
   useSettingsStore,
 } from '../../stores/settings';
 import { CUSTOM_STYLE_PRESET_ID, NO_STYLE_PRESET_ID } from '../../utils/comfyuiStylePresets';
-import { getImageStylePresets, getImageStylePresetPrompt } from '../../utils/imageStylePresets';
+import { getImageStylePresets, getImageStylePresetPrompt, groupStylePresets } from '../../utils/imageStylePresets';
 import {
   fetchNovelAiModels,
   NOVELAI_MODEL_OPTIONS,
@@ -272,7 +274,7 @@ const { t } = useI18n();
 const settingsStore = useSettingsStore();
 const { novelAi } = storeToRefs(settingsStore);
 
-const stylePresets = getImageStylePresets('novelai');
+const stylePresetGroups = groupStylePresets(getImageStylePresets('novelai'));
 const advancedExpanded = ref(false);
 const isTesting = ref(false);
 const connectionTone = ref<Tone>('idle');

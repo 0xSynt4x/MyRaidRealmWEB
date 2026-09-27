@@ -138,9 +138,11 @@
         <span class="row-label">{{ t('settings.comfyui.stylePreset') }}</span>
         <select v-model="comfyUi.stylePresetId" class="comfy-select" @change="handleStylePresetChange">
           <option value="none">{{ t('settings.comfyui.stylePreset.none') }}</option>
-          <option v-for="preset in stylePresets" :key="preset.id" :value="preset.id">
-            {{ t(preset.labelKey) }}
-          </option>
+          <optgroup v-for="group in stylePresetGroups" :key="group.id" :label="t(group.labelKey)">
+            <option v-for="preset in group.presets" :key="preset.id" :value="preset.id">
+              {{ t(preset.labelKey) }}
+            </option>
+          </optgroup>
           <option value="custom">{{ t('settings.comfyui.stylePreset.custom') }}</option>
         </select>
       </div>
@@ -196,9 +198,19 @@
           <input v-model="comfyUi.randomSeed" type="checkbox" />
           <span class="toggle-track"></span>
         </label>
-        <span class="row-value status">
-          {{ comfyUi.randomSeed ? t('settings.comfyui.randomSeedOnHint') : t('settings.comfyui.randomSeedOffHint') }}
-        </span>
+        <template v-if="!comfyUi.randomSeed">
+          <input
+            v-model.number="fixedSeedInput"
+            class="number-input seed-input"
+            type="number"
+            min="0"
+            step="1"
+            :placeholder="t('settings.comfyui.fixedSeedPlaceholder')"
+            @blur="ensureFixedSeed"
+          />
+          <span class="row-value status">{{ t('settings.comfyui.randomSeedOffHint') }}</span>
+        </template>
+        <span v-else class="row-value status">{{ t('settings.comfyui.randomSeedOnHint') }}</span>
       </div>
 
       <div class="comfy-help">
@@ -247,12 +259,13 @@ import { useSettingsStore } from '../../stores/settings';
 import {
   analyzeComfyWorkflow,
   convertUiWorkflowToApi,
+  createRandomComfySeed,
   detectComfyWorkflowFormat,
   fetchComfyUiObjectInfo,
   fetchComfyUiServerInfo,
   normalizeComfyUiBaseUrl,
 } from '../../utils/comfyuiClient';
-import { COMFYUI_STYLE_PRESETS, CUSTOM_STYLE_PRESET_ID, getStylePresetPrompt } from '../../utils/comfyuiStylePresets';
+import { COMFYUI_STYLE_PRESETS, CUSTOM_STYLE_PRESET_ID, getStylePresetPrompt, groupStylePresets } from '../../utils/comfyuiStylePresets';
 import { clearGeneratedImages, formatByteSize, getGeneratedImageStorageUsage } from '../../utils/imageStorage';
 import GeneratedImageBrowser from './GeneratedImageBrowser.vue';
 import NovelAiSettingsSection from './NovelAiSettingsSection.vue';
@@ -329,7 +342,36 @@ const analysisTone = ref<Tone>('idle');
 const analysisMessage = ref('');
 const analysisWarning = ref('');
 const textNodeOptions = ref<{ id: string; label: string; disabled: boolean }[]>([]);
-const stylePresets = COMFYUI_STYLE_PRESETS;
+const stylePresetGroups = groupStylePresets(COMFYUI_STYLE_PRESETS);
+
+/** 固定种子输入框：空串 / 负数一律落成 null（设置里 null 表示留空） */
+const fixedSeedInput = computed<number | null>({
+  get: () => comfyUi.value.fixedSeed,
+  set: value => {
+    comfyUi.value.fixedSeed = normalizeSeedInput(value);
+  },
+});
+
+function normalizeSeedInput(value: unknown): number | null {
+  if (value === null || value === undefined || value === '') return null;
+  const numeric = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(numeric) || numeric < 0) return null;
+  return Math.floor(numeric);
+}
+
+/** 关掉随机种子后，留空就补一个随机种子填进去 —— 种子完全由前端给，不读工作流 */
+function ensureFixedSeed() {
+  if (comfyUi.value.randomSeed || comfyUi.value.fixedSeed !== null) return;
+  comfyUi.value.fixedSeed = createRandomComfySeed();
+}
+
+// 一关掉开关就把种子补成可见的，省得对着空框发懵
+watch(
+  () => comfyUi.value.randomSeed,
+  random => {
+    if (!random) ensureFixedSeed();
+  },
+);
 
 /** 换预置就把它的文本填进画风框（自定义 / 不用时清空或保留原文） */
 function handleStylePresetChange() {
@@ -587,6 +629,7 @@ async function handleTestConnection() {
 const hasStoredWorkflow = computed(() => Boolean(comfyUi.value.workflowJson.trim()));
 
 onMounted(() => {
+  ensureFixedSeed();
   if (hasStoredWorkflow.value) {
     void runAnalysis(true);
   }
@@ -850,6 +893,12 @@ onMounted(() => {
 .number-input {
   width: 72px;
   text-align: center;
+}
+
+/* 固定种子是 10 位整数，比一般的数字框要宽 */
+.number-input.seed-input {
+  width: 132px;
+  text-align: left;
 }
 
 /* 🔴 下拉框底色必须**不透明**：Chrome 拿 select 的 background-color 铺原生弹层的底，

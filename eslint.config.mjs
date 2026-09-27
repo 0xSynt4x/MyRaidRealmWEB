@@ -21,6 +21,9 @@ export default tseslint.config(
       // 本地排查脚本/截图目录。.gitignore 里已经忽略它，但 ESLint 不读 .gitignore，
       // 不显式排除的话本机 lint 会被几百条临时脚本噪音淹没，掩盖源码里的真实错误。
       'Temp/**',
+      // 同上：docs/ 整个目录在 .gitignore 里（方案文档 + 配套实测脚本，本地留存不发布），
+      // 里面的 .cjs 探针会被 no-undef / no-require-imports 误报成错误。
+      'docs/**',
     ],
   },
 

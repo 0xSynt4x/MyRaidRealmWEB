@@ -166,6 +166,7 @@ export function useComfyUiImageGeneration() {
       width: config.overrideSize ? config.width : undefined,
       height: config.overrideSize ? config.height : undefined,
       randomSeed: config.randomSeed,
+      fixedSeed: config.fixedSeed,
     });
 
     const first = images[0];

@@ -58,6 +58,8 @@ export interface ComfyUiGenerateOptions {
   height?: number;
   /** 随机种子开关：打开则每次随机 */
   randomSeed?: boolean;
+  /** 关掉随机种子后用的固定种子；留空则前端兜底随机一个 */
+  fixedSeed?: number | null;
   /** 尺寸节点，缺省时自动推断 */
   sizeNodeIds?: string[];
   /** 种子节点，缺省时自动推断 */
@@ -603,8 +605,28 @@ function applySize(workflow: Record<string, unknown>, sizeNodeIds: string[], wid
   });
 }
 
-function applyRandomSeed(workflow: Record<string, unknown>, seedNodes: { id: string; field: string }[]): void {
-  const seed = Math.floor(Math.random() * 4294967295);
+/** 种子取值上限：ComfyUI 的种子节点普遍按 32 位无符号整数处理 */
+export const COMFY_SEED_MAX = 4294967295;
+
+/** 摇一个随机种子（0 ~ COMFY_SEED_MAX） */
+export function createRandomComfySeed(): number {
+  return Math.floor(Math.random() * (COMFY_SEED_MAX + 1));
+}
+
+/** 固定种子：合法就用，留空 / 非法兜底随机一个 */
+function resolveFixedSeed(value: number | null | undefined): number {
+  if (typeof value === 'number' && Number.isFinite(value) && value >= 0) {
+    return Math.floor(value);
+  }
+  return createRandomComfySeed();
+}
+
+/** 把种子写进所有种子节点 */
+function applySeed(
+  workflow: Record<string, unknown>,
+  seedNodes: { id: string; field: string }[],
+  seed: number,
+): void {
   seedNodes.forEach(({ id, field }) => {
     const node = workflow[id];
     if (!isNodeRecord(node)) return;
@@ -671,13 +693,13 @@ export async function generateComfyUiImage(options: ComfyUiGenerateOptions): Pro
     applySize(workflow, sizeNodeIds, options.width, options.height);
   }
 
-  if (options.randomSeed) {
-    const seedNodes =
-      options.seedNodes && options.seedNodes.length > 0
-        ? options.seedNodes
-        : analyzeComfyWorkflow(JSON.stringify(workflow)).seedNodes;
-    applyRandomSeed(workflow, seedNodes);
-  }
+  // 种子完全由前端给：开着开关就每轮随机，关着就用玩家填的固定值、留空则兜底随机一个。
+  // 🔴 不再沿用工作流里原本写死的种子 —— 那个值在本程序里不认。
+  const seedNodes =
+    options.seedNodes && options.seedNodes.length > 0
+      ? options.seedNodes
+      : analyzeComfyWorkflow(JSON.stringify(workflow)).seedNodes;
+  applySeed(workflow, seedNodes, options.randomSeed ? createRandomComfySeed() : resolveFixedSeed(options.fixedSeed));
 
   let submitResponse: Response;
   try {

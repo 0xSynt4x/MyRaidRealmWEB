@@ -122,7 +122,7 @@
         {
             "identifier": "0919dc2c-01dc-49e3-bc27-9bd013d96e33",
             "name": "✍️ ==以下文风只开一个==",
-            "enabled": true,
+            "enabled": false,
             "injection_position": 0,
             "injection_depth": 4,
             "injection_order": 100,
@@ -162,7 +162,7 @@
         {
             "identifier": "d0477dd5-96bd-4dd3-9caa-5858053a8be3",
             "name": "✍️ 极致通感",
-            "enabled": true,
+            "enabled": false,
             "injection_position": 0,
             "injection_depth": 4,
             "injection_order": 100,
@@ -216,7 +216,7 @@
         {
             "identifier": "ee023364-37d8-4481-82ca-76d9bb62c2f2",
             "name": "✍️ ==文风结束==",
-            "enabled": true,
+            "enabled": false,
             "injection_position": 0,
             "injection_depth": 4,
             "injection_order": 100,
@@ -706,7 +706,7 @@
                 },
                 {
                     "identifier": "0919dc2c-01dc-49e3-bc27-9bd013d96e33",
-                    "enabled": true
+                    "enabled": false
                 },
                 {
                     "identifier": "3865e9b6-36f7-43e9-92c2-628bf6288dad",
@@ -718,7 +718,7 @@
                 },
                 {
                     "identifier": "30aedd9c-3fe4-4c44-9587-41dbc201563c",
-                    "enabled": true
+                    "enabled": false
                 },
                 {
                     "identifier": "d0477dd5-96bd-4dd3-9caa-5858053a8be3",
@@ -738,7 +738,7 @@
                 },
                 {
                     "identifier": "ee023364-37d8-4481-82ca-76d9bb62c2f2",
-                    "enabled": true
+                    "enabled": false
                 },
                 {
                     "identifier": "e2778046-6b5e-413b-8748-951dd49d06a8",

@@ -83,6 +83,8 @@ export interface ComfyUiSettings {
   height: number;
   /** 每次出图随机种子 */
   randomSeed: boolean;
+  /** 关掉随机种子后用的固定种子；null = 留空（由前端兜底随机一个） */
+  fixedSeed: number | null;
   /** 画风预置 id：内置预置 / custom（自定义）/ none（不拼画风） */
   stylePresetId: string;
   /** 实际拼在提示词前面的画风内容 */
@@ -106,6 +108,7 @@ export function createDefaultComfyUiSettings(): ComfyUiSettings {
     width: 1024,
     height: 1024,
     randomSeed: true,
+    fixedSeed: null,
     stylePresetId: defaultPreset.id,
     stylePrompt: defaultPreset.prompt,
     negativePrompt: '',
@@ -116,6 +119,14 @@ function normalizeComfyUiSize(value: unknown, fallback: number): number {
   const numeric = typeof value === 'number' ? value : Number(value);
   if (!Number.isFinite(numeric)) return fallback;
   return Math.min(4096, Math.max(64, Math.round(numeric)));
+}
+
+/** 固定种子：只认非负整数，留空或非法一律落成 null（表示交给前端兜底随机） */
+function normalizeComfyUiSeed(value: unknown): number | null {
+  if (value === null || value === undefined || value === '') return null;
+  const numeric = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(numeric) || numeric < 0) return null;
+  return Math.floor(numeric);
 }
 
 export function normalizeComfyUiSettings(input?: Partial<ComfyUiSettings> | null): ComfyUiSettings {
@@ -131,6 +142,7 @@ export function normalizeComfyUiSettings(input?: Partial<ComfyUiSettings> | null
     width: normalizeComfyUiSize(input?.width, defaults.width),
     height: normalizeComfyUiSize(input?.height, defaults.height),
     randomSeed: Boolean(input?.randomSeed ?? defaults.randomSeed),
+    fixedSeed: normalizeComfyUiSeed(input?.fixedSeed),
     stylePresetId: normalizeStylePresetId(input?.stylePresetId, defaults.stylePresetId),
     stylePrompt: typeof input?.stylePrompt === 'string' ? input.stylePrompt : defaults.stylePrompt,
     negativePrompt: typeof input?.negativePrompt === 'string' ? input.negativePrompt : defaults.negativePrompt,

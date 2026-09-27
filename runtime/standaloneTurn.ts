@@ -40,6 +40,7 @@ import {
   parseVariableUpdatePatch,
   type VariableUpdatePatchGuard,
 } from '../src/utils/variableUpdate';
+import { resolvePatchTextWithRescue } from '../src/utils/variableUpdateRescue';
 import { applyStandalonePromptMacroReplacements, buildStandaloneCurrentStatDataBlock } from './standalonePromptUtils';
 import {
   buildStandaloneSnapshotForChain,
@@ -129,8 +130,8 @@ export async function runStandaloneVariableUpdatePass(input: {
     stripUpdateVariableBlocks(input.targetAssistantMessage.raw_content),
   );
   const patchGuard = resolveStandalonePatchGuard(input.statData);
-  const baseApplyResult = applyVariableUpdateFromReply(input.statData, sanitizedAssistantRawContent, patchGuard);
-  let applyResult = baseApplyResult;
+  // 主回复不携带变量补丁（提示词明确禁止，且这里已先剥掉变量块），只需解析标签。
+  let applyResult = parseReplyWithoutPatch(input.statData, sanitizedAssistantRawContent);
   let effectiveRawReply = sanitizedAssistantRawContent;
   let variableUpdateWarning: string | null = null;
   let variableUpdateApiLabel: string | null = null;
@@ -187,7 +188,8 @@ export async function runStandaloneVariableUpdatePass(input: {
       } else {
         applyResult = mergedApplyResult;
         effectiveRawReply = mergedRawReply;
-        variableUpdateWarning = null;
+        // 修复层整形过补丁时在这里留痕：更新本身是成功的，但玩家要能看见「格式被修过」。
+        variableUpdateWarning = mergedApplyResult.rescueNote;
         variableUpdateStatus = applyResult.variableUpdateApplied ? 'success' : 'skipped';
       }
     }
@@ -230,6 +232,8 @@ type VariableUpdateApplyResult = {
   nextStatData: StandaloneStatData;
   variableUpdateApplied: boolean;
   errorMessage: string | null;
+  /** 补丁格式被修复层整形过时的说明，用于在消息上留痕；没整形就是 null。 */
+  rescueNote: string | null;
 };
 
 type StandalonePromptBundle = {
@@ -900,6 +904,23 @@ async function requestAssistantReply(
   });
 }
 
+/**
+ * 只解析回复里的标签（正文 / 总结 / 可选项），**不碰变量补丁**。
+ *
+ * 主回复从设计上就不携带补丁：主回合提示词明确要求「不要输出 `<UpdateVariable>`」，
+ * 而且送进来之前已经先把整个变量更新块剥掉了。补丁只有辅助 API 那一个来源。
+ * 因此主回复只需要解析，不需要再走一遍「查补丁 → 应用」。
+ */
+function parseReplyWithoutPatch(currentStatData: StandaloneStatData, rawReply: string): VariableUpdateApplyResult {
+  return {
+    parsedReply: parseTaggedAssistantReply(rawReply),
+    nextStatData: currentStatData,
+    variableUpdateApplied: false,
+    errorMessage: null,
+    rescueNote: null,
+  };
+}
+
 function applyVariableUpdateFromReply(
   currentStatData: StandaloneStatData,
   rawReply: string,
@@ -914,11 +935,16 @@ function applyVariableUpdateFromReply(
       nextStatData: currentStatData,
       variableUpdateApplied: false,
       errorMessage: null,
+      rescueNote: null,
     };
   }
 
+  // 补丁格式修复层：原文能用就原样返回，不能用才逐步整形。
+  // 整形结果仍然交回下面这套原流程（解析 → 护栏 → 写入），解析与写入逻辑一行不改。
+  const patchTextResolution = resolvePatchTextWithRescue(patchText);
+
   try {
-    const parsedPatch = parseVariableUpdatePatch(patchText);
+    const parsedPatch = parseVariableUpdatePatch(patchTextResolution.text);
     // 护栏在这里生效：越界操作（`_` 前缀、生存关闭时的生存状态）直接丢弃，不写进真数据。
     const effectivePatch = guard ? filterVariableUpdatePatch(parsedPatch.patch, guard) : parsedPatch.patch;
     const nextStatData = applyVariableUpdatePatch(currentStatData, effectivePatch);
@@ -928,6 +954,9 @@ function applyVariableUpdateFromReply(
       nextStatData,
       variableUpdateApplied: effectivePatch.length > 0,
       errorMessage: null,
+      rescueNote: patchTextResolution.rescued
+        ? `补丁格式有问题，已自动修复：${patchTextResolution.steps.join('、')}`
+        : null,
     };
   } catch (error) {
     return {
@@ -935,6 +964,7 @@ function applyVariableUpdateFromReply(
       nextStatData: currentStatData,
       variableUpdateApplied: false,
       errorMessage: error instanceof Error ? error.message : String(error),
+      rescueNote: null,
     };
   }
 }
@@ -1077,7 +1107,7 @@ export async function runStandaloneLocalTurn(input: StandaloneLocalTurnInput): P
         const rawReply = normalizeLineEndings(mainReply.text);
         const sanitizedMainReply = normalizeLineEndings(stripUpdateVariableBlocks(rawReply));
 
-        const mainReplyApplyResult = applyVariableUpdateFromReply(input.statData, sanitizedMainReply, patchGuard);
+        const mainReplyApplyResult = parseReplyWithoutPatch(input.statData, sanitizedMainReply);
         const mainDebugTrace = mergeStandaloneAssistantDebugTrace(undefined, {
           main_pass: {
             ...mainReply.debugTrace,
@@ -1136,7 +1166,8 @@ export async function runStandaloneLocalTurn(input: StandaloneLocalTurnInput): P
               } else {
                 applyResult = mergedApplyResult;
                 effectiveRawReply = mergedRawReply;
-                variableUpdateWarning = null;
+                // 修复层整形过补丁时在这里留痕：更新本身是成功的，但玩家要能看见「格式被修过」。
+                variableUpdateWarning = mergedApplyResult.rescueNote;
                 variableUpdateStatus = applyResult.variableUpdateApplied ? 'success' : 'skipped';
               }
             }
