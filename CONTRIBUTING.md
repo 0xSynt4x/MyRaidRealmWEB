@@ -78,6 +78,18 @@ pnpm lint:fix       # 自动修复可修复的 lint 问题
   提交 → `git log -1 --format=%h` 取哈希回填 → 回填本身并入下一次提交。
   允许最新一条暂时缺哈希，**不允许**缺条目。
 
+提交前自查（两条都要过）：
+
+```bash
+grep -c '^### ' CHANGELOG.md      # 应等于 git rev-list --count HEAD
+git rev-list --count HEAD
+pnpm exec prettier --check CHANGELOG.md
+```
+
+> ⚠️ 这条约定曾经只写在本文件里、从没被执行过 —— 2026-09-27 一次性补了 19 条历史提交。
+> 事后补齐要逐个翻提交信息、对 diff 才能写准，代价远大于当时顺手写一条。
+> **写 changelog 和改代码是同一件事的两半，不是可选的收尾步骤。**
+
 ## 部署流程
 
 分发只有「整目录部署到线上」一条路，**没有** tag / GitHub Release 通道

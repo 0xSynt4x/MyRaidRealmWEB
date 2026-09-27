@@ -360,3 +360,286 @@
   仅在正式消息落地时写入，流式生成期间仍显示占位文案，避免闪烁。消息结构新增可选字段，
   存档校验同步登记为可选字段，旧存档缺该键时正常读取并回退显示「AI」。
   仅覆盖 OpenAI 兼容协议。
+
+## 2026-09-24
+
+### `40376a1` — docs: CHANGELOG 改为按提交记录并补齐全部历史
+
+- **Changed** `CHANGELOG.md` 整份重写为纯时间线：43 条记录与 43 个提交一一对应、顺序一致，
+  按日期小节（`## YYYY-MM-DD`）分组，取消 `[Unreleased]` / `[1.0.1]` / `[1.0.0]` 三个版本大节；
+  `v1.0.0` / `v1.0.1` 两个 tag 改为正文里的一句标注。此前 43 个提交里只有 7 个写过 changelog，
+  09-13~09-21 的 15 个提交与 09-22 三个 PR、09-23 的 API 池改动全部缺失。
+- **Added** `CONTRIBUTING.md` 新增「Changelog 约定」一节：每次提交补一条、按提交时间分开写、
+  merge 也要留、短哈希提交后回填；部署流程第 1 步改为引用该节。
+- **Fixed** 顺带修掉 `1c471a5` 引入的 Prettier 不合规（测试注册表里一行 125 字符，超 `printWidth` 120），
+  只拆行、不改逻辑。
+- 验证：`typecheck` / `test`（94/94）/ `lint` / `build` 全绿；全仓 `prettier --check` 全绿。
+
+### `0264991` — docs(presets): 补「预设有两种」的存储归属说明
+
+- **Added** `spec/07` 新增一节，明确区分两类预设：开局预设（项目自带，运行时从
+  `dist/preset-package/` 动态加载，不落盘，既不该进 IndexedDB 也不该进 localStorage）、
+  酒馆预设（兼容 SillyTavern 格式，由用户导入，会随导入数量持续增长，必须进 IndexedDB）。
+- **Changed** 原「预设是什么」改名「开局预设是什么」，避免与新节撞名；同时记下两个易混概念
+  （预设记忆、预设收藏 / 分组）都留在 localStorage。
+
+### `c6dff90` — feat(storage): 存档与会话数据迁移到 IndexedDB
+
+- **Fixed** localStorage 只有 5MB 硬上限，且写入失败同步抛错。实测聊一回合消息数据就达
+  3.91 MB（其中 98.7% 是流式响应的原始抄本），本地存储已用配额 61.9%，再聊一两回合必然触顶，
+  表现为存档失败、数据悄悄丢。IndexedDB 配额按磁盘比例给，是这类数据的正确归宿。
+- **Added** 存储层：`standaloneIndexedDb.ts`（IndexedDB 的 Promise 薄封装，手写不引第三方库，
+  含连接缓存、事务提交等待、配额 / 不可用错误归一化）与 `standaloneStorage.ts`（统一落盘入口）。
+  两项关键设计：启动时一次性迁移 localStorage → IndexedDB，先写成功再删旧副本；
+  小数据进内存缓存、读接口保持同步，避开「Vue `computed` 不能 `await`」引发的整棵组件树异步化，
+  存档载荷不进缓存、走异步按需读写。
+- **Changed** 会话、消息、`stat_data` 读写改走存储层，函数签名不变；存档载荷改异步
+  （`saveStandaloneArchiveSnapshot` / `restoreStandaloneArchiveById` / `deleteStandaloneArchive` /
+  `downloadStandaloneArchiveById` 返回 Promise），索引仍走内存缓存保持同步，相关调用点补 `await`；
+  `src/index.ts` 挂载应用前 `await` 存储初始化，顺序不可调整。
+- **Changed** 设置、音量、徽章、预设记忆等小配置仍留在 localStorage：它们离 5MB 上限差两个数量级，
+  搬进 IndexedDB 不解决问题，还会破坏首屏同步读语言的链路。IndexedDB 不可用时整体降级回
+  localStorage；落盘失败先打日志再兜底写 localStorage，不静默丢数据。
+- **Added** 文档同步：新增「本地存储」章节说明取舍与两条设计，并把启动链路、分层边界、
+  状态所有权、README 的存档策略更新为现状。
+
+### `b6c0e58` — chore(infra): 补 Docker 部署与 Playwright e2e
+
+- **Added** 一套自包含的容器化方案，依赖解析、构建、运行全部在容器内完成，宿主只需要 docker，
+  不需要装 node 或 pnpm（本仓 pin 的是 `pnpm@11.5.2`，宿主环境不一定装得上）。
+  `Dockerfile` 多阶段构建（`node:22-alpine` 构建 → `nginx:alpine` 运行，运行镜像里只有 `dist/` 产物，
+  构建走 `pnpm build`，因此「预设包必须排在主构建之后」这条顺序约束自动生效）、
+  `docker-compose.yml`（对外 8080）、`nginx.conf`（`index.html` 不缓存、带内容哈希的资源长缓存、开 gzip）、
+  `.dockerignore`（挡掉 `node_modules` / `dist` / `.git` / `e2e`，避免构建上下文爆炸）。
+- **Added** `e2e/` Playwright 用例，测容器里的部署产物而非开发服务器：部署冒烟（渲染、无运行时错误、
+  静态资源可达、缓存策略、本地存储可用）与存储迁移（老数据搬进 IndexedDB 且清掉旧副本、
+  迁移后刷新仍读得到、6MB 载荷读写完整 —— 超过 localStorage 的 5MB 上限）。
+- **Added** `spec/02` 的容器化章节，并记下两个坑：`pnpm build` 不做类型检查（ts-loader 开着
+  `transpileOnly`），类型问题只能靠 `pnpm typecheck` 发现；家目录不可写时 `docker compose build`
+  会因写不了 `~/.docker/buildx/` 失败，需把 `BUILDX_CONFIG` 指到仓内。
+
+### `114ae39` — fix(storage): 酒馆预设库也迁进 IndexedDB
+
+- **Fixed** 上一版把「名字带 localStorage 的小数据」一律留在 localStorage，酒馆预设库因此被漏掉。
+  它不是小数据：整个库序列化成一个字符串存在**单个 key** 里，用户导入多少就存多少，会随使用
+  持续增长 —— 导入时的裁剪只让它长得慢一点，不改变趋势，撑爆 5MB 是早晚的事。（开局预设不属于这类：
+  它不落盘，是项目资产。）`th1980s:standalone-tavern-preset-library` 加进迁移清单。
+- **Changed** 连带两个 key 一起处理：老格式的单份导入预设
+  `th1980s:standalone-tavern-preset-override`（读一次并进库里，之后删掉），以及「已裁剪过」标记
+  `...-library-slimmed`（不同步读写的话每次启动都会重裁一遍）。`standaloneTavernPreset.ts` 的读写
+  改走存储层，`canUseLocalStorage()` 守卫随之移除 —— 只搬数据不改守卫的话，IndexedDB 模式下守卫
+  照样放行、数据却已经搬走，界面会读到空库，用户的预设看起来「凭空消失」。
+- **Changed** 🔴 接口保持同步：`loadStandaloneTavernPresetLibrary()` 被 `ContentCenterPanel.vue`
+  里的一批 `computed` 和 `standaloneTurn.ts` 的回合逻辑同步调用，改成异步会拖垮整条链。
+  它进内存缓存，签名不变，顺带省掉了每次刷新都重新 `JSON.parse` 整个库的开销。
+- **Added** 申请持久化存储：容量大了不等于更不容易丢 —— IndexedDB 在磁盘压力下可能被整体回收。
+  初始化后调一次 `navigator.storage.persist()`，失败忽略。
+- **Fixed** 修掉一个假承诺：`handleWriteFailure()` 说「至少留一份在 localStorage，下次还能恢复」，
+  但 `migrateOneKey()` 只要 IndexedDB 里已有该 key 就删掉 localStorage 副本（哪怕是旧值），
+  兜底的最新数据下次启动会被当「旧副本」清掉。迁移不再负责清理这份副本。
+- **Removed** 删掉 `clearStandaloneStorage()`：它末尾的 `idbClear()` 清的是整个库、包含所有存档，
+  而存档只能由用户手动删；原注释还写着「重置游戏走这里」，与实际语义正好相反。
+  重置存储状态的入口只保留动内存的那一个。
+- **Added** 加开发期自检：同步读接口收到不在缓存名单里的 key 时直接抛错，把「静默返回 null」
+  这种失效方式变成显式失败（webpack 注入 `__STANDALONE_DEV__`，生产构建摇掉）。
+- 覆盖：新增 e2e 用例验证预设库被迁移、旧副本清掉、且迁移后仍能**同步**读到。
+
+### `0a509a0` — fix(deploy): 预设包不再长缓存，否则更新到不了老用户
+
+- **Fixed** nginx 给 `/preset-package/` 配的是 `max-age=31536000, immutable`，但预设包产物是
+  **固定文件名** `index.js`（`webpack.preset-package.config.ts` 里 `output.filename: 'index.js'`，
+  不带内容哈希）。`immutable` 的语义是「在 max-age 期间连条件请求都不用发」，于是重新部署预设包后，
+  老用户浏览器里还是旧文件 —— 拿不到新预设，除非手动清缓存。这正好抵消了项目对预设包的设计意图：
+  `spec/07-presets.md` 明确写着预设「体积大、更新频繁，和主产物解耦后可以单独重新部署」。
+  改成和 `index.html` 一样的 `no-cache`：每次带 ETag 重验证，内容没变返回 304，开销很小，
+  但能保证拿到新预设。`/assets/` 那条 `immutable` 保持不动 —— 那里的文件名确实带 8 位内容哈希。
+- **Changed** e2e 的缓存策略用例补上预设包这一档：断言可达、且**不能**带 `immutable`。
+  之前这条用例只覆盖了 `index.html` 和 `assets`，正好漏掉配错的那一档。
+
+### `3ec11f9` — chore(deploy): 删掉进镜像的 sourcemap，顺带清掉死代码
+
+- **Fixed** `dist/index.js.map` 与 `index.css.map` 是构建残留（JS/CSS 已经内联进 `index.html`），
+  却会被 `COPY dist` 一起带进运行镜像。实测占 9.5MB —— 产物总共 18MB，一半以上是它们，
+  白白增加部署与回源带宽。在 runtime 阶段 `rm -f` 掉：构建照旧产出 sourcemap（本地调试还要用），
+  只是不进最终镜像。产物体积 18MB → 8.5MB。
+- **Removed** 顺带清掉上一轮遗留的死代码：`clearStandaloneStorage()` 删掉之后，底层的 `idbClear()`
+  就没有任何调用者了。留着它，将来有人想做「重置」时正好又会踩上「连存档一起清掉」那个坑。
+
+### `8ecb619` — fix(storage): 修掉 CI 挂掉的两个根因 + 两处失实描述
+
+- **Fixed** `window.localStorage` → 裸 `localStorage`（7 处）。测试替身只往 `globalThis` 上挂了
+  `localStorage`，`window` 替身里没有这个属性。于是 Node 下 `window.localStorage` 是 `undefined`，
+  `.getItem` 抛 TypeError，而这个异常被 `safeLocalGet` / `safeLocalSet` 的 try/catch 吞掉 ——
+  表现成「读永远返回空、写永远失败」，浏览器里完全看不出来（`window.localStorage === localStorage`），
+  只有单元测试能暴露。垫片区加了注释说明为什么不能写 `window.localStorage`。
+- **Fixed** 测试里 17 处调用补上 `await`：`saveStandaloneArchiveSnapshot`（10 处）/
+  `restoreStandaloneArchiveById`（5 处）/ `pruneStandaloneArchiveDebugTraces`（2 处）在存储层改造时
+  全部 async 化，生产代码的调用点当时都补了 `await`，但 `scripts/tests/` 里的 17 处一处没补。
+  其中一处拿到 Promise 后立刻取 `.id` 得到 `undefined`，`restoreStandaloneArchiveById(undefined)`
+  抛「未找到对应的本地存档」，异常冒到顶层直接打断测试进程 —— 排在后面的 17 条用例根本没执行。
+  这就是「94 条只跑到 77 条」的原因：只看失败条数会低估问题。
+- **Fixed** `spec/08` 与第 7 条自检打架：文档写的是「静默返回 null」，但第 7 条加的自检让开发构建
+  直接抛错。改成：开发构建抛错（显式失败）、生产构建静默返回空，两边都写明。
+- **Fixed** `handleWriteFailure` 注释仍是假承诺：上一轮修掉了 `migrateOneKey` 删兜底副本的问题，
+  但注释里「用户下次打开还能从这份恢复」仍不成立 —— IndexedDB 模式下启动只从 IndexedDB 填内存缓存，
+  localStorage 里那份兜底永远不会被自动读回。把话说清：兜底只保证数据还在磁盘上，不会自动生效。
+- 验证：单测 94 通过 / 94（reviewer 的验收线）；`typecheck` 通过；e2e 9 passed（重建镜像后跑的）。
+
+### `35069ff` — docs: 补齐项目含糊处的说明并登记待办
+
+- **Added** `AGENTS.md` 新增「临时文件与工作目录」节，明确临时产物落 `Temp/`。
+- **Changed** `spec/10` 补测试环境替身清单（含 `window` 是部分替身、没有 `localStorage`）、
+  测试判据改为看日志里的通过 / 失败条数与总数、把静态检查盲区说准。
+- **Changed** `spec/11` 补「测试脚本不纳入类型检查」的前提漏洞，登记「重置游戏」文案待办；
+  `spec/07` 表格列宽格式对齐（内容未改）。
+
+### `a071c52` — Merge pull request #14 from Rose-Fish/feat/indexeddb-storage-migration
+
+- **Changed** 合并社区贡献的 IndexedDB 存储迁移分支（PR #14）进 main，内容即上方 `c6dff90`
+  「存档与会话数据迁移到 IndexedDB」那条；本次合并无冲突。
+- 合并后另起 `611bd91` 收拾 PR 带进来的格式化问题。
+
+### `611bd91` — fix(i18n): 入口「重置游戏」改名为「回到首页」，与实际行为对齐
+
+- **Changed** 这个入口实际做的是：清掉待恢复存档的挂起状态、清当前这局的会话与统计变量、清消息，
+  然后回到首页 —— 全程不碰存档。原名读起来像会把存档一起清掉，容易误操作。中英文案各 7 条统一口径：
+  按钮、进行中、弹窗标题、弹窗说明、确认键、成功 / 失败提示；弹窗说明补上「已保存的存档不受影响」。
+- **Changed** 7 处内部注释与控制台日志同步改名，避免以后读代码错位。
+- **Fixed** e2e 补上漏用的 `legacySessionKey`，把两处硬编码 key 换成参数（顺带消掉一条 lint 告警）；
+  格式化 PR #14 带进来的 6 个不合规文件，`format:check` 恢复全绿。
+- **Removed** `spec/11` 删掉已完成的「重置游戏」待办。
+
+## 2026-09-25
+
+### `0224cd1` — feat(image): 生图支持多后端，新增 NovelAI 云端出图
+
+- **Added** 设置里新增「生图」卡：一个总开关 + 本地 ComfyUI / NovelAI 二选一。
+  老存档里 ComfyUI 开着的话，自动迁移成「总开关开 + 后端 ComfyUI」，玩家无感。
+- **Added** 存储层：用浏览器原生能力解 zip（不引第三方库）；云端图片走 IndexedDB 存取，
+  带占用统计、单张删除与一键清空；消息里只记图片编号，不塞二进制。
+- **Added** NovelAI 客户端：按官方协议发请求；地址栏官方与兼容站都能填，程序只补路径。
+  采样器与调度的候选混排「官方名 + 兼容站名」，模型可点按钮向站点问询（拿不到就按原因明说，
+  绝不拿内置候选冒充站点返回）。只测连通，不验 Key。
+- **Changed** 出图分发：出图按钮按当前后端判断可用性；NAI 出图落 IndexedDB，刷新页面仍在。
+- **Added** 提示词：新增 NovelAI 专用的 Danbooru 标签流规则，与原有自然语言规则随后端互斥自动切换，
+  不需要玩家手动管。
+- **Changed** 界面：生图设置卡改造 + NovelAI 参数区（候选下拉可手填）+ 图片浏览器 + 消息图片槽
+  按编号取图与「图片已丢失」兜底。
+- **Fixed** 下拉弹层：补全 `option` / `optgroup` 的主题底色，修掉分组标题与弹层四周因半透明而透底的问题。
+- **Changed** 预设：内置预设里「3.1P破限」与「哈基米摆尾」默认关闭（规则本体与末尾排序表两处同步，
+  实际生效的是排序表那份）。
+- **Changed** 文档：重写 `spec/09-image-gen.md`，补齐后端分发、模型名单、候选命名与图片浏览器的说明。
+- 本地验证：`typecheck` 无报错 / 97 条测试全过 / `lint` 0 error / 主产物与预设包均构建成功。
+
+### `1efc300` — fix(image): 生图失败提示分清「没填 Key」与「被站点拒绝」，正文插图可折叠
+
+- **Fixed** 云端出图失败时，把「还没填 API Key」和「Key 被站点拒绝」拆成两种提示；后者带上站点
+  返回的原始说明，不再一律回一句「API Key 无效或没填」，免得把最有用的排查线索吞掉。
+- **Changed** 正文里已生成的插图，底栏左侧那行文字提示改为折叠开关：点一下收起图片、只留底栏一行，
+  再点一下展开；重画出新图时自动展开。
+- **Removed** 清理因上面改动而失效的旧文案（中英各一条）。
+
+### `4a6286c` — fix(runtime): 去掉变量更新补写的 60 秒硬超时，改为只跟随取消
+
+- **Fixed** 变量更新补写（正文之后的第二遍请求）原来有一条写死的 60 秒超时，慢模型经常没回复完
+  就被掐断，导致正文保留但变量整轮丢失。`runtime/standaloneTurn.ts` 拆掉整条超时链路
+  （固定时长常量、定时中止信号、带超时的包装函数），两处调用点直接发起补写请求，只传主取消信号。
+  补写现在只在玩家取消或新回合开始时中断，不再自动掐断。正文生成侧本来就没有超时，未改动；
+  出图的独立超时也未改动。
+- **Changed** `scripts/tests` 两条原本靠「把定时器加速成 0 毫秒」触发超时的测试，改为假请求返回
+  HTTP 500，继续验证补写失败后的收尾（忙碌标志清零、失败信息落盘、正文保留）。
+- **Removed** `src/composables/useMessageActions.ts` 清理随之失效的超时识别逻辑与两处「超时」提示分支，
+  统一走变量更新失败提示（文案不变）。
+
+## 2026-09-26
+
+### `12366ff` — feat: 新增上下文裁剪体系与「功能设置」页
+
+- **Added** 发送前裁剪：新增快照整形模块，按正文链与辅助链分别裁剪发给模型的世界状态。
+  正文链剔除设置块，辅助链按在场情况裁剪 NPC，生存状态按当前模式保留；商城数据塌成空路径，
+  减少无效 token 占用。总开关默认关闭，关闭时行为与旧版完全一致。
+- **Added** 写入前拦截：变量更新补丁含下划线前缀路径时丢弃；生存模块关闭时丢弃生存状态相关路径。
+- **Changed** 界面：界面设置右侧新增「功能设置」页，原「功能」卡与上下文裁剪整块迁入；
+  裁剪开关改两列网格、开关靠右对齐，窄屏也能放下两列；开局向导设置页移除裁剪开关，只保留在正式界面。
+- **Added** 变量更新格式说明按生存模式显隐规则；补充 6 项测试，全量 104/104 通过；同步 `spec` 03 / 05 / 08。
+
+### `840e448` — refactor: 上下文裁剪的两项改为无条件生效
+
+- **Changed** `$` 前缀剔除与生存状态按模式裁从可选开关里拿掉，改为任何情况下都执行。
+  起因：总开关默认关闭，这两项跟着一起不生效 —— 默认状态下正文照样看得到玩家与 NPC 的生存状态数值
+  （生存系统关着时那几个 100 毫无意义，只会诱导正文写出「你的血量是 100」这类出戏内容）。
+  这是正确性要求，不是偏好，写进开关只会让它被误关掉。其余项（紧凑输出、剔「设置」、商城塌陷、
+  NPC 裁剪、写入层拦截）仍跟总开关走。
+- **Changed** `runtime/standaloneSnapshotTrim.ts`：删掉两个开关（类型、默认值、持久化键列表），
+  新增 baseline 无条件项；总开关关闭时也走整形流程，不再直接返回原数据。
+- **Changed** `SettingsPanel.vue` 删对应两行开关；`i18n` 删两条文案，说明改为「这两项始终生效」。
+- **Changed** 测试：master switch 那条改名并改断言（关闭时两项照样生效），defaults to disabled 同步改；
+  `spec/05-prompt-pipeline.md` 表格加「受总开关控制」列，并说明哪两项不受控。
+
+### `979429a` — docs: 新增铁律 —— 动 schema 与本地内容文本前必须先确认
+
+- **Added** `AGENTS.md` 新增一条铁律：`schema/` 是数据契约，`src/assets/standalone-local-content/`
+  下的文本会被原样拼进发给模型的提示词。这两处都是逐字手工设计的，**每个字都有意义** ——
+  改标点、调措辞、加一行 EJS 控制、挪一个换行，全都算改动。规则写进「协作方式（本仓特有）」，
+  紧跟「改代码前先讲后动」之后，并明确这条更严：上一条允许对常规实现细节自行决定，
+  这一条没有任何可自行决定的空间。
+- 立这条的起因：`variable-update-format.txt` 曾随裁剪方案一起改动（加 EJS 条件包裹、
+  把生存状态那一行拆成两个分支）而未单独确认。
+
+### `fc7a934` — refactor: 上下文裁剪只剩「只发在场 NPC」一个开关
+
+- **Changed** 其余裁剪全部改为无条件生效，不再提供开关：去 JSON 缩进、正文不发「设置」、
+  商城只留路径、NPC 裁剪时保留重要与被关注、写入前拦截 `_` 字段与生存状态。这些要么是正确性要求，
+  要么是纯收益无风险的整形，做成开关只会让「必须做的事」变成「可能没做」。
+  「启用上下文裁剪」总开关一并删除 —— 只剩一个选项时它没有意义。
+- **Changed** `runtime/standaloneSnapshotTrim.ts`：设置类型 9 个字段 → 1 个（`trimNpc`），
+  组装函数去掉总开关分支，`compact` 恒为 true。
+- **Changed** `SettingsPanel.vue`：11 行开关 → 1 行，删掉卡片说明、分组标题与已无引用的样式。
+- **Changed** 写入层护栏改无条件（`useMessageActions` / `standaloneTurn`），
+  `resolveStandalonePatchGuard` 不再依赖设置。
+- **Removed** `i18n` 删 12 条文案（中英各 12），只留标题与「只发在场 NPC」。
+- **Changed** 测试：`MasterSwitchKeepsUnconditionalTrims` → `AlwaysApplies`，
+  `DefaultsToDisabled` → `DefaultsToEnabled`；`spec/03`、`spec/05` 同步。
+
+## 2026-09-27
+
+### `2fdfaae` — feat: 画风预置改为分组体系，生图种子可固定复现
+
+- **Added** 画风预置从 4 套扩到 12 套，下拉按「动漫 / 写实 / 传统媒介 / 特殊风格」四组展示
+  （`optgroup`），新增 `StylePresetGroupId` / `STYLE_PRESET_GROUPS` 与 `groupStylePresets()`；
+  ComfyUI 与 NovelAI 两套预置的 id 与顺序一一对应。
+- **Changed** 预置文本不再写死年代：原有 3 套的提示词全塞了年代标签（ComfyUI 三条带 `1980s`，
+  NAI 三条带 `retro artstyle` / `vhs (style)` / `faded colors`），等于不管选哪套出图都被强制加一层
+  复古滤镜 —— 而项目只是名字叫 1980s。年代改为交给剧情按需描述；只有「复古赛璐璐动画」保留复古卖点，
+  降为普通一档。
+- **Added** 关掉「每次出图都不一样」后可以填固定种子（留空自动补一个），出图可复现；
+  种子完全由前端决定，**不再沿用工作流里写死的那个值**（那个值在本程序里不认）。
+- **Added** 变量更新补丁新增格式修复层：补丁读不进去时先整形外壳（去代码围栏、全角标点转半角、
+  抠出 JSON 内容、去注释、去多余逗号）再交回原解析 / 写入流程，整形过会在消息上留痕；
+  实测 16 个畸形样本通过数 3 → 12，值保真 2/2。
+- **Changed** 主回复不再重复走一遍补丁解析（主回合提示词已明令不输出 `<UpdateVariable>`，
+  且送应用前先剥掉整个变量块），改为只解析标签、零行为变化；补丁唯一来源＝辅助 API。
+- **Changed** NovelAI 画风下拉同步改为分组展示；`i18n` 增 13 个 key（4 个分组标题 + 9 个画风名），
+  `filmPhoto` 由「八十年代胶片」改为「胶片摄影」。
+- **Changed** 补充相关测试（`TEST_FILTER=rescue pnpm test`）；`eslint` 忽略 `docs/` 目录下的探针脚本
+  （ESLint 不读 `.gitignore`，里面的 `.cjs` 探针原本会被误报 89 个 error）。
+- 四道检查：`typecheck` ✓ ｜ `test` 105/105 ✓ ｜ `lint` 0 error（17 个存量 warning）✓ ｜ `build` ✓。
+  已部署到线上，首页与本地 `dist/index.html` 逐字节一致（3,012,123 字节，sha256 `9047a702…`）。
+
+### — docs: 补齐缺失的 19 条 changelog，并把约定写进仓库内配置
+
+> 短哈希待回填（按约定并入下一次提交）。
+
+- **Added** `CHANGELOG.md` 补齐 `af459a5`(09-23) 之后的 19 条记录（09-24 ~ 09-27）：
+  该约定早在 `40376a1` 就写进 `CONTRIBUTING.md`，但此后一次都没执行，导致 19 个提交全缺。
+  补录后 62 条 = 62 个提交，一一对应。
+- **Changed** `AGENTS.md`「协作方式（本仓特有）」新增铁律：**一旦提交就必须同步补一条 changelog**，
+  附自查判据（条目数 == 提交数）与这次漏写 19 条的事故记录 —— 约定得写在 AI / 协作者真会读到的地方，
+  只写进 `CONTRIBUTING.md` 等于没写。
+- **Changed** `CONTRIBUTING.md`「Changelog 约定」补「提交前自查」代码块（条数对齐 + `prettier --check`），
+  并加粗一句「写 changelog 和改代码是同一件事的两半，不是可选的收尾步骤」。
+- **Changed** `.github/pull_request_template.md`：勾选项「已**按需**更新 `CHANGELOG.md`」改为硬要求
+  「每次提交都已补一条（附判据）」—— 「按需」正是这条约定被架空的根源；
+  顺带补上模板里漏掉的 `pnpm test` 勾选项（CI 本来就有这道）。
+- **Removed** 不采纳 CI 自动校验：直推 main（有 bypass）时 CI 根本不跑、拦不住主路径；
+  且「条目数严格相等」的判据在 squash / merge 场景会误报，不可信的红灯比没有更糟。
