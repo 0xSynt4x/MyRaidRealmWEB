@@ -69,8 +69,9 @@
 | `variable_update` | 只发给变量更新模型 |
 | `shared`          | 两边都发           |
 
-主链里有一个特例：**抽奖规则**只在 `scriptedTurn.kind === 'lottery'` 时才注入
-（按 `LOTTERY_LOCAL_CONTENT_BLOCK_PREFIX` 前缀过滤）。普通回合不带抽奖规则。
+主链里有一个特例：**抽奖回合不走普通剧情主链**。当 `scriptedTurn.kind === 'lottery'` 时，运行时只发送抽奖专用 system/user 两条消息：当前 `stat_data` 快照、固定抽奖任务和抽奖规则；不发送预设剧情、世界书、历史、前情摘要或行动选项规则。普通回合仍按原主链组装，且不带抽奖规则。
+
+抽奖的数量、品质、保底槽位和结算补丁由前端程序固定；主 API 只返回受限 JSON 奖励内容，辅助 API 不参与抽奖结算。
 
 详见 `06-content-assets.md`。
 

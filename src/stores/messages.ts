@@ -13,6 +13,7 @@ import {
 } from '../utils/standaloneRuntime';
 import { loadStandaloneStatData } from '../utils/standaloneStatData';
 import { preserveFrontendAuthoritativeFields } from '../utils/frontendAuthoritativeState';
+import type { LotteryTask } from '../utils/lottery';
 import { parseStreamingTaggedAssistantReply, parseTaggedAssistantReply } from '../utils/taggedReply';
 
 /**
@@ -59,6 +60,8 @@ export interface MessageRecord {
    * 只用于楼层头展示；拿不到或旧存档没有时为 undefined，展示层回退到占位文案。
    */
   model?: string;
+  /** 抽奖回合固定的任务参数，重试时不得重新抽签。 */
+  lottery_task?: LotteryTask;
 }
 
 interface MainReplyStreamingContext {

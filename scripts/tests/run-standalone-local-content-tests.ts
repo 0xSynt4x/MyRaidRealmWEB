@@ -74,6 +74,11 @@ import {
 } from '../../src/utils/standaloneAiDebug';
 import { formatAuxiliaryContentForDisplay, formatMessageContentForDisplay } from '../../src/utils/messageFormatting';
 import {
+  buildLotteryPatch,
+  createLotteryTask,
+  parseLotteryRewards,
+} from '../../src/utils/lottery';
+import {
   createDefaultApiConfig,
   normalizeApiConfig,
   normalizeStandaloneOpenAiApiUrl,
@@ -1008,6 +1013,45 @@ function testResolveMainPassWorldbookPromptFromTracePrefersActualSentSnapshot():
   assert.match(prompt, /\[WB\]高考模拟器/);
 }
 
+function testLotteryCoreUsesFixedPlanAndRejectsDuplicates(): void {
+  const task = {
+    id: 'lottery-core-test',
+    count: 2,
+    qualityPlan: ['传说', '普通'] as const,
+    pityTriggered: true,
+    pitySlot: 2,
+  };
+  const rewards = parseLotteryRewards(
+    JSON.stringify({
+      rewards: [
+        { slot: 1, type: 'item', name: '保命符', category: '护符', description: '抵挡一次致命伤害。', specialAttributes: '' },
+        { slot: 2, type: 'skill', name: '快速学习', category: '学习', description: '提高学习效率。', specialAttributes: '' },
+      ],
+    }),
+    task,
+  );
+  assert.deepEqual(rewards.map(reward => reward.quality), ['传说', '普通']);
+  assert.throws(
+    () =>
+      parseLotteryRewards(
+        JSON.stringify({ rewards: [
+          { type: 'item', name: '重复奖励', category: '杂物', description: 'a' },
+          { type: 'item', name: '重复奖励', category: '杂物', description: 'b' },
+        ] }),
+        task,
+      ),
+    /抽奖结果重复/,
+  );
+
+  const statData = getStandaloneTestSchema().parse({}) as StandaloneLocalTurnInput['statData'];
+  statData.设置.积分系统.抽奖触发 = true;
+  statData.设置.积分系统.抽奖次数 = 2;
+  const patch = buildLotteryPatch(statData, rewards);
+  assert.equal(patch.filter(operation => operation.op === 'insert').length, 2);
+  assert.ok(patch.some(operation => operation.path === '/设置/积分系统/抽奖触发' && operation.value === false));
+  assert.ok(patch.some(operation => operation.path === '/设置/积分系统/抽奖次数' && operation.value === 0));
+}
+
 async function testRendersLotteryRulesTemplate(): Promise<void> {
   const template = plotLotteryRulesTemplate;
   const result = renderStandaloneLocalContentTemplate({
@@ -1017,8 +1061,8 @@ async function testRendersLotteryRulesTemplate(): Promise<void> {
   });
 
   assert.equal(result.warning, null);
-  assert.ok(result.content.includes('系统已强制生成如下1次抽奖结果'));
-  assert.ok(result.content.includes('第1次：【传说】'));
+  assert.ok(result.content.includes('程序固定抽签结果'));
+  assert.ok(result.content.includes('合法 JSON'));
   assert.ok(!result.content.includes('<%'));
 }
 
@@ -1952,7 +1996,14 @@ async function testLotteryRulePromptBlockOnlyAppearsForScriptedLotteryTurn(): Pr
       }).statData as StandaloneLocalTurnInput['statData'],
       scriptedTurn: {
         kind: 'lottery',
-        promptText: '## 🎰 开始抽奖!测试玩家发起了11次抽奖，请生成抽奖结果。',
+        promptText: '## 🎰 开始抽奖!测试玩家发起了10次抽奖，请生成抽奖结果。',
+        task: {
+          id: 'lottery-test',
+          count: 10,
+          qualityPlan: ['普通', '精良', '稀有', '史诗', '普通', '精良', '普通', '稀有', '普通', '普通'],
+          pityTriggered: false,
+          pitySlot: null,
+        },
       },
     }),
   );
@@ -1960,11 +2011,12 @@ async function testLotteryRulePromptBlockOnlyAppearsForScriptedLotteryTurn(): Pr
   const normalPromptCombined = normalPrompt.messages.map(message => message.content).join('\n\n');
   const lotteryPromptCombined = lotteryPrompt.messages.map(message => message.content).join('\n\n');
 
-  assert.ok(!normalPromptCombined.includes('[本地内容:抽奖结果规则]'));
-  assert.ok(lotteryPromptCombined.includes('[本地内容:抽奖结果规则]'));
-  assert.ok(lotteryPromptCombined.includes('以下是内部规则,知晓即可'));
-  assert.ok(lotteryPromptCombined.includes('系统已强制生成如下11次抽奖结果'));
-  assert.doesNotMatch(lotteryPromptCombined, /<%[\s\S]*?%>/);
+  assert.ok(!normalPromptCombined.includes('独立抽奖任务'));
+  assert.ok(lotteryPromptCombined.includes('独立抽奖任务'));
+  assert.ok(lotteryPromptCombined.includes('"count": 10'));
+  assert.ok(!lotteryPromptCombined.includes('最近历史'));
+  assert.ok(!lotteryPromptCombined.includes('<action_options>'));
+  assert.ok(!lotteryPromptCombined.includes('根据当前游戏状态与最近对话继续剧情'));
 }
 
 async function testStandaloneFeatureLocalContentBlocksFollowDedicatedToggles(): Promise<void> {
@@ -5187,6 +5239,7 @@ async function run(): Promise<void> {
       testResolveMainPassWorldbookPromptFromTracePrefersActualSentSnapshot,
     ],
     ['messages store assistant api debug trace event bridge', testMessagesStoreAssistantApiDebugTraceEventBridge],
+    ['lottery core uses fixed plan and rejects duplicates', testLotteryCoreUsesFixedPlanAndRejectsDuplicates],
     ['renders lottery rules template', testRendersLotteryRulesTemplate],
     ['renders variable update rules template', testRendersVariableUpdateRulesTemplate],
     ['falls back to raw template on render error', testFallsBackToRawTemplateOnRenderError],

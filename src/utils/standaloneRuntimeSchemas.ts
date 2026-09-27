@@ -130,6 +130,14 @@ export const StandaloneRuntimeGeneratedImageSchema = z.object({
   error: z.string().optional(),
 });
 
+const StandaloneLotteryTaskSchema = z.object({
+  id: z.string().min(1),
+  count: z.number().int().positive().max(100),
+  qualityPlan: z.array(z.enum(['普通', '精良', '稀有', '史诗', '传说'])).min(1).max(100),
+  pityTriggered: z.boolean(),
+  pitySlot: z.number().int().positive().nullable().default(null),
+});
+
 export const StandaloneRuntimeMessageRecordSchema = z.object({
   message_id: z.number().int().nonnegative(),
   role: StandaloneRuntimeMessageRoleSchema,
@@ -156,6 +164,7 @@ export const StandaloneRuntimeMessageRecordSchema = z.object({
    * 必须是 optional —— 旧存档没有这个键，缺了要能正常读进来，只是展示时回退到占位文案。
    */
   model: z.string().optional(),
+  lottery_task: StandaloneLotteryTaskSchema.optional(),
 });
 
 export const StandaloneRuntimeMessagesSchema = z.object({

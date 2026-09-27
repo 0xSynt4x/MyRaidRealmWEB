@@ -48,6 +48,14 @@ import {
   isStandaloneSurvivalDisabled,
   type StandaloneSnapshotTrimSettings,
 } from './standaloneSnapshotTrim';
+import {
+  buildLotteryPatch,
+  buildLotteryUpdateBlock,
+  formatLotteryRewards,
+  materializeLotteryRewards,
+  parseLotteryRewards,
+  type LotteryTask,
+} from '../src/utils/lottery';
 
 type StandaloneStatData = ReturnType<typeof Schema.parse>;
 
@@ -87,6 +95,7 @@ export type StandaloneLocalTurnInput = {
 export type StandaloneScriptedTurnInput = {
   kind: 'lottery';
   promptText: string;
+  task: LotteryTask;
 };
 
 export type StandaloneLocalTurnOutcome = {
@@ -132,6 +141,33 @@ export async function runStandaloneVariableUpdatePass(input: {
   const patchGuard = resolveStandalonePatchGuard(input.statData);
   // 主回复不携带变量补丁（提示词明确禁止，且这里已先剥掉变量块），只需解析标签。
   let applyResult = parseReplyWithoutPatch(input.statData, sanitizedAssistantRawContent);
+  // 抽奖回合的补丁由程序生成并写进回复原文，重跑变量更新时直接复用，不再让辅助 API 二次生成奖励。
+  if (input.targetAssistantMessage.lottery_task) {
+    const lotteryApplyResult = applyVariableUpdateFromReply(
+      input.statData,
+      sanitizedAssistantRawContent,
+      patchGuard,
+    );
+    const { message_id: _messageId, ...assistantMessage } = input.targetAssistantMessage;
+    const lotteryStatus = lotteryApplyResult.errorMessage
+      ? 'failed'
+      : lotteryApplyResult.variableUpdateApplied
+        ? 'success'
+        : 'skipped';
+
+    return {
+      assistantMessage: {
+        ...assistantMessage,
+        variable_update_status: lotteryStatus,
+        variable_update_warning: lotteryApplyResult.errorMessage,
+      },
+      nextStatData: lotteryApplyResult.nextStatData,
+      variableUpdateApplied: lotteryApplyResult.variableUpdateApplied,
+      variableUpdateWarning: lotteryApplyResult.errorMessage,
+      variableUpdateStatus: lotteryStatus,
+      usedApiLabel: '程序抽奖结算',
+    };
+  }
   let effectiveRawReply = sanitizedAssistantRawContent;
   let variableUpdateWarning: string | null = null;
   let variableUpdateApiLabel: string | null = null;
@@ -638,7 +674,62 @@ function limitApiCandidates<T>(candidates: T[], autoRetry: boolean | undefined):
   return autoRetry === false ? candidates.slice(0, 1) : candidates;
 }
 
+function buildLotteryTurnPrompt(input: StandaloneLocalTurnInput): StandalonePromptMessagesBundle {
+  const scriptedTurn = input.scriptedTurn;
+  const task = scriptedTurn?.task;
+  if (!scriptedTurn || !task) {
+    throw new Error('抽奖回合缺少固定任务参数');
+  }
+
+  const lotteryRuleBlock = resolveStandaloneLocalContentBlocks({
+    route: 'main',
+    enabledMap: input.localContentEnabledMap,
+    builtinRouteOverrides: input.localContentBuiltinRouteOverrides,
+    customEntries: input.localContentCustomEntries,
+    preset: input.selectedPreset,
+    renderContext: {
+      statData: input.statData,
+      messages: input.messages,
+      latestUserMessage: input.latestUserMessage,
+      worldDifficulty: input.worldDifficulty,
+    },
+  }).find(block => block.startsWith(LOTTERY_LOCAL_CONTENT_BLOCK_PREFIX));
+
+  return {
+    messages: [
+      {
+        role: 'system',
+        content: normalizeLineEndings(`
+你正在执行一个独立抽奖任务，不是剧情回合。
+只完成抽奖内容生成，禁止推进剧情、描写场景、改变时间、生成行动选项或输出变量补丁。
+程序已经固定本次抽奖的条数和每条品质，你不得修改、遗漏或增加。
+同一批每条奖励名称必须不同；奖励必须是物品或技能之一。
+${lotteryRuleBlock ?? ''}
+只输出一个 <contenttext> 标签，标签内必须是合法 JSON，不要输出 Markdown 代码块或其他文字。
+JSON 格式必须严格为：{"rewards":[{"slot":1,"type":"item或skill","name":"名称","category":"类型","description":"描述","specialAttributes":"特殊效果"}]}
+本次固定任务：
+${JSON.stringify(task, null, 2)}
+        `),
+      },
+      {
+        role: 'user',
+        content: normalizeLineEndings(`
+${buildStandaloneCurrentStatDataBlock(input.statData)}
+[抽奖指令]
+${scriptedTurn.promptText}
+[输出要求]
+只生成固定任务中的奖励 JSON；不要根据剧情历史补充其他内容。
+        `),
+      },
+    ],
+  };
+}
+
 export function buildMainTurnPrompt(input: StandaloneLocalTurnInput): StandalonePromptMessagesBundle {
+  if (input.scriptedTurn?.kind === 'lottery') {
+    return buildLotteryTurnPrompt(input);
+  }
+
   const includeFullPreset = true;
   // 发送用快照：正文链不裁 NPC，只做去缩进、剔 `$`、剔「设置」、商城只留路径、生存状态按模式裁。
   // renderContext.statData 保持完整数据（预设主提示词的宏与脚本要读它）。
@@ -978,6 +1069,72 @@ function stripUpdateVariableBlocks(text: string): string {
   return text.replace(/\s*<UpdateVariable>[\s\S]*?<\/UpdateVariable>\s*/gi, '\n').trim();
 }
 
+async function runLotteryTurn(
+  input: StandaloneLocalTurnInput,
+  candidateApis: ApiConfig[],
+  controller: AbortController,
+): Promise<StandaloneLocalTurnOutcome> {
+  const task = input.scriptedTurn?.task;
+  if (!task) throw new Error('抽奖回合缺少固定任务参数');
+
+  const failures: string[] = [];
+  for (const api of candidateApis) {
+    const apiLabel = toApiLabel(api);
+    try {
+      const reply = await requestAssistantReply(api, buildLotteryTurnPrompt(input), controller.signal);
+      const parsedRewards = parseLotteryRewards(reply.text, task);
+      const rewards = materializeLotteryRewards(input.statData, parsedRewards);
+      const patch = buildLotteryPatch(input.statData, rewards);
+      const content = `<contenttext>\n${formatLotteryRewards(rewards)}\n</contenttext>\n${buildLotteryUpdateBlock(patch)}`;
+      const normalizedReply = normalizeLineEndings(content);
+      const parsedReply = parseTaggedAssistantReply(normalizedReply);
+      const applyResult = applyVariableUpdateFromReply(input.statData, normalizedReply);
+      if (applyResult.errorMessage || !applyResult.variableUpdateApplied) {
+        throw new Error(applyResult.errorMessage ?? '抽奖奖励补丁未应用');
+      }
+
+      const debugTrace = mergeStandaloneAssistantDebugTrace(undefined, {
+        main_pass: {
+          ...reply.debugTrace,
+          extracted_text: normalizedReply,
+        },
+      });
+      const assistantMessage = {
+        ...buildAssistantMessagePayload(parsedReply, normalizedReply, debugTrace, reply.model),
+        lottery_task: task,
+      };
+      const phaseOutcome: StandaloneVariableUpdatePhaseOutcome = {
+        assistantMessage: {
+          ...assistantMessage,
+          variable_update_status: 'success',
+          variable_update_warning: null,
+        },
+        nextStatData: applyResult.nextStatData,
+        variableUpdateApplied: true,
+        variableUpdateWarning: null,
+        variableUpdateStatus: 'success',
+        usedApiLabel: apiLabel,
+      };
+
+      return {
+        assistantMessage: {
+          ...assistantMessage,
+          variable_update_status: 'running',
+          variable_update_warning: null,
+        },
+        usedApiLabel: apiLabel,
+        finalizeVariableUpdate: Promise.resolve(phaseOutcome),
+      };
+    } catch (error) {
+      if (controller.signal.aborted) throw error;
+      const message = normalizeRemoteApiErrorMessage(error);
+      failures.push(`${apiLabel}: ${message}`);
+    }
+  }
+
+  throw new Error(failures.join(' | ') || '抽奖主 API 调用失败');
+}
+
 function buildAssistantMessagePayload(
   parsedReply: ParsedTaggedAssistantReply,
   rawContent: string,
@@ -1088,6 +1245,10 @@ export async function runStandaloneLocalTurn(input: StandaloneLocalTurnInput): P
   const patchGuard = resolveStandalonePatchGuard(input.statData);
 
   try {
+    if (input.scriptedTurn?.kind === 'lottery') {
+      return await runLotteryTurn(input, candidateMainApis, controller);
+    }
+
     const prompt = buildMainTurnPrompt(input);
     const failures: string[] = [];
     let lastErrorMessage = '';
