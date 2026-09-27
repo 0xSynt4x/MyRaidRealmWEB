@@ -1,21 +1,7 @@
-<%
-  let count = Number(getvar('stat_data.设置.积分系统.抽奖次数')) || 1;
-  let isPity = getvar('stat_data.设置.积分系统.保底触发');
-  const getQuality = (forceEpic) => {
-    if (forceEpic) return '传说';
-    const r = _.random(1, 100);
-    if (r === 100) return '传说';
-    if (r >= 96) return '史诗';
-    if (r >= 81) return '稀有';
-    if (r >= 51) return '精良';
-    return '普通';
-  };
-%>
-以下是内部规则,知晓即可
-rules:
-  - 进入抽奖环节,抽奖积分已被前端扣除
-  - 本次回复不要描写剧情,不要提及积分增减,仅在<contenttext>标签内生成抽奖结果
-  - **系统已强制生成如下<%= count %>次抽奖结果，你必须严格遵守，不可更改品质：**
-<% for(let i=0; i<count; i++) { -%>
-    - 第<%= i+1 %>次：【<%= getQuality(i === 0 && isPity) %>】
-<% } -%>
+抽奖回合专用规则（程序固定抽签结果后使用）：
+- 本次抽奖的数量、品质和保底结果由前端程序固定，模型不得自行随机或修改。
+- 主 API 只负责填写奖励名称、类型、类别、描述和特殊效果。
+- 同一批奖励名称不得重复；只允许输出物品或技能。
+- 禁止推进剧情、描写场景、输出行动选项或输出变量补丁。
+- 只输出一个 `<contenttext>`，其中是合法 JSON：
+  `{"rewards":[{"slot":1,"type":"item或skill","name":"名称","category":"类型","description":"描述","specialAttributes":"特殊效果"}]}`

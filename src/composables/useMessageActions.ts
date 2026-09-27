@@ -198,6 +198,16 @@ export function useMessageActions() {
       // 阶段总结 + 归档水位线：告诉拼提示词的那一层，哪些早期回合已经被压过了
       const stageSummaryState = resolveStandaloneStageSummaryState();
 
+      const effectiveScriptedTurn =
+        options.scriptedTurn ??
+        (latestUserMessage.lottery_task
+          ? {
+              kind: 'lottery' as const,
+              promptText: latestUserMessage.content_text || latestUserMessage.raw_content,
+              task: latestUserMessage.lottery_task,
+            }
+          : undefined);
+
       const outcome = await runStandaloneLocalTurn({
         mainApis: settingsStore.mainApis,
         assistantApis: settingsStore.assistantApis,
@@ -211,7 +221,7 @@ export function useMessageActions() {
         localContentCustomEntries: setupStore.customWorldbookEntries,
         selectedPreset: setupStore.selectedPreset,
         snapshotTrim: settingsStore.snapshotTrim,
-        scriptedTurn: options.scriptedTurn,
+        scriptedTurn: effectiveScriptedTurn,
         stageSummary: stageSummaryState.stageSummary,
         archivedUntilMessageId: stageSummaryState.archivedUntilMessageId,
         onMainReplyPartialText: partialText => {
@@ -616,6 +626,7 @@ export function useMessageActions() {
         content_text: normalizedText,
         formatted: formatMessageContentForDisplay(normalizedText, 'user', -1),
         action_options: [],
+        lottery_task: options.scriptedTurn?.kind === 'lottery' ? options.scriptedTurn.task : undefined,
       });
 
       return generateStandaloneAssistantReply(userMessage.message_id, reason, options);
@@ -851,7 +862,10 @@ export function useMessageActions() {
     const toDelete = _.range(message_id, lastId + 1);
     messagesStore.removeMessages(toDelete);
     syncAfterTimelineChange(`standalone-regenerate:${message_id}`);
-    restoreStandaloneSnapshot(preferredSnapshot, `standalone-regenerate:${message_id}`);
+    const regenerateSnapshot = record.lottery_task
+      ? resolveStandaloneSnapshotForMessage(latestUserBeforeReply, `standalone-regenerate-lottery:${message_id}`)
+      : preferredSnapshot;
+    restoreStandaloneSnapshot(regenerateSnapshot, `standalone-regenerate:${message_id}`);
 
     notificationStore.info(tCurrent('messageActions.regenerating'));
     return generateStandaloneAssistantReply(latestUserBeforeReply.message_id, 'standalone_regenerate');
@@ -904,6 +918,7 @@ export function useMessageActions() {
 
     // 保存消息内容
     const messageContent = record.raw_content;
+    const lotteryTask = record.lottery_task;
     const preferredSnapshot = resolveStandaloneSnapshotForMessage(record, `standalone-resend:${message_id}`);
 
     const toDelete = _.range(message_id, lastId + 1);
@@ -923,6 +938,7 @@ export function useMessageActions() {
       formatted: formatMessageContentForDisplay(messageContent, 'user', -1),
       action_options: [],
       stat_data_snapshot: resentUserSnapshot,
+      lottery_task: lotteryTask,
     });
 
     notificationStore.info(tCurrent('messageActions.resending'));

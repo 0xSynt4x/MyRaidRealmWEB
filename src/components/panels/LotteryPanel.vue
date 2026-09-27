@@ -107,6 +107,7 @@ import { useI18n } from '../../i18n';
 import { useMessagesStore } from '../../stores/messages';
 import { useStatDataStore } from '../../stores/statData';
 import { useStatDataActions } from '../../stores/statDataActions';
+import { createLotteryTask } from '../../utils/lottery';
 
 const statDataStore = useStatDataStore();
 const messagesStore = useMessagesStore();
@@ -177,13 +178,16 @@ function ensurePointsCurrency(draft: typeof data.value) {
 async function handleSingleDraw() {
   if (!canSingleDraw.value) return;
 
-  const currentDrawCount = data.value.设置?.积分系统?.抽奖次数 || 0;
-  const newDrawCount = currentDrawCount + 1;
-  const promptText = `## 🎰 开始抽奖!${resolvePlayerName()}发起了${newDrawCount}次抽奖，请生成抽奖结果。`;
-
-  let totalDraws = newDrawCount;
+  const pendingDrawCount = data.value.设置?.积分系统?.抽奖次数 || 0;
+  if (pendingDrawCount > 0 || data.value.设置?.积分系统?.抽奖触发) return;
+  const drawCount = 1;
+  const promptText = `## 🎰 开始抽奖!${resolvePlayerName()}发起了${drawCount}次抽奖，请生成抽奖结果。`;
+  let totalDraws = drawCount;
   let newPityCount = 0;
-  let isPity = false;
+  const oldPityCount = data.value.设置?.积分系统?.$保底次数 || 0;
+  const isPity = (oldPityCount + 1) % PITY_THRESHOLD === 0;
+  const pitySlot: number | null = isPity ? 1 : null;
+  const task = createLotteryTask(drawCount, isPity, pitySlot);
 
   await statDataActions.mutateStatData('lottery.single', draft => {
     const points = ensurePointsCurrency(draft);
@@ -193,11 +197,10 @@ async function handleSingleDraw() {
     draft.设置.积分系统.抽奖次数 = currentCount + 1;
     totalDraws = draft.设置.积分系统.抽奖次数;
 
-    const oldPityCount = draft.设置.积分系统.$保底次数 || 0;
-    draft.设置.积分系统.$保底次数 = oldPityCount + 1;
+    const draftOldPityCount = draft.设置.积分系统.$保底次数 || 0;
+    draft.设置.积分系统.$保底次数 = draftOldPityCount + 1;
     newPityCount = draft.设置.积分系统.$保底次数;
 
-    isPity = newPityCount % PITY_THRESHOLD === 0 && newPityCount > 0;
     draft.设置.积分系统.保底触发 = isPity;
 
     if (isPity) {
@@ -217,6 +220,7 @@ async function handleSingleDraw() {
     scriptedTurn: {
       kind: 'lottery',
       promptText,
+      task,
     },
   });
 }
@@ -225,13 +229,14 @@ async function handleSingleDraw() {
 async function handleTenDraw() {
   if (!canTenDraw.value) return;
 
-  const currentDrawCount = data.value.设置?.积分系统?.抽奖次数 || 0;
-  const newDrawCount = currentDrawCount + 10;
-  const promptText = `## 🎰 开始抽奖!${resolvePlayerName()}发起了${newDrawCount}次抽奖，请生成抽奖结果。`;
-
-  let totalDraws = newDrawCount;
+  const pendingDrawCount = data.value.设置?.积分系统?.抽奖次数 || 0;
+  if (pendingDrawCount > 0 || data.value.设置?.积分系统?.抽奖触发) return;
+  const drawCount = 10;
+  const promptText = `## 🎰 开始抽奖!${resolvePlayerName()}发起了${drawCount}次抽奖，请生成抽奖结果。`;
+  let totalDraws = drawCount;
   let newPityCount = 0;
   let isPity = false;
+  let pitySlot: number | null = null;
 
   await statDataActions.mutateStatData('lottery.ten', draft => {
     const points = ensurePointsCurrency(draft);
@@ -247,6 +252,7 @@ async function handleTenDraw() {
 
     const oldProgress = oldPityCount % PITY_THRESHOLD;
     isPity = oldProgress + 10 >= PITY_THRESHOLD;
+    pitySlot = isPity ? PITY_THRESHOLD - oldProgress : null;
     draft.设置.积分系统.保底触发 = isPity;
 
     if (isPity) {
@@ -266,6 +272,7 @@ async function handleTenDraw() {
     scriptedTurn: {
       kind: 'lottery',
       promptText,
+      task: createLotteryTask(drawCount, isPity, pitySlot),
     },
   });
 }
