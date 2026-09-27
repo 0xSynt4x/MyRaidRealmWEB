@@ -14,8 +14,6 @@
         <SetupWizard @complete="handleWizardComplete" />
         <OverlayPanel />
       </div>
-      <!-- 更新日志：版本变过才拦一道，关掉才算看过（详见 utils/changelog） -->
-      <ChangelogModal :visible="showChangelog" @close="handleCloseChangelog" />
     </template>
 
     <!-- 主界面 - 三栏布局 -->
@@ -54,7 +52,13 @@
     -->
     <NotificationContainer />
 
-    <!-- 模态框挂载点 - 绝对定位覆盖整个 app-container -->
+    <!--
+      模态框挂载点 - 绝对定位覆盖整个 app-container。
+      ⚠️ 它整棵树都在 App 组件内：App 首帧挂载时 .app-container 还游离在 document 之外，
+      此刻 Teleport 用 document.querySelector 找目标必然落空（Vue 只在 dev 下警告，生产静默丢弃）。
+      所以**首帧就要显示的** Teleport 使用者必须加 `defer`（见 ChangelogModal），
+      靠用户交互后才显示的（声明弹窗等）不受影响。
+    -->
     <div id="modal-container" class="modal-mount"></div>
   </div>
 </template>
@@ -71,7 +75,6 @@ import MainLayout from './components/layout/MainLayout.vue';
 import MobileBottomNav from './components/layout/MobileBottomNav.vue';
 import OverlayPanel from './components/layout/OverlayPanel.vue';
 import RightPanel from './components/layout/RightPanel.vue';
-import ChangelogModal from './components/panels/ChangelogModal.vue';
 import SetupWizard from './components/setup/SetupWizard.vue';
 import { useFullscreen } from './composables/useFullscreen';
 import { useSetupStore } from './stores/setup';
@@ -81,7 +84,6 @@ import {
   pruneStandaloneArchiveDebugTraces,
   type StandaloneArchiveRestoreOutcome,
 } from './utils/archive';
-import { markChangelogSeen, shouldShowChangelog } from './utils/changelog';
 import { getDesktopExtraHeight, getLayoutViewportWidth, isMobileLayoutWidth } from './utils/layoutBreakpoints';
 import { ensureStandaloneRuntimeBootstrapFromStores } from './utils/standaloneRuntime';
 import { loadStandaloneStatData } from './utils/standaloneStatData';
@@ -119,15 +121,6 @@ function handleStandaloneArchiveRestored(event: Event) {
 
 // 判断是否显示配置界面
 const showWizard = computed(() => forceShowWizard.value || !inGame.value);
-
-// 更新日志弹窗：只在首页拦一道，且当前版本没看过才拦。
-// 看没看过记在本地（详见 utils/changelog），关闭即写标记，之后正常进游戏。
-const showChangelog = ref(shouldShowChangelog());
-
-const handleCloseChangelog = () => {
-  showChangelog.value = false;
-  markChangelogSeen();
-};
 
 // 处理配置完成事件
 const handleWizardComplete = () => {

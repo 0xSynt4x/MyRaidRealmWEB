@@ -8,6 +8,7 @@
         @start="handleStart"
         @continue="handleContinue"
         @open-settings="handleOpenSettings"
+        @open-changelog="handleOpenChangelog"
       />
       <PresetSelectPage v-else-if="setupStore.currentPage === 'presets'" key="presets" />
       <PlayerInfoPage v-else-if="setupStore.currentPage === 'playerInfo'" key="playerInfo" @next="handleGoToSettings" />
@@ -19,15 +20,24 @@
       <SettingsPage v-else-if="setupStore.currentPage === 'settings'" key="settings" @complete="handleComplete" />
       <WorkshopPage v-else-if="setupStore.currentPage === 'workshop'" key="workshop" />
     </Transition>
+
+    <!--
+      更新日志弹窗：版本变化后首次进首页自动弹（关掉才算看过）；
+      点右下角版本号也能随时翻出来重看。
+      挂在 Transition 之外，避免切页时跟着做过渡动画。
+    -->
+    <ChangelogModal :visible="showChangelog" @close="handleCloseChangelog" />
   </div>
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue';
 import { useI18n } from '../../i18n';
 import { notify } from '../../utils/notify';
 import { useFullscreen } from '../../composables/useFullscreen';
 import { useLayoutStore } from '../../stores/layout';
 import { useSetupStore } from '../../stores/setup';
+import ChangelogModal from '../panels/ChangelogModal.vue';
 import AiGeneratePage from './pages/AiGeneratePage.vue';
 import HomePage from './pages/HomePage.vue';
 import PlayerInfoPage from './pages/PlayerInfoPage.vue';
@@ -36,8 +46,15 @@ import SettingsPage from './pages/SettingsPage.vue';
 import WorkshopPage from './pages/WorkshopPage.vue';
 
 import { getStandaloneArchiveFeedbackMessageKey, importArchiveFile } from '../../utils/archive';
+import { markChangelogSeen, shouldShowChangelog } from '../../utils/changelog';
 
 const emit = defineEmits<{ complete: [] }>();
+
+/**
+ * 更新日志弹窗：版本变化后首次进首页自动拦一道；
+ * 之后玩家想重看，点右下角版本号即可（走 handleOpenChangelog）。
+ */
+const showChangelog = ref(shouldShowChangelog());
 
 const setupStore = useSetupStore();
 const layoutStore = useLayoutStore();
@@ -54,6 +71,17 @@ function handleGoToSettings() {
 
 function handleOpenSettings() {
   void layoutStore.toggleOverlayPanel('settings');
+}
+
+/** 点右下角版本号：随时把更新日志翻出来重看 */
+function handleOpenChangelog() {
+  showChangelog.value = true;
+}
+
+function handleCloseChangelog() {
+  showChangelog.value = false;
+  // 关掉即视为看过，之后只在版本变化后才自动弹
+  markChangelogSeen();
 }
 
 async function handleAiGenerateApply() {

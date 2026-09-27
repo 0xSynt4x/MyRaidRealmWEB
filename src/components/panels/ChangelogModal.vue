@@ -1,5 +1,10 @@
 <template>
-  <Teleport to="#modal-container">
+  <!--
+    🔴 defer 不能删：本弹窗在首页首帧就要显示，而挂载点 #modal-container 在 App 组件树内部，
+    此刻 .app-container 还没插进 document → Teleport 找不到目标，内容会被整块丢弃
+    （Vue 只在 dev 下警告，生产静默不显示）。defer 让目标解析推迟到应用挂载完成后。
+  -->
+  <Teleport to="#modal-container" defer>
     <Transition name="changelog-fade">
       <div
         v-if="visible"
@@ -22,18 +27,7 @@
             <i class="ti ti-x"></i>
           </button>
 
-          <header class="modal-header">
-            <div class="header-icon">
-              <i class="ti ti-sparkles"></i>
-            </div>
-            <h2 class="header-title">{{ t('changelog.title') }}</h2>
-            <p class="header-version">
-              {{ t('changelog.currentVersion') }}
-              <span class="version-value">v{{ currentVersion }}</span>
-            </p>
-          </header>
-
-          <div class="modal-body">
+          <div class="changelog-body">
             <section v-for="entry in entries" :key="entry.date" class="entry">
               <div class="entry-head">
                 <span class="entry-dot" aria-hidden="true"></span>
@@ -56,7 +50,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted } from 'vue';
 import { useI18n } from '../../i18n';
-import { getChangelogEntries, getCurrentVersion } from '../../utils/changelog';
+import { getChangelogEntries } from '../../utils/changelog';
 
 defineProps<{ visible: boolean }>();
 const emit = defineEmits<{ close: [] }>();
@@ -65,7 +59,6 @@ const { t } = useI18n();
 
 // 最新在最前，由数据模块负责排序
 const entries = computed(() => getChangelogEntries());
-const currentVersion = getCurrentVersion();
 
 function handleKeydown(event: KeyboardEvent) {
   if (event.key === 'Escape') {
@@ -83,7 +76,13 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* ===== 遮罩层 ===== */
+/*
+  遮罩层：只压暗，不做磨砂。
+  🔴 不要给遮罩加 backdrop-filter —— 整页被模糊会让用户误以为界面本身出了问题，
+  毛玻璃效果只留在弹窗卡片自己身上。
+  🔴 暗度不能高：首页背景本身是暗色场景图，遮罩一压到 50%，弹窗再叠一层深色底，
+  两者亮度就趋同了 → 弹窗看着是实心黑、透不出背后。0.25 是能压住背景又不吃掉纹理的量。
+*/
 .changelog-overlay {
   position: absolute;
   inset: 0;
@@ -92,9 +91,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   padding: 16px;
-  background: rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(8px) saturate(1.2);
-  -webkit-backdrop-filter: blur(8px) saturate(1.2);
+  background: rgba(0, 0, 0, 0.25);
 }
 
 /* ===== 弹窗主体 ===== */
@@ -104,18 +101,48 @@ onUnmounted(() => {
   flex-direction: column;
   width: 100%;
   max-width: 460px;
-  max-height: 84%;
+  /* 高度固定：内容多少都不变，超出部分在 .changelog-body 里滚动。
+     上限 520px（约 8 条可见），窄屏再按视口收缩。 */
+  height: min(520px, 78%);
   overflow: hidden;
   border-radius: 16px;
-  background: var(--glass-bg-heavy);
+  background: transparent;
   border: 1px solid var(--glass-border);
   box-shadow:
     0 24px 80px rgba(0, 0, 0, 0.45),
     inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  /*
+    🔴 不给卡片加 backdrop-filter：磨砂（blur）会把背后的画面糊成一片均匀色块，
+    视觉上反而「更不透明」—— 想要真半透明，就得让背后的画面清晰透出来。
+    文字与强调色一律沿用 global.css 的主题变量，这里不另起一套色值。
+  */
+}
+
+/*
+  半透明底。
+  🔴 用主题的玻璃底色 + 不透明度，而不是直接拿 --glass-bg-heavy 原值（0.97）：
+     原值是不透明的实色面（global.css 注释：「玻璃拟态系统 - 改为实色面，不做模糊」），
+     叠在首页封面上就是一块实心色，没有玻璃感。
+  🔴 0.92 = 只留一点点透明：有效不透明度约 0.89，背后封面只透出约 11%，
+     凑近能看见一点光影，远看仍是实色面。
+  🔴 用伪元素 + opacity 而不是给 background 套 color-mix：各主题的 --glass-bg-heavy
+     有的是 rgba、有的是渐变（见 global.css 的液态玻璃主题），color-mix 遇到渐变会整条声明失效。
+  用伪元素铺底而不是直接给 .changelog-modal 设 background，是为了让内容层统一 z-index: 1 叠在上面。
+*/
+.changelog-modal::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: var(--glass-bg-heavy);
+  opacity: 0.92;
+  pointer-events: none;
 }
 
 /* ===== 顶部渐变装饰线 ===== */
 .modal-accent-bar {
+  position: relative;
+  z-index: 1;
   height: 3px;
   flex: 0 0 auto;
   background: linear-gradient(
@@ -171,70 +198,37 @@ onUnmounted(() => {
   transform: rotate(90deg) scale(0.95);
 }
 
-/* ===== 标题区 ===== */
-.modal-header {
-  flex: 0 0 auto;
-  padding: 22px 24px 14px;
-  text-align: center;
-}
-
-.header-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  margin-bottom: 10px;
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--accent-primary) 18%, transparent);
-  border: 1px solid color-mix(in srgb, var(--accent-primary) 34%, transparent);
-  color: var(--accent-primary);
-  font-size: calc(20px * var(--ui-font-scale));
-}
-
-.header-title {
-  margin: 0;
-  font-size: calc(19px * var(--ui-font-scale));
-  font-weight: 700;
-  letter-spacing: 2px;
-  color: var(--text-primary);
-}
-
-.header-version {
-  margin: 6px 0 0;
-  font-size: calc(12px * var(--ui-font-scale));
-  letter-spacing: 1px;
-  color: var(--text-secondary);
-}
-
-.version-value {
-  margin-left: 4px;
-  font-weight: 600;
-  color: var(--accent-primary);
-}
-
 /* ===== 内容区 ===== */
-.modal-body {
+/*
+  🔴 类名必须是 .changelog-body，不能用 .modal-body。
+  .modal-body 是项目公共模态框系统（商业详情 / 派系详情 / 生成图浏览共用）的类名，
+  global.css 给它配了 `background: var(--bg-primary)` —— 那是一块不透明实色底，
+  会盖住整张卡片，让本弹窗的半透明底怎么调都看不出效果。专属类名可彻底隔离。
+*/
+.changelog-body {
+  position: relative;
+  z-index: 1;
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
-  padding: 4px 24px 22px;
+  /* 顶部留出右上角关闭按钮的空间（原标题区已去掉） */
+  padding: 16px 24px 22px;
 }
 
-.modal-body::-webkit-scrollbar {
+.changelog-body::-webkit-scrollbar {
   width: 4px;
 }
 
-.modal-body::-webkit-scrollbar-track {
+.changelog-body::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.modal-body::-webkit-scrollbar-thumb {
+.changelog-body::-webkit-scrollbar-thumb {
   background: color-mix(in srgb, var(--text-primary) 14%, transparent);
   border-radius: 2px;
 }
 
-.modal-body::-webkit-scrollbar-thumb:hover {
+.changelog-body::-webkit-scrollbar-thumb:hover {
   background: color-mix(in srgb, var(--text-primary) 24%, transparent);
 }
 
@@ -333,15 +327,11 @@ onUnmounted(() => {
 
 @media (max-width: 480px) {
   .changelog-modal {
-    max-height: 88%;
+    height: min(560px, 86%);
   }
 
-  .modal-header {
-    padding: 20px 18px 12px;
-  }
-
-  .modal-body {
-    padding: 4px 18px 18px;
+  .changelog-body {
+    padding: 14px 18px 18px;
   }
 }
 </style>

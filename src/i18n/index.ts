@@ -694,7 +694,6 @@ const messages: Record<Locale, Record<string, string>> = {
     'donate.kofiLink': '或通过 Ko-fi 支持',
 
     'changelog.title': '更新日志',
-    'changelog.currentVersion': '当前版本',
     'changelog.close': '关闭',
     'declaration.subtitle': '版权声明',
     'declaration.author': '作者',
@@ -2155,7 +2154,6 @@ const messages: Record<Locale, Record<string, string>> = {
     'donate.kofiLink': 'or support via Ko-fi',
 
     'changelog.title': 'Changelog',
-    'changelog.currentVersion': 'Current version',
     'changelog.close': 'Close',
     'declaration.subtitle': 'Copyright declaration',
     'declaration.author': 'Author',

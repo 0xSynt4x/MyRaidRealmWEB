@@ -111,8 +111,10 @@
       @select="handleSnapshotSelect"
     />
 
-    <!-- 当前版本号：常驻右下角 -->
-    <div class="version-tag">v{{ appVersion }}</div>
+    <!-- 当前版本号：常驻右下角，点击可翻出更新日志 -->
+    <button type="button" class="version-tag" @click="emit('openChangelog')">
+      v{{ appVersion }}
+    </button>
   </div>
 </template>
 
@@ -137,6 +139,7 @@ const emit = defineEmits<{
   start: [];
   continue: [file: File];
   openSettings: [];
+  openChangelog: [];
 }>();
 
 const { isFullscreen, toggleFullscreen } = useFullscreen();
@@ -1101,18 +1104,37 @@ onUnmounted(() => {
 }
 
 /* 按钮区 */
-/* ===== 右下角版本号 ===== */
+/* ===== 右下角版本号（可点击 → 打开更新日志） ===== */
 /* 封面恒为深色，所以直接用封面自己的墨色，不跟主题令牌 */
 .version-tag {
   position: absolute;
-  right: 16px;
-  bottom: 12px;
+  /* 8 + 8px padding = 文字距右 16px；8 + 4px = 距底 12px，与改成按钮前位置一致 */
+  right: 8px;
+  bottom: 8px;
   z-index: 2;
+  padding: 4px 8px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  font-family: inherit;
   font-size: calc(11px * var(--ui-font-scale));
   letter-spacing: 1px;
   color: color-mix(in srgb, var(--cover-ink) 50%, transparent);
-  pointer-events: none;
+  cursor: pointer;
   user-select: none;
+  transition:
+    color 160ms ease,
+    background 160ms ease;
+}
+
+.version-tag:hover {
+  color: var(--cover-ink);
+  background: color-mix(in srgb, var(--cover-ink) 12%, transparent);
+}
+
+.version-tag:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--cover-ink) 55%, transparent);
+  outline-offset: 2px;
 }
 
 .action-section {
