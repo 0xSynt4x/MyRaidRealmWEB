@@ -88,9 +88,10 @@
         <MessageImageSlot
           v-if="segment.prompt"
           :prompt="comfyUiImageGeneration.composePrompt(segment.prompt)"
-          :image="message.generated_images?.[segment.imageIndex ?? 0]"
+          :image="segment.image"
           :disabled="imageSlotsDisabled"
           @generate="handleGenerateImage(segment.imageIndex ?? 0, segment.prompt)"
+          @cancel="handleCancelImage(segment.imageIndex ?? 0)"
         />
       </template>
 
@@ -184,13 +185,64 @@ const { t } = useI18n();
 const actionsDisabled = computed(() => messagesStore.isStandaloneGenerationLocked);
 const comfyUiImageGeneration = useComfyUiImageGeneration();
 
-// 正文按生图提示词切开，提示词位置换成图片槽
-const contentSegments = computed(() => splitMessageContentSegments(props.message.content_text ?? ''));
-const imageSlotsDisabled = computed(() => actionsDisabled.value || !comfyUiImageGeneration.isReady.value);
+// 正文按生图提示词切开，提示词位置换成图片槽。
+// 图片状态从仓库取：正文还在流式、正式楼层没落地时，也能读到暂存里的出图进度。
+const contentSegments = computed(() =>
+  splitMessageContentSegments(props.message.content_text ?? '').map(segment => ({
+    ...segment,
+    image: segment.prompt
+      ? messagesStore.getGeneratedImage(props.message.message_id, segment.imageIndex ?? 0)
+      : undefined,
+  })),
+);
+// 生成中（正文流式 / 变量更新）也允许出图：图按「楼层号 + 第几张」索引，落地后照样对得上
+const imageSlotsDisabled = computed(() => !comfyUiImageGeneration.isReady.value);
 
 function handleGenerateImage(imageIndex: number, prompt: string) {
   void comfyUiImageGeneration.generateForMessage(props.message.message_id, imageIndex, prompt);
 }
+
+function handleCancelImage(imageIndex: number) {
+  comfyUiImageGeneration.cancelGeneration(props.message.message_id, imageIndex);
+}
+
+/**
+ * 只收「写完整」的 image###...### —— 流式写到一半的残句拿去出图只会出废图。
+ * 与正文切分用同一套匹配规则，保证序号能对上图片槽。
+ */
+function collectClosedImagePrompts(contentText: string): string[] {
+  const cleaned = contentText.replace(/<imgthink>[\s\S]*?<\/imgthink>/gi, '');
+  const prompts: string[] = [];
+  const pattern = /image###\s*([\s\S]*?)\s*###/g;
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(cleaned)) !== null) {
+    const prompt = match[1].trim();
+    if (prompt) prompts.push(prompt);
+  }
+  return prompts;
+}
+
+// 自动生图：开着时正文里一出现提示词就出图，不用手点。
+// 只在「正在生成」的消息上跑 —— 否则打开旧存档会把历史提示词一次性全灌进出图队列。
+watch(
+  [
+    () => props.message.content_text,
+    () => props.message.is_streaming,
+    () => settingsStore.imageGeneration.autoGenerate,
+  ],
+  () => {
+    if (!props.message.is_streaming) return;
+    if (!settingsStore.imageGeneration.enabled || !settingsStore.imageGeneration.autoGenerate) return;
+    if (!comfyUiImageGeneration.isReady.value) return;
+
+    collectClosedImagePrompts(props.message.content_text ?? '').forEach((prompt, index) => {
+      // 已有图 / 正在出图就不重复触发（出图状态是同步写回的，所以这条判据能挡住流式刷新带来的重复）
+      const existing = messagesStore.getGeneratedImage(props.message.message_id, index);
+      if (existing && existing.status !== 'idle') return;
+      void comfyUiImageGeneration.generateForMessage(props.message.message_id, index, prompt);
+    });
+  },
+);
 
 const thinkFormatted = computed(() => {
   if (props.message.role !== 'assistant') return '';

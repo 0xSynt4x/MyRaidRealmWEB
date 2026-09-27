@@ -51,6 +51,7 @@ const CHANGELOG_SOURCE: ReadonlyArray<{ date: string; items: readonly string[] }
   { date: '260925', items: ['生图新增云端后端', '正文插图可折叠'] },
   { date: '260926', items: ['新增上下文裁剪设置', '画风预置改为分组', '生图种子可固定复现'] },
   { date: '260927', items: ['更新日志弹窗上线'] },
+  { date: '260928', items: ['生图支持自动出图', '出图可随时放弃', '修复插图卡在生成中'] },
 ];
 
 /** 第 `index` 条（从 0 起）对应的版本号 */

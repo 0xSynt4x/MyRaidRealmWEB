@@ -5,6 +5,12 @@
         <i class="ti ti-loader-2 ti-spin"></i>
         <span>{{ t('messageImage.generating') }}<template v-if="elapsedSeconds > 0"> · {{ elapsedSeconds }}s</template></span>
       </div>
+      <!-- 「放弃」跟「生成 / 重试」同一位置、同一套按钮样式：等不及就自己掐断 -->
+      <div class="image-slot-bar">
+        <button class="image-slot-btn primary" @click="emit('cancel')">
+          <i class="ti ti-x"></i>{{ t('messageImage.cancel') }}
+        </button>
+      </div>
     </template>
 
     <template v-else-if="status === 'done' && imageMissing">
@@ -99,6 +105,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'generate'): void;
+  (e: 'cancel'): void;
 }>();
 
 const { t } = useI18n();

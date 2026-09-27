@@ -36,6 +36,16 @@ export function useComfyUiImageGeneration() {
   const backend = computed(() => settingsStore.imageGeneration.backend);
   const isNovelAi = computed(() => backend.value === 'novelai');
 
+  /**
+   * 正在出图的每一张，各自挂一个中止开关（键 = 「楼层号:第几张」）。
+   * 玩家在「生成中」那一格点「放弃」时用它掐断请求 —— 两条后端的客户端都认这个开关。
+   */
+  const runningControllers = new Map<string, AbortController>();
+
+  function generationKey(messageId: number, imageIndex: number): string {
+    return `${messageId}:${imageIndex}`;
+  }
+
   const hasWorkflow = computed(() => Boolean(settingsStore.comfyUi.workflowJson.trim()));
   const hasPositiveNode = computed(() => Boolean(settingsStore.comfyUi.positiveNodeId));
   const hasNovelAiBaseUrl = computed(() => Boolean(settingsStore.novelAi.baseUrl.trim()));
@@ -124,27 +134,38 @@ export function useComfyUiImageGeneration() {
     return isNovelAi.value ? t('novelaiError.unknown') : t('comfyuiError.unknown');
   }
 
+  /**
+   * 图片状态统一交给消息仓库写。
+   * 正式楼层在 → 直接改；正文还在流式、楼层没落地 → 先暂存，等落地再并回 ——
+   * 这样「生成中点出图」不会因为写不到楼层而白出。
+   */
   function writeImageRecord(messageId: number, imageIndex: number, patch: Partial<MessageGeneratedImage>) {
-    const record = messagesStore.getMessage(messageId);
-    if (!record) return;
-
-    const list: MessageGeneratedImage[] = [...(record.generated_images ?? [])];
-    while (list.length <= imageIndex) {
-      list.push({ status: 'idle', prompt: '' });
-    }
-    list[imageIndex] = { ...list[imageIndex], ...patch };
-
-    messagesStore.patchMessageRecord(messageId, { generated_images: list });
+    messagesStore.writeGeneratedImage(messageId, imageIndex, patch);
   }
 
   /** 本地 ComfyUI 那条路：结果只存图片地址 */
-  async function generateWithComfyUi(messageId: number, imageIndex: number, finalPrompt: string) {
+  async function generateWithComfyUi(
+    messageId: number,
+    imageIndex: number,
+    finalPrompt: string,
+    signal: AbortSignal,
+  ) {
     const config = settingsStore.comfyUi;
+
+    /**
+     * 工作流准备不了时的统一出口。
+     * 🔴 这里**不能**只弹个提示就 return —— 调用方已经把这张标成「生成中」了，
+     * 静默返回会让它永远转圈（再点也只是重新标一次「生成中」）。必须落成「失败」。
+     */
+    const failWorkflow = (message: string) => {
+      writeImageRecord(messageId, imageIndex, { status: 'error', prompt: finalPrompt, error: message });
+      notificationStore.error(message);
+    };
 
     // 界面格式的工作流要先解析过一次、转成 API 格式才能提交
     const apiSource = config.workflowApiJson.trim() || config.workflowJson;
     if (detectComfyWorkflowFormat(apiSource) !== 'api') {
-      notificationStore.warning(t('comfyuiError.workflowNotParsed'));
+      failWorkflow(t('comfyuiError.workflowNotParsed'));
       return;
     }
 
@@ -152,7 +173,7 @@ export function useComfyUiImageGeneration() {
     try {
       workflow = JSON.parse(apiSource) as Record<string, unknown>;
     } catch {
-      notificationStore.error(t('comfyuiError.invalidWorkflow'));
+      failWorkflow(t('comfyuiError.invalidWorkflow'));
       return;
     }
 
@@ -167,6 +188,7 @@ export function useComfyUiImageGeneration() {
       height: config.overrideSize ? config.height : undefined,
       randomSeed: config.randomSeed,
       fixedSeed: config.fixedSeed,
+      signal,
     });
 
     const first = images[0];
@@ -184,7 +206,12 @@ export function useComfyUiImageGeneration() {
   }
 
   /** NovelAI 那条路：图存进本机仓库，消息里只留编号 */
-  async function generateWithNovelAi(messageId: number, imageIndex: number, finalPrompt: string) {
+  async function generateWithNovelAi(
+    messageId: number,
+    imageIndex: number,
+    finalPrompt: string,
+    signal: AbortSignal,
+  ) {
     const config = settingsStore.novelAi;
     const size = resolveNovelAiSize(config.sizeId);
 
@@ -204,6 +231,7 @@ export function useComfyUiImageGeneration() {
       ucPreset: config.ucPreset,
       qualityToggle: config.qualityToggle,
       cfgRescale: config.cfgRescale,
+      signal,
     });
 
     const first = images[0];
@@ -252,19 +280,45 @@ export function useComfyUiImageGeneration() {
     // 画风预置 + AI 写的场景 = 真正提交的正向提示词
     const finalPrompt = composePrompt(prompt);
 
+    const key = generationKey(messageId, imageIndex);
+    const controller = new AbortController();
+    runningControllers.set(key, controller);
+
     writeImageRecord(messageId, imageIndex, { status: 'running', prompt: finalPrompt, error: undefined });
 
     try {
       if (isNovelAi.value) {
-        await generateWithNovelAi(messageId, imageIndex, finalPrompt);
+        await generateWithNovelAi(messageId, imageIndex, finalPrompt, controller.signal);
       } else {
-        await generateWithComfyUi(messageId, imageIndex, finalPrompt);
+        await generateWithComfyUi(messageId, imageIndex, finalPrompt, controller.signal);
       }
     } catch (error) {
-      const message = describeError(error);
-      writeImageRecord(messageId, imageIndex, { status: 'error', prompt: finalPrompt, error: message });
-      notificationStore.error(message);
+      // 这一次已经被新的一次生成顶掉了，就不要再回写状态
+      if (runningControllers.get(key) !== controller) return;
+
+      if (controller.signal.aborted) {
+        // 玩家点了「放弃」—— 落成「已放弃」，不弹错误通知（界面上已经写明）。
+        // 🔴 不能落回 idle：正文还在流式的话，自动生图会立刻把同一张又拉起来。
+        writeImageRecord(messageId, imageIndex, {
+          status: 'error',
+          prompt: finalPrompt,
+          error: t('messageImage.canceled'),
+        });
+      } else {
+        const message = describeError(error);
+        writeImageRecord(messageId, imageIndex, { status: 'error', prompt: finalPrompt, error: message });
+        notificationStore.error(message);
+      }
+    } finally {
+      if (runningControllers.get(key) === controller) {
+        runningControllers.delete(key);
+      }
     }
+  }
+
+  /** 放弃这一张的出图：掐断正在跑的请求，界面会落成「已放弃」并可重试 */
+  function cancelGeneration(messageId: number, imageIndex: number) {
+    runningControllers.get(generationKey(messageId, imageIndex))?.abort();
   }
 
   return {
@@ -274,6 +328,7 @@ export function useComfyUiImageGeneration() {
     isNovelAi,
     composePrompt,
     generateForMessage,
+    cancelGeneration,
     describeError,
   };
 }

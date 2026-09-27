@@ -159,15 +159,17 @@ function normalizeStylePresetId(value: unknown, fallback: string): string {
 /** 生图后端：本地 ComfyUI 走本机服务，NovelAI 走云端兼容接口 */
 export type ImageBackend = 'comfyui' | 'novelai';
 
-/** 生图总开关 + 当前生效的后端 */
+/** 生图总开关 + 当前生效的后端 + 自动出图 */
 export interface ImageGenerationSettings {
   /** 关掉后 AI 不写生图提示词，消息里也不显示出图按钮 */
   enabled: boolean;
   backend: ImageBackend;
+  /** 开着时正文里一出现生图提示词就自动出图，不用手点；关着维持「手动点按钮」的原样 */
+  autoGenerate: boolean;
 }
 
 export function createDefaultImageGenerationSettings(): ImageGenerationSettings {
-  return { enabled: false, backend: 'comfyui' };
+  return { enabled: false, backend: 'comfyui', autoGenerate: false };
 }
 
 export function normalizeImageBackend(value: unknown): ImageBackend {
@@ -186,12 +188,15 @@ export function resolveStoredImageGenerationSettings(
     return {
       enabled: Boolean(raw.enabled ?? false),
       backend: normalizeImageBackend(raw.backend),
+      // 老配置没有这一项 —— 默认关，行为与加开关之前完全一致
+      autoGenerate: Boolean(raw.autoGenerate ?? false),
     };
   }
 
   return {
     enabled: Boolean(stored?.comfyUi?.enabled ?? false),
     backend: 'comfyui',
+    autoGenerate: false,
   };
 }
 

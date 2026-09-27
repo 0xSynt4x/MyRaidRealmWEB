@@ -90,6 +90,12 @@ export const useMessagesStore = defineStore('messages', () => {
   const streamingMessageId = ref<number | null>(null);
   const streamingRawContent = ref('');
   const streamingRecord = ref<MessageRecord | null>(null);
+  /**
+   * 流式期间出的图先落在这里。
+   * 正文还在流式时正式楼层还没落地，图片记录直接写 messages 会找不到楼层而被丢掉 ——
+   * 先按楼层号暂存，等正式楼层落地再并回去，这样「生成中点出图」才不会白出。
+   */
+  const streamingImages = ref<Record<number, MessageGeneratedImage[]>>({});
   const mainReplyContext = ref<MainReplyStreamingContext>({
     userMessageId: null,
     targetMessageId: null,
@@ -535,6 +541,8 @@ export const useMessagesStore = defineStore('messages', () => {
       hasFormalMessage: true,
     };
 
+    // 正式楼层已经在 messages 里了 —— 把流式期间出的图并回去，再撤掉投影层
+    mergeStreamingImagesIntoMessage(message_id);
     clearStreamingState(`formal_message_received:${message_id}`);
     return true;
   }
@@ -557,6 +565,7 @@ export const useMessagesStore = defineStore('messages', () => {
    * 用于删除操作发起后的乐观更新；最终仍应调用 syncVisibleWindow 重新按真实聊天记录回补窗口
    */
   function removeMessage(message_id: number) {
+    dropStreamingImages(message_id);
     const index = messages.value.findIndex(m => m.message_id === message_id);
     if (index !== -1) {
       messages.value.splice(index, 1);
@@ -575,6 +584,7 @@ export const useMessagesStore = defineStore('messages', () => {
    * 用于删除操作发起后的乐观更新；最终仍应调用 syncVisibleWindow 重新按真实聊天记录回补窗口
    */
   function removeMessages(message_ids: number[]) {
+    message_ids.forEach(dropStreamingImages);
     messages.value = messages.value.filter(m => !message_ids.includes(m.message_id));
     if (editingMessageId.value !== null && message_ids.includes(editingMessageId.value)) {
       editingMessageId.value = null;
@@ -660,12 +670,78 @@ export const useMessagesStore = defineStore('messages', () => {
   }
 
   /**
+   * 取某楼某张图的当前状态。
+   * 正式楼层优先；正文还在流式、楼层没落地时回落到暂存 —— 影子层也要能显示出图进度。
+   */
+  function getGeneratedImage(message_id: number, imageIndex: number): MessageGeneratedImage | undefined {
+    const formal = messages.value.find(message => message.message_id === message_id)?.generated_images?.[imageIndex];
+    if (formal) return formal;
+    return streamingImages.value[message_id]?.[imageIndex];
+  }
+
+  /**
+   * 写回某楼某张图的生成状态。
+   * 正式楼层在 → 直接改正式记录；不在（正文还在流式）→ 先暂存，等落地时并回。
+   */
+  function writeGeneratedImage(message_id: number, imageIndex: number, patch: Partial<MessageGeneratedImage>) {
+    const mergeInto = (list: MessageGeneratedImage[]) => {
+      const next = [...list];
+      while (next.length <= imageIndex) next.push({ status: 'idle', prompt: '' });
+      next[imageIndex] = { ...next[imageIndex], ...patch };
+      return next;
+    };
+
+    const current = messages.value.find(message => message.message_id === message_id);
+    if (current) {
+      patchMessageRecord(message_id, { generated_images: mergeInto(current.generated_images ?? []) });
+      return;
+    }
+
+    streamingImages.value = {
+      ...streamingImages.value,
+      [message_id]: mergeInto(streamingImages.value[message_id] ?? []),
+    };
+  }
+
+  /** 正式楼层落地时，把流式期间暂存的图片记录并回正式楼层 */
+  function mergeStreamingImagesIntoMessage(message_id: number) {
+    const pending = streamingImages.value[message_id];
+    if (!pending) return;
+
+    const rest = { ...streamingImages.value };
+    delete rest[message_id];
+    streamingImages.value = rest;
+
+    const record = messages.value.find(message => message.message_id === message_id);
+    if (!record) return;
+
+    const merged = [...(record.generated_images ?? [])];
+    pending.forEach((image, index) => {
+      if (!image) return;
+      while (merged.length <= index) merged.push({ status: 'idle', prompt: '' });
+      merged[index] = { ...merged[index], ...image };
+    });
+
+    patchMessageRecord(message_id, { generated_images: merged });
+    console.info(`[MessagesStore] 已把流式期间生成的图片并回正式楼层 message_id=${message_id}`);
+  }
+
+  /** 丢楼时顺手清掉它的流式图片暂存，别在内存里留孤儿记录 */
+  function dropStreamingImages(message_id: number) {
+    if (!streamingImages.value[message_id]) return;
+    const rest = { ...streamingImages.value };
+    delete rest[message_id];
+    streamingImages.value = rest;
+  }
+
+  /**
    * 清空所有消息
    */
   function clearMessages() {
     messages.value = [];
     editingMessageId.value = null;
     editingDraftContent.value = '';
+    streamingImages.value = {};
     clearStreamingState('clear_messages');
     console.info('[MessagesStore] 清空所有消息');
     persistStandaloneMessagesState();
@@ -758,6 +834,8 @@ export const useMessagesStore = defineStore('messages', () => {
     updateMessage,
     patchMessageRecord,
     getMessage,
+    getGeneratedImage,
+    writeGeneratedImage,
     clearMessages,
     setStandaloneMainGenerationBusy,
     setStandaloneAssistantGenerationBusy,

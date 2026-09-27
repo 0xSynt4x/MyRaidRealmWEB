@@ -228,6 +228,8 @@ const messages: Record<Locale, Record<string, string>> = {
     'settings.comfyui.helpUsage':
       '3. 正文出现生图提示词时会显示一个出图按钮，点一下开始生成；图片留在 ComfyUI 的输出目录，网页只记地址',
     'messageImage.generating': '正在生成插图…',
+    'messageImage.cancel': '放弃',
+    'messageImage.canceled': '已放弃，可重新生成',
     'messageImage.viewOriginal': '查看大图',
     'messageImage.viewerHint': '滚轮 / 双指缩放 · 点击关闭',
     'messageImage.regenerate': '重画',
@@ -260,6 +262,9 @@ const messages: Record<Locale, Record<string, string>> = {
     'settings.imageGeneration.enable': '启用',
     'settings.imageGeneration.enabledHint': '开启后 AI 会在正文里写生图提示词，并显示出图按钮',
     'settings.imageGeneration.disabledHint': '关闭后 AI 不再写提示词，也不显示出图按钮',
+    'settings.imageGeneration.autoGenerate': '自动生图',
+    'settings.imageGeneration.autoGenerateOnHint': '正文里一出现生图提示词就自动出图，不用手点',
+    'settings.imageGeneration.autoGenerateOffHint': '关闭后需要手动点按钮出图',
     'settings.imageGeneration.backend': '出图方式',
     'settings.imageGeneration.backendComfyUi': '本地 ComfyUI',
     'settings.imageGeneration.backendNovelAi': 'NovelAI 兼容接口',
@@ -1686,6 +1691,8 @@ const messages: Record<Locale, Record<string, string>> = {
     'settings.comfyui.helpUsage':
       '3. A generate button appears wherever the story contains an image prompt; images stay in the ComfyUI output folder and only their URLs are recorded',
     'messageImage.generating': 'Generating illustration...',
+    'messageImage.cancel': 'Cancel',
+    'messageImage.canceled': 'Canceled - you can generate again',
     'messageImage.viewOriginal': 'View larger',
     'messageImage.viewerHint': 'Scroll or pinch to zoom · Click to close',
     'messageImage.regenerate': 'Redraw',
@@ -1720,6 +1727,9 @@ const messages: Record<Locale, Record<string, string>> = {
     'settings.imageGeneration.enabledHint':
       'When on, the AI writes image prompts in the story and generate buttons appear',
     'settings.imageGeneration.disabledHint': 'When off, the AI stops writing prompts and no generate buttons appear',
+    'settings.imageGeneration.autoGenerate': 'Auto-generate',
+    'settings.imageGeneration.autoGenerateOnHint': 'Generate an image as soon as a prompt appears in the story',
+    'settings.imageGeneration.autoGenerateOffHint': 'When off, generate images by clicking the button',
     'settings.imageGeneration.backend': 'Backend',
     'settings.imageGeneration.backendComfyUi': 'Local ComfyUI',
     'settings.imageGeneration.backendNovelAi': 'NovelAI-compatible API',

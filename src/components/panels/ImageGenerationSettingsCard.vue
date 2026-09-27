@@ -17,6 +17,22 @@
       </span>
     </div>
 
+    <!-- 自动生图：开着就「提示词一出来就出图」，关着维持手动点按钮的原样 -->
+    <div v-if="imageGeneration.enabled" class="setting-row">
+      <span class="row-label">{{ t('settings.imageGeneration.autoGenerate') }}</span>
+      <label class="toggle-switch">
+        <input v-model="imageGeneration.autoGenerate" type="checkbox" />
+        <span class="toggle-track"></span>
+      </label>
+      <span class="row-value status">
+        {{
+          imageGeneration.autoGenerate
+            ? t('settings.imageGeneration.autoGenerateOnHint')
+            : t('settings.imageGeneration.autoGenerateOffHint')
+        }}
+      </span>
+    </div>
+
     <template v-if="imageGeneration.enabled">
       <div class="setting-row stacked">
         <span class="row-label">{{ t('settings.imageGeneration.backend') }}</span>
