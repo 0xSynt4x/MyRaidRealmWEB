@@ -719,11 +719,19 @@
   `.gitignore` 忽略 `tools/`（仅本地保留、不随仓库公开），`eslint.config.mjs` 忽略列表同步加 `tools/**`。
 - 四道检查：`typecheck` ✓ ｜ `test` 105/105 ✓ ｜ `lint` 0 error（17 个存量 warning）✓ ｜ `build` ✓。
 
-### — chore: 玩家更新日志补小总结条目
-
-> 短哈希待回填（按约定并入下一次提交）。
+### `d105c1c` — chore: 玩家更新日志补小总结条目
 
 - **Changed** `src/utils/changelog.ts` 的 260928 条目补一条「编辑消息可改小总结」：
   该功能已在 `a8678e6` 上线，但玩家更新日志漏了 —— 玩家日志只写玩家看得见的变化，漏了等于玩家不知道。
 - 顺带回填上一条（`eacc241`）的短哈希。
+- 四道检查：`typecheck` ✓ ｜ `test` 105/105 ✓ ｜ `lint` 0 error（17 个存量 warning）✓ ｜ `build` ✓。
+
+### — docs: reposition project as a general-purpose simulation platform
+
+- **Changed** 项目定位表述统一校正为「**纯浏览器端的通用模拟经营 / 叙事模拟平台（题材不限）**」：
+  `README.md`、`README.en.md`、`spec/README.md` 的首段定位句，`AGENTS.md` 的「项目上下文」，
+  以及 `package.json` 的 `description`。原表述（「AI 文字角色扮演 / 世界模拟」「独立网页游戏」
+  「Standalone 1980s-NW browser project」）都没点出「通用、题材不限」，容易被当成单一题材项目。
+- 起因：仓库代号带 `1980s`，长期被误读成「1980s 专属题材」；实际内置约 40 个世界观预设
+  + 21 个创意工坊世界包，横跨现实 / 历史 / 修仙 / 奇幻 / 科幻 / 动漫 / 末世 / 无限流，题材不限。
 - 四道检查：`typecheck` ✓ ｜ `test` 105/105 ✓ ｜ `lint` 0 error（17 个存量 warning）✓ ｜ `build` ✓。

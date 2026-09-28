@@ -2,7 +2,7 @@
 
 **English** | [简体中文](./README.md)
 
-`1980s-NW` (MyRaidRealm) is a **browser-only AI text role-play / world-simulation** project: a self-contained web page that handles reply generation, variable updates, message history, saves, and local content management in-page. Running it in production **requires no external tools and no external runtime scripts**.
+`1980s-NW` (MyRaidRealm) is a **browser-only general-purpose management & narrative simulation platform** (any setting: modern, historical, cultivation, fantasy, sci-fi, anime…): a self-contained web page that handles reply generation, variable updates, message history, saves, and local content management in-page. Running it in production **requires no external tools and no external runtime scripts**.
 
 The build output is the whole `dist/` directory. Inside it, `index.html` has **JS and CSS fully inlined** (no external script or style requests), but images, audio, and the preset package are **not** inlined — they sit beside it as relative paths under `dist/assets/` and `dist/preset-package/`. So the **only supported distribution is deploying the whole directory online**; shipping `index.html` alone means missing images and no starting presets. Players visit the online URL and configure the API, choose a starting preset, begin a session, send messages, auto-update game variables, and save/import game states in the page.
 

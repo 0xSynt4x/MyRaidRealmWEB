@@ -1,7 +1,7 @@
 {
   "name": "@1980s/nw-standalone",
   "private": true,
-  "description": "Standalone 1980s-NW browser project. Builds dist/ (inlined index.html + assets/ + preset-package/) for whole-directory web deployment.",
+  "description": "Browser-only general-purpose management & narrative simulation platform (any setting; repo codename 1980s-NW). Builds dist/ (inlined index.html + assets/ + preset-package/) for whole-directory web deployment.",
   "packageManager": "pnpm@11.5.2",
   "engines": {
     "node": ">=18",
