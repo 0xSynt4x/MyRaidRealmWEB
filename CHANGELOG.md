@@ -797,7 +797,7 @@
 - **Changed** 玩家更新日志（`src/utils/changelog.ts`）新增 260929 一条「API 配置可一键复制」。
 - 四道检查：`typecheck` ✓ ｜ `test` 107/107 ✓ ｜ `lint` 0 error（17 个存量 warning）✓ ｜ `build` ✓。
 
-### — refactor(ui): 统一浮层令牌、图标按钮与面板内距
+### `061ee7e` — refactor(ui): 统一浮层令牌、图标按钮与面板内距
 
 - **Changed** 圆角与卡片底色收口到统一令牌：全项目 `var(--radius-*)` → `var(--ui-radius-*)`
   （532 处，41 个 `.vue` 加 `global.css` / `setup-shared.css`）；`--bg-card` / `--card-bg`
@@ -827,7 +827,7 @@
   `.ui-icon-btn` 体系，全项目零引用）。
 - 四道检查：`typecheck` ✓ ｜ `test` 107/107 ✓ ｜ `lint` 0 error（17 个存量 warning）✓ ｜ `build` ✓。
 
-### — fix: 辅助 API 补丁不可用时自动换下一个候选
+### `efb7706` — fix: 辅助 API 补丁不可用时自动换下一个候选
 
 - **Fixed** 辅助 API 返回的 `<UpdateVariable>` 块存在、但内容不可用（没有 `<JSONPatch>`、
   JSON 解析不了、补丁写不进状态）时，此前会直接判定更新失败、不再尝试后面的候选 ——
@@ -839,3 +839,8 @@
   自动回合收尾与手动重跑共用这一处逻辑，两条路径同时生效；
   「自动重试」开关语义不变（关掉时只留第一个候选，坏了也不换）。
 - 四道检查：`typecheck` ✓ ｜ `test` 107/107 ✓ ｜ `lint` 0 error（17 个存量 warning）✓ ｜ `build` ✓。
+
+### — chore: 回填 CHANGELOG 短哈希
+
+- **Changed** 回填上两条记录的短哈希（`061ee7e` / `efb7706`）—— 纯文档改动。
+  同批一并回填上一轮遗留的 `3f3ace4`。
