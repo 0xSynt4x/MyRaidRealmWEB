@@ -117,6 +117,15 @@
             >
               {{ variableUpdateStatusInfo.label }}
             </span>
+            <button
+              v-if="showVariableUpdateRetry"
+              class="variable-update-retry"
+              :title="t('messageCard.variableUpdateRetry')"
+              :disabled="actionsDisabled"
+              @click.stop.prevent="handleRetryVariableUpdate"
+            >
+              <i class="ti ti-refresh"></i>{{ t('messageCard.variableUpdateRetry') }}
+            </button>
             <span v-if="message.is_streaming" class="inline-stream-indicator">{{ t('messageCard.streaming') }}</span>
             <span v-else-if="message.is_partial" class="inline-stream-indicator inline-stream-indicator--partial">{{
               t('messageCard.partial')
@@ -371,6 +380,23 @@ const showVariableUpdateSection = computed(() => {
   return Boolean(updateFormatted.value || variableUpdateStatusInfo.value || props.message.variable_update_warning);
 });
 
+// 重试入口只挂在「最新一条 AI 回复」上。
+// 重跑是以「这条回复之前的快照」为基线重新算一遍的：对历史楼层重跑，收尾会把存档按那层重写，
+// 后面楼层已经演进的进度会被倒回去。所以非最新楼层即使失败也不给这个按钮。
+const isLatestAssistantMessage = computed(() => {
+  if (props.message.role !== 'assistant') return false;
+  const latestAssistant = messagesStore.messages.filter(message => message.role === 'assistant').slice(-1)[0];
+  return latestAssistant?.message_id === props.message.message_id;
+});
+
+const showVariableUpdateRetry = computed(
+  () => props.message.variable_update_status === 'failed' && isLatestAssistantMessage.value,
+);
+
+function handleRetryVariableUpdate() {
+  void actions.refreshLatestAssistantVariableUpdate('message_card_retry_variable_update');
+}
+
 // AI 楼层的名称：优先用本次回复实际用到的模型名，拿不到才回退到占位文案
 // 服务端回传的名字可能带目录前缀（例如「[公益]官方/deepseek」），只取最后一段
 const assistantFloorName = computed(() => {
@@ -613,6 +639,38 @@ function handleEditInput() {
   background: var(--tag-status-neutral-bg);
   border-color: var(--tag-status-neutral-border);
   color: var(--tag-status-neutral-text);
+}
+
+/* 变量更新失败后的重试入口：跟出图槽那排按钮同一套观感（描边胶囊 + 悬停转主色） */
+.variable-update-retry {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  font-family: inherit;
+  font-size: calc(11px * var(--ui-font-scale));
+  font-weight: 500;
+  line-height: inherit;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all var(--motion-fast);
+}
+
+.variable-update-retry i {
+  font-size: calc(12px * var(--ui-font-scale));
+}
+
+.variable-update-retry:hover:not(:disabled) {
+  color: var(--accent-primary);
+  border-color: rgba(var(--accent-primary-rgb), 0.4);
+}
+
+.variable-update-retry:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* 操作按钮 - 微交互动画 */

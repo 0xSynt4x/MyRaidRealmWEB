@@ -458,6 +458,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'messageCard.variableUpdateHintSkipped': '本次未进行变量更新',
     'messageCard.variableUpdateHintFailed': '变量更新失败，请检查辅助 API 或回复内容',
     'messageCard.variableUpdateReason': '原因：{reason}',
+    'messageCard.variableUpdateRetry': '重试',
     'messageCard.analysis': '分析',
     'messageCard.saveEdit': '保存 (Ctrl+Enter)',
     'messageCard.cancelEdit': '取消 (Esc)',
@@ -2983,6 +2984,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'messageCard.variableUpdateHintSkipped': 'No variable update this time',
     'messageCard.variableUpdateHintFailed': 'Variable update failed; check the auxiliary API or the reply content',
     'messageCard.variableUpdateReason': 'Reason: {reason}',
+    'messageCard.variableUpdateRetry': 'Retry',
     'apiErrors.browserFetchBlocked':
       'The browser cannot reach this endpoint directly. Check the URL, CORS settings, or your network proxy.',
     'common.delete': 'Delete',
