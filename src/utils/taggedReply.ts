@@ -18,6 +18,79 @@ const UPDATE_VARIABLE_BLOCK_REGEX = /<UpdateVariable>[\s\S]*?<\/UpdateVariable>/
 const CONTENT_TEXT_REGEX = /<contenttext\b[^>]*>([\s\S]*?)<\/contenttext>/i;
 const ACTION_OPTIONS_REGEX = /<action_options\b[^>]*>([\s\S]*?)<\/action_options>/i;
 
+/**
+ * 正文之外的标签块。补齐正文时要把它们整块剥掉，剩下的才是正文。
+ * 顺序无关紧要 —— 每个正则各自从完整文本里找自己的块。
+ */
+const NON_BODY_BLOCK_REGEXES: readonly RegExp[] = [
+  /<analysis_block>[\s\S]*?<\/analysis_block>/gi,
+  /<summary>[\s\S]*?<\/summary>/gi,
+  /<UpdateVariable>[\s\S]*?<\/UpdateVariable>/gi,
+  /<action_options\b[^>]*>[\s\S]*?<\/action_options>/gi,
+];
+
+/**
+ * 只剥标签本身、内容保留：
+ * - `<texttoimage>` 是生图本地内容块自己的外衣，模型会连标签一起抄进回复；
+ *   里面的 `image### 提示词 ###` 本来就该留在正文里（图片槽按它出图），所以只去标签。
+ * - 正文标签只写了一半（`<contenttext>正文` 没闭合）时，这个孤零零的开标签也要去掉。
+ */
+const BODY_WRAPPER_TAG_REGEX = /<\/?(?:texttoimage|contenttext)\b[^>]*>/gi;
+
+/** 流式输出时这些块可能只吐了一半，没闭合就得从开标签处截断 */
+const STREAMING_BLOCK_TAGS: readonly string[] = ['analysis_block', 'summary', 'UpdateVariable', 'action_options'];
+
+function stripNonBodyBlocks(text: string): string {
+  let working = text;
+  for (const regex of NON_BODY_BLOCK_REGEXES) {
+    working = working.replace(regex, '');
+  }
+
+  return working.replace(BODY_WRAPPER_TAG_REGEX, '');
+}
+
+/**
+ * 正文补齐（完整回复）：模型偶尔漏写 `<contenttext>` 包裹，正文裸在
+ * `</analysis_block>` 与 `<summary>` 之间。有标签就按标签取；没有才把非正文块剥掉，
+ * 剩下的当正文。
+ *
+ * 标签在、内容为空时**不兜底** —— 那是模型确实没写正文，不该拿别的块来凑。
+ */
+function resolveContentText(rawContent: string): string {
+  if (CONTENT_TEXT_REGEX.test(rawContent)) {
+    return extractTaggedContentText(rawContent);
+  }
+
+  return stripNonBodyBlocks(rawContent).trim();
+}
+
+/** 从最后一个未闭合的开标签处截断（流式输出时后半截还没吐出来） */
+function truncateAtUnclosedBlock(text: string, tagName: string): string {
+  const lowerText = text.toLowerCase();
+  const lastOpenIndex = lowerText.lastIndexOf(`<${tagName.toLowerCase()}>`);
+  const lastCloseIndex = lowerText.lastIndexOf(`</${tagName.toLowerCase()}>`);
+
+  return lastOpenIndex > lastCloseIndex ? text.slice(0, lastOpenIndex) : text;
+}
+
+/**
+ * 正文补齐（流式）：规则同 `resolveContentText`，区别是流式输出中途块可能还没闭合，
+ * 那种半截块也得切掉，否则小总结 / 行动选项的半句话会闪进正文。
+ */
+function resolveStreamingContentText(message: string): string {
+  const tagged = extractStreamingTaggedSection(message, 'contenttext');
+  if (tagged) {
+    return tagged;
+  }
+
+  let working = message;
+  for (const tagName of STREAMING_BLOCK_TAGS) {
+    working = truncateAtUnclosedBlock(working, tagName);
+  }
+
+  return stripNonBodyBlocks(working).trim();
+}
+
 function extractTagContents(text: string, regex: RegExp): { content: string | null; cleaned: string } {
   const contents: string[] = [];
   const cleaned = text.replace(regex, (_, inner: string) => {
@@ -82,7 +155,7 @@ export function parseTaggedAssistantReply(rawContent: string): ParsedTaggedAssis
 
   return {
     rawContent,
-    contentText: extractTaggedContentText(rawContent),
+    contentText: resolveContentText(rawContent),
     thinkContent: thinkingTags.content,
     summaryContent: summaryTags.content,
     updateContent: updateTags.content,
@@ -202,7 +275,7 @@ export function parseStreamingTaggedAssistantReply(message: string): ParsedTagge
 
   return {
     ...parsedComplete,
-    contentText: extractStreamingTaggedSection(message, 'contenttext') ?? '',
+    contentText: resolveStreamingContentText(message),
     thinkContent: extractStreamingTaggedSection(message, 'analysis_block'),
     summaryContent: extractStreamingTaggedSection(message, 'summary'),
     updateContent: extractStreamingTaggedSection(message, 'UpdateVariable'),

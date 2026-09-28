@@ -34,6 +34,7 @@ import {
   resolveStandaloneLocalContentBlocks,
 } from '../../src/utils/standaloneLocalContent';
 import { migrateLegacyPresetLocalContent } from '../../src/utils/legacyPresetCompat';
+import { parseStreamingTaggedAssistantReply, parseTaggedAssistantReply } from '../../src/utils/taggedReply';
 import { capuaBloodSandPresets } from '../../src/presets/capua-blood-sand';
 import type { PresetConfig } from '../../src/presets/types';
 import {
@@ -5140,6 +5141,79 @@ function testVariableUpdateFormatHidesSurvivalRulesByMode(): void {
   assert.ok(full.includes('玩家.生存状态（血量/体力值/饥饿值/口渴值）'));
 }
 
+/**
+ * 正文标签补齐（完整回复）：模型偶尔漏写 `<contenttext>` 包裹，正文裸在
+ * `</analysis_block>` 与 `<summary>` 之间。
+ *
+ * 覆盖四条：① 带标签时行为不变 ② 漏写包裹时按非正文块边界把正文框回来
+ * ③ `<texttoimage>` 只去外衣、里面的生图提示词保留 ④ 标签在但内容为空时不乱兜底。
+ */
+function testTaggedReplyRescuesMissingContentTextWrapper(): void {
+  // ① 正常带标签：解析结果与老口径一致
+  const tagged = parseTaggedAssistantReply('<contenttext>正文</contenttext>\n<summary>总结</summary>');
+  assert.equal(tagged.contentText, '正文');
+  assert.equal(tagged.summaryContent, '总结');
+
+  // ② 漏写包裹：正文夹在 </analysis_block> 与 <summary> 之间
+  const bare = [
+    '<analysis_block>',
+    '[场景锚定]',
+    '</analysis_block>',
+    '正文第一段。',
+    '',
+    '正文第二段。',
+    '<summary>',
+    '- 时间：1990年5月14日',
+    '</summary>',
+    '<action_options>',
+    '1. 老实回答',
+    '2. 试探性提议',
+    '</action_options>',
+  ].join('\n');
+
+  const rescued = parseTaggedAssistantReply(bare);
+  assert.equal(rescued.contentText, '正文第一段。\n\n正文第二段。');
+  assert.equal(rescued.thinkContent, '[场景锚定]');
+  assert.equal(rescued.summaryContent, '- 时间：1990年5月14日');
+  assert.deepEqual(rescued.actionOptions, ['1. 老实回答', '2. 试探性提议']);
+
+  // ③ <texttoimage> 是生图内容块的外衣：只去标签，image### 提示词留在正文里
+  const withImageWrapper = [
+    '正文段落。',
+    '<texttoimage>',
+    'image### a young man ###',
+    '</texttoimage>',
+    '<summary>总结</summary>',
+  ].join('\n');
+  assert.equal(parseTaggedAssistantReply(withImageWrapper).contentText, '正文段落。\n\nimage### a young man ###');
+
+  // ④ 标签在、内容为空：不拿别的块来凑，正文就该是空
+  const emptyTagged = parseTaggedAssistantReply('<contenttext></contenttext>\n<summary>只有总结</summary>');
+  assert.equal(emptyTagged.contentText, '');
+  assert.equal(emptyTagged.summaryContent, '只有总结');
+}
+
+/**
+ * 正文标签补齐（流式）：流式输出中途块可能还没闭合，
+ * 那种半截块不能闪进正文预览。
+ */
+function testStreamingTaggedReplyRescuesMissingContentTextWrapper(): void {
+  // ① 正文已吐完，<summary> 刚开头还没闭合 → 从开标签处截断
+  const partialSummary = '<analysis_block>思考</analysis_block>\n正文。\n<summary>\n- 时间：1990';
+  assert.equal(parseStreamingTaggedAssistantReply(partialSummary).contentText, '正文。');
+
+  // ② 行动选项半截同理
+  const partialOptions = '<analysis_block>思考</analysis_block>\n正文。\n<action_options>\n1. 选项';
+  assert.equal(parseStreamingTaggedAssistantReply(partialOptions).contentText, '正文。');
+
+  // ③ 正文标签开了没闭合 → 沿用原有「未闭合开标签」口径
+  assert.equal(parseStreamingTaggedAssistantReply('<contenttext>正文还没写完').contentText, '正文还没写完');
+
+  // ④ 正文标签已闭合、后面接思考块 → 只留正文
+  const doneContent = '<contenttext>正文。</contenttext>\n<analysis_block>后续思考';
+  assert.equal(parseStreamingTaggedAssistantReply(doneContent).contentText, '正文。');
+}
+
 async function run(): Promise<void> {
   const tests = [
     ['passes through plain text', testPassesThroughPlainText],
@@ -5399,6 +5473,11 @@ async function run(): Promise<void> {
     ['snapshot trim defaults to enabled', testStandaloneSnapshotTrimDefaultsToEnabled],
     ['patch guard drops underscore and survival paths', testStandalonePatchGuardDropsUnderscoreAndSurvivalPaths],
     ['variable update patch text rescue', testVariableUpdatePatchTextRescue],
+    ['tagged reply rescues missing contenttext wrapper', testTaggedReplyRescuesMissingContentTextWrapper],
+    [
+      'streaming tagged reply rescues missing contenttext wrapper',
+      testStreamingTaggedReplyRescuesMissingContentTextWrapper,
+    ],
     ['variable update format hides survival rules by mode', testVariableUpdateFormatHidesSurvivalRulesByMode],
   ] as const;
 
