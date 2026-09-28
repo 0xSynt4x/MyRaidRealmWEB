@@ -1032,6 +1032,7 @@ async function requestVariableUpdateSecondPass(
   }
 
   const failures: string[] = [];
+  const patchGuard = resolveStandalonePatchGuard(input.statData);
 
   for (const api of candidateApis) {
     const apiLabel = toApiLabel(api);
@@ -1043,6 +1044,21 @@ async function requestVariableUpdateSecondPass(
 
       if (!updateBlock) {
         failures.push(`${apiLabel}: 未返回合法的 <UpdateVariable> 块`);
+        continue;
+      }
+
+      // 块存在 ≠ 能用。这里先按正式流程把补丁试算一遍（格式化 → 解析 → 写入护栏 → 应用），
+      // 只有真的写进状态、界面上会显示「已更新」的候选才收下；否则换下一个继续试。
+      // 试算与后面的正式应用读的是同一份状态、同一套护栏，结果一致。
+      const trialResult = applyVariableUpdateFromReply(input.statData, updateBlock, patchGuard);
+
+      if (trialResult.errorMessage) {
+        failures.push(`${apiLabel}: 补丁无法应用（${trialResult.errorMessage}）`);
+        continue;
+      }
+
+      if (!trialResult.variableUpdateApplied) {
+        failures.push(`${apiLabel}: 补丁未产生有效更新`);
         continue;
       }
 
