@@ -226,38 +226,61 @@
               role="list"
             >
               <article
-                v-for="entry in tavernPresetPromptViews"
+                v-for="(entry, entryIndex) in tavernPresetPromptViews"
                 :key="entry.identifier"
                 class="preset-entry-stack-item preset-editor-accordion-item"
                 role="listitem"
               >
-                <button
-                  type="button"
-                  :class="[
-                    'preset-entry-item',
-                    'secondary',
-                    { active: selectedTavernPromptIdentifier === entry.identifier },
-                  ]"
-                  :aria-expanded="selectedTavernPromptIdentifier === entry.identifier"
-                  @click="selectTavernPromptForEditing(entry.identifier)"
-                >
-                  <div class="preset-entry-order">#{{ entry.orderIndex + 1 }}</div>
-                  <div class="preset-entry-copy">
-                    <div class="preset-entry-title-row">
-                      <strong>{{ entry.name }}</strong>
-                      <span :class="['entry-enabled-badge', entry.enabledInOrder ? 'enabled' : 'disabled']">
-                        {{ entry.enabledInOrder ? t('common.enabled') : t('common.disabled') }}
-                      </span>
-                    </div>
-                  </div>
-                  <i
+                <div class="preset-editor-item-head">
+                  <button
+                    type="button"
                     :class="[
-                      'ti',
-                      selectedTavernPromptIdentifier === entry.identifier ? 'ti-chevron-up' : 'ti-chevron-down',
-                      'preset-editor-chevron',
+                      'preset-entry-item',
+                      'secondary',
+                      { active: selectedTavernPromptIdentifier === entry.identifier },
                     ]"
-                  ></i>
-                </button>
+                    :aria-expanded="selectedTavernPromptIdentifier === entry.identifier"
+                    @click="selectTavernPromptForEditing(entry.identifier)"
+                  >
+                    <div class="preset-entry-order">#{{ entry.orderIndex + 1 }}</div>
+                    <div class="preset-entry-copy">
+                      <div class="preset-entry-title-row">
+                        <strong>{{ entry.name }}</strong>
+                        <span :class="['entry-enabled-badge', entry.enabledInOrder ? 'enabled' : 'disabled']">
+                          {{ entry.enabledInOrder ? t('common.enabled') : t('common.disabled') }}
+                        </span>
+                      </div>
+                    </div>
+                    <i
+                      :class="[
+                        'ti',
+                        selectedTavernPromptIdentifier === entry.identifier ? 'ti-chevron-up' : 'ti-chevron-down',
+                        'preset-editor-chevron',
+                      ]"
+                    ></i>
+                  </button>
+
+                  <div class="preset-editor-item-actions">
+                    <button
+                      class="ghost-btn icon-only-btn compact-icon-btn"
+                      type="button"
+                      :disabled="!activeTavernPresetEditable || entryIndex === 0"
+                      :title="t('settings.moveUp')"
+                      @click="moveTavernPromptEntry(entry.identifier, -1)"
+                    >
+                      <i class="ti ti-arrow-up"></i>
+                    </button>
+                    <button
+                      class="ghost-btn icon-only-btn compact-icon-btn"
+                      type="button"
+                      :disabled="!activeTavernPresetEditable || entryIndex === tavernPresetPromptViews.length - 1"
+                      :title="t('settings.moveDown')"
+                      @click="moveTavernPromptEntry(entry.identifier, 1)"
+                    >
+                      <i class="ti ti-arrow-down"></i>
+                    </button>
+                  </div>
+                </div>
 
                 <form
                   v-if="
@@ -802,6 +825,7 @@ import {
   updateImportedStandaloneTavernPreset,
   type StandaloneTavernPresetLibraryItem,
   type StandaloneTavernPresetDocument,
+  type StandaloneTavernPromptOrderItem,
   type StandaloneTavernPresetPromptView,
 } from '../../utils/standaloneTavernPreset';
 import {
@@ -1181,6 +1205,64 @@ function handleAddTavernPrompt() {
     content: '',
   };
   handleSaveTavernPromptDraft();
+  selectedTavernPromptIdentifier.value = identifier;
+}
+
+// 老数据里可能没有排序表（那时靠 prompts 里的 enabled 决定显示哪些），
+// 先按当前列表顺序补一份，后面的换位才有地方落。
+function ensureTavernPromptOrder(
+  document: StandaloneTavernPresetDocument,
+  views: StandaloneTavernPresetPromptView[],
+): StandaloneTavernPromptOrderItem[] {
+  const existingOrder = document.prompt_order?.[0]?.order;
+  if (Array.isArray(existingOrder) && existingOrder.length > 0) {
+    return existingOrder;
+  }
+
+  const createdOrder: StandaloneTavernPromptOrderItem[] = views.map(view => ({
+    identifier: view.identifier,
+    enabled: view.enabledInOrder,
+  }));
+  document.prompt_order = [{ order: createdOrder }];
+  return createdOrder;
+}
+
+// 列表顺序就是实际发给 AI 的块顺序。换位＝在排序表里交换相邻两项，
+// 再走与保存条目相同的落盘通道；排序表里那些列表看不到的项原地不动。
+function moveTavernPromptEntry(identifier: string, direction: -1 | 1) {
+  if (!activeTavernPresetEditable.value) {
+    return;
+  }
+
+  const views = tavernPresetPromptViews.value;
+  const currentIndex = views.findIndex(view => view.identifier === identifier);
+  if (currentIndex < 0) {
+    return;
+  }
+
+  const targetIndex = currentIndex + direction;
+  if (targetIndex < 0 || targetIndex >= views.length) {
+    return;
+  }
+
+  const document = cloneTavernPresetDocument(activeTavernPresetItem.value.document);
+  const order = ensureTavernPromptOrder(document, views);
+  const currentOrderIndex = order.findIndex(item => item.identifier === views[currentIndex].identifier);
+  const targetOrderIndex = order.findIndex(item => item.identifier === views[targetIndex].identifier);
+  if (currentOrderIndex < 0 || targetOrderIndex < 0) {
+    return;
+  }
+
+  const [movedItem] = order.splice(currentOrderIndex, 1);
+  order.splice(targetOrderIndex, 0, movedItem);
+
+  updateImportedStandaloneTavernPreset({
+    presetId: activeTavernPresetId.value,
+    document,
+  });
+  refreshTavernPresetState();
+  // 顺序变化跟表单内容无关，所以这里刻意不重置草稿：
+  // 否则「展开条目改了内容还没保存就点移动」会把未保存的改动冲掉。
   selectedTavernPromptIdentifier.value = identifier;
 }
 
@@ -1827,9 +1909,24 @@ onActivated(() => {
   background: rgba(var(--accent-primary-rgb), 0.025);
 }
 
-.preset-editor-accordion-item > .preset-entry-item {
-  width: 100%;
+.preset-editor-item-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 7px;
+}
+
+.preset-editor-item-head > .preset-entry-item {
+  flex: 1;
+  min-width: 0;
   grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.preset-editor-item-actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
 }
 
 .preset-editor-chevron {

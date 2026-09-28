@@ -726,12 +726,24 @@
 - 顺带回填上一条（`eacc241`）的短哈希。
 - 四道检查：`typecheck` ✓ ｜ `test` 105/105 ✓ ｜ `lint` 0 error（17 个存量 warning）✓ ｜ `build` ✓。
 
-### — docs: reposition project as a general-purpose simulation platform
+### `97da430` — docs: reposition project as a general-purpose simulation platform
 
 - **Changed** 项目定位表述统一校正为「**纯浏览器端的通用模拟经营 / 叙事模拟平台（题材不限）**」：
   `README.md`、`README.en.md`、`spec/README.md` 的首段定位句，`AGENTS.md` 的「项目上下文」，
   以及 `package.json` 的 `description`。原表述（「AI 文字角色扮演 / 世界模拟」「独立网页游戏」
   「Standalone 1980s-NW browser project」）都没点出「通用、题材不限」，容易被当成单一题材项目。
 - 起因：仓库代号带 `1980s`，长期被误读成「1980s 专属题材」；实际内置约 40 个世界观预设
-  + 21 个创意工坊世界包，横跨现实 / 历史 / 修仙 / 奇幻 / 科幻 / 动漫 / 末世 / 无限流，题材不限。
+  与 21 个创意工坊世界包，横跨现实 / 历史 / 修仙 / 奇幻 / 科幻 / 动漫 / 末世 / 无限流，题材不限。
+- 四道检查：`typecheck` ✓ ｜ `test` 105/105 ✓ ｜ `lint` 0 error（17 个存量 warning）✓ ｜ `build` ✓。
+
+### — feat: 预设条目支持调整顺序
+
+> 短哈希待回填（按约定并入下一次提交）。
+
+- **Added** 「内容中心 → 预设 → 预设条目」的条目可以调整顺序：每条右侧新增上移 / 下移按钮，
+  首条与末条自动禁用。这个顺序就是实际发送给 AI 的块顺序（列表上方的「发送内容列表」同步反映），
+  所以调整顺序等于调整发送结构。按钮写法与样式沿用项目已有的世界书条目、助手接口配置卡。
+- **Changed** 顺序调整只对可编辑预设（导入的 / 「复制为可编辑副本」出来的）生效，
+  内置预设只读、按钮禁用；改动即时落盘，不需要再点「保存条目」。
+- **Fixed** 移动条目不再重置编辑表单：此前「展开条目改了内容还没保存就点移动」会把未保存的改动冲掉。
 - 四道检查：`typecheck` ✓ ｜ `test` 105/105 ✓ ｜ `lint` 0 error（17 个存量 warning）✓ ｜ `build` ✓。
