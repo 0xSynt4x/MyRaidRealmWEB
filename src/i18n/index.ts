@@ -87,6 +87,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'settings.mode.inlineHintExtra': '变量相关本地内容已禁用，状态更新将只跟随模型输出结果',
     'settings.apiList': 'API 列表',
     'settings.addApi': '新增 API',
+    'settings.duplicateApi': '复制此 API',
     'settings.apiListDesc': '所有 API 配置都集中在这一份列表里，主 API 与辅助 API 都从这里勾选。',
     'settings.apiCardTitle': 'API {index}',
     'settings.moveUp': '上移',
@@ -1543,6 +1544,7 @@ const messages: Record<Locale, Record<string, string>> = {
       'Variable local content entries are disabled. State updates will only follow model output.',
     'settings.apiList': 'API list',
     'settings.addApi': 'Add API',
+    'settings.duplicateApi': 'Duplicate this API',
     'settings.apiListDesc':
       'All API configurations live in this single list; pick from it for both the main and auxiliary roles.',
     'settings.apiCardTitle': 'API {index}',

@@ -443,6 +443,9 @@
                 <button class="inline-icon-btn" :disabled="index === apiPool.length - 1" @click="moveApiDown(index)">
                   <i class="ti ti-arrow-down"></i>
                 </button>
+                <button class="inline-icon-btn" @click="duplicateApiAndPersist(index)">
+                  <i class="ti ti-copy"></i>
+                </button>
                 <button
                   class="inline-icon-btn danger"
                   :disabled="apiPool.length <= 1"
@@ -1130,6 +1133,7 @@ const { selectedPreset } = storeToRefs(setupStore);
 // 顶部列表编辑的是唯一的 API 池；主 API / 辅助 API 只是从池里勾选
 const {
   addApi,
+  duplicateApi,
   removeApi,
   moveUp,
   moveDown,
@@ -1627,6 +1631,26 @@ function moveApiDown(index: number) {
   const previousPool = klona(apiPool.value);
   const moved = moveDown(index);
   if (!moved) {
+    return;
+  }
+
+  const persisted = persistApiPool();
+  if (!persisted) {
+    apiPool.value = previousPool;
+    const message = t('settings.apiSaveStorageFailed');
+    saveResult.value = { success: false, message };
+    notify.error(message);
+    return;
+  }
+
+  saveResult.value = null;
+}
+
+/** 复制一条 API 配置，紧跟原条目后面；跟排序一样立即落盘，失败回滚 */
+function duplicateApiAndPersist(index: number) {
+  const previousPool = klona(apiPool.value);
+  const duplicated = duplicateApi(index);
+  if (!duplicated) {
     return;
   }
 

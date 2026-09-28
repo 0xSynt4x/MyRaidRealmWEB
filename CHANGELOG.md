@@ -778,9 +778,7 @@
 
 ## 2026-09-29
 
-### — chore: server 子项目暂不纳入版本控制
-
-> 短哈希待回填（按约定并入下一次提交）。
+### `ac01ce0` — chore: server 子项目暂不纳入版本控制
 
 - **Changed** `.gitignore` 忽略 `server/`：联机服务子项目尚未完成，先只留本地、不进版本控制。
 - **Changed** `eslint.config.mjs` 忽略列表加 `server/**`：它 `.wrangler/tmp/` 下的构建缓存

@@ -62,6 +62,7 @@ const CHANGELOG_SOURCE: ReadonlyArray<{ date: string; items: readonly string[] }
       '变量更新失败可重试',
     ],
   },
+  { date: '260929', items: ['API 配置可一键复制'] },
 ];
 
 /** 第 `index` 条（从 0 起）对应的版本号 */

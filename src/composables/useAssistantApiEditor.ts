@@ -47,6 +47,19 @@ export function useAssistantApiEditor(customApis: Ref<ApiConfig[]>) {
     apis.value.push(createEmptyApi());
   }
 
+  /** 整份克隆某条配置，插在它后面；新条目换一个内部编号，避免与原条目撞号 */
+  function duplicateApi(index: number) {
+    const source = apis.value[index];
+    if (!source) return false;
+
+    apis.value.splice(index + 1, 0, {
+      ...source,
+      id: createAssistantApiId(),
+      availableModels: [...source.availableModels],
+    });
+    return true;
+  }
+
   function removeApi(index: number) {
     if (index < 0 || index >= apis.value.length) return;
     apis.value.splice(index, 1);
@@ -182,6 +195,7 @@ export function useAssistantApiEditor(customApis: Ref<ApiConfig[]>) {
     apis,
     hasAnyApi,
     addApi,
+    duplicateApi,
     removeApi,
     moveUp,
     moveDown,
