@@ -762,9 +762,7 @@
   这条修复玩家看得见（正文不再串标签、不再空白），玩家日志不该漏。
 - 四道检查：`typecheck` ✓ ｜ `test` 107/107 ✓ ｜ `lint` 0 error（17 个存量 warning）✓ ｜ `build` ✓。
 
-### — feat: 变量更新失败后可直接重试
-
-> 短哈希待回填（按约定并入下一次提交）。
+### `9f3df3d` — feat: 变量更新失败后可直接重试
 
 - **Added** 变量更新失败时，在消息卡「变量更新」折叠标题的「更新失败」徽标右侧新增**重试**按钮：
   点一下按原回复重跑变量更新（走辅助 API），正文不重新生成，跑完状态回到「已更新」或再次「更新失败」。
@@ -777,3 +775,28 @@
 - 四道检查：`typecheck` ✓ ｜ `test` 107/107 ✓ ｜ `build` ✓ ｜ `lint` 本次改动文件零输出
   （仓库级 `lint` 另报 4 个 error，全部来自未跟踪的 `server/multiplayer/.wrangler/tmp/` 构建缓存，
   与本次改动无关）。
+
+## 2026-09-29
+
+### — chore: server 子项目暂不纳入版本控制
+
+> 短哈希待回填（按约定并入下一次提交）。
+
+- **Changed** `.gitignore` 忽略 `server/`：联机服务子项目尚未完成，先只留本地、不进版本控制。
+- **Changed** `eslint.config.mjs` 忽略列表加 `server/**`：它 `.wrangler/tmp/` 下的构建缓存
+  会被 `no-unused-vars` / `no-empty` 误报成 error —— 上一条提交（`9f3df3d`）记录的那 4 个
+  仓库级 `lint` error 即出自此处，本次一并消掉，仓库级 `lint` 回到 0 error。
+- 四道检查：`typecheck` ✓ ｜ `test` 107/107 ✓ ｜ `lint` 0 error（17 个存量 warning）✓ ｜ `build` ✓。
+
+### — feat: API 列表支持复制配置
+
+> 短哈希待回填（按约定并入下一次提交）。
+
+- **Added** API 列表每张卡片新增**复制**按钮（在卡片头部那排图标里，位于删除左侧）：
+  点一下把该条配置整份克隆（地址、密钥、模型、已拉取的模型列表），新条目紧跟原条目后面，
+  内部编号重新生成、不会与原条目撞号。游戏内设置浮层与开局向导设置页两处都加。
+- **Changed** 复制后立即落盘（与上移 / 下移同一套 persist + 失败回滚 + 错误提示），刷新不丢；
+  副本不自动勾选成主 API / 辅助 API，参不参与重试仍由玩家自己勾（与删除时自动摘勾的逻辑对称）。
+- **Changed** `i18n` 增 `settings.duplicateApi`（中「复制此 API」/ 英「Duplicate this API」）。
+- **Changed** 玩家更新日志（`src/utils/changelog.ts`）新增 260929 一条「API 配置可一键复制」。
+- 四道检查：`typecheck` ✓ ｜ `test` 107/107 ✓ ｜ `lint` 0 error（17 个存量 warning）✓ ｜ `build` ✓。

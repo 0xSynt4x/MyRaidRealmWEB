@@ -27,6 +27,9 @@ export default tseslint.config(
       // 同上：tools/ 是可复用工具脚本目录（.gitignore 里忽略、仅本地保留），
       // 里面的 .cjs/.js 是 Node 脚本，没有 TS 的 node 类型环境，同样会被误报成错误。
       'tools/**',
+      // 同上：server/ 是尚未完成的联机服务子项目（.gitignore 里忽略、仅本地保留），
+      // 它的 .wrangler/tmp 构建缓存会被 no-unused-vars / no-empty 误报成错误。
+      'server/**',
     ],
   },
 
