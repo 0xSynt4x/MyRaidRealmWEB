@@ -11,7 +11,7 @@ import { notify } from '../utils/notify';
 import { commitStandaloneRuntimeStateFromStores, resolveStandaloneStageSummaryState } from '../utils/standaloneRuntime';
 import { resolveStandaloneStageSummaryProgress } from '../utils/stageSummaryArchive';
 import { loadStandaloneStatData } from '../utils/standaloneStatData';
-import { parseUpdateVariableDetails } from '../utils/taggedReply';
+import { parseUpdateVariableDetails, replaceOrAppendSummaryBlock, splitEditableBodyAndSummary } from '../utils/taggedReply';
 import {
   applyVariableUpdatePatch,
   parseVariableUpdatePatch,
@@ -747,7 +747,7 @@ export function useMessageActions() {
    * 编辑消息
    *
    * @param message_id 要编辑的楼层号
-   * @param newContent 新内容（用户编辑的是 content_text，不是 raw_content）
+   * @param newContent 编辑框里的内容（AI 楼层 = 正文 + 小总结；用户楼层就是消息本身）
    */
   async function editMessage(message_id: number, newContent: string): Promise<boolean> {
     const record = messagesStore.getMessage(message_id);
@@ -756,8 +756,18 @@ export function useMessageActions() {
       return false;
     }
 
+    // AI 楼层的编辑框里，正文后面还跟着用小总结原格式包起来的 <summary> 段 —— 这里拆回两个字段。
+    // 用户楼层没有小总结，整段都是正文。
+    const { contentText, summaryContent } =
+      record.role === 'assistant'
+        ? splitEditableBodyAndSummary(newContent)
+        : { contentText: newContent, summaryContent: null };
+
     // 如果内容没变，直接返回
-    if (newContent === record.content_text) {
+    const unchanged =
+      contentText === record.content_text &&
+      (record.role !== 'assistant' || summaryContent === (record.summary_content?.trim() || null));
+    if (unchanged) {
       messagesStore.stopEditing();
       return true;
     }
@@ -767,12 +777,12 @@ export function useMessageActions() {
 
     if (record.role === 'user') {
       // 用户消息：直接使用新内容
-      messageToSave = newContent;
+      messageToSave = contentText;
     } else {
       // AI 消息：需要将编辑后的内容重新包装回原始格式
       // 1. 从原始内容中提取非 contenttext 部分（如 UpdateVariable 等）
       // 2. 过滤掉 StatusPlaceHolderImpl
-      // 3. 用新内容替换 contenttext 部分
+      // 3. 用新内容替换 contenttext 部分，再把小总结写回 summary 段
 
       let rawContent = record.raw_content;
 
@@ -783,16 +793,19 @@ export function useMessageActions() {
       if (/<contenttext>[\s\S]*?<\/contenttext>/i.test(rawContent)) {
         messageToSave = rawContent.replace(
           /<contenttext>[\s\S]*?<\/contenttext>/i,
-          () => `<contenttext>${newContent}</contenttext>`,
+          () => `<contenttext>${contentText}</contenttext>`,
         );
       } else {
         // 如果没有 contenttext 标签，直接包装
-        messageToSave = `<contenttext>${newContent}</contenttext>`;
+        messageToSave = `<contenttext>${contentText}</contenttext>`;
       }
+
+      // 小总结写回：原本没有就是新加，编辑框里删光了就一并删掉
+      messageToSave = replaceOrAppendSummaryBlock(messageToSave, summaryContent);
     }
 
     // 更新本地状态
-    messagesStore.updateMessage(message_id, newContent, messageToSave);
+    messagesStore.updateMessage(message_id, contentText, messageToSave);
     messagesStore.stopEditing();
 
     console.info(`[MessageActions] 已编辑第 ${message_id} 层消息`);

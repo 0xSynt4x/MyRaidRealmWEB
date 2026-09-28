@@ -106,6 +106,69 @@ export function replaceOrAppendUpdateVariableBlock(rawContent: string, updateBlo
   return normalizedRawContent ? `${normalizedRawContent}\n\n${normalizedUpdateBlock}` : normalizedUpdateBlock;
 }
 
+const SUMMARY_BLOCK_REGEX = /<summary>([\s\S]*?)<\/summary>/gi;
+const SUMMARY_BLOCK_TEST_REGEX = /<summary>[\s\S]*?<\/summary>/i;
+
+/**
+ * 编辑框的初始内容：正文 + 小总结。
+ *
+ * 小总结不单独开一块输入区，而是用它原本的 <summary> 标签包着跟在正文后面 ——
+ * 用户把整段标签删掉就等于删掉这楼的小总结。
+ * 用户楼层没有小总结，只给正文。
+ */
+export function composeEditableContent(message: {
+  role: string;
+  content_text?: string | null;
+  summary_content?: string | null;
+}): string {
+  const body = message.content_text ?? '';
+  const summary = message.summary_content?.trim();
+
+  if (message.role !== 'assistant' || !summary) {
+    return body;
+  }
+
+  return `${body}\n<summary>${summary}</summary>`;
+}
+
+/**
+ * 编辑框内容拆回「正文 + 小总结」，与 composeEditableContent 互为逆操作。
+ * 没有 <summary> 标签时整段都算正文。
+ */
+export function splitEditableBodyAndSummary(text: string): { contentText: string; summaryContent: string | null } {
+  const { content: summaryContent, cleaned } = extractTagContents(text, SUMMARY_BLOCK_REGEX);
+
+  return {
+    contentText: cleaned.trim(),
+    summaryContent,
+  };
+}
+
+/**
+ * 把编辑后的小总结写回原始消息：
+ * 原本有就替换；原本没有就插在变量更新块之前（跟模型原本的输出顺序一致）。
+ * 传 null 表示用户在编辑框里删掉了小总结，这里一并删掉。
+ */
+export function replaceOrAppendSummaryBlock(rawContent: string, summaryContent: string | null): string {
+  const block = summaryContent ? `<summary>${summaryContent}</summary>` : '';
+
+  if (SUMMARY_BLOCK_TEST_REGEX.test(rawContent)) {
+    return rawContent.replace(SUMMARY_BLOCK_REGEX, () => block);
+  }
+
+  if (!block) {
+    return rawContent;
+  }
+
+  const updateIndex = rawContent.search(UPDATE_VARIABLE_BLOCK_REGEX);
+  if (updateIndex === -1) {
+    const normalizedRawContent = rawContent.trimEnd();
+    return normalizedRawContent ? `${normalizedRawContent}\n${block}` : block;
+  }
+
+  return `${rawContent.slice(0, updateIndex)}${block}\n${rawContent.slice(updateIndex)}`;
+}
+
 export function extractStreamingTaggedSection(message: string, tagName: string): string | null {
   const contents: string[] = [];
   const fullTagRegex = new RegExp(`<${tagName}>([\\s\\S]*?)</${tagName}>`, 'gi');

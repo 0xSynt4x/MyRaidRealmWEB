@@ -170,7 +170,7 @@ import { useMessagesStore } from '../../stores/messages';
 import { useSettingsStore } from '../../stores/settings';
 import { useStatDataStore } from '../../stores/statData';
 import { formatAuxiliaryContentForDisplay, splitMessageContentSegments } from '../../utils/messageFormatting';
-import { parseTaggedAssistantReply } from '../../utils/taggedReply';
+import { parseTaggedAssistantReply, composeEditableContent } from '../../utils/taggedReply';
 import MessageImageSlot from './MessageImageSlot.vue';
 
 const props = defineProps<{
@@ -401,8 +401,8 @@ function resizeEditTextarea() {
 // 监听编辑状态变化，初始化编辑内容
 watch(isEditing, editing => {
   if (editing) {
-    // 如果是 AI 消息，编辑 content_text；如果是用户消息，编辑 raw_content（两者相同）
-    editContent.value = props.message.content_text;
+    // 编辑框 = 正文 + 小总结（小总结用它原本的 <summary> 标签包着，跟正文同一个框）
+    editContent.value = composeEditableContent(props.message);
     nextTick(() => {
       resizeEditTextarea();
       textareaRef.value?.focus();

@@ -13,7 +13,11 @@ import {
 } from '../utils/standaloneRuntime';
 import { loadStandaloneStatData } from '../utils/standaloneStatData';
 import { preserveFrontendAuthoritativeFields } from '../utils/frontendAuthoritativeState';
-import { parseStreamingTaggedAssistantReply, parseTaggedAssistantReply } from '../utils/taggedReply';
+import {
+  composeEditableContent,
+  parseStreamingTaggedAssistantReply,
+  parseTaggedAssistantReply,
+} from '../utils/taggedReply';
 
 /**
  * 前端界面最多显示的消息数量
@@ -765,7 +769,9 @@ export const useMessagesStore = defineStore('messages', () => {
   function startEditing(message_id: number) {
     editingMessageId.value = message_id;
     const record = getMessage(message_id);
-    editingDraftContent.value = record?.content_text ?? '';
+    // 草稿从一开始就按编辑框的形态存（正文 + 小总结），
+    // 否则「打开编辑框、一个字没改就发送」会把小总结当成被删掉而抹掉
+    editingDraftContent.value = record ? composeEditableContent(record) : '';
   }
 
   function setEditingDraftContent(content: string) {
