@@ -10,22 +10,22 @@
     />
     <!-- 💼 商业概览统计栏 -->
     <div class="stats-bar">
-      <div class="stat-item">
+      <div class="stat-tile">
         <i class="ti ti-box"></i>
         <span class="stat-label">{{ t('business.statsInventory') }}</span>
         <span class="stat-value">{{ t('business.typeCount', inventoryStats) }}</span>
       </div>
-      <div class="stat-item">
+      <div class="stat-tile">
         <i class="ti ti-building"></i>
         <span class="stat-label">{{ t('business.statsEntities') }}</span>
         <span class="stat-value">{{ t('business.entityCount', { count: enterpriseCount }) }}</span>
       </div>
-      <div class="stat-item">
+      <div class="stat-tile">
         <i class="ti ti-chart-line"></i>
         <span class="stat-label">{{ t('business.statsRevenue') }}</span>
         <span class="stat-value revenue">¥{{ formatMoney(totalRevenue) }}</span>
       </div>
-      <div class="stat-item">
+      <div class="stat-tile">
         <i class="ti ti-trending-down"></i>
         <span class="stat-label">{{ t('business.statsCost') }}</span>
         <span class="stat-value cost">¥{{ formatMoney(totalCost) }}</span>
@@ -91,7 +91,11 @@
             <div
               v-for="(enterprise, name) in data.玩家?.经营实体"
               :key="name"
-              :class="['enterprise-card', { pulsing: isBusinessEnterpriseChanged(name as string) }]"
+              :class="[
+                'enterprise-card',
+                'ui-card',
+                { pulsing: isBusinessEnterpriseChanged(name as string) },
+              ]"
               @mouseenter="dismissBusinessEnterpriseChanged(name as string)"
               @click="openBusinessEnterpriseCard(name as string, enterprise)"
             >
@@ -357,33 +361,34 @@ function openDeleteIntel(key: string) {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  padding: 12px;
-  background: var(--glass-bg);
+  /* 上方不留白：外框已给 12px，这里再叠一层会让统计条上下不等距 */
+  padding: 0 12px 12px;
+  background: var(--card-bg-strong);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--glass-border);
+  border-bottom: 1px solid var(--card-border);
   position: relative;
 }
 
-.stat-item {
+.stat-tile {
   display: flex;
   align-items: center;
   gap: 6px;
   font-size: var(--text-sm);
   padding: 4px 10px;
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-md);
+  background: var(--card-bg-strong);
+  border: 1px solid var(--card-border);
+  border-radius: var(--ui-radius-md);
   transition: all var(--transition-fast) ease;
 }
 
-.stat-item:hover {
+.stat-tile:hover {
   background: rgba(var(--accent-primary-rgb), 0.08);
   border-color: rgba(var(--accent-primary-rgb), 0.2);
   transform: translateY(-1px);
 }
 
-.stat-item i {
+.stat-tile i {
   background: var(--gradient-primary);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -413,7 +418,6 @@ function openDeleteIntel(key: string) {
 .content-sections {
   flex: 1;
   overflow-y: auto;
-  padding-top: 12px;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -421,11 +425,11 @@ function openDeleteIntel(key: string) {
 
 /* 区块 - 玻璃拟态 */
 .section {
-  background: var(--glass-bg);
+  background: var(--card-bg-strong);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-md);
+  border: 1px solid var(--card-border);
+  border-radius: var(--ui-radius-md);
   padding: 6px 14px;
   box-shadow: var(--shadow-glass);
   transition: all var(--transition-normal) ease;
@@ -474,7 +478,7 @@ function openDeleteIntel(key: string) {
 .inventory-table-wrapper {
   overflow-x: auto;
   overflow-y: hidden;
-  border-radius: var(--radius-sm);
+  border-radius: var(--ui-radius-sm);
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
   scrollbar-color: rgba(var(--accent-primary-rgb), 0.45) transparent;
@@ -497,7 +501,7 @@ function openDeleteIntel(key: string) {
   font-weight: 600;
   color: var(--text-secondary);
   border: none;
-  border-bottom: 2px solid var(--glass-border);
+  border-bottom: 2px solid var(--card-border);
   white-space: nowrap;
   font-size: calc(11px * var(--ui-font-scale));
   text-transform: uppercase;
@@ -570,15 +574,12 @@ function openDeleteIntel(key: string) {
 }
 
 .enterprise-card {
-  background: var(--card-bg);
+  /* 底座（底色 / 描边 / 圆角 / 阴影）来自全局 .ui-card，这里只留本组件的差异 */
   backdrop-filter: var(--glass-blur-light);
   -webkit-backdrop-filter: var(--glass-blur-light);
-  border: 1px solid var(--card-border);
   border-top: 3px solid var(--accent-primary);
-  border-radius: var(--radius-md);
   padding: 14px;
   cursor: pointer;
-  box-shadow: var(--card-shadow);
   transition:
     box-shadow var(--motion-normal),
     border-color var(--motion-normal),
@@ -648,7 +649,7 @@ function openDeleteIntel(key: string) {
 .enterprise-field.note {
   margin-top: 6px;
   padding-top: 8px;
-  border-top: 1px dashed var(--glass-border);
+  border-top: 1px dashed var(--card-border);
   color: var(--text-secondary);
   font-style: italic;
 }
@@ -674,9 +675,9 @@ function openDeleteIntel(key: string) {
 }
 
 .intel-card {
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-md);
+  background: var(--card-bg-strong);
+  border: 1px solid var(--card-border);
+  border-radius: var(--ui-radius-md);
   padding: 12px 14px;
   transition: all var(--transition-fast) ease;
   position: relative;
@@ -860,10 +861,10 @@ function openDeleteIntel(key: string) {
 @media (max-width: 600px) {
   .stats-bar {
     gap: 8px;
-    padding: 10px;
+    padding: 0 10px 10px;
   }
 
-  .stat-item {
+  .stat-tile {
     flex: 1 1 calc(50% - 8px);
     min-width: 0;
     padding: 4px 8px;
@@ -904,7 +905,7 @@ function openDeleteIntel(key: string) {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .stat-item:hover,
+  .stat-tile:hover,
   .enterprise-card:hover {
     transform: none;
   }

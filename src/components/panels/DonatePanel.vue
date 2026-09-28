@@ -89,7 +89,7 @@ const { t } = useI18n();
   height: 200px;
   padding: 12px;
   background: rgba(255, 255, 255, 0.555);
-  border-radius: 12px;
+  border-radius: var(--ui-radius-md);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
 }
 

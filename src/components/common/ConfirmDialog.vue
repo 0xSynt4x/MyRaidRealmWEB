@@ -10,7 +10,7 @@
           <span class="header-title">{{ confirmDialog.options.title }}</span>
           <div class="header-actions">
             <button
-              class="action-btn confirm"
+              class="ui-icon-btn action-btn confirm"
               :class="confirmButtonClass"
               :title="confirmButtonText"
               :aria-label="confirmButtonText"
@@ -19,7 +19,7 @@
               <i class="ti ti-check"></i>
             </button>
             <button
-              class="action-btn cancel"
+              class="ui-icon-btn action-btn cancel"
               :title="t('dialog.cancel')"
               :aria-label="t('dialog.cancel')"
               @click="handleCancel"
@@ -60,15 +60,17 @@ const iconClass = computed(() => {
   }
 });
 
+// 语义色类名走全局 .ui-icon-btn 的变体（.accent / .warning / .danger）。
+// 不用 .btn-* —— 那是全局实底按钮类，套到图标按钮上会把实底一起带进来。
 const confirmButtonClass = computed(() => {
   switch (confirmDialog.value.options.type) {
     case 'danger':
-      return 'btn-danger';
+      return 'danger';
     case 'warning':
-      return 'btn-warning';
+      return 'warning';
     case 'info':
     default:
-      return 'btn-primary';
+      return 'accent';
   }
 });
 
@@ -112,7 +114,7 @@ function handleCancel() {
 .confirm-dialog {
   background: var(--card-bg-strong);
   background-image: var(--card-sheen);
-  border-radius: var(--radius-lg);
+  border-radius: var(--ui-radius-lg);
   border: 1px solid var(--card-border);
   box-shadow: var(--shadow-xl);
   max-width: 360px;
@@ -140,7 +142,7 @@ function handleCancel() {
   align-items: center;
   gap: 10px;
   padding: 12px 14px;
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--card-border);
   background: var(--gradient-subtle);
 }
 
@@ -201,129 +203,20 @@ function handleCancel() {
   flex-shrink: 0;
 }
 
+/* 尺寸与图标字号留在局部（设置面板那排是 40×38、这里是 30×30，锁进公共类会被拉成一样大），
+   底色 / 描边 / 圆角 / 悬停 / 语义色全部走全局 .ui-icon-btn。 */
 .action-btn {
   width: 30px;
   height: 30px;
   padding: 0;
-  border: 1px solid var(--control-border);
-  border-radius: var(--radius-md);
-  background: var(--control-surface-subtle);
-  position: relative;
-  overflow: hidden;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--control-text-rest);
-  box-shadow: var(--control-shadow), var(--control-emboss);
-  text-shadow: var(--control-text-shadow);
-  transition:
-    border-color var(--motion-fast),
-    background var(--motion-fast),
-    color var(--motion-fast),
-    box-shadow var(--motion-fast),
-    transform var(--motion-fast);
 }
 
 .action-btn i {
   font-size: calc(12px * var(--ui-font-scale));
 }
 
-.action-btn:hover {
-  transform: translateY(-1px);
-}
-
-.action-btn:active {
-  transform: scale(0.95);
-}
-
-/* 取消按钮 */
-.action-btn.cancel {
-  background: var(--control-surface-subtle);
-  color: var(--control-text-strong);
-}
-
-.action-btn.cancel:hover {
-  border-color: rgba(var(--accent-danger-rgb), 0.3);
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--accent-danger) 16%, var(--control-bg) 84%) 0%,
-    color-mix(in srgb, var(--accent-danger) 8%, var(--control-bg) 92%) 100%
-  );
-  color: var(--accent-danger);
-}
-
-/* 确认按钮 - 主要（信息） */
-.action-btn.confirm.btn-primary {
-  border-color: var(--compact-confirm-primary-border);
-  color: var(--control-accent-ink);
-  text-shadow: var(--control-accent-text-shadow);
-}
-
-.action-btn.confirm.btn-primary i,
-.action-btn.confirm.btn-warning i,
-.action-btn.confirm.btn-danger i {
-  position: relative;
-  z-index: 1;
-}
-
-.action-btn.confirm.btn-primary::before,
-.action-btn.confirm.btn-warning::before,
-.action-btn.confirm.btn-danger::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  opacity: 0.92;
-}
-
-.action-btn.confirm.btn-primary::before {
-  background: var(--compact-confirm-primary-bg);
-}
-
-.action-btn.confirm.btn-primary:hover {
-  border-color: rgba(var(--accent-primary-rgb), 0.44);
-  box-shadow:
-    0 10px 22px rgba(var(--accent-primary-rgb), 0.18),
-    var(--control-emboss);
-}
-
-/* 确认按钮 - 警告 */
-.action-btn.confirm.btn-warning {
-  border-color: var(--compact-confirm-warning-border);
-  color: var(--control-accent-ink);
-  text-shadow: var(--control-accent-text-shadow);
-}
-
-.action-btn.confirm.btn-warning::before {
-  background: var(--compact-confirm-warning-bg);
-}
-
-.action-btn.confirm.btn-warning:hover {
-  box-shadow:
-    0 10px 22px rgba(var(--accent-warning-rgb), 0.18),
-    var(--control-emboss);
-}
-
-/* 确认按钮 - 危险 */
-.action-btn.confirm.btn-danger {
-  border-color: var(--compact-confirm-danger-border);
-  color: var(--control-accent-ink);
-  text-shadow: var(--control-accent-text-shadow);
-}
-
-.action-btn.confirm.btn-danger::before {
-  background: var(--compact-confirm-danger-bg);
-}
-
-.action-btn.confirm.btn-danger:hover {
-  box-shadow:
-    0 10px 22px rgba(var(--accent-danger-rgb), 0.2),
-    var(--control-emboss);
-}
-
 .dialog-body {
-  padding: 14px;
+  padding: 12px;
   background: transparent;
 }
 
@@ -354,18 +247,6 @@ function handleCancel() {
 /* 暗色主题适配 */
 :global([data-theme='dark']) .confirm-dialog {
   box-shadow: var(--shadow-lg);
-}
-
-:global([data-theme='dark']) .action-btn.cancel {
-  background: var(--bg-card);
-}
-
-:global([data-theme='dark']) .action-btn.cancel:hover {
-  background: var(--border-light);
-}
-
-:global([data-theme='everforest1980s']) .action-btn.cancel {
-  border-color: rgba(211, 198, 170, 0.4);
 }
 
 /* 响应式 - 移动端微调 */
@@ -404,10 +285,6 @@ function handleCancel() {
 
   .action-btn i {
     font-size: calc(11px * var(--ui-font-scale));
-  }
-
-  .dialog-body {
-    padding: 12px;
   }
 
   .dialog-message {

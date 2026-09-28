@@ -4,7 +4,7 @@
       <div
         v-for="npc in sortedCharacters"
         :key="npc.id"
-        :class="['npc-card', { pulsing: isCharacterCardChanged(npc.id) }]"
+        :class="['npc-card', 'ui-card', { pulsing: isCharacterCardChanged(npc.id) }]"
         @mouseenter="dismissCharacterCardChanged(npc.id)"
         @click="handleNpcCardClick(npc.id, npc)"
       >
@@ -54,7 +54,7 @@
       </div>
 
       <!-- 招聘按钮卡片 -->
-      <div class="npc-card recruit-card" @click="openRecruitDialog">
+      <div class="npc-card recruit-card ui-card" @click="openRecruitDialog">
         <i class="ti ti-plus recruit-icon"></i>
         <div class="recruit-text">{{ t('character.recruitCharacter') }}</div>
         <div class="recruit-hint">{{ t('character.recruitHint') }}</div>
@@ -912,20 +912,17 @@ watch([showDialog, activeDetailTab], async ([isOpen]) => {
 }
 
 .npc-card {
-  background: var(--card-bg);
+  /* 底座（底色 / 描边 / 圆角 / 阴影）来自全局 .ui-card，这里只留本组件的差异 */
   backdrop-filter: var(--glass-blur-light);
   -webkit-backdrop-filter: var(--glass-blur-light);
-  border-radius: var(--radius-md);
   padding: 12px;
   cursor: pointer;
-  box-shadow: var(--card-shadow);
   transition:
     box-shadow var(--motion-normal),
     border-color var(--motion-normal),
     transform var(--motion-normal);
   position: relative;
   overflow: visible;
-  border: 1px solid var(--card-border);
   display: flex;
   flex-direction: column;
   border-top: 3px solid var(--accent-primary);
@@ -1018,8 +1015,8 @@ watch([showDialog, activeDetailTab], async ([isOpen]) => {
 .follow-toggle-btn {
   margin-left: auto;
   padding: 4px 10px;
-  border: 1px solid var(--border-light);
-  border-radius: 12px;
+  border: 1px solid var(--card-border);
+  border-radius: var(--ui-radius-sm);
   background: var(--bg-primary);
   font-size: calc(11px * var(--ui-font-scale));
   cursor: pointer;
@@ -1042,7 +1039,7 @@ watch([showDialog, activeDetailTab], async ([isOpen]) => {
 .survival-section {
   background: linear-gradient(135deg, rgba(var(--accent-danger-rgb), 0.05), rgba(var(--accent-success-rgb), 0.05));
   border: 1px solid var(--card-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--ui-radius-md);
 }
 
 .survival-grid {
@@ -1236,7 +1233,7 @@ watch([showDialog, activeDetailTab], async ([isOpen]) => {
   align-items: center;
   gap: 6px;
   padding: 8px 12px;
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--card-border);
   overflow-x: auto;
   overflow-y: hidden;
   min-height: 44px;
@@ -1260,8 +1257,8 @@ watch([showDialog, activeDetailTab], async ([isOpen]) => {
 }
 
 .detail-tab {
-  border: 1px solid color-mix(in srgb, var(--border-light) 65%, var(--text-primary) 35%);
-  background: color-mix(in srgb, var(--bg-card) 88%, rgba(255, 255, 255, 0.12) 12%);
+  border: 1px solid color-mix(in srgb, var(--card-border) 65%, var(--text-primary) 35%);
+  background: color-mix(in srgb, var(--card-bg-strong) 88%, rgba(255, 255, 255, 0.12) 12%);
   color: color-mix(in srgb, var(--text-primary) 72%, var(--text-secondary) 28%);
   border-radius: 999px;
   padding: 6px 12px;
@@ -1296,7 +1293,7 @@ watch([showDialog, activeDetailTab], async ([isOpen]) => {
   .detail-dialog {
     width: 100%;
     max-height: 100%;
-    border-radius: 12px;
+    border-radius: var(--ui-radius-md);
   }
 
   .detail-tabs {
@@ -1328,12 +1325,12 @@ watch([showDialog, activeDetailTab], async ([isOpen]) => {
 .inline-input {
   flex: 1;
   padding: 4px 8px;
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--card-border);
   border-radius: 4px;
   font-family: var(--font-base);
   font-size: var(--text-xs);
   color: var(--text-primary);
-  background: var(--bg-card);
+  background: var(--card-bg-strong);
 }
 
 .inline-input:focus {
@@ -1393,10 +1390,10 @@ watch([showDialog, activeDetailTab], async ([isOpen]) => {
   flex: 1;
   min-width: 0;
   height: 8px;
-  background: var(--bg-card);
+  background: var(--card-bg-strong);
   border-radius: 4px;
   overflow: hidden;
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--card-border);
 }
 
 .gauge-gradient {
@@ -1410,7 +1407,7 @@ watch([showDialog, activeDetailTab], async ([isOpen]) => {
   top: 0;
   right: 0;
   bottom: 0;
-  background: var(--bg-card);
+  background: var(--card-bg-strong);
   transition: left 300ms ease;
 }
 
@@ -1429,12 +1426,12 @@ watch([showDialog, activeDetailTab], async ([isOpen]) => {
 .event-textarea {
   flex: 1;
   padding: 6px 8px;
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--card-border);
   border-radius: 4px;
   font-family: var(--font-base);
   font-size: var(--text-xs);
   color: var(--text-primary);
-  background: var(--bg-card);
+  background: var(--card-bg-strong);
   resize: vertical;
   min-height: 40px;
   line-height: 1.4;
@@ -1468,7 +1465,7 @@ watch([showDialog, activeDetailTab], async ([isOpen]) => {
   align-items: center;
   justify-content: center;
   border: 1px solid var(--control-border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--ui-radius-sm);
   cursor: pointer;
   font-size: calc(12px * var(--ui-font-scale));
   background: var(--control-bg);
@@ -1489,7 +1486,7 @@ watch([showDialog, activeDetailTab], async ([isOpen]) => {
   background: var(--accent-success);
   color: white;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--ui-radius-sm);
   font-family: var(--font-base);
   font-size: calc(12px * var(--ui-font-scale));
   font-weight: 500;
@@ -1628,7 +1625,7 @@ watch([showDialog, activeDetailTab], async ([isOpen]) => {
   right: 0;
   bottom: 0;
   background-color: var(--bg-primary);
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--card-border);
   transition: 0.3s;
   border-radius: 24px;
 }

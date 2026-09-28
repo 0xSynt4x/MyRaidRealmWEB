@@ -126,7 +126,7 @@ function getModeStatus(mode: SurvivalMode): string {
   bottom: 2px;
   left: 2px;
   background: var(--accent-primary);
-  border-radius: 20px;
+  border-radius: var(--ui-radius-lg);
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 1px 4px rgba(var(--accent-primary-rgb), 0.3);
   pointer-events: none;

@@ -30,7 +30,7 @@
     <!-- ==================== 界面设置标签页（重新设计） ==================== -->
     <div v-show="currentTab === 'ui'" class="ui-settings">
       <!-- ─── 外观 ─── -->
-      <div class="setting-card">
+      <div class="setting-card ui-card">
         <h3 class="card-title"><i class="ti ti-palette"></i>{{ t('settings.card.appearance') }}</h3>
 
         <div class="language-spotlight">
@@ -156,7 +156,7 @@
       </div>
 
       <!-- ─── 排版 ─── -->
-      <div class="setting-card">
+      <div class="setting-card ui-card">
         <h3 class="card-title"><i class="ti ti-text-size"></i>{{ t('settings.card.typography') }}</h3>
 
         <div class="setting-row slider-row">
@@ -185,7 +185,7 @@
       </div>
 
       <!-- ─── 背景图 ─── -->
-      <div class="setting-card">
+      <div class="setting-card ui-card">
         <h3 class="card-title"><i class="ti ti-photo"></i>{{ t('settings.card.backgroundImage') }}</h3>
 
         <!-- 已有图片 -->
@@ -268,7 +268,7 @@
     <!-- ==================== 功能设置标签页 ==================== -->
     <div v-show="currentTab === 'features'" class="ui-settings">
       <!-- ─── 功能 ─── -->
-      <div class="setting-card">
+      <div class="setting-card ui-card">
         <h3 class="card-title"><i class="ti ti-adjustments"></i>{{ t('settings.card.features') }}</h3>
 
         <!-- 自动滚动 -->
@@ -398,7 +398,7 @@
       </div>
 
       <!-- ─── 上下文裁剪 ─── -->
-      <div class="setting-card">
+      <div class="setting-card ui-card">
         <h3 class="card-title"><i class="ti ti-cut"></i>{{ t('settings.snapshotTrim.title') }}</h3>
 
         <div class="snapshot-trim-row">
@@ -422,7 +422,7 @@
         <div class="card-header">
           <i class="ti ti-server"></i>
           <span>{{ t('settings.apiList') }}</span>
-          <button class="inline-icon-btn" @click="handleAddApi">
+          <button class="inline-icon-btn ui-icon-btn" @click="handleAddApi">
             <i class="ti ti-plus"></i>
           </button>
         </div>
@@ -437,17 +437,17 @@
                 <small v-if="api.model">{{ api.model }}</small>
               </button>
               <div class="api-item-actions">
-                <button class="inline-icon-btn" :disabled="index === 0" @click="moveApiUp(index)">
+                <button class="inline-icon-btn ui-icon-btn" :disabled="index === 0" @click="moveApiUp(index)">
                   <i class="ti ti-arrow-up"></i>
                 </button>
-                <button class="inline-icon-btn" :disabled="index === apiPool.length - 1" @click="moveApiDown(index)">
+                <button class="inline-icon-btn ui-icon-btn" :disabled="index === apiPool.length - 1" @click="moveApiDown(index)">
                   <i class="ti ti-arrow-down"></i>
                 </button>
-                <button class="inline-icon-btn" @click="duplicateApiAndPersist(index)">
+                <button class="inline-icon-btn ui-icon-btn" @click="duplicateApiAndPersist(index)">
                   <i class="ti ti-copy"></i>
                 </button>
                 <button
-                  class="inline-icon-btn danger"
+                  class="inline-icon-btn danger ui-icon-btn"
                   :disabled="apiPool.length <= 1"
                   @click="removeApiAndDetach(index)"
                 >
@@ -488,7 +488,7 @@
                     :placeholder="t('settings.modelPlaceholder')"
                     class="model-select"
                   />
-                  <button class="inline-icon-btn" :disabled="isLoadingById[api.id]" @click="fetchModels(index, api.id)">
+                  <button class="inline-icon-btn ui-icon-btn" :disabled="isLoadingById[api.id]" @click="fetchModels(index, api.id)">
                     <i :class="['ti', isLoadingById[api.id] ? 'ti-loader-2 ti-spin' : 'ti-download']"></i>
                   </button>
                 </div>
@@ -537,14 +537,14 @@
                   {{ t('settings.apiOrderBadge', { index: mainApiIds.indexOf(api.id) + 1 }) }}
                 </span>
                 <button
-                  class="inline-icon-btn"
+                  class="inline-icon-btn ui-icon-btn"
                   :disabled="mainApiIds.indexOf(api.id) === 0"
                   @click="moveMainApiSelection(mainApiIds.indexOf(api.id), -1)"
                 >
                   <i class="ti ti-arrow-up"></i>
                 </button>
                 <button
-                  class="inline-icon-btn"
+                  class="inline-icon-btn ui-icon-btn"
                   :disabled="mainApiIds.indexOf(api.id) === mainApiIds.length - 1"
                   @click="moveMainApiSelection(mainApiIds.indexOf(api.id), 1)"
                 >
@@ -575,14 +575,14 @@
                   {{ t('settings.apiOrderBadge', { index: assistantApiIds.indexOf(api.id) + 1 }) }}
                 </span>
                 <button
-                  class="inline-icon-btn"
+                  class="inline-icon-btn ui-icon-btn"
                   :disabled="assistantApiIds.indexOf(api.id) === 0"
                   @click="moveAssistantApiSelection(assistantApiIds.indexOf(api.id), -1)"
                 >
                   <i class="ti ti-arrow-up"></i>
                 </button>
                 <button
-                  class="inline-icon-btn"
+                  class="inline-icon-btn ui-icon-btn"
                   :disabled="assistantApiIds.indexOf(api.id) === assistantApiIds.length - 1"
                   @click="moveAssistantApiSelection(assistantApiIds.indexOf(api.id), 1)"
                 >
@@ -1867,7 +1867,6 @@ function removeBackgroundImage() {
   overflow-y: auto;
   overflow-x: hidden;
   overscroll-behavior: contain;
-  padding-right: 2px;
 }
 
 /* ===== 标签页导航 ===== */
@@ -1875,7 +1874,7 @@ function removeBackgroundImage() {
   display: flex;
   gap: 4px;
   margin-bottom: 14px;
-  border-bottom: 2px solid var(--glass-border);
+  border-bottom: 2px solid var(--card-border);
   align-items: center;
   position: relative;
   overflow-x: auto;
@@ -1898,7 +1897,7 @@ function removeBackgroundImage() {
   color: var(--text-secondary);
   transition: all var(--motion-normal) var(--ease-out-expo);
   position: relative;
-  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  border-radius: var(--ui-radius-sm) var(--ui-radius-sm) 0 0;
 }
 
 .settings-tabs button:hover {
@@ -1928,12 +1927,12 @@ function removeBackgroundImage() {
   padding: 6px 10px !important;
   width: 34px;
   height: 34px;
-  border-radius: var(--radius-md) !important;
+  border-radius: var(--ui-radius-sm) !important;
   display: flex !important;
   align-items: center;
   justify-content: center;
   background: var(--glass-bg) !important;
-  border: 1px solid var(--glass-border) !important;
+  border: 1px solid var(--card-border) !important;
   color: hsl(260, 55%, 65%) !important;
   font-size: calc(14px * var(--ui-font-scale)) !important;
   transition: all var(--transition-normal) var(--ease-out-expo) !important;
@@ -1967,13 +1966,10 @@ function removeBackgroundImage() {
 
 /* ===== 统一卡片样式 ===== */
 .setting-card {
+  /* 底座（底色 / 描边 / 圆角 / 阴影）来自全局 .ui-card，这里只留本组件的差异 */
   padding: 14px;
-  background: var(--card-bg);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--card-border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--card-shadow);
   transition:
     box-shadow var(--motion-fast),
     border-color var(--motion-fast),
@@ -2016,8 +2012,8 @@ function removeBackgroundImage() {
   margin-bottom: 12px;
   padding: 12px;
   border: 1px solid color-mix(in srgb, var(--accent-primary) 24%, var(--card-border));
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--accent-primary) 8%, var(--card-bg));
+  border-radius: var(--ui-radius-md);
+  background: color-mix(in srgb, var(--accent-primary) 8%, var(--card-bg-strong));
   box-shadow: 0 8px 18px rgba(var(--accent-primary-rgb), 0.08);
 }
 
@@ -2085,7 +2081,7 @@ function removeBackgroundImage() {
 }
 
 .setting-row + .setting-row {
-  border-top: 1px solid var(--glass-border);
+  border-top: 1px solid var(--card-border);
 }
 
 .setting-row.compact {
@@ -2108,9 +2104,9 @@ function removeBackgroundImage() {
   align-items: flex-start;
   gap: 10px;
   padding: 10px 12px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--glass-border);
-  background: color-mix(in srgb, var(--card-bg) 82%, transparent);
+  border-radius: var(--ui-radius-md);
+  border: 1px solid var(--card-border);
+  background: color-mix(in srgb, var(--card-bg-strong) 82%, transparent);
 }
 
 .local-content-item input {
@@ -2209,7 +2205,7 @@ function removeBackgroundImage() {
   gap: 6px;
   padding: 3px 8px;
   border: 1px solid var(--control-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--ui-radius-md);
   background: var(--control-bg);
   cursor: pointer;
   font-size: var(--text-xs);
@@ -2353,7 +2349,7 @@ function removeBackgroundImage() {
   left: 0;
   right: 0;
   bottom: 0;
-  background: var(--glass-border);
+  background: var(--card-border);
   border-radius: 22px;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -2428,7 +2424,7 @@ function removeBackgroundImage() {
   bottom: 2px;
   left: 2px;
   background: var(--accent-primary);
-  border-radius: 20px;
+  border-radius: var(--ui-radius-lg);
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 1px 4px rgba(var(--accent-primary-rgb), 0.3);
 }
@@ -2482,10 +2478,10 @@ function removeBackgroundImage() {
   position: relative;
   width: 64px;
   height: 64px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--ui-radius-sm);
   overflow: visible;
   flex-shrink: 0;
-  border: 1px solid var(--glass-border);
+  border: 1px solid var(--card-border);
 }
 
 .bg-thumb img {
@@ -2574,8 +2570,8 @@ function removeBackgroundImage() {
   align-items: center;
   gap: 4px;
   padding: 6px 12px;
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-md);
+  border: 1px solid var(--card-border);
+  border-radius: var(--ui-radius-sm);
   background: var(--glass-bg);
   color: var(--text-secondary);
   font-size: var(--text-xs);
@@ -2612,8 +2608,8 @@ function removeBackgroundImage() {
 .url-input {
   flex: 1;
   padding: 6px 10px;
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-md);
+  border: 1px solid var(--card-border);
+  border-radius: var(--ui-radius-md);
   background: var(--glass-bg);
   font-size: var(--text-xs);
   font-family: var(--font-base);
@@ -2636,7 +2632,7 @@ function removeBackgroundImage() {
   width: 28px;
   height: 28px;
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: var(--ui-radius-sm);
   background: var(--gradient-primary);
   color: white;
   font-size: calc(11px * var(--ui-font-scale));
@@ -2665,11 +2661,11 @@ function removeBackgroundImage() {
 }
 
 .dash-card {
-  background: var(--glass-bg);
+  background: var(--card-bg-strong);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-md);
+  border: 1px solid var(--card-border);
+  border-radius: var(--ui-radius-md);
   padding: 12px;
   box-shadow: var(--shadow-glass);
   transition: all var(--transition-fast) ease;
@@ -2732,8 +2728,8 @@ function removeBackgroundImage() {
   justify-content: center;
   gap: 6px;
   padding: 8px 10px;
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-md);
+  border: 1px solid var(--card-border);
+  border-radius: var(--ui-radius-sm);
   background: var(--glass-bg);
   cursor: pointer;
   font-size: var(--text-xs);
@@ -2788,7 +2784,7 @@ function removeBackgroundImage() {
   min-height: var(--touch-target-min);
   padding: 8px 12px;
   border: 1px solid var(--control-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--ui-radius-md);
   background: var(--control-bg);
   font-size: var(--text-sm);
   font-family: var(--font-base);
@@ -2815,30 +2811,11 @@ function removeBackgroundImage() {
   text-overflow: ellipsis;
 }
 
+/* 只留尺寸：底色 / 描边 / 圆角 / 悬停 / 禁用态都来自全局 .ui-icon-btn
+   （弹窗里的同类按钮尺寸不同，公共类不锁死宽高） */
 .inline-icon-btn {
   width: 40px;
   height: 38px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--glass-bg);
-  color: var(--text-secondary);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: all var(--transition-fast) ease;
-  flex-shrink: 0;
-}
-
-.inline-icon-btn:hover:not(:disabled) {
-  border-color: rgba(var(--accent-primary-rgb), 0.4);
-  color: var(--accent-primary);
-  background: rgba(var(--accent-primary-rgb), 0.08);
-}
-
-.inline-icon-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
 }
 
 .action-row-combined {
@@ -2863,9 +2840,9 @@ function removeBackgroundImage() {
 .api-role-block {
   margin-top: 12px;
   padding: 12px;
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-md);
-  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--card-bg-strong);
 }
 
 .api-role-head {
@@ -2895,7 +2872,7 @@ function removeBackgroundImage() {
   align-items: center;
   gap: 4px;
   padding: 2px 4px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--ui-radius-sm);
 }
 
 .api-role-row.active {
@@ -2963,7 +2940,7 @@ function removeBackgroundImage() {
   gap: 8px;
   margin-top: 14px;
   padding-top: 12px;
-  border-top: 1px solid var(--glass-border);
+  border-top: 1px solid var(--card-border);
   font-size: var(--text-sm);
   color: var(--text-primary);
   cursor: pointer;
@@ -2997,9 +2974,9 @@ function removeBackgroundImage() {
 }
 
 .api-item {
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-md);
-  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--card-bg-strong);
   padding: 10px;
 }
 
@@ -3038,10 +3015,6 @@ function removeBackgroundImage() {
   margin-bottom: 8px;
 }
 
-.inline-icon-btn.danger {
-  color: hsl(0, 84%, 60%);
-}
-
 .icon-btn {
   display: flex;
   align-items: center;
@@ -3049,7 +3022,7 @@ function removeBackgroundImage() {
   gap: 6px;
   padding: 8px 14px;
   border: none;
-  border-radius: var(--radius-md);
+  border-radius: var(--ui-radius-sm);
   cursor: pointer;
   font-size: var(--text-sm);
   font-family: var(--font-base);
@@ -3080,7 +3053,7 @@ function removeBackgroundImage() {
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  border-radius: var(--radius-md);
+  border-radius: var(--ui-radius-md);
   font-size: var(--text-sm);
   margin-top: 8px;
   backdrop-filter: blur(8px);
@@ -3111,7 +3084,7 @@ function removeBackgroundImage() {
 .settings-management-panel .settings-status-card,
 .settings-management-panel .worldbook-entry-list-card,
 .settings-management-panel .preset-detail-note-card {
-  border-radius: var(--radius-lg);
+  border-radius: var(--ui-radius-lg);
   border: 1px solid color-mix(in srgb, var(--accent-primary) 12%, var(--card-border));
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 28%),
@@ -3198,7 +3171,7 @@ function removeBackgroundImage() {
   border: 1px solid rgba(var(--accent-primary-rgb), 0.14);
   background: color-mix(in srgb, var(--card-bg-strong) 76%, transparent);
   color: var(--text-secondary);
-  border-radius: 12px;
+  border-radius: var(--ui-radius-sm);
   padding: 10px 14px;
   display: inline-flex;
   align-items: center;
@@ -3344,7 +3317,7 @@ function removeBackgroundImage() {
   flex-direction: column;
   gap: 3px;
   padding: 10px 12px;
-  border-radius: 12px;
+  border-radius: var(--ui-radius-md);
   border: 1px solid rgba(var(--accent-primary-rgb), 0.08);
   background: color-mix(in srgb, var(--accent-primary) 6%, var(--card-bg-strong));
 }
@@ -3389,7 +3362,7 @@ function removeBackgroundImage() {
   flex-direction: column;
   gap: 5px;
   padding: 11px 12px;
-  border-radius: 12px;
+  border-radius: var(--ui-radius-md);
   border: 1px dashed rgba(var(--accent-primary-rgb), 0.14);
   background: rgba(var(--accent-primary-rgb), 0.025);
 }
@@ -3412,7 +3385,7 @@ function removeBackgroundImage() {
   padding: 28px 20px;
   text-align: center;
   color: var(--text-secondary);
-  border-radius: var(--radius-lg);
+  border-radius: var(--ui-radius-lg);
   border: 1px dashed rgba(var(--accent-primary-rgb), 0.2);
   background: color-mix(in srgb, var(--card-bg-strong) 72%, transparent);
 }
@@ -3449,7 +3422,7 @@ function removeBackgroundImage() {
 
 .settings-management-panel .worldbook-entry-item {
   border: 1px solid rgba(var(--accent-primary-rgb), 0.12);
-  border-radius: 14px;
+  border-radius: var(--ui-radius-md);
   background: color-mix(in srgb, var(--accent-primary) 5%, var(--card-bg-strong));
   color: inherit;
   text-align: left;
@@ -3494,7 +3467,7 @@ function removeBackgroundImage() {
   color: inherit;
   text-align: left;
   cursor: pointer;
-  border-radius: 12px;
+  border-radius: var(--ui-radius-md);
 }
 
 .settings-management-panel .compact-worldbook-trigger:focus-visible,
@@ -3705,7 +3678,7 @@ function removeBackgroundImage() {
   width: 100%;
   min-height: 44px;
   border: 1px solid rgba(var(--accent-primary-rgb), 0.14);
-  border-radius: 12px;
+  border-radius: var(--ui-radius-md);
   background: rgba(var(--accent-primary-rgb), 0.03);
   color: var(--text-primary);
   padding: 9px 12px;
@@ -3755,7 +3728,7 @@ function removeBackgroundImage() {
 
 .settings-management-panel .compact-worldbook-note {
   padding: 9px 11px;
-  border-radius: 12px;
+  border-radius: var(--ui-radius-md);
 }
 
 .settings-management-panel .compact-worldbook-expand {
@@ -3771,7 +3744,7 @@ function removeBackgroundImage() {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 4px;
   padding: 3px;
-  border-radius: 12px;
+  border-radius: var(--ui-radius-md);
   background: rgba(var(--accent-primary-rgb), 0.055);
   border: 1px solid rgba(var(--accent-primary-rgb), 0.1);
 }
@@ -3786,7 +3759,7 @@ function removeBackgroundImage() {
   min-height: 32px;
   padding: 6px 8px;
   border: none;
-  border-radius: 10px;
+  border-radius: var(--ui-radius-sm);
   background: transparent;
   color: var(--text-secondary);
   font: inherit;

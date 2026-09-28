@@ -381,7 +381,7 @@ const fullscreenStyles = computed(() => {
 .standalone-complete-card {
   width: min(620px, 100%);
   padding: 32px 28px;
-  border-radius: 24px;
+  border-radius: var(--ui-radius-lg);
   border: 1px solid var(--card-border);
   background: color-mix(in srgb, var(--card-bg-strong) 88%, var(--bg-primary));
   box-shadow: var(--card-shadow);
@@ -420,7 +420,7 @@ const fullscreenStyles = computed(() => {
   align-self: flex-start;
   margin-top: 8px;
   padding: 12px 18px;
-  border-radius: 14px;
+  border-radius: var(--ui-radius-sm);
   border: 1px solid color-mix(in srgb, var(--accent-primary) 32%, var(--card-border));
   background: color-mix(in srgb, var(--accent-primary) 14%, var(--control-bg));
   color: var(--accent-primary);

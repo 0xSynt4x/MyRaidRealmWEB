@@ -75,7 +75,7 @@ const handleClick = (e: MouseEvent) => {
   padding: 8px 12px;
   background: var(--card-bg-strong);
   border: 1px solid var(--card-border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--ui-radius-sm);
   box-shadow: var(--card-shadow-hover);
   font-size: var(--text-xs);
   line-height: 1.55;

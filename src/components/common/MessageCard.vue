@@ -653,7 +653,7 @@ function handleEditInput() {
   line-height: inherit;
   color: var(--text-secondary);
   background: transparent;
-  border: 1px solid var(--glass-border);
+  border: 1px solid var(--card-border);
   border-radius: 999px;
   cursor: pointer;
   transition: all var(--motion-fast);
@@ -684,7 +684,7 @@ function handleEditInput() {
   height: max(26px, var(--touch-target-min));
   padding: 0;
   border: 1px solid var(--ui-line-soft);
-  border-radius: var(--radius-sm);
+  border-radius: var(--ui-radius-sm);
   background: var(--ui-panel);
   backdrop-filter: blur(8px);
   color: var(--ui-muted);
@@ -835,7 +835,7 @@ function handleEditInput() {
 .partial-banner {
   margin-bottom: 10px;
   padding: 6px 10px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--ui-radius-sm);
   background: rgba(245, 158, 11, 0.12);
   border: 1px solid rgba(245, 158, 11, 0.24);
   color: #b45309;
@@ -926,7 +926,7 @@ function handleEditInput() {
 
 .fold-body {
   padding: 4px 8px 6px;
-  border-top: 1px solid var(--border-light);
+  border-top: 1px solid var(--card-border);
   background: var(--bg-primary);
 }
 
@@ -968,7 +968,7 @@ function handleEditInput() {
   min-height: 44px;
   padding: 12px;
   border: 1px solid var(--control-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--ui-radius-md);
   background: var(--control-bg);
   backdrop-filter: var(--glass-blur-light);
   -webkit-backdrop-filter: var(--glass-blur-light);
@@ -1003,7 +1003,7 @@ function handleEditInput() {
   height: 44px;
   padding: 0;
   border: none;
-  border-radius: 12px;
+  border-radius: var(--ui-radius-sm);
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
@@ -1106,7 +1106,7 @@ function handleEditInput() {
   .message-actions button {
     width: 26px;
     height: 26px;
-    border-radius: 6px;
+    border-radius: var(--ui-radius-sm);
   }
 
   .message-actions button i {
@@ -1133,7 +1133,7 @@ function handleEditInput() {
   .edit-buttons button {
     width: 34px;
     height: 34px;
-    border-radius: 8px;
+    border-radius: var(--ui-radius-sm);
   }
 
   .edit-buttons button i {
@@ -1144,7 +1144,7 @@ function handleEditInput() {
 @media (max-width: 480px) {
   .message {
     margin-bottom: 8px;
-    border-radius: 10px;
+    border-radius: var(--ui-radius-sm);
   }
 
   .message-header {

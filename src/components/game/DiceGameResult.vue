@@ -143,7 +143,7 @@ const resultIcon = computed(() => {
 .result-header {
   text-align: center;
   padding: 20px 16px;
-  border-radius: var(--radius-md);
+  border-radius: var(--ui-radius-md);
   position: relative;
   overflow: hidden;
 }
@@ -222,8 +222,8 @@ const resultIcon = computed(() => {
   text-align: center;
   padding: 12px;
   background: var(--bg-primary);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border-light);
+  border-radius: var(--ui-radius-sm);
+  border: 1px solid var(--card-border);
   transition: all var(--transition-normal);
 }
 
@@ -265,11 +265,11 @@ const resultIcon = computed(() => {
 
 /* ===== 结算区 ===== */
 .settlement-section {
-  background: var(--glass-bg);
+  background: var(--card-bg-strong);
   backdrop-filter: var(--glass-blur-light);
   -webkit-backdrop-filter: var(--glass-blur-light);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-md);
+  border: 1px solid var(--card-border);
+  border-radius: var(--ui-radius-md);
   padding: 12px;
 }
 
@@ -282,7 +282,7 @@ const resultIcon = computed(() => {
   color: var(--accent-primary);
   margin-bottom: 8px;
   padding-bottom: 6px;
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--card-border);
 }
 
 .section-icon {
@@ -336,7 +336,7 @@ const resultIcon = computed(() => {
   font-size: var(--text-sm);
   color: var(--text-tertiary);
   background: var(--bg-primary);
-  border-radius: var(--radius-sm);
+  border-radius: var(--ui-radius-sm);
 }
 
 /* ===== 操作按钮 ===== */
@@ -349,7 +349,7 @@ const resultIcon = computed(() => {
   flex: 1;
   padding: 12px;
   border: none;
-  border-radius: var(--radius-md);
+  border-radius: var(--ui-radius-sm);
   font-size: var(--text-base);
   font-weight: 600;
   cursor: pointer;
@@ -377,7 +377,7 @@ const resultIcon = computed(() => {
 .quit-btn {
   background: var(--glass-bg);
   color: var(--text-primary);
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--card-border);
 }
 
 .quit-btn:hover {

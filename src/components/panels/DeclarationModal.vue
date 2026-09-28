@@ -171,9 +171,9 @@ defineEmits<{
   max-height: 85%;
   overflow-y: auto;
   overflow-x: hidden;
-  border-radius: 16px;
-  background: var(--bg-card, #1a1a2e);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--ui-radius-md);
+  background: var(--card-bg-strong);
+  border: 1px solid var(--card-border);
   box-shadow:
     0 24px 80px rgba(0, 0, 0, 0.4),
     0 0 0 1px rgba(255, 255, 255, 0.05) inset,
@@ -261,7 +261,7 @@ defineEmits<{
   justify-content: center;
   width: 48px;
   height: 48px;
-  border-radius: 14px;
+  border-radius: var(--ui-radius-md);
   background: linear-gradient(135deg, hsl(280, 60%, 50%), hsl(220, 70%, 55%));
   color: white;
   font-size: calc(20px * var(--ui-font-scale));
@@ -312,7 +312,7 @@ defineEmits<{
   align-items: center;
   gap: 10px;
   padding: 10px 12px;
-  border-radius: 10px;
+  border-radius: var(--ui-radius-sm);
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.06);
   transition: all 250ms ease;
@@ -327,7 +327,7 @@ defineEmits<{
 .info-card-icon {
   width: 32px;
   height: 32px;
-  border-radius: 8px;
+  border-radius: var(--ui-radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -375,7 +375,7 @@ defineEmits<{
   align-items: center;
   gap: 12px;
   padding: 12px 16px;
-  border-radius: 10px;
+  border-radius: var(--ui-radius-sm);
   background: linear-gradient(135deg, rgba(52, 211, 153, 0.08), rgba(16, 185, 129, 0.04));
   border: 1px solid rgba(52, 211, 153, 0.2);
   margin-bottom: 14px;
@@ -431,7 +431,7 @@ defineEmits<{
 .license-badge {
   display: inline-flex;
   padding: 4px 10px;
-  border-radius: 6px;
+  border-radius: var(--ui-radius-sm);
   background: linear-gradient(135deg, hsl(220, 60%, 50%), hsl(260, 55%, 50%));
   color: white;
   font-size: calc(11px * var(--ui-font-scale));
@@ -458,7 +458,7 @@ defineEmits<{
   align-items: center;
   gap: 10px;
   padding: 8px 12px;
-  border-radius: 8px;
+  border-radius: var(--ui-radius-sm);
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(255, 255, 255, 0.05);
   transition: all 250ms ease;
@@ -474,7 +474,7 @@ defineEmits<{
 .term-icon {
   width: 30px;
   height: 30px;
-  border-radius: 8px;
+  border-radius: var(--ui-radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -523,7 +523,7 @@ defineEmits<{
   gap: 8px;
   width: 100%;
   padding: 10px;
-  border-radius: 10px;
+  border-radius: var(--ui-radius-sm);
   background: linear-gradient(135deg, rgba(120, 80, 200, 0.1), rgba(80, 120, 220, 0.08));
   border: 1px solid rgba(120, 80, 200, 0.2);
   color: hsl(260, 60%, 70%);
@@ -563,7 +563,7 @@ defineEmits<{
   gap: 6px;
   margin: 0;
   padding: 10px;
-  border-radius: 8px;
+  border-radius: var(--ui-radius-sm);
   background: rgba(255, 255, 255, 0.02);
   font-size: calc(11px * var(--ui-font-scale));
   color: var(--text-secondary, #666);
@@ -599,7 +599,7 @@ defineEmits<{
     width: 40px;
     height: 40px;
     font-size: calc(18px * var(--ui-font-scale));
-    border-radius: 12px;
+    border-radius: var(--ui-radius-md);
   }
 
   .header-title {

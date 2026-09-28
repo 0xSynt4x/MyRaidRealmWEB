@@ -1114,7 +1114,7 @@ onUnmounted(() => {
   z-index: 2;
   padding: 4px 8px;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--ui-radius-sm);
   background: transparent;
   font-family: inherit;
   font-size: calc(11px * var(--ui-font-scale));

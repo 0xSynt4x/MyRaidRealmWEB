@@ -329,7 +329,7 @@ function deleteInventory(name: string | number) {
 .list-select {
   flex: 1;
   border: none;
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--card-border);
   padding: 2px 4px;
   font-size: calc(12px * var(--ui-font-scale));
   background: transparent;
@@ -363,7 +363,7 @@ function deleteInventory(name: string | number) {
   background: transparent;
   cursor: pointer;
   font-size: calc(13px * var(--ui-font-scale));
-  border-radius: 4px;
+  border-radius: var(--ui-radius-sm);
   transition: all 150ms;
   flex-shrink: 0;
 }

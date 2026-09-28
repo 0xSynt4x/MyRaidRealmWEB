@@ -222,9 +222,9 @@ watch(
   gap: 6px;
   margin: 0;
   padding: 8px;
-  border-radius: var(--radius-md);
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--card-bg-strong);
+  border: 1px solid var(--card-border);
   box-shadow: var(--shadow-sm);
   min-width: 0;
 }
@@ -235,8 +235,8 @@ watch(
   aspect-ratio: 3 / 4;
   padding: 0;
   overflow: hidden;
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-sm, 8px);
+  border: 1px solid var(--card-border);
+  border-radius: var(--ui-radius-sm);
   background: var(--bg-primary);
   cursor: zoom-in;
   transition: border-color var(--motion-fast);
@@ -292,7 +292,7 @@ watch(
   font-weight: 500;
   color: var(--text-secondary);
   background: transparent;
-  border: 1px solid var(--glass-border);
+  border: 1px solid var(--card-border);
   border-radius: 999px;
   cursor: pointer;
   transition: all var(--motion-fast);

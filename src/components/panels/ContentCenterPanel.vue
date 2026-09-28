@@ -1461,7 +1461,7 @@ onActivated(() => {
 
 <style scoped>
 .content-center-panel {
-  --content-center-surface-radius: 16px;
+  --content-center-surface-radius: var(--ui-radius-md);
   --content-center-surface-border: rgba(var(--accent-primary-rgb), 0.1);
   --content-center-surface-shadow: 0 12px 28px rgba(15, 23, 42, 0.07);
   --content-center-surface-shadow-strong: 0 16px 32px rgba(var(--accent-primary-rgb), 0.11);
@@ -1469,7 +1469,7 @@ onActivated(() => {
   --content-center-soft-fill-strong: rgba(var(--accent-primary-rgb), 0.07);
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   min-height: 100%;
 }
 
@@ -1489,7 +1489,7 @@ onActivated(() => {
   align-items: center;
   gap: 10px;
   padding: 10px 12px;
-  border-radius: 12px;
+  border-radius: var(--ui-radius-sm);
   border: 1px solid transparent;
   background: transparent;
   color: inherit;
@@ -1522,7 +1522,7 @@ onActivated(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 11px;
+  border-radius: var(--ui-radius-sm);
   flex-shrink: 0;
   font-size: calc(13px * var(--ui-font-scale));
 }
@@ -1599,7 +1599,7 @@ onActivated(() => {
   border: 1px solid rgba(var(--accent-primary-rgb), 0.14);
   background: color-mix(in srgb, var(--card-bg-strong) 76%, transparent);
   color: var(--text-secondary);
-  border-radius: 12px;
+  border-radius: var(--ui-radius-sm);
   padding: 10px 14px;
   display: inline-flex;
   align-items: center;
@@ -1769,7 +1769,7 @@ onActivated(() => {
   flex-direction: column;
   gap: 3px;
   padding: 10px 12px;
-  border-radius: 12px;
+  border-radius: var(--ui-radius-md);
   border: 1px solid rgba(var(--accent-primary-rgb), 0.08);
   background: var(--content-center-soft-fill);
 }
@@ -1848,7 +1848,7 @@ onActivated(() => {
   align-items: stretch;
   gap: 8px;
   padding: 9px;
-  border-radius: 15px;
+  border-radius: var(--ui-radius-md);
   border: 1px solid rgba(var(--accent-primary-rgb), 0.1);
   background: rgba(var(--accent-primary-rgb), 0.035);
   transition:
@@ -1882,13 +1882,13 @@ onActivated(() => {
 .tavern-preset-select-btn:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px rgba(var(--accent-primary-rgb), 0.14);
-  border-radius: 12px;
+  border-radius: var(--ui-radius-sm);
 }
 
 .preset-import-status {
   margin: 0;
   padding: 9px 11px;
-  border-radius: 12px;
+  border-radius: var(--ui-radius-md);
   border: 1px solid rgba(var(--accent-primary-rgb), 0.1);
   background: rgba(var(--accent-primary-rgb), 0.055);
   color: var(--text-secondary);
@@ -1905,7 +1905,7 @@ onActivated(() => {
 }
 
 .preset-editor-accordion-item {
-  border-radius: 16px;
+  border-radius: var(--ui-radius-md);
   background: rgba(var(--accent-primary-rgb), 0.025);
 }
 
@@ -1941,7 +1941,7 @@ onActivated(() => {
   gap: 10px;
   margin-top: 8px;
   padding: 12px;
-  border-radius: 16px;
+  border-radius: var(--ui-radius-md);
   border: 1px solid rgba(var(--accent-primary-rgb), 0.1);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent 28%), rgba(var(--accent-primary-rgb), 0.045);
@@ -2301,7 +2301,7 @@ onActivated(() => {
 
 .preset-entry-item {
   border: 1px solid rgba(var(--accent-primary-rgb), 0.12);
-  border-radius: 14px;
+  border-radius: var(--ui-radius-md);
   background: var(--content-center-soft-fill);
   color: inherit;
   text-align: left;
@@ -2319,7 +2319,7 @@ onActivated(() => {
 
 .worldbook-entry-item {
   border: 1px solid rgba(var(--accent-primary-rgb), 0.12);
-  border-radius: 14px;
+  border-radius: var(--ui-radius-md);
   background: var(--content-center-soft-fill);
   color: inherit;
   text-align: left;
@@ -2340,7 +2340,7 @@ onActivated(() => {
   flex-direction: column;
   gap: 7px;
   padding: 10px 11px;
-  border-radius: 14px;
+  border-radius: var(--ui-radius-md);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.015)),
     color-mix(in srgb, var(--card-bg-strong) 88%, transparent);
@@ -2408,7 +2408,7 @@ onActivated(() => {
   color: inherit;
   text-align: left;
   cursor: pointer;
-  border-radius: 12px;
+  border-radius: var(--ui-radius-md);
 }
 
 .compact-worldbook-trigger:focus-visible {
@@ -2613,7 +2613,7 @@ onActivated(() => {
 .worldbook-textarea {
   width: 100%;
   border: 1px solid rgba(var(--accent-primary-rgb), 0.14);
-  border-radius: 14px;
+  border-radius: var(--ui-radius-md);
   background: rgba(var(--accent-primary-rgb), 0.04);
   color: var(--text-primary);
   padding: 11px 14px;
@@ -2629,7 +2629,7 @@ onActivated(() => {
 }
 
 .compact-worldbook-input {
-  border-radius: 12px;
+  border-radius: var(--ui-radius-md);
   padding: 9px 12px;
   background: rgba(var(--accent-primary-rgb), 0.03);
 }
@@ -2719,7 +2719,7 @@ onActivated(() => {
 .compact-worldbook-note {
   margin-top: 0;
   padding: 9px 11px;
-  border-radius: 12px;
+  border-radius: var(--ui-radius-md);
 }
 
 .compact-worldbook-expand {
@@ -2747,7 +2747,7 @@ onActivated(() => {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 4px;
   padding: 3px;
-  border-radius: 12px;
+  border-radius: var(--ui-radius-md);
   background: rgba(var(--accent-primary-rgb), 0.055);
   border: 1px solid rgba(var(--accent-primary-rgb), 0.1);
 }
@@ -2756,7 +2756,7 @@ onActivated(() => {
   min-height: 32px;
   padding: 6px 8px;
   border: none;
-  border-radius: 10px;
+  border-radius: var(--ui-radius-sm);
   background: transparent;
   color: var(--text-secondary);
   font: inherit;
@@ -2805,7 +2805,7 @@ onActivated(() => {
   flex-shrink: 0;
   pointer-events: none;
   padding: 3px;
-  border-radius: 12px;
+  border-radius: var(--ui-radius-md);
 }
 
 .route-segment-control-system {
@@ -2859,7 +2859,7 @@ onActivated(() => {
 .preset-body-content {
   margin: 0;
   padding: 14px 15px;
-  border-radius: 12px;
+  border-radius: var(--ui-radius-md);
   background: rgba(var(--accent-primary-rgb), 0.045);
   border: 1px solid rgba(var(--accent-primary-rgb), 0.08);
   color: var(--text-primary);
@@ -2943,7 +2943,7 @@ onActivated(() => {
   flex-direction: column;
   gap: 12px;
   padding: 14px 16px;
-  border-radius: 16px;
+  border-radius: var(--ui-radius-md);
   border: 1px solid rgba(var(--accent-primary-rgb), 0.12);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent 26%),
@@ -3081,7 +3081,7 @@ onActivated(() => {
   flex-direction: column;
   gap: 8px;
   padding: 14px 15px;
-  border-radius: 16px;
+  border-radius: var(--ui-radius-md);
   border: 1px solid rgba(var(--accent-primary-rgb), 0.1);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent 26%),
@@ -3122,7 +3122,7 @@ onActivated(() => {
 
 .debug-request-note-structured {
   padding: 12px 13px;
-  border-radius: 12px;
+  border-radius: var(--ui-radius-md);
   background: rgba(var(--accent-primary-rgb), 0.045);
   border: 1px solid rgba(var(--accent-primary-rgb), 0.08);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
@@ -3186,7 +3186,7 @@ onActivated(() => {
 }
 
 .debug-collapsible-card {
-  border-radius: 18px;
+  border-radius: var(--ui-radius-md);
   border: 1px solid rgba(var(--accent-primary-rgb), 0.1);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent),
@@ -3281,7 +3281,7 @@ onActivated(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 10px;
+  border-radius: var(--ui-radius-sm);
   flex-shrink: 0;
   font-size: calc(12px * var(--ui-font-scale));
 }
@@ -3308,7 +3308,7 @@ onActivated(() => {
   width: 100%;
   padding: 10px 12px;
   border: 1px solid rgba(var(--accent-primary-rgb), 0.08);
-  border-radius: 12px;
+  border-radius: var(--ui-radius-md);
   background: rgba(var(--accent-primary-rgb), 0.03);
   color: var(--text-secondary);
   font: inherit;
@@ -3419,7 +3419,7 @@ onActivated(() => {
 .preset-icon {
   width: 40px;
   height: 40px;
-  border-radius: 12px;
+  border-radius: var(--ui-radius-sm);
   display: inline-flex;
   align-items: center;
   justify-content: center;

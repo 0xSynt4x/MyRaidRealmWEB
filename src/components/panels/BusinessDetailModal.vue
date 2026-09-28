@@ -161,7 +161,7 @@
                     class="facility-input"
                     :placeholder="t('business.detail.facilityPlaceholder')"
                   />
-                  <button class="facility-remove-btn" :title="t('common.delete')" @click="removeFacility(index)">
+                  <button class="facility-remove-btn ui-icon-btn danger" :title="t('common.delete')" @click="removeFacility(index)">
                     ×
                   </button>
                 </div>
@@ -465,9 +465,8 @@ watch(
   max-width: 700px;
 }
 
-/* 覆盖模态框主体内边距 */
+/* 内距沿用全局 .modal-body（12px），这里只管滚动与溢出 */
 .modal-body {
-  padding: 10px;
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
@@ -577,7 +576,7 @@ watch(
   padding: 8px 10px;
   background: var(--bg-primary);
   border-radius: 4px;
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--card-border);
 }
 
 .row-left {
@@ -602,13 +601,13 @@ watch(
   width: 120px;
   max-width: 46%;
   padding: 4px 6px;
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--card-border);
   border-radius: 3px;
   font-family: var(--font-mono);
   font-size: var(--text-base);
   font-weight: 700;
   color: var(--text-primary);
-  background: var(--bg-card);
+  background: var(--card-bg-strong);
   transition: all 200ms ease;
   text-align: right;
 }
@@ -634,7 +633,7 @@ watch(
   padding: 6px 8px;
   background: var(--bg-primary);
   border-radius: 4px;
-  border: 2px solid var(--border-light);
+  border: 2px solid var(--card-border);
 }
 
 .profit-card.positive {
@@ -706,13 +705,13 @@ watch(
 .asset-input {
   flex: 1;
   padding: 4px 6px;
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--card-border);
   border-radius: 3px;
   font-family: var(--font-mono);
   font-size: var(--text-sm);
   font-weight: 600;
   color: var(--text-primary);
-  background: var(--bg-card);
+  background: var(--card-bg-strong);
   transition: all 200ms ease;
   min-width: 0;
 }
@@ -766,11 +765,11 @@ watch(
 .compact-input {
   flex: 1;
   padding: 3px 6px;
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--card-border);
   border-radius: 3px;
   font-size: var(--text-sm);
   color: var(--text-primary);
-  background: var(--bg-card);
+  background: var(--card-bg-strong);
   transition: all 200ms ease;
   min-width: 0;
 }
@@ -811,7 +810,7 @@ watch(
 
 .market-textarea {
   padding: 4px 6px;
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--card-border);
   border-radius: 3px;
   font-size: var(--text-sm);
   color: var(--text-primary);
@@ -829,7 +828,7 @@ watch(
 .full-textarea {
   width: 100%;
   padding: 4px 6px;
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--card-border);
   border-radius: 3px;
   font-size: var(--text-sm);
   color: var(--text-primary);
@@ -887,11 +886,11 @@ watch(
 .facility-input {
   flex: 1;
   padding: 4px 8px;
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--card-border);
   border-radius: 3px;
   font-size: var(--text-sm);
   color: var(--text-primary);
-  background: var(--bg-card);
+  background: var(--card-bg-strong);
   transition: all 200ms ease;
 }
 
@@ -900,22 +899,13 @@ watch(
   border-color: var(--accent-primary);
 }
 
+/* 只留尺寸：底色 / 描边 / 圆角 / 悬停都来自全局 .ui-icon-btn + .danger
+   （原先是实心红块，改成与 API 配置那排图标按钮同一套玻璃质感） */
 .facility-remove-btn {
   width: 24px;
   height: 24px;
-  border: none;
-  background: var(--accent-danger);
-  color: white;
-  border-radius: 3px;
-  cursor: pointer;
   font-size: calc(16px * var(--ui-font-scale));
   line-height: 1;
-  transition: all 200ms ease;
-  flex-shrink: 0;
-}
-
-.facility-remove-btn:hover {
-  background: color-mix(in srgb, var(--accent-danger) 80%, black);
 }
 
 .facility-add-btn {
@@ -924,10 +914,10 @@ watch(
   justify-content: center;
   gap: 6px;
   padding: 6px 12px;
-  border: 1px dashed var(--border-light);
+  border: 1px dashed var(--card-border);
   background: transparent;
   color: var(--text-secondary);
-  border-radius: 4px;
+  border-radius: var(--ui-radius-sm);
   cursor: pointer;
   font-size: var(--text-sm);
   transition: all 200ms ease;
@@ -951,10 +941,6 @@ watch(
     width: 100%;
     max-width: none;
     max-height: 100%;
-  }
-
-  .modal-body {
-    padding: 8px;
   }
 
   .business-tags {

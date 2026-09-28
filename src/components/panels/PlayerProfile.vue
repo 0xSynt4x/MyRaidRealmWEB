@@ -291,7 +291,7 @@ function openDeleteConfirm(type: 'skill' | 'item', name: string) {
 .hero-section {
   display: flex;
   background: var(--gradient-primary);
-  border-radius: var(--radius-lg);
+  border-radius: var(--ui-radius-lg);
   padding: 20px;
   color: white;
   box-shadow: var(--shadow-md);
@@ -397,7 +397,7 @@ function openDeleteConfirm(type: 'skill' | 'item', name: string) {
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.32) 0%, rgba(255, 255, 255, 0.2) 100%);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
-  border-radius: 12px;
+  border-radius: var(--ui-radius-sm);
   font-size: var(--text-xs);
   font-weight: 600;
   color: rgba(255, 255, 255, 0.98);
@@ -429,11 +429,11 @@ function openDeleteConfirm(type: 'skill' | 'item', name: string) {
   align-items: center;
   gap: 12px;
   padding: 12px 16px;
-  background: var(--glass-bg);
+  background: var(--card-bg-strong);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-md);
+  border: 1px solid var(--card-border);
+  border-radius: var(--ui-radius-md);
   box-shadow: var(--shadow-glass);
 }
 
@@ -468,11 +468,11 @@ function openDeleteConfirm(type: 'skill' | 'item', name: string) {
   align-items: center;
   gap: 12px;
   padding: 12px 16px;
-  background: var(--glass-bg);
+  background: var(--card-bg-strong);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-md);
+  border: 1px solid var(--card-border);
+  border-radius: var(--ui-radius-md);
   box-shadow: var(--shadow-glass);
 }
 
@@ -481,7 +481,7 @@ function openDeleteConfirm(type: 'skill' | 'item', name: string) {
   align-items: center;
   gap: 8px;
   padding-right: 12px;
-  border-right: 1px solid var(--glass-border);
+  border-right: 1px solid var(--card-border);
 }
 
 .icon {
@@ -518,9 +518,9 @@ function openDeleteConfirm(type: 'skill' | 'item', name: string) {
   gap: 4px;
   padding: 4px 10px;
   background: var(--glass-bg);
-  border-radius: 12px;
+  border-radius: var(--ui-radius-sm);
   font-size: var(--text-xs);
-  border: 1px solid var(--glass-border);
+  border: 1px solid var(--card-border);
   cursor: help;
   transition: all var(--transition-fast) ease;
 }
@@ -541,7 +541,7 @@ function openDeleteConfirm(type: 'skill' | 'item', name: string) {
   background: var(--gradient-primary);
   color: white;
   padding: 2px 8px;
-  border-radius: 8px;
+  border-radius: var(--ui-radius-sm);
   font-weight: 600;
   font-size: calc(10px * var(--ui-font-scale));
 }
@@ -552,11 +552,11 @@ function openDeleteConfirm(type: 'skill' | 'item', name: string) {
   flex-direction: column;
   gap: 2px;
   padding: 12px 16px;
-  background: var(--glass-bg);
+  background: var(--card-bg-strong);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-md);
+  border: 1px solid var(--card-border);
+  border-radius: var(--ui-radius-md);
   box-shadow: var(--shadow-glass);
 }
 
@@ -598,11 +598,11 @@ function openDeleteConfirm(type: 'skill' | 'item', name: string) {
 /* 技能和物品公共样式 */
 .skills-section,
 .items-section {
-  background: var(--glass-bg);
+  background: var(--card-bg-strong);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-md);
+  border: 1px solid var(--card-border);
+  border-radius: var(--ui-radius-md);
   padding: 8px 14px;
   box-shadow: var(--shadow-glass);
 }
@@ -671,8 +671,8 @@ function openDeleteConfirm(type: 'skill' | 'item', name: string) {
   align-items: center;
   padding: 4px 10px;
   background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  border-radius: 8px;
+  border: 1px solid var(--card-border);
+  border-radius: var(--ui-radius-sm);
   font-size: var(--text-xs);
   font-weight: 600;
   color: var(--text-secondary);
@@ -687,7 +687,7 @@ function openDeleteConfirm(type: 'skill' | 'item', name: string) {
   align-items: center;
   gap: 6px;
   padding: 6px 12px;
-  border-radius: 14px;
+  border-radius: var(--ui-radius-sm);
   font-size: var(--text-xs);
   font-weight: 500;
   color: white;
@@ -726,7 +726,7 @@ function openDeleteConfirm(type: 'skill' | 'item', name: string) {
   background: rgba(255, 255, 255, 0.3);
   color: white;
   padding: 2px 6px;
-  border-radius: 10px;
+  border-radius: var(--ui-radius-sm);
   font-weight: 500;
   font-size: calc(10px * var(--ui-font-scale));
 }
@@ -782,8 +782,8 @@ function openDeleteConfirm(type: 'skill' | 'item', name: string) {
   background: var(--glass-bg-heavy);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-md);
+  border: 1px solid var(--card-border);
+  border-radius: var(--ui-radius-md);
   box-shadow: var(--shadow-lg);
   font-size: var(--text-xs);
   color: var(--text-primary);
@@ -855,7 +855,7 @@ function openDeleteConfirm(type: 'skill' | 'item', name: string) {
     border-right: none;
     padding-right: 0;
     padding-bottom: 6px;
-    border-bottom: 1px solid var(--glass-border);
+    border-bottom: 1px solid var(--card-border);
   }
 
   .item-row {

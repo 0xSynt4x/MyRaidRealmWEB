@@ -397,7 +397,7 @@ async function handleStart() {
   border: none;
   cursor: pointer;
   padding: 0;
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--card-border);
 }
 
 .toggle-icon {
@@ -441,7 +441,7 @@ async function handleStart() {
   align-items: flex-start;
   gap: 8px;
   padding: 5px 8px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--ui-radius-sm);
   background: var(--bg-primary);
   font-size: var(--text-xs);
   line-height: 1.4;
@@ -483,8 +483,8 @@ async function handleStart() {
 .scoring-table-wrapper {
   padding: 8px;
   background: var(--bg-primary);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border-light);
+  border-radius: var(--ui-radius-sm);
+  border: 1px solid var(--card-border);
 }
 
 .scoring-table-title {
@@ -528,7 +528,7 @@ async function handleStart() {
   justify-content: center;
   width: 48px;
   height: 48px;
-  border-radius: 14px;
+  border-radius: var(--ui-radius-md);
   background: var(--gradient-primary);
   color: white;
   font-size: calc(var(--text-xl) + 6px);
@@ -556,11 +556,11 @@ async function handleStart() {
 
 /* ===== 区块 ===== */
 .setup-section {
-  background: var(--glass-bg);
+  background: var(--card-bg-strong);
   backdrop-filter: var(--glass-blur-light);
   -webkit-backdrop-filter: var(--glass-blur-light);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-md);
+  border: 1px solid var(--card-border);
+  border-radius: var(--ui-radius-md);
   padding: 12px;
   box-shadow: var(--shadow-sm);
 }
@@ -574,7 +574,7 @@ async function handleStart() {
   color: var(--accent-primary);
   margin-bottom: 10px;
   padding-bottom: 6px;
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--card-border);
 }
 
 .section-icon {
@@ -597,8 +597,8 @@ async function handleStart() {
   align-items: center;
   gap: 10px;
   padding: 8px 10px;
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-sm);
+  border: 1px solid var(--card-border);
+  border-radius: var(--ui-radius-sm);
   background: var(--bg-primary);
   cursor: pointer;
   transition: all var(--transition-normal);
@@ -723,7 +723,7 @@ async function handleStart() {
 .intel-badge {
   margin-left: auto;
   padding: 2px 8px;
-  border-radius: 10px;
+  border-radius: var(--ui-radius-sm);
   font-size: calc(var(--text-xs) - 1px);
   font-weight: 600;
 }
@@ -752,7 +752,7 @@ async function handleStart() {
   text-align: center;
   padding: 8px;
   background: var(--bg-primary);
-  border-radius: var(--radius-sm);
+  border-radius: var(--ui-radius-sm);
 }
 
 .party-label {
@@ -768,8 +768,8 @@ async function handleStart() {
   justify-content: center;
   gap: 6px;
   padding: 6px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--dice-color, var(--border-light));
+  border-radius: var(--ui-radius-sm);
+  border: 1px solid var(--dice-color, var(--card-border));
   background: rgba(0, 0, 0, 0.02);
 }
 
@@ -807,10 +807,10 @@ async function handleStart() {
   margin-top: 8px;
   padding: 6px 10px;
   background: var(--gradient-subtle);
-  border-radius: var(--radius-sm);
+  border-radius: var(--ui-radius-sm);
   font-size: var(--text-xs);
   color: var(--text-secondary);
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--card-border);
 }
 
 .trust-hint i {
@@ -825,7 +825,7 @@ async function handleStart() {
   align-items: center;
   gap: 8px;
   padding: 6px 0;
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--card-border);
 }
 
 .bet-row:last-of-type {
@@ -857,8 +857,8 @@ async function handleStart() {
 .adj-btn {
   width: 28px;
   height: 28px;
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-sm);
+  border: 1px solid var(--card-border);
+  border-radius: var(--ui-radius-sm);
   background: var(--bg-primary);
   color: var(--text-secondary);
   cursor: pointer;
@@ -881,9 +881,9 @@ async function handleStart() {
   width: 60px;
   text-align: center;
   padding: 4px;
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-sm);
-  background: var(--bg-card);
+  border: 1px solid var(--card-border);
+  border-radius: var(--ui-radius-sm);
+  background: var(--card-bg-strong);
   font-size: var(--text-base);
   font-weight: 600;
   color: var(--text-primary);
@@ -916,7 +916,7 @@ async function handleStart() {
   padding: 8px 10px;
   background: rgba(var(--accent-success-rgb), 0.06);
   border: 1px solid rgba(var(--accent-success-rgb), 0.15);
-  border-radius: var(--radius-sm);
+  border-radius: var(--ui-radius-sm);
   font-size: var(--text-sm);
   font-weight: 500;
   color: var(--accent-success);
@@ -935,7 +935,7 @@ async function handleStart() {
   width: 100%;
   padding: 12px;
   border: none;
-  border-radius: var(--radius-md);
+  border-radius: var(--ui-radius-sm);
   background: var(--gradient-primary);
   color: white;
   font-size: var(--text-lg);

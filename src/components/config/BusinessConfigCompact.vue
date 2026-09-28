@@ -293,8 +293,8 @@ onMounted(() => {
   gap: 6px;
   padding: 12px;
   background: var(--bg-primary);
-  border-radius: 6px;
-  border: 1px solid var(--border-light);
+  border-radius: var(--ui-radius-sm);
+  border: 1px solid var(--card-border);
 }
 
 .section-label {
@@ -304,7 +304,7 @@ onMounted(() => {
   margin-top: 8px;
   margin-bottom: 4px;
   padding-bottom: 4px;
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--card-border);
 }
 
 .section-label:first-child {
@@ -327,7 +327,7 @@ onMounted(() => {
   min-width: 0;
   padding: 4px 8px;
   border: none;
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--card-border);
   background: transparent;
   font-family: var(--font-base);
   font-size: var(--text-sm);
@@ -364,7 +364,7 @@ onMounted(() => {
   background: transparent;
   cursor: pointer;
   font-size: calc(14px * var(--ui-font-scale));
-  border-radius: 4px;
+  border-radius: var(--ui-radius-sm);
   transition: all 150ms;
   flex-shrink: 0;
 }
@@ -375,7 +375,7 @@ onMounted(() => {
 
 .divider {
   height: 1px;
-  background: var(--border-light);
+  background: var(--card-border);
   margin: 8px 0;
 }
 

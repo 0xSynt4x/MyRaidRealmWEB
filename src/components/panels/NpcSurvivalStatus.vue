@@ -187,7 +187,7 @@ const followedNpcs = computed(() => {
 .mini-progress {
   flex: 1;
   height: 4px;
-  background: var(--border-light);
+  background: var(--card-border);
   border-radius: 2px;
   overflow: hidden;
 }

@@ -56,7 +56,7 @@
 
     <!-- 右侧面板 -->
     <aside
-      class="layout-right"
+      class="layout-right glass"
       :class="{
         collapsed: effectiveRightCollapsed,
         'mobile-drawer': isMobileLayout,
@@ -375,7 +375,7 @@ onUnmounted(() => {
   grid-area: left;
   width: var(--sidebar-width);
   background: transparent;
-  border-right: 1px solid var(--border-light);
+  border-right: 1px solid var(--card-border);
   overflow-y: auto;
   overflow-x: hidden;
   position: relative;
@@ -393,10 +393,7 @@ onUnmounted(() => {
 .layout-right {
   grid-area: right;
   width: var(--panel-width);
-  background: var(--glass-bg);
-  backdrop-filter: var(--glass-blur-light);
-  -webkit-backdrop-filter: var(--glass-blur-light);
-  border-left: 1px solid var(--glass-border);
+  border-left: 1px solid var(--card-border);
   overflow-y: auto;
   overflow-x: hidden;
   position: relative;
@@ -435,8 +432,8 @@ onUnmounted(() => {
   transform: translateY(-50%);
   width: 28px;
   height: 56px;
-  border: 1px solid var(--glass-border);
-  border-radius: 8px;
+  border: 1px solid var(--card-border);
+  border-radius: var(--ui-radius-sm);
   background: var(--card-bg-strong);
   color: var(--text-secondary);
   display: flex;
@@ -471,8 +468,8 @@ onUnmounted(() => {
     transform: translateX(102%);
     opacity: 1;
     z-index: 35;
-    border-left: 1px solid var(--glass-border);
-    border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+    border-left: 1px solid var(--card-border);
+    border-radius: var(--ui-radius-lg) 0 0 var(--ui-radius-lg);
     box-shadow: -8px 0 30px rgba(0, 0, 0, 0.2);
   }
 
@@ -480,7 +477,7 @@ onUnmounted(() => {
     width: var(--mobile-drawer-width);
     opacity: 1;
     overflow-y: auto;
-    border-left: 1px solid var(--glass-border);
+    border-left: 1px solid var(--card-border);
     transform: translateX(102%);
   }
 

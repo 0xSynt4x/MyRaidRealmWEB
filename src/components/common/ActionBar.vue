@@ -441,7 +441,7 @@ async function cancelGeneration() {
   flex: 0 0 auto;
   padding: var(--ui-space-3) var(--ui-space-4);
   border: none;
-  border-radius: var(--ui-radius-md);
+  border-radius: var(--ui-radius-sm);
   background: transparent;
   color: var(--ui-text);
   font-family: var(--font-base);
@@ -524,7 +524,7 @@ async function cancelGeneration() {
   align-items: center;
   justify-content: center;
   border: none;
-  border-radius: var(--ui-radius-md);
+  border-radius: var(--ui-radius-sm);
   background: var(--ui-surface-2);
   color: var(--ui-muted);
   cursor: pointer;
@@ -599,7 +599,7 @@ async function cancelGeneration() {
   align-items: center;
   justify-content: center;
   border: 1px solid var(--ui-accent);
-  border-radius: var(--ui-radius-md);
+  border-radius: var(--ui-radius-sm);
   background: transparent;
   color: var(--ui-accent);
   cursor: pointer;

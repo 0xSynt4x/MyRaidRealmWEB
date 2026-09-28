@@ -252,7 +252,7 @@ async function startGame() {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: var(--bg-card);
+  background: var(--card-bg-strong);
 }
 
 .toolbar {
@@ -260,7 +260,7 @@ async function startGame() {
   justify-content: space-between;
   align-items: center;
   padding: 8px 12px;
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--card-border);
   flex-wrap: wrap;
   gap: 8px;
 }
@@ -294,7 +294,7 @@ async function startGame() {
   border: none;
   background: var(--accent-success);
   color: white;
-  border-radius: 6px;
+  border-radius: var(--ui-radius-sm);
   font-size: calc(14px * var(--ui-font-scale));
   font-weight: 500;
   cursor: pointer;
@@ -322,7 +322,7 @@ async function startGame() {
   display: flex;
   gap: 4px;
   padding: 8px 12px;
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--card-border);
   background: var(--bg-primary);
   overflow-x: auto;
 }
@@ -330,9 +330,9 @@ async function startGame() {
 .presets-bar button {
   height: 36px;
   flex-shrink: 0;
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--card-border);
   background: transparent;
-  border-radius: 8px;
+  border-radius: var(--ui-radius-sm);
   font-size: calc(20px * var(--ui-font-scale));
   cursor: pointer;
   transition: all 150ms;
@@ -351,7 +351,7 @@ async function startGame() {
 
 .presets-bar button:hover {
   border-color: var(--accent-primary);
-  background: var(--bg-card);
+  background: var(--card-bg-strong);
   transform: translateY(-2px);
 }
 

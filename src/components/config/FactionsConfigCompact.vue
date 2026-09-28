@@ -269,9 +269,9 @@ function getRelationClass(value: number): string {
   align-items: center;
   gap: 4px;
   padding: 4px 8px;
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--card-border);
   background: var(--bg-primary);
-  border-radius: 12px;
+  border-radius: var(--ui-radius-md);
   font-size: calc(12px * var(--ui-font-scale));
   cursor: pointer;
   transition: all 150ms;
@@ -322,9 +322,9 @@ function getRelationClass(value: number): string {
 .add-tag {
   width: 28px;
   height: 28px;
-  border: 1px dashed var(--border-light);
+  border: 1px dashed var(--card-border);
   background: transparent;
-  border-radius: 12px;
+  border-radius: var(--ui-radius-md);
   font-size: calc(14px * var(--ui-font-scale));
   cursor: pointer;
   transition: all 150ms;
@@ -340,8 +340,8 @@ function getRelationClass(value: number): string {
 /* 编辑面板 */
 .edit-panel {
   background: var(--bg-primary);
-  border: 1px solid var(--border-light);
-  border-radius: 8px;
+  border: 1px solid var(--card-border);
+  border-radius: var(--ui-radius-sm);
   padding: 8px;
   margin-top: 4px;
 }
@@ -362,7 +362,7 @@ function getRelationClass(value: number): string {
   border: none;
   background: transparent;
   cursor: pointer;
-  border-radius: 4px;
+  border-radius: var(--ui-radius-sm);
   font-size: calc(14px * var(--ui-font-scale));
   transition: all 150ms;
 }
@@ -381,7 +381,7 @@ function getRelationClass(value: number): string {
 .select-input {
   flex: 1;
   border: none;
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--card-border);
   padding: 2px 4px;
   font-size: calc(12px * var(--ui-font-scale));
   background: transparent;
@@ -402,7 +402,7 @@ function getRelationClass(value: number): string {
 .number-input {
   width: 50px;
   border: none;
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--card-border);
   padding: 2px 4px;
   font-size: calc(12px * var(--ui-font-scale));
   text-align: center;
@@ -412,7 +412,7 @@ function getRelationClass(value: number): string {
 
 .relation-badge {
   padding: 2px 8px;
-  border-radius: 10px;
+  border-radius: var(--ui-radius-sm);
   font-size: calc(10px * var(--ui-font-scale));
   font-weight: 600;
   color: white;
@@ -449,7 +449,7 @@ function getRelationClass(value: number): string {
   flex: 1;
   padding: 4px 8px;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--ui-radius-sm);
   font-size: calc(11px * var(--ui-font-scale));
   cursor: pointer;
   transition: all 150ms;
@@ -517,7 +517,7 @@ function getRelationClass(value: number): string {
 .relation-input {
   width: 100%;
   border: none;
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--card-border);
   padding: 2px 4px;
   font-size: calc(11px * var(--ui-font-scale));
   text-align: center;
@@ -624,7 +624,7 @@ function getRelationClass(value: number): string {
   .faction-tag {
     padding: 2px 5px;
     font-size: calc(10px * var(--ui-font-scale));
-    border-radius: 10px;
+    border-radius: var(--ui-radius-sm);
   }
 
   .faction-stats-mini {
@@ -637,7 +637,7 @@ function getRelationClass(value: number): string {
     width: 24px;
     height: 24px;
     font-size: calc(12px * var(--ui-font-scale));
-    border-radius: 10px;
+    border-radius: var(--ui-radius-sm);
   }
 
   .edit-panel {

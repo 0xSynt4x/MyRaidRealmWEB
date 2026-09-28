@@ -217,7 +217,7 @@ function handleToggle(dieId: number) {
   align-items: center;
   justify-content: center;
   padding: 6px 12px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--ui-radius-sm);
   font-size: var(--text-xs);
   line-height: 1.4;
   text-align: center;
@@ -246,7 +246,7 @@ function handleToggle(dieId: number) {
 .context-hint.hint-neutral {
   background: var(--bg-primary);
   color: var(--text-secondary);
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--card-border);
 }
 
 /* ===== 帮助按钮 ===== */
@@ -274,8 +274,8 @@ function handleToggle(dieId: number) {
 /* ===== 内联计分表 ===== */
 .inline-scoring-panel {
   background: var(--bg-card-solid);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-sm);
+  border: 1px solid var(--card-border);
+  border-radius: var(--ui-radius-sm);
   padding: 8px 10px;
   box-shadow: var(--shadow-md);
 }
@@ -289,7 +289,7 @@ function handleToggle(dieId: number) {
   color: var(--accent-warning);
   margin-bottom: 6px;
   padding-bottom: 4px;
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--card-border);
 }
 
 .inline-scoring-header .inline-close {
@@ -347,9 +347,9 @@ function handleToggle(dieId: number) {
   align-items: center;
   gap: 2px;
   padding: 8px 12px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--ui-radius-sm);
   background: var(--bg-primary);
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--card-border);
   transition: all var(--transition-normal);
 }
 
@@ -431,7 +431,7 @@ function handleToggle(dieId: number) {
   align-items: center;
   gap: 3px;
   padding: 2px 6px;
-  border-radius: 8px;
+  border-radius: var(--ui-radius-sm);
   background: rgba(var(--accent-danger-rgb), 0.1);
   color: var(--accent-danger);
   font-size: calc(var(--text-xs) - 2px);
@@ -447,8 +447,8 @@ function handleToggle(dieId: number) {
   gap: 8px;
   padding: 6px 12px;
   background: var(--gradient-subtle);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border-light);
+  border-radius: var(--ui-radius-sm);
+  border: 1px solid var(--card-border);
 }
 
 .turn-label {
@@ -480,7 +480,7 @@ function handleToggle(dieId: number) {
 .npc-status-bar {
   padding: 6px 10px;
   background: rgba(var(--accent-primary-rgb), 0.06);
-  border-radius: var(--radius-sm);
+  border-radius: var(--ui-radius-sm);
   border: 1px solid rgba(var(--accent-primary-rgb), 0.12);
 }
 
@@ -508,7 +508,7 @@ function handleToggle(dieId: number) {
   max-width: 180px;
   padding: 10px 16px;
   border: none;
-  border-radius: var(--radius-md);
+  border-radius: var(--ui-radius-sm);
   font-size: var(--text-base);
   font-weight: 600;
   cursor: pointer;
@@ -565,16 +565,16 @@ function handleToggle(dieId: number) {
   color: var(--text-secondary);
   padding: 10px 20px;
   background: var(--bg-primary);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-light);
+  border-radius: var(--ui-radius-md);
+  border: 1px solid var(--card-border);
 }
 
 /* ===== 游戏日志 ===== */
 .game-log {
   margin-top: auto;
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-sm);
+  background: var(--card-bg-strong);
+  border: 1px solid var(--card-border);
+  border-radius: var(--ui-radius-sm);
   overflow: hidden;
 }
 
@@ -586,7 +586,7 @@ function handleToggle(dieId: number) {
   font-size: var(--text-xs);
   font-weight: 600;
   color: var(--text-secondary);
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--card-border);
 }
 
 .log-header i {

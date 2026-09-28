@@ -206,9 +206,9 @@ function retryLoad() {
   gap: 8px;
   margin: 10px 0;
   padding: 10px 12px;
-  border-radius: var(--radius-md);
-  border: 1px dashed var(--glass-border);
-  background: color-mix(in srgb, var(--card-bg) 70%, transparent);
+  border-radius: var(--ui-radius-md);
+  border: 1px dashed var(--card-border);
+  background: color-mix(in srgb, var(--card-bg-strong) 70%, transparent);
 }
 
 .image-slot--running,
@@ -232,7 +232,7 @@ function retryLoad() {
   padding: 0;
   border: none;
   background: transparent;
-  border-radius: var(--radius-md);
+  border-radius: var(--ui-radius-md);
   overflow: hidden;
   cursor: zoom-in;
 }
@@ -241,7 +241,7 @@ function retryLoad() {
   display: block;
   width: 100%;
   height: auto;
-  border-radius: var(--radius-md);
+  border-radius: var(--ui-radius-md);
 }
 
 .image-slot-fallback {
@@ -305,7 +305,7 @@ function retryLoad() {
 .image-slot-prompt-text {
   margin: 0;
   padding: 8px 10px;
-  border-radius: var(--radius-sm, 8px);
+  border-radius: var(--ui-radius-sm);
   background: var(--bg-primary);
   font-family: var(--font-mono, monospace);
   font-size: calc(11px * var(--ui-font-scale));
@@ -366,7 +366,7 @@ function retryLoad() {
   font-weight: 500;
   color: var(--text-secondary);
   background: transparent;
-  border: 1px solid var(--glass-border);
+  border: 1px solid var(--card-border);
   border-radius: 999px;
   cursor: pointer;
   transition: all var(--motion-fast);

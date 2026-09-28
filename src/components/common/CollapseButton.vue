@@ -63,8 +63,8 @@ const title = computed(() => {
   transform: translateY(-50%);
   width: var(--collapse-btn-size);
   height: calc(var(--collapse-btn-size) * 2);
-  background: var(--bg-card);
-  border: 1px solid var(--border-light);
+  background: var(--card-bg-strong);
+  border: 1px solid var(--card-border);
   border-radius: 4px;
   display: flex;
   align-items: center;

@@ -305,9 +305,9 @@ function selectWorldType(type: string) {
 
 .type-chips button {
   padding: 4px 10px;
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--card-border);
   background: transparent;
-  border-radius: 12px;
+  border-radius: var(--ui-radius-sm);
   font-size: calc(12px * var(--ui-font-scale));
   cursor: pointer;
   transition: all 150ms;
@@ -453,7 +453,7 @@ function selectWorldType(type: string) {
   .type-chips button {
     padding: 2px 6px;
     font-size: calc(10px * var(--ui-font-scale));
-    border-radius: 10px;
+    border-radius: var(--ui-radius-sm);
   }
 
   .checkbox-inline {

@@ -283,9 +283,11 @@ async function handleTenDraw() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 18px 20px;
+  padding: 16px 18px;
+  /* 与商城面板头部等高：内距 32px + 内容最高约 44px，否则切换面板时头部会跳高 */
+  min-height: 76px;
   background: linear-gradient(135deg, hsl(38, 92%, 50%), hsl(28, 80%, 52%));
-  border-radius: var(--radius-lg);
+  border-radius: var(--ui-radius-lg);
   color: white;
   box-shadow:
     var(--shadow-md),
@@ -339,7 +341,7 @@ async function handleTenDraw() {
 }
 
 .points-display .icon {
-  font-size: calc(26px * var(--ui-font-scale));
+  font-size: calc(24px * var(--ui-font-scale));
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
 }
 
@@ -364,7 +366,7 @@ async function handleTenDraw() {
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 20px;
+  border-radius: var(--ui-radius-lg);
   font-size: var(--text-sm);
   position: relative;
   z-index: 1;
@@ -378,11 +380,11 @@ async function handleTenDraw() {
 
 /* 保底进度 - 玻璃拟态 + 光效 */
 .pity-section {
-  background: var(--glass-bg);
+  background: var(--card-bg-strong);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-md);
+  border: 1px solid var(--card-border);
+  border-radius: var(--ui-radius-md);
   padding: 14px;
   box-shadow: var(--shadow-glass);
 }
@@ -453,11 +455,11 @@ async function handleTenDraw() {
 
 /* 抽奖按钮区域 - 玻璃拟态 */
 .lottery-section {
-  background: var(--glass-bg);
+  background: var(--card-bg-strong);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-md);
+  border: 1px solid var(--card-border);
+  border-radius: var(--ui-radius-md);
   padding: 16px;
   box-shadow: var(--shadow-glass);
 }
@@ -475,7 +477,7 @@ async function handleTenDraw() {
   gap: 10px;
   padding: 18px 16px;
   border: 2px solid transparent;
-  border-radius: var(--radius-lg);
+  border-radius: var(--ui-radius-sm);
   cursor: pointer;
   transition: all var(--transition-normal) var(--ease-out-expo);
   position: relative;
@@ -570,7 +572,7 @@ async function handleTenDraw() {
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   padding: 2px 8px;
-  border-radius: 8px;
+  border-radius: var(--ui-radius-sm);
   font-size: calc(10px * var(--ui-font-scale));
   font-weight: 600;
   border: 1px solid rgba(255, 255, 255, 0.15);
@@ -584,11 +586,11 @@ async function handleTenDraw() {
   flex-wrap: wrap;
   gap: 14px;
   padding: 12px 16px;
-  background: var(--glass-bg);
+  background: var(--card-bg-strong);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-md);
+  border: 1px solid var(--card-border);
+  border-radius: var(--ui-radius-md);
   box-shadow: var(--shadow-glass);
 }
 
@@ -663,11 +665,11 @@ async function handleTenDraw() {
   flex-wrap: wrap;
   gap: 8px;
   padding: 10px 16px;
-  background: var(--glass-bg);
+  background: var(--card-bg-strong);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-md);
+  border: 1px solid var(--card-border);
+  border-radius: var(--ui-radius-md);
   box-shadow: var(--shadow-glass);
   font-size: var(--text-xs);
   color: var(--text-secondary);

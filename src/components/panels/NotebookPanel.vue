@@ -24,6 +24,7 @@
           :key="key"
           :class="[
             'compact-card',
+            'ui-card',
             'crisis-card',
             `severity-level-${getSeverityLevel(crisis.严重程度)}`,
             { pulsing: isNotebookChanged('crisis', key) },
@@ -65,7 +66,12 @@
         <div
           v-for="[key, opportunity] in sortedOpportunity"
           :key="key"
-          :class="['compact-card', 'opportunity-card', { pulsing: isNotebookChanged('opportunity', key) }]"
+          :class="[
+            'compact-card',
+            'ui-card',
+            'opportunity-card',
+            { pulsing: isNotebookChanged('opportunity', key) },
+          ]"
           @mouseenter="dismissNotebookChanged('opportunity', key)"
           @click="dismissNotebookChanged('opportunity', key)"
         >
@@ -107,6 +113,7 @@
           :key="key"
           :class="[
             'compact-card',
+            'ui-card',
             'todo-card',
             `priority-level-${getPriorityLevel(todo.优先级)}`,
             `todo-status-${getTodoStatusClass(todo.状态)}`,
@@ -253,7 +260,7 @@ watch(
   flex-direction: column;
   height: 100%;
   min-height: 0;
-  background: var(--bg-primary);
+  background: transparent;
   min-width: 0;
   overflow: hidden;
 }
@@ -262,9 +269,10 @@ watch(
 .notebook-tabs {
   display: flex;
   gap: 8px;
-  padding: 10px 6px;
-  border-bottom: 2px solid var(--border-light);
-  background: var(--bg-card);
+  /* 上方不留白：外框已给 12px，这里再叠一层会让 tab 条上下不等距 */
+  padding: 0 6px 10px;
+  border-bottom: 2px solid var(--card-border);
+  background: var(--card-bg-strong);
   flex-shrink: 0;
   min-width: 0;
   overflow-x: auto;
@@ -291,7 +299,7 @@ watch(
   font-family: var(--font-base);
   color: var(--text-secondary);
   transition: all 200ms ease;
-  border-radius: 6px;
+  border-radius: var(--ui-radius-sm);
   overflow: hidden;
   white-space: nowrap;
 }
@@ -333,7 +341,6 @@ watch(
 /* 响应式：窄屏单列 */
 @media (max-width: 900px) {
   .notebook-tabs button {
-    flex: 0 0 auto;
     padding: 9px 10px;
     font-size: var(--text-xs);
   }
@@ -346,12 +353,10 @@ watch(
 /* 紧凑卡片 */
 .compact-card {
   --note-accent: var(--accent-primary);
-  background: var(--card-bg);
+  /* 底座（底色 / 描边 / 圆角 / 阴影）来自全局 .ui-card，这里只留本组件的差异 */
   backdrop-filter: var(--glass-blur-light);
   -webkit-backdrop-filter: var(--glass-blur-light);
-  border: 1px solid var(--card-border);
   border-top: 3px solid var(--note-accent);
-  border-radius: var(--radius-md);
   padding: 10px 12px;
   transition:
     box-shadow var(--motion-normal),
@@ -359,7 +364,6 @@ watch(
     transform var(--motion-normal);
   position: relative;
   min-width: 0;
-  box-shadow: var(--card-shadow);
 }
 
 .compact-card:hover {
@@ -486,7 +490,7 @@ watch(
   font-size: var(--text-xs);
   padding: 2px 8px;
   background: var(--bg-primary);
-  border-radius: 10px;
+  border-radius: var(--ui-radius-sm);
   color: var(--text-secondary);
   display: inline-block;
 }
@@ -550,7 +554,7 @@ watch(
   font-size: var(--text-xs);
   padding: 2px 8px;
   background: var(--bg-primary);
-  border-radius: 10px;
+  border-radius: var(--ui-radius-sm);
   flex-shrink: 0;
   color: var(--text-secondary);
 }

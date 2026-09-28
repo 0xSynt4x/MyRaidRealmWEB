@@ -84,7 +84,7 @@ thead th {
   text-transform: uppercase;
   letter-spacing: 0.5px;
   padding: 4px 6px;
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--card-border);
 }
 
 thead th:last-child {
@@ -112,7 +112,7 @@ tbody td {
 
 .separator td {
   padding: 2px 0;
-  border-bottom: 1px dashed var(--border-light);
+  border-bottom: 1px dashed var(--card-border);
 }
 
 .special-row td {

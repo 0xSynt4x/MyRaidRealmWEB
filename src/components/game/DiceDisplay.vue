@@ -143,9 +143,9 @@ const comboDetail = computed(() => {
   position: relative;
   width: 56px;
   height: 56px;
-  border: 2px solid var(--border-light);
-  border-radius: var(--radius-md);
-  background: var(--bg-card);
+  border: 2px solid var(--card-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--card-bg-strong);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -236,7 +236,7 @@ const comboDetail = computed(() => {
   padding: 5px 12px;
   background: rgba(var(--accent-warning-rgb), 0.06);
   border: 1px solid rgba(var(--accent-warning-rgb), 0.15);
-  border-radius: var(--radius-sm);
+  border-radius: var(--ui-radius-sm);
   color: var(--accent-warning);
   font-weight: 500;
   line-height: 1.4;
@@ -252,7 +252,7 @@ const comboDetail = computed(() => {
   color: var(--text-secondary);
   padding: 4px 10px;
   background: rgba(var(--accent-primary-rgb), 0.04);
-  border-radius: 20px;
+  border-radius: var(--ui-radius-lg);
   border: 1px solid rgba(var(--accent-primary-rgb), 0.1);
 }
 

@@ -209,9 +209,9 @@ function closePanel() {
   -webkit-backdrop-filter: blur(20px) saturate(1.4);
   box-shadow:
     4px 0 30px rgba(0, 0, 0, 0.2),
-    inset -1px 0 0 var(--glass-border);
-  border-right: 1px solid var(--glass-border);
-  border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+    inset -1px 0 0 var(--card-border);
+  border-right: 1px solid var(--card-border);
+  border-radius: 0 var(--ui-radius-lg) var(--ui-radius-lg) 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -223,7 +223,7 @@ function closePanel() {
   right: 12px;
   width: 34px;
   height: 34px;
-  border: 1px solid var(--glass-border);
+  border: 1px solid var(--card-border);
   border-radius: 50%;
   background: var(--glass-bg);
   backdrop-filter: blur(10px);
@@ -247,7 +247,7 @@ function closePanel() {
 
 .panel-header {
   padding: 16px 20px;
-  border-bottom: 1px solid var(--glass-border);
+  border-bottom: 1px solid var(--card-border);
   background: transparent;
   position: relative;
 }

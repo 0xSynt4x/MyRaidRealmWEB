@@ -105,9 +105,9 @@ onUnmounted(() => {
      上限 520px（约 8 条可见），窄屏再按视口收缩。 */
   height: min(520px, 78%);
   overflow: hidden;
-  border-radius: 16px;
+  border-radius: var(--ui-radius-md);
   background: transparent;
-  border: 1px solid var(--glass-border);
+  border: 1px solid var(--card-border);
   box-shadow:
     0 24px 80px rgba(0, 0, 0, 0.45),
     inset 0 1px 0 rgba(255, 255, 255, 0.06);
@@ -246,7 +246,7 @@ onUnmounted(() => {
   bottom: 0;
   left: 3px;
   width: 1px;
-  background: var(--glass-border);
+  background: var(--card-border);
 }
 
 .entry-head {

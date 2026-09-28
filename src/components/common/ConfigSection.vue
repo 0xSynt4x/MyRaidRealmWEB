@@ -49,7 +49,7 @@ function toggle() {
 
 <style scoped>
 .config-section {
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--card-border);
 }
 
 .section-header {

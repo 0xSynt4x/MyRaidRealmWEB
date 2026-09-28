@@ -45,8 +45,8 @@ const iconClass = computed(() => {
   align-items: center;
   gap: 10px;
   padding: 12px 16px;
-  border-radius: 8px;
-  background: var(--bg-card);
+  border-radius: var(--ui-radius-sm);
+  background: var(--card-bg-strong);
   box-shadow: var(--shadow-md);
   border-left: 4px solid;
   font-size: var(--text-sm);

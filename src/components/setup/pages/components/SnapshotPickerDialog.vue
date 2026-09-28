@@ -136,7 +136,7 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border-radius: var(--radius-lg);
+  border-radius: var(--ui-radius-lg);
   border: 1px solid var(--card-border);
   background: var(--card-bg-strong);
   background-image: var(--card-sheen);
@@ -162,7 +162,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 10px;
   padding: 12px 14px;
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--card-border);
   background: var(--gradient-subtle);
 }
 
@@ -202,7 +202,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  border-radius: var(--radius-md);
+  border-radius: var(--ui-radius-sm);
   border: 1px solid var(--control-border);
   background: var(--control-surface-subtle);
   color: var(--control-text-strong);
@@ -240,7 +240,7 @@ onUnmounted(() => {
   text-align: left;
   cursor: pointer;
   border: 1px solid transparent;
-  border-radius: var(--radius-md);
+  border-radius: var(--ui-radius-md);
   background: transparent;
   transition:
     border-color var(--motion-fast),
@@ -283,7 +283,7 @@ onUnmounted(() => {
 .dialog-hint {
   margin: 0;
   padding: 8px 14px 10px;
-  border-top: 1px solid var(--border-light);
+  border-top: 1px solid var(--card-border);
   text-align: center;
   font-size: calc(11px * var(--ui-font-scale));
   color: var(--text-secondary);

@@ -389,16 +389,17 @@ watch([hasData, factionRelations, worldNetwork, theme], debouncedInitNetwork, { 
   flex-direction: column;
   height: 100%;
   min-height: 0;
-  background: var(--bg-primary);
+  background: transparent;
 }
 
 .stats-bar {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-  padding: 12px 16px;
-  background: var(--bg-card);
-  border-bottom: 1px solid var(--border-light);
+  /* 上方不留白：外框已给 12px，这里再叠一层会让统计条上下不等距 */
+  padding: 0 16px 12px;
+  background: var(--card-bg-strong);
+  border-bottom: 1px solid var(--card-border);
 }
 
 .stat-item {
@@ -435,14 +436,14 @@ watch([hasData, factionRelations, worldNetwork, theme], debouncedInitNetwork, { 
   overflow-y: auto;
   overflow-x: hidden;
   overscroll-behavior: contain;
-  padding: 12px 12px 8px;
+  /* 内距由外框 OverlayPanel .panel-body 统一给，面板自己不再叠加 */
   display: flex;
   flex-direction: column;
 }
 
 .faction-graph {
-  background: var(--bg-card);
-  border-radius: 8px;
+  background: var(--card-bg-strong);
+  border-radius: var(--ui-radius-md);
   padding: 12px;
   box-shadow: var(--shadow-sm);
   position: relative;
@@ -483,7 +484,7 @@ watch([hasData, factionRelations, worldNetwork, theme], debouncedInitNetwork, { 
 @media (max-width: 900px) {
   .stats-bar {
     gap: 8px;
-    padding: 10px 12px;
+    padding: 0 12px 10px;
   }
 
   .stat-item {
@@ -492,10 +493,6 @@ watch([hasData, factionRelations, worldNetwork, theme], debouncedInitNetwork, { 
 }
 
 @media (max-width: 600px) {
-  .graph-area {
-    padding: 8px;
-  }
-
   .faction-graph {
     padding: 8px;
     min-height: clamp(220px, 50vh, 340px);

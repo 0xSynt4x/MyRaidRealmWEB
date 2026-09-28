@@ -48,6 +48,7 @@
           :key="index"
           :class="[
             'shop-item',
+            'ui-card',
             `rarity-border-${getQualityLevel(item.品质)}`,
             { pulsing: isShopItemChanged(item.商品类型, item.名称) },
           ]"
@@ -347,9 +348,11 @@ async function handleBuy(shopItem: (typeof shopItems.value)[0]) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
+  padding: 16px 18px;
+  /* 与抽奖面板头部等高：内距 32px + 内容最高约 44px，否则切换面板时头部会跳高 */
+  min-height: 76px;
   background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary, #7c3aed));
-  border-radius: 12px;
+  border-radius: var(--ui-radius-lg);
   color: white;
   box-shadow: var(--shadow-md);
 }
@@ -388,7 +391,7 @@ async function handleBuy(shopItem: (typeof shopItems.value)[0]) {
   padding: 8px 12px;
   background: rgba(255, 255, 255, 0.2);
   border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 16px;
+  border-radius: var(--ui-radius-sm);
   color: white;
   font-size: var(--text-xs);
   font-weight: 600;
@@ -409,7 +412,7 @@ async function handleBuy(shopItem: (typeof shopItems.value)[0]) {
   padding: 8px 10px;
   background: rgba(255, 255, 255, 0.2);
   border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 8px;
+  border-radius: var(--ui-radius-sm);
   color: white;
   cursor: pointer;
   transition: all 200ms ease;
@@ -426,8 +429,8 @@ async function handleBuy(shopItem: (typeof shopItems.value)[0]) {
   justify-content: center;
   gap: 12px;
   padding: 10px 16px;
-  background: var(--bg-card);
-  border-radius: 10px;
+  background: var(--card-bg-strong);
+  border-radius: var(--ui-radius-md);
   box-shadow: var(--shadow-sm);
 }
 
@@ -445,7 +448,7 @@ async function handleBuy(shopItem: (typeof shopItems.value)[0]) {
   align-items: center;
   gap: 4px;
   background: var(--bg-primary);
-  border-radius: 16px;
+  border-radius: var(--ui-radius-md);
   padding: 4px 8px;
 }
 
@@ -487,7 +490,7 @@ async function handleBuy(shopItem: (typeof shopItems.value)[0]) {
   padding: 6px 16px;
   background: var(--accent-primary);
   border: none;
-  border-radius: 16px;
+  border-radius: var(--ui-radius-sm);
   color: white;
   font-size: var(--text-xs);
   font-weight: 600;
@@ -507,8 +510,8 @@ async function handleBuy(shopItem: (typeof shopItems.value)[0]) {
 
 /* 商城区域 */
 .shop-section {
-  background: var(--bg-card);
-  border-radius: 10px;
+  background: var(--card-bg-strong);
+  border-radius: var(--ui-radius-md);
   padding: 12px;
   box-shadow: var(--shadow-sm);
 }
@@ -522,17 +525,14 @@ async function handleBuy(shopItem: (typeof shopItems.value)[0]) {
 
 .shop-item {
   --shop-accent: var(--accent-primary);
+  /* 底座（底色 / 描边 / 圆角 / 阴影）来自全局 .ui-card，这里只留本组件的差异 */
   display: flex;
   flex-direction: column;
   gap: 8px;
   padding: 12px;
-  background: var(--card-bg);
   backdrop-filter: var(--glass-blur-light);
   -webkit-backdrop-filter: var(--glass-blur-light);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--card-border);
   border-top: 3px solid var(--shop-accent);
-  box-shadow: var(--card-shadow);
   transition:
     box-shadow var(--motion-normal),
     border-color var(--motion-normal),
@@ -617,7 +617,7 @@ async function handleBuy(shopItem: (typeof shopItems.value)[0]) {
 
 .rarity-badge {
   padding: 2px 8px;
-  border-radius: 10px;
+  border-radius: var(--ui-radius-sm);
   font-size: calc(10px * var(--ui-font-scale));
   font-weight: 500;
   color: white;
@@ -649,7 +649,7 @@ async function handleBuy(shopItem: (typeof shopItems.value)[0]) {
   gap: 8px;
   margin-top: auto;
   padding-top: 8px;
-  border-top: 1px solid var(--border-light);
+  border-top: 1px solid var(--card-border);
 }
 
 .price {
@@ -670,7 +670,7 @@ async function handleBuy(shopItem: (typeof shopItems.value)[0]) {
   padding: 6px 12px;
   background: var(--accent-primary);
   border: none;
-  border-radius: 6px;
+  border-radius: var(--ui-radius-sm);
   color: white;
   font-size: var(--text-xs);
   font-weight: 600;

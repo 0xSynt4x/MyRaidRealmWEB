@@ -104,9 +104,9 @@ watch(
 .selector-group input {
   width: 100%;
   padding: 8px 12px;
-  border: 1px solid var(--border-light);
-  border-radius: 8px;
-  background: var(--bg-card);
+  border: 1px solid var(--card-border);
+  border-radius: var(--ui-radius-sm);
+  background: var(--card-bg-strong);
   color: var(--text-primary);
   font-size: calc(13px * var(--ui-font-scale));
   transition: border-color 0.2s ease;

@@ -74,9 +74,9 @@ function removeRule(index: number) {
 .rule-item input {
   flex: 1;
   padding: 8px 12px;
-  border: 1px solid var(--border-light);
-  border-radius: 8px;
-  background: var(--bg-card);
+  border: 1px solid var(--card-border);
+  border-radius: var(--ui-radius-sm);
+  background: var(--card-bg-strong);
   color: var(--text-primary);
   font-size: calc(13px * var(--ui-font-scale));
   transition: border-color 0.2s ease;
@@ -91,9 +91,9 @@ function removeRule(index: number) {
   width: 32px;
   height: 32px;
   padding: 0;
-  border: 1px solid var(--border-light);
-  border-radius: 6px;
-  background: var(--bg-card);
+  border: 1px solid var(--card-border);
+  border-radius: var(--ui-radius-sm);
+  background: var(--card-bg-strong);
   color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.2s ease;
@@ -119,8 +119,8 @@ function removeRule(index: number) {
   justify-content: center;
   gap: 6px;
   padding: 8px 12px;
-  border: 1px dashed var(--border-light);
-  border-radius: 8px;
+  border: 1px dashed var(--card-border);
+  border-radius: var(--ui-radius-sm);
   background: transparent;
   color: var(--text-secondary);
   font-size: calc(13px * var(--ui-font-scale));

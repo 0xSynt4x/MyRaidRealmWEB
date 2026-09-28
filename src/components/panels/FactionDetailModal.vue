@@ -291,7 +291,7 @@ function handleClose() {
   background: var(--bg-primary);
   border-radius: 4px;
   overflow: hidden;
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--card-border);
 }
 
 .gauge-fill {
@@ -316,7 +316,7 @@ function handleClose() {
   gap: 10px;
   padding: 10px;
   background: var(--bg-primary);
-  border-radius: 6px;
+  border-radius: var(--ui-radius-sm);
 }
 
 .stat-icon {
@@ -344,7 +344,7 @@ function handleClose() {
 
 .stat-bar {
   height: 4px;
-  background: var(--bg-card);
+  background: var(--card-bg-strong);
   border-radius: 2px;
   overflow: hidden;
 }
@@ -443,7 +443,7 @@ function handleClose() {
   background: var(--bg-primary);
   border-radius: 4px;
   padding: 8px;
-  border-left: 3px solid var(--border-light);
+  border-left: 3px solid var(--card-border);
   transition: all 200ms ease;
 }
 

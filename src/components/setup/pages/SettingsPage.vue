@@ -30,7 +30,7 @@
         </div>
         <div class="config-row">
           <label>{{ t('common.language') }}</label>
-          <select v-model="locale" class="setup-field-input">
+          <select v-model="locale" class="ui-control">
             <option value="zh-CN">{{ t('common.language.zh-CN') }}</option>
             <option value="en">{{ t('common.language.en') }}</option>
           </select>
@@ -132,7 +132,7 @@
                   <div class="config-grid">
                     <div class="config-row">
                       <label><i class="ti ti-cloud"></i> {{ t('settings.source') }}</label>
-                      <select v-model="api.source" class="setup-field-input" @change="handleCardSourceChange(index)">
+                      <select v-model="api.source" class="ui-control" @change="handleCardSourceChange(index)">
                         <option value="openai_compatible">OpenAI</option>
                       </select>
                     </div>
@@ -143,7 +143,7 @@
                         v-model="api.apiurl"
                         type="text"
                         :placeholder="t('settings.apiUrlPlaceholder')"
-                        class="setup-field-input"
+                        class="ui-control"
                       />
                     </div>
 
@@ -153,7 +153,7 @@
                         v-model="api.key"
                         type="password"
                         :placeholder="t('settings.apiKeyPlaceholder')"
-                        class="setup-field-input"
+                        class="ui-control"
                       />
                     </div>
 
@@ -162,7 +162,7 @@
                       <select
                         v-if="api.availableModels.length > 0"
                         v-model="api.model"
-                        class="model-select setup-field-input"
+                        class="model-select ui-control"
                       >
                         <option value="" disabled>{{ t('settings.selectModel') }}</option>
                         <option v-for="model in api.availableModels" :key="model" :value="model">{{ model }}</option>
@@ -172,7 +172,7 @@
                         v-model="api.model"
                         type="text"
                         :placeholder="t('settings.modelPlaceholder')"
-                        class="model-input setup-field-input"
+                        class="model-input ui-control"
                       />
                       <button
                         class="fetch-btn setup-chip-btn"
@@ -1475,7 +1475,7 @@ async function startGame() {
   margin-bottom: 24px;
   background: color-mix(in srgb, var(--accent-primary) 8%, var(--card-bg-strong));
   border: 1px solid color-mix(in srgb, var(--accent-primary) 22%, var(--card-border));
-  border-radius: var(--radius-lg);
+  border-radius: var(--ui-radius-lg);
   box-shadow: var(--card-shadow);
   backdrop-filter: var(--glass-blur-light);
   -webkit-backdrop-filter: var(--glass-blur-light);
@@ -1513,7 +1513,7 @@ async function startGame() {
 
 .config-section {
   background: var(--card-bg-strong);
-  border-radius: var(--radius-lg);
+  border-radius: var(--ui-radius-lg);
   padding: 16px;
   border: 1px solid var(--card-border);
   box-shadow: var(--card-shadow);
@@ -1556,7 +1556,7 @@ async function startGame() {
   border: 1px solid var(--control-border);
   color: var(--accent-primary);
   background: var(--control-bg);
-  border-radius: var(--radius-md);
+  border-radius: var(--ui-radius-sm);
   padding: 6px 10px;
   box-shadow: var(--control-shadow);
   cursor: pointer;
@@ -1588,7 +1588,7 @@ async function startGame() {
   gap: 6px;
   padding: 16px 12px;
   border: 1px solid var(--control-border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--ui-radius-sm);
   background: var(--control-bg);
   box-shadow: var(--control-shadow);
   cursor: pointer;
@@ -1634,7 +1634,7 @@ async function startGame() {
   gap: 8px;
   margin: 0 0 12px;
   padding: 10px 12px;
-  border-radius: var(--radius-md);
+  border-radius: var(--ui-radius-md);
   border: 1px solid color-mix(in srgb, var(--accent-warning, #f59e0b) 30%, var(--card-border));
   background: color-mix(in srgb, var(--accent-warning, #f59e0b) 10%, var(--card-bg-strong));
   color: var(--text-secondary);
@@ -1662,7 +1662,7 @@ async function startGame() {
   flex: 1 1 0;
   min-height: 42px;
   border: 1px solid var(--control-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--ui-radius-sm);
   background: var(--control-bg);
   box-shadow: var(--control-shadow);
   color: var(--text-secondary);
@@ -1699,7 +1699,7 @@ async function startGame() {
 .settings-management-panel .settings-status-card,
 .settings-management-panel .worldbook-entry-list-card,
 .settings-management-panel .preset-detail-note-card {
-  border-radius: var(--radius-lg);
+  border-radius: var(--ui-radius-lg);
   border: 1px solid color-mix(in srgb, var(--accent-primary) 12%, var(--card-border));
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 28%),
@@ -1786,7 +1786,7 @@ async function startGame() {
   border: 1px solid rgba(var(--accent-primary-rgb), 0.14);
   background: color-mix(in srgb, var(--card-bg-strong) 76%, transparent);
   color: var(--text-secondary);
-  border-radius: 12px;
+  border-radius: var(--ui-radius-sm);
   padding: 10px 14px;
   display: inline-flex;
   align-items: center;
@@ -1922,7 +1922,7 @@ async function startGame() {
   flex-direction: column;
   gap: 3px;
   padding: 10px 12px;
-  border-radius: 12px;
+  border-radius: var(--ui-radius-md);
   border: 1px solid rgba(var(--accent-primary-rgb), 0.08);
   background: color-mix(in srgb, var(--accent-primary) 6%, var(--card-bg-strong));
 }
@@ -1967,7 +1967,7 @@ async function startGame() {
   flex-direction: column;
   gap: 5px;
   padding: 11px 12px;
-  border-radius: 12px;
+  border-radius: var(--ui-radius-md);
   border: 1px dashed rgba(var(--accent-primary-rgb), 0.14);
   background: rgba(var(--accent-primary-rgb), 0.025);
 }
@@ -1990,7 +1990,7 @@ async function startGame() {
   padding: 28px 20px;
   text-align: center;
   color: var(--text-secondary);
-  border-radius: var(--radius-lg);
+  border-radius: var(--ui-radius-lg);
   border: 1px dashed rgba(var(--accent-primary-rgb), 0.2);
   background: color-mix(in srgb, var(--card-bg-strong) 72%, transparent);
 }
@@ -2027,7 +2027,7 @@ async function startGame() {
 
 .settings-management-panel .worldbook-entry-item {
   border: 1px solid rgba(var(--accent-primary-rgb), 0.12);
-  border-radius: 14px;
+  border-radius: var(--ui-radius-md);
   background: color-mix(in srgb, var(--accent-primary) 5%, var(--card-bg-strong));
   color: inherit;
   text-align: left;
@@ -2072,7 +2072,7 @@ async function startGame() {
   color: inherit;
   text-align: left;
   cursor: pointer;
-  border-radius: 12px;
+  border-radius: var(--ui-radius-md);
 }
 
 .settings-management-panel .compact-worldbook-trigger:focus-visible,
@@ -2283,7 +2283,7 @@ async function startGame() {
   width: 100%;
   min-height: 44px;
   border: 1px solid rgba(var(--accent-primary-rgb), 0.14);
-  border-radius: 12px;
+  border-radius: var(--ui-radius-md);
   background: rgba(var(--accent-primary-rgb), 0.03);
   color: var(--text-primary);
   padding: 9px 12px;
@@ -2333,7 +2333,7 @@ async function startGame() {
 
 .settings-management-panel .compact-worldbook-note {
   padding: 9px 11px;
-  border-radius: 12px;
+  border-radius: var(--ui-radius-md);
 }
 
 .settings-management-panel .compact-worldbook-expand {
@@ -2349,7 +2349,7 @@ async function startGame() {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 4px;
   padding: 3px;
-  border-radius: 12px;
+  border-radius: var(--ui-radius-md);
   background: rgba(var(--accent-primary-rgb), 0.055);
   border: 1px solid rgba(var(--accent-primary-rgb), 0.1);
 }
@@ -2364,7 +2364,7 @@ async function startGame() {
   min-height: 32px;
   padding: 6px 8px;
   border: none;
-  border-radius: 10px;
+  border-radius: var(--ui-radius-sm);
   background: transparent;
   color: var(--text-secondary);
   font: inherit;
@@ -2444,7 +2444,7 @@ async function startGame() {
   margin-top: 12px;
   padding: 12px 14px;
   border: 1px solid var(--card-border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--ui-radius-lg);
   background: color-mix(in srgb, var(--card-bg-strong) 60%, var(--bg-card-solid));
 }
 
@@ -2475,7 +2475,7 @@ async function startGame() {
   align-items: center;
   gap: 4px;
   padding: 2px 4px;
-  border-radius: var(--radius-md);
+  border-radius: var(--ui-radius-md);
 }
 
 .api-role-row.active {
@@ -2543,7 +2543,7 @@ async function startGame() {
   gap: 8px;
   margin-top: 14px;
   padding-top: 12px;
-  border-top: 1px solid var(--border-light);
+  border-top: 1px solid var(--card-border);
   font-size: 13px;
   color: var(--text-primary);
   cursor: pointer;
@@ -2556,7 +2556,7 @@ async function startGame() {
 
 .api-card {
   border: 1px solid var(--card-border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--ui-radius-lg);
   background: color-mix(in srgb, var(--card-bg-strong) 76%, var(--bg-card-solid));
   box-shadow: var(--shadow-sm);
   overflow: hidden;
@@ -2568,7 +2568,7 @@ async function startGame() {
   justify-content: space-between;
   gap: 8px;
   padding: 10px 12px;
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--card-border);
   background: color-mix(in srgb, var(--gradient-subtle) 60%, transparent);
 }
 
@@ -2625,12 +2625,12 @@ async function startGame() {
   flex-shrink: 0;
 }
 
-.config-row input:not(.setup-field-input),
-.config-row select:not(.setup-field-input) {
+.config-row input:not(.ui-control),
+.config-row select:not(.ui-control) {
   flex: 1;
   padding: 10px 12px;
   border: 1px solid var(--control-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--ui-radius-md);
   background: var(--control-bg);
   font-size: calc(13px * var(--ui-font-scale));
   color: var(--text-primary);
@@ -2651,7 +2651,7 @@ async function startGame() {
   gap: 6px;
   padding: 10px 16px;
   border: 1px solid var(--control-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--ui-radius-sm);
   background: var(--control-bg);
   box-shadow: var(--control-shadow);
   cursor: pointer;
@@ -2696,7 +2696,7 @@ async function startGame() {
   justify-content: center;
   background: var(--control-bg);
   border: 1px solid var(--control-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--ui-radius-sm);
   box-shadow: var(--control-shadow);
   cursor: pointer;
   color: var(--text-secondary);
@@ -2731,7 +2731,7 @@ async function startGame() {
   border: 1px solid var(--control-border);
   color: var(--accent-primary);
   background: var(--control-bg);
-  border-radius: var(--radius-md);
+  border-radius: var(--ui-radius-sm);
   padding: 8px 12px;
   display: flex;
   align-items: center;
@@ -2760,7 +2760,7 @@ async function startGame() {
   padding: 10px 12px;
   background: color-mix(in srgb, var(--accent-danger) 10%, var(--card-bg-strong));
   border: 1px solid color-mix(in srgb, var(--accent-danger) 30%, var(--card-border));
-  border-radius: var(--radius-md);
+  border-radius: var(--ui-radius-md);
   color: var(--accent-danger);
   font-size: calc(13px * var(--ui-font-scale));
   margin-top: 12px;
@@ -2776,7 +2776,7 @@ async function startGame() {
   padding: 14px 32px;
   background: var(--control-bg);
   border: 1px solid var(--control-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--ui-radius-sm);
   box-shadow: var(--control-shadow);
   color: var(--text-secondary);
   font-size: calc(15px * var(--ui-font-scale));
@@ -2804,7 +2804,7 @@ async function startGame() {
   padding: 14px 48px;
   background: var(--gradient-primary);
   border: 1px solid rgba(var(--accent-primary-rgb), 0.36);
-  border-radius: var(--radius-md);
+  border-radius: var(--ui-radius-sm);
   box-shadow: 0 10px 24px rgba(var(--accent-primary-rgb), 0.18);
   color: white;
   font-size: calc(16px * var(--ui-font-scale));

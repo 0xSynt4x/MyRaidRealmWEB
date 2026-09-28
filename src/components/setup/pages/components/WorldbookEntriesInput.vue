@@ -115,9 +115,9 @@ function removeEntry(index: number) {
   gap: 8px;
   align-items: flex-start;
   padding: 12px;
-  border: 1px solid var(--border-light);
-  border-radius: 8px;
-  background: var(--bg-card);
+  border: 1px solid var(--card-border);
+  border-radius: var(--ui-radius-sm);
+  background: var(--card-bg-strong);
   transition: border-color 0.2s ease;
 }
 
@@ -135,8 +135,8 @@ function removeEntry(index: number) {
 .entry-name {
   width: 100%;
   padding: 8px 12px;
-  border: 1px solid var(--border-light);
-  border-radius: 6px;
+  border: 1px solid var(--card-border);
+  border-radius: var(--ui-radius-sm);
   background: var(--bg-primary);
   color: var(--text-primary);
   font-size: calc(13px * var(--ui-font-scale));
@@ -154,8 +154,8 @@ function removeEntry(index: number) {
   width: 180px;
   max-width: 100%;
   padding: 8px 12px;
-  border: 1px solid var(--border-light);
-  border-radius: 6px;
+  border: 1px solid var(--card-border);
+  border-radius: var(--ui-radius-sm);
   background: var(--bg-primary);
   color: var(--text-primary);
   font-size: calc(13px * var(--ui-font-scale));
@@ -164,8 +164,8 @@ function removeEntry(index: number) {
 .entry-content {
   width: 100%;
   padding: 8px 12px;
-  border: 1px solid var(--border-light);
-  border-radius: 6px;
+  border: 1px solid var(--card-border);
+  border-radius: var(--ui-radius-sm);
   background: var(--bg-primary);
   color: var(--text-primary);
   font-size: calc(13px * var(--ui-font-scale));
@@ -185,9 +185,9 @@ function removeEntry(index: number) {
   width: 32px;
   height: 32px;
   padding: 0;
-  border: 1px solid var(--border-light);
-  border-radius: 6px;
-  background: var(--bg-card);
+  border: 1px solid var(--card-border);
+  border-radius: var(--ui-radius-sm);
+  background: var(--card-bg-strong);
   color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.2s ease;
@@ -209,8 +209,8 @@ function removeEntry(index: number) {
   justify-content: center;
   gap: 6px;
   padding: 10px 16px;
-  border: 1px dashed var(--border-light);
-  border-radius: 8px;
+  border: 1px dashed var(--card-border);
+  border-radius: var(--ui-radius-sm);
   background: transparent;
   color: var(--text-secondary);
   font-size: calc(13px * var(--ui-font-scale));

@@ -24,7 +24,7 @@
      扁平化改版（方向 A）：底色压成 #0d0c0b，金色换成更淡的 #c9a86a。 */
   --bg-primary: #0d0c0b;
   --bg-secondary: #1c1813;
-  --bg-card: rgba(28, 24, 19, 0.92);
+  --bg-card: var(--card-bg-strong);
   --bg-card-solid: #1c1813;
   --text-primary: #ede7d9;
   --text-secondary: rgba(237, 231, 217, 0.64);
@@ -110,7 +110,7 @@
   --radius-xl: 2px;
 
   /* 语义化令牌（统一卡片/控件） */
-  --card-bg: var(--glass-bg);
+  --card-bg: var(--card-bg-strong);
   --card-bg-strong: var(--glass-bg-heavy);
   --card-sheen: none;
   --card-border: var(--glass-border);
@@ -142,12 +142,6 @@
   --footer-btn-primary-color: #15120d;
   --footer-btn-primary-text-shadow: none;
   --footer-btn-primary-shadow: none;
-  --compact-confirm-primary-bg: var(--accent-primary);
-  --compact-confirm-warning-bg: var(--accent-warning);
-  --compact-confirm-danger-bg: var(--accent-danger);
-  --compact-confirm-primary-border: var(--accent-primary);
-  --compact-confirm-warning-border: var(--accent-warning);
-  --compact-confirm-danger-border: var(--accent-danger);
 
   --status-info: var(--accent-primary);
   --status-success: var(--accent-success);
@@ -205,7 +199,7 @@
   /* 扁平化改版（方向 A）：与 :root 同步，底色更冷、金色更淡 */
   --bg-primary: #0d0c0b;
   --bg-secondary: #16130e;
-  --bg-card: rgba(22, 19, 14, 0.94);
+  --bg-card: var(--card-bg-strong);
   --bg-card-solid: #16130e;
   --text-primary: #f0ebdf;
   --text-secondary: rgba(240, 235, 223, 0.62);
@@ -241,7 +235,7 @@
   --glass-blur: blur(0px);
   --glass-blur-light: blur(0px);
 
-  --card-bg: rgba(22, 19, 14, 0.94);
+  --card-bg: var(--card-bg-strong);
   --card-bg-strong: rgba(26, 22, 16, 0.97);
   --card-sheen: none;
   --control-bg: rgba(20, 17, 12, 0.96);
@@ -328,7 +322,7 @@ optgroup {
 [data-theme='steelcool'] {
   --bg-primary: hsl(212, 10%, 88%);
   --bg-secondary: hsl(212, 9%, 83%);
-  --bg-card: rgba(223, 229, 236, 0.88);
+  --bg-card: var(--card-bg-strong);
   --bg-card-solid: hsl(210, 12%, 91%);
   --text-primary: hsl(214, 14%, 19%);
   --text-secondary: hsl(214, 10%, 34%);
@@ -400,7 +394,7 @@ optgroup {
   --shadow-card-hover:
     0 14px 36px rgba(54, 69, 90, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.8), inset 0 -1px 0 rgba(105, 118, 135, 0.24);
 
-  --card-bg: var(--glass-bg);
+  --card-bg: var(--card-bg-strong);
   --card-bg-strong: var(--glass-bg-heavy);
   --card-border: rgba(255, 255, 255, 0.54);
   --card-shadow: var(--shadow-glass);
@@ -472,12 +466,6 @@ optgroup {
   --status-success: var(--accent-success);
   --status-warning: var(--accent-warning);
   --status-danger: var(--accent-danger);
-  --compact-confirm-primary-bg: var(--accent-primary);
-  --compact-confirm-primary-border: var(--accent-primary);
-  --compact-confirm-warning-bg: var(--accent-warning);
-  --compact-confirm-warning-border: var(--accent-warning);
-  --compact-confirm-danger-bg: var(--accent-danger);
-  --compact-confirm-danger-border: var(--accent-danger);
 
   /* 弹窗遮罩底色：这个变量原先只在默认主题和深色主题里写过，
      其余主题不重写就会继承默认的近黑暖色 —— 浅色主题一开弹窗，整块被压成暗灰。
@@ -534,7 +522,6 @@ optgroup {
 [data-theme='steelcool'] .ui-control,
 [data-theme='steelcool'] .config-row input,
 [data-theme='steelcool'] .config-row select,
-[data-theme='steelcool'] .setup-field-input,
 [data-theme='steelcool'] .fetch-btn,
 [data-theme='steelcool'] .presets-bar button,
 [data-theme='steelcool'] .mode-btn,
@@ -560,7 +547,6 @@ optgroup {
 [data-theme='steelcool'] .ui-control:hover,
 [data-theme='steelcool'] .config-row input:hover,
 [data-theme='steelcool'] .config-row select:hover,
-[data-theme='steelcool'] .setup-field-input:hover,
 [data-theme='steelcool'] .fetch-btn:hover,
 [data-theme='steelcool'] .presets-bar button:hover,
 [data-theme='steelcool'] .mode-btn:hover,
@@ -679,7 +665,7 @@ optgroup {
 [data-theme='solarized'] {
   --bg-primary: #002b36;
   --bg-secondary: #073642;
-  --bg-card: rgba(7, 54, 66, 0.86);
+  --bg-card: var(--card-bg-strong);
   --bg-card-solid: #01323f;
   --text-primary: #93a1a1;
   --text-secondary: #839496;
@@ -727,7 +713,7 @@ optgroup {
   --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.24), inset 0 1px 0 rgba(147, 161, 161, 0.08);
   --shadow-card-hover: 0 12px 40px rgba(38, 139, 210, 0.18), 0 4px 12px rgba(0, 0, 0, 0.22);
 
-  --card-bg: rgba(7, 54, 66, 0.72);
+  --card-bg: var(--card-bg-strong);
   --card-bg-strong: rgba(11, 57, 69, 0.86);
   --card-border: rgba(131, 148, 150, 0.28);
   --card-shadow: var(--shadow-glass);
@@ -761,12 +747,6 @@ optgroup {
   --status-success: var(--accent-success);
   --status-warning: var(--accent-warning);
   --status-danger: var(--accent-danger);
-  --compact-confirm-primary-bg: var(--accent-primary);
-  --compact-confirm-primary-border: var(--accent-primary);
-  --compact-confirm-warning-bg: var(--accent-warning);
-  --compact-confirm-warning-border: var(--accent-warning);
-  --compact-confirm-danger-bg: var(--accent-danger);
-  --compact-confirm-danger-border: var(--accent-danger);
   /* 弹窗遮罩底色：本主题自带（不重写会继承默认的近黑暖色，色相不搭） */
   --overlay-backdrop: rgba(0, 22, 28, 0.7);
 
@@ -860,7 +840,7 @@ optgroup {
 [data-theme='everforest1980s'] {
   --bg-primary: #2d353b;
   --bg-secondary: #343f44;
-  --bg-card: rgba(55, 65, 69, 0.86);
+  --bg-card: var(--card-bg-strong);
   --bg-card-solid: #313b40;
   --text-primary: #d3c6aa;
   --text-secondary: #b9ad93;
@@ -908,7 +888,7 @@ optgroup {
   --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.24), inset 0 1px 0 rgba(211, 198, 170, 0.08);
   --shadow-card-hover: 0 12px 40px rgba(127, 187, 179, 0.14), 0 4px 12px rgba(0, 0, 0, 0.22);
 
-  --card-bg: rgba(55, 65, 69, 0.72);
+  --card-bg: var(--card-bg-strong);
   --card-bg-strong: rgba(58, 70, 75, 0.86);
   --card-border: rgba(185, 173, 147, 0.26);
   --card-shadow: var(--shadow-glass);
@@ -953,12 +933,6 @@ optgroup {
   --status-success: var(--accent-success);
   --status-warning: var(--accent-warning);
   --status-danger: var(--accent-danger);
-  --compact-confirm-primary-bg: var(--accent-primary);
-  --compact-confirm-primary-border: var(--accent-primary);
-  --compact-confirm-warning-bg: var(--accent-warning);
-  --compact-confirm-warning-border: var(--accent-warning);
-  --compact-confirm-danger-bg: var(--accent-danger);
-  --compact-confirm-danger-border: var(--accent-danger);
   /* 弹窗遮罩底色：本主题自带（不重写会继承默认的近黑暖色，色相不搭） */
   --overlay-backdrop: rgba(24, 30, 33, 0.7);
 
@@ -1067,7 +1041,7 @@ optgroup {
 [data-theme='wuxia'] {
   --bg-primary: hsl(38, 38%, 94%);
   --bg-secondary: hsl(36, 33%, 89%);
-  --bg-card: rgba(244, 235, 221, 0.84);
+  --bg-card: var(--card-bg-strong);
   --bg-card-solid: hsl(35, 28%, 91%);
   --text-primary: hsl(24, 20%, 23%);
   --text-secondary: hsl(17, 34%, 37%);
@@ -1117,7 +1091,7 @@ optgroup {
      原因：它们的值是 var(别的变量)，而 var() 是在「声明它的那一层」就代入完的
      —— 写在 :root 里就只用默认主题的值算一次，主题覆盖了源色也传不进来。
      漏列 = 直接继承默认主题（近黑暖调）的深色值，浅色主题会当场变脏。 */
-  --card-bg: var(--glass-bg);
+  --card-bg: var(--card-bg-strong);
   --card-bg-strong: var(--glass-bg-heavy);
   --card-shadow: var(--shadow-glass);
   --card-shadow-hover: var(--shadow-card-hover);
@@ -1133,12 +1107,6 @@ optgroup {
   --footer-btn-secondary-color: var(--control-text-strong);
   --footer-btn-primary-bg: var(--accent-primary);
   --footer-btn-primary-border: var(--accent-primary);
-  --compact-confirm-primary-bg: var(--accent-primary);
-  --compact-confirm-warning-bg: var(--accent-warning);
-  --compact-confirm-danger-bg: var(--accent-danger);
-  --compact-confirm-primary-border: var(--accent-primary);
-  --compact-confirm-warning-border: var(--accent-warning);
-  --compact-confirm-danger-border: var(--accent-danger);
   --status-info: var(--accent-primary);
   --status-success: var(--accent-success);
   --status-warning: var(--accent-warning);
@@ -1381,7 +1349,7 @@ body:has(iframe:fullscreen) {
 /* ========== 全局容器（兼容旧样式） ========== */
 .app-container {
   width: 100%;
-  background: var(--bg-card);
+  background: var(--card-bg-strong);
   font-family: var(--font-base);
   font-size: var(--text-sm);
   color: var(--text-primary);
@@ -1436,17 +1404,17 @@ button:disabled {
 *:focus-visible {
   outline: 2px solid rgba(var(--accent-primary-rgb), 0.5);
   outline-offset: 2px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--ui-radius-sm);
 }
 
 /* ========== 通用玻璃拟态工具类 ========== */
+/* 卡片容器：形态对齐项目现有卡片（13px 圆角、无光泽层、无模糊）。
+   悬停浮起拆到 .ui-card--interactive，只给可点击的卡片用，
+   纯展示型卡片套 .ui-card 不会跟着鼠标乱动。 */
 .ui-card {
   background: var(--card-bg-strong);
-  background-image: var(--card-sheen);
-  backdrop-filter: var(--glass-blur-light);
-  -webkit-backdrop-filter: var(--glass-blur-light);
   border: 1px solid var(--card-border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--ui-radius-md);
   box-shadow: var(--card-shadow);
   transition:
     box-shadow var(--motion-normal),
@@ -1454,15 +1422,72 @@ button:disabled {
     transform var(--motion-normal);
 }
 
-.ui-card:hover {
+.ui-card--interactive {
+  cursor: pointer;
+}
+
+.ui-card--interactive:hover {
   box-shadow: var(--card-shadow-hover);
   border-color: rgba(var(--accent-primary-rgb), 0.2);
   transform: translateY(-1px);
 }
 
+/* 图标方按钮：只负责「底色 / 描边 / 圆角 / 悬停 / 禁用态」，
+   宽高由使用处自己给 —— 设置面板是 40×38、弹窗里是 24/30，公共类不锁死尺寸。
+   危险变体单独一组，保证悬停时图标仍是红的，不会被强调色盖掉。 */
+.ui-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--glass-bg);
+  color: var(--text-secondary);
+  border: 1px solid var(--card-border);
+  border-radius: var(--ui-radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast) ease;
+  flex-shrink: 0;
+}
+
+.ui-icon-btn:hover:not(:disabled) {
+  border-color: rgba(var(--accent-primary-rgb), 0.4);
+  color: var(--accent-primary);
+  background: rgba(var(--accent-primary-rgb), 0.08);
+}
+
+.ui-icon-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.ui-icon-btn.danger {
+  color: hsl(0, 84%, 60%);
+}
+
+.ui-icon-btn.danger:hover:not(:disabled) {
+  border-color: rgba(var(--accent-danger-rgb), 0.4);
+  color: hsl(0, 84%, 60%);
+  background: rgba(var(--accent-danger-rgb), 0.08);
+}
+
+/* 语义色变体：只换图标色，底色 / 描边 / 圆角 / 悬停与基础态共用同一套。
+   .accent 不用单独写悬停 —— 基础态的悬停本来就是强调色。 */
+.ui-icon-btn.accent {
+  color: var(--accent-primary);
+}
+
+.ui-icon-btn.warning {
+  color: var(--accent-warning);
+}
+
+.ui-icon-btn.warning:hover:not(:disabled) {
+  border-color: rgba(var(--accent-warning-rgb), 0.4);
+  color: var(--accent-warning);
+  background: rgba(var(--accent-warning-rgb), 0.08);
+}
+
 .ui-control {
   border: 1px solid var(--control-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--ui-radius-md);
   background: var(--control-bg-elevated);
   color: var(--text-primary);
   font-family: var(--font-base);
@@ -1499,20 +1524,18 @@ button:disabled {
   cursor: not-allowed;
 }
 
+/* 玻璃层基础：只负责「底色 + 模糊」，描边和阴影由使用处按需自己加
+   （各处的描边边数、模糊强度本来就不同，硬塞进公共类反而接不上）。 */
 .glass {
   background: var(--glass-bg);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--glass-border);
-  box-shadow: var(--shadow-glass);
+  backdrop-filter: var(--glass-blur-light);
+  -webkit-backdrop-filter: var(--glass-blur-light);
 }
 
 .glass-heavy {
   background: var(--glass-bg-heavy);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--glass-border);
-  box-shadow: var(--shadow-glass);
 }
 
 /* ========== 通用动画关键帧 ========== */
@@ -1643,7 +1666,7 @@ button:disabled {
   backdrop-filter: var(--glass-blur-light);
   -webkit-backdrop-filter: var(--glass-blur-light);
   border: 1px solid var(--card-border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--ui-radius-lg);
   padding: 14px;
   display: flex;
   flex-direction: column;
@@ -1707,8 +1730,8 @@ button:disabled {
   color: var(--text-tertiary);
   padding: 6px 8px;
   background: var(--gradient-subtle);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border-light);
+  border-radius: var(--ui-radius-sm);
+  border: 1px solid var(--card-border);
 }
 
 .card-hint.small {
@@ -1749,8 +1772,8 @@ button:disabled {
 .config-row input,
 .config-row select {
   padding: 8px 10px;
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-sm);
+  border: 1px solid var(--card-border);
+  border-radius: var(--ui-radius-sm);
   background: var(--glass-bg);
   backdrop-filter: var(--glass-blur-light);
   font-size: var(--text-xs);
@@ -1791,7 +1814,7 @@ button:disabled {
 .underline-input {
   flex: 1;
   border: none;
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--card-border);
   padding: 2px 4px;
   font-size: calc(13px * var(--ui-font-scale));
   background: transparent;
@@ -1818,7 +1841,7 @@ button:disabled {
 .underline-select {
   flex: 1;
   border: none;
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--card-border);
   padding: 2px 4px;
   font-size: calc(13px * var(--ui-font-scale));
   background: transparent;
@@ -1897,7 +1920,7 @@ button:disabled {
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   border: 1px solid var(--card-border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--ui-radius-lg);
   width: min(100%, var(--dialog-max-width));
   max-width: var(--dialog-max-width);
   max-height: var(--dialog-max-height);
@@ -1917,7 +1940,7 @@ button:disabled {
   align-items: center;
   padding: 14px 18px;
   background: var(--gradient-subtle);
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--card-border);
 }
 
 /* 对话框主体 */
@@ -1937,7 +1960,7 @@ button:disabled {
   gap: 12px;
   padding: 14px 18px;
   padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
-  border-top: 1px solid var(--border-light);
+  border-top: 1px solid var(--card-border);
   background: var(--gradient-subtle);
   flex-shrink: 0;
 }
@@ -1954,7 +1977,7 @@ button:disabled {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--radius-sm);
+  border-radius: var(--ui-radius-sm);
   transition: all var(--transition-normal);
   flex-shrink: 0;
 }
@@ -2019,7 +2042,7 @@ button:disabled {
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   border: 1px solid var(--card-border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--ui-radius-lg);
   box-shadow: var(--shadow-xl);
   width: min(100%, var(--dialog-max-width));
   max-width: var(--dialog-max-width);
@@ -2223,8 +2246,8 @@ button:disabled {
   background: var(--glass-bg);
   backdrop-filter: var(--glass-blur-light);
   -webkit-backdrop-filter: var(--glass-blur-light);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-md);
+  border: 1px solid var(--card-border);
+  border-radius: var(--ui-radius-md);
   padding: 4px 6px;
   margin-bottom: 8px;
   box-shadow: var(--shadow-sm);
@@ -2251,7 +2274,7 @@ button:disabled {
   color: var(--accent-primary);
   margin-bottom: 8px;
   padding-bottom: 4px;
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--card-border);
 }
 
 .section-icon {
@@ -2319,12 +2342,12 @@ button:disabled {
   flex: 1;
   min-width: 0;
   padding: 4px 8px;
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--card-border);
   border-radius: 4px;
   font-family: var(--font-base);
   font-size: var(--text-xs);
   color: var(--text-primary);
-  background: var(--bg-card);
+  background: var(--card-bg-strong);
   transition: border-color 200ms ease;
 }
 
@@ -2345,7 +2368,7 @@ button:disabled {
   flex: 1;
   padding: 12px 24px;
   border: 1px solid transparent;
-  border-radius: var(--radius-md);
+  border-radius: var(--ui-radius-sm);
   font-family: var(--font-base);
   font-size: var(--text-sm);
   font-weight: 600;
@@ -2425,7 +2448,7 @@ button:disabled {
   margin-top: 12px;
   margin-bottom: 6px;
   padding-bottom: 4px;
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--card-border);
 }
 
 /* ========== 统计栏系统 ========== */
@@ -2800,13 +2823,13 @@ button:disabled {
 
 .text-content h1 {
   font-size: 1.5em;
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--card-border);
   padding-bottom: 0.3em;
 }
 
 .text-content h2 {
   font-size: 1.3em;
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--card-border);
   padding-bottom: 0.2em;
 }
 
@@ -2831,7 +2854,7 @@ button:disabled {
 .text-content hr {
   margin: 1em 0;
   border: none;
-  border-top: 1px solid var(--border-light);
+  border-top: 1px solid var(--card-border);
 }
 
 /* Markdown 删除线 (~~text~~) */
@@ -2848,7 +2871,7 @@ button:disabled {
   margin: 0.8em 0;
   border-collapse: collapse;
   font-size: 0.95em;
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--card-border);
   border-radius: 4px;
   overflow: hidden;
 }
@@ -2861,14 +2884,14 @@ button:disabled {
   padding: 6px 10px;
   font-weight: 600;
   text-align: left;
-  border-bottom: 2px solid var(--border-light);
+  border-bottom: 2px solid var(--card-border);
   color: var(--text-primary);
   font-size: var(--text-sm);
 }
 
 .text-content td {
   padding: 5px 10px;
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--card-border);
   color: var(--text-primary);
 }
 
@@ -2928,7 +2951,7 @@ button:disabled {
   background-image: var(--card-sheen);
   backdrop-filter: var(--glass-blur-light);
   -webkit-backdrop-filter: var(--glass-blur-light);
-  border-radius: var(--radius-lg);
+  border-radius: var(--ui-radius-lg);
   padding: 18px;
   border: 1px solid var(--card-border);
   box-shadow: var(--card-shadow);
@@ -3001,7 +3024,7 @@ button:disabled {
     width: 100%;
     max-width: none;
     max-height: calc(100% - 16px);
-    border-radius: 12px;
+    border-radius: var(--ui-radius-md);
   }
 
   .dashboard-header {

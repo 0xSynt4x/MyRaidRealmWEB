@@ -786,9 +786,7 @@
   仓库级 `lint` error 即出自此处，本次一并消掉，仓库级 `lint` 回到 0 error。
 - 四道检查：`typecheck` ✓ ｜ `test` 107/107 ✓ ｜ `lint` 0 error（17 个存量 warning）✓ ｜ `build` ✓。
 
-### — feat: API 列表支持复制配置
-
-> 短哈希待回填（按约定并入下一次提交）。
+### `3f3ace4` — feat: API 列表支持复制配置
 
 - **Added** API 列表每张卡片新增**复制**按钮（在卡片头部那排图标里，位于删除左侧）：
   点一下把该条配置整份克隆（地址、密钥、模型、已拉取的模型列表），新条目紧跟原条目后面，
@@ -797,4 +795,34 @@
   副本不自动勾选成主 API / 辅助 API，参不参与重试仍由玩家自己勾（与删除时自动摘勾的逻辑对称）。
 - **Changed** `i18n` 增 `settings.duplicateApi`（中「复制此 API」/ 英「Duplicate this API」）。
 - **Changed** 玩家更新日志（`src/utils/changelog.ts`）新增 260929 一条「API 配置可一键复制」。
+- 四道检查：`typecheck` ✓ ｜ `test` 107/107 ✓ ｜ `lint` 0 error（17 个存量 warning）✓ ｜ `build` ✓。
+
+### — refactor(ui): 统一浮层令牌、图标按钮与面板内距
+
+- **Changed** 圆角与卡片底色收口到统一令牌：全项目 `var(--radius-*)` → `var(--ui-radius-*)`
+  （532 处，41 个 `.vue` 加 `global.css` / `setup-shared.css`）；`--bg-card` / `--card-bg`
+  在**变量定义层**统一指向 `--card-bg-strong`（12 处定义 + 39 处引用）—— 现在两者全项目零引用，
+  仅作兼容别名保留。改定义层而不是逐处替换，是为了后续新增引用自动同色。
+- **Changed** `.glass` / `.glass-heavy` 从「底色 + 模糊 + 四边描边 + 阴影」瘦成只给底色 + 模糊的
+  基础层；左侧栏与右侧栏接上 `.glass`（这两处原本就是「`--glass-bg` + `--glass-blur-light`」，
+  接线后视觉零变化）。
+- **Changed** `.ui-card` 从「20px 圆角 + 光泽层 + 悬停浮起」改为「13px + `--card-shadow`，
+  无光泽、无悬停」，悬停浮起拆成可选修饰类 `.ui-card--interactive`；6 处「四条声明与 `.ui-card`
+  完全一致」的卡片容器接上该类（零视觉变化）。
+- **Changed** 新增全局 `.ui-icon-btn`（只管底色 / 描边 / 圆角 / 悬停 / 禁用态，宽高由使用处给）
+  及 `.danger` / `.warning` / `.accent` 变体：设置面板 10 处 API 操作按钮、业务详情删除按钮、
+  确认框两个按钮统一接上，确认框自身皮肤瘦身约 120 行。顺手修掉「删除按钮 hover 反而不红」——
+  原先危险变体的悬停色被通用悬停规则盖掉了。
+- **Changed** 输入框样式收口到 `.ui-control`，替换 34 处 `.setup-field-input`（含删掉
+  `setup-shared.css` 里那份逐条重复的定义、`global.css` 里两条并行主题选择器）；
+  带框输入框现在只有一处来源。`.setup-underline-input`（下划线风格）按设计保留。
+- **Fixed** 清掉面板 / 弹窗自己叠加的内距：派系 24px、商业上边 24px、设置右侧 14px、
+  内容中心 `gap` 10px、业务详情弹窗 10px 等 → 内距只由外框统一给 12px。
+  赞赏页与笔记本按设计保留原内距。
+- **Changed** 商城 / 抽奖顶部积分栏等高：内距统一 `16px 18px`、积分图标统一 24px、
+  加 `min-height: 76px` 抹平两侧内容天然高度差（改前约 68px vs 73px）。
+- **Changed** 商业面板里那个「带边框圆角的小卡片」`.stat-item` 改名 `.stat-tile` ——
+  它与全局同名的「文字统计项」是两种东西，此前靠 scoped 覆盖共存。
+- **Removed** `--compact-confirm-*` 6 个变量在 5 个主题块里的 30 行定义（确认框已并入
+  `.ui-icon-btn` 体系，全项目零引用）。
 - 四道检查：`typecheck` ✓ ｜ `test` 107/107 ✓ ｜ `lint` 0 error（17 个存量 warning）✓ ｜ `build` ✓。

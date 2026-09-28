@@ -639,7 +639,7 @@ function handleNpcClick(npcId: string) {
 
 .panel-content::-webkit-scrollbar-thumb {
   background: rgba(var(--accent-primary-rgb), 0.15);
-  border-radius: 10px;
+  border-radius: var(--ui-radius-sm);
 }
 
 .panel-content::-webkit-scrollbar-thumb:hover {
@@ -654,18 +654,15 @@ function handleNpcClick(npcId: string) {
   border: 0;
   border-top: 1px solid transparent;
   border-radius: 0;
+  /* 上下都不留白：卡片间隔靠标题行的点击区高度自然撑开。
+     之前上内距 + 上外边距各 12px，只有首张（当前目标）被 :first-of-type
+     钉成 0，导致其余每张卡标题上方都多出一截、跟首张对不齐。 */
   padding: 0 12px;
-  /* 🔴 上留白收起/展开必须是同一个值 —— 用两个值会让展开时标题往上跳。
-     第一张靠下面的 :first-of-type 钉成 0，其余统一 space-3。 */
-  padding-top: var(--ui-space-3);
-  margin-top: var(--ui-space-3);
   box-shadow: none;
   transition: background var(--motion-normal);
 }
 
 .info-card:first-of-type {
-  padding-top: 0;
-  margin-top: 0;
   border-top: 0;
 }
 
@@ -718,7 +715,7 @@ function handleNpcClick(npcId: string) {
   font-weight: 700;
   line-height: 16px;
   text-align: center;
-  box-shadow: 0 0 0 2px var(--card-bg);
+  box-shadow: 0 0 0 2px var(--card-bg-strong);
   pointer-events: none;
 }
 
@@ -1115,7 +1112,7 @@ function handleNpcClick(npcId: string) {
 }
 
 .summary-value {
-  border-radius: 6px;
+  border-radius: var(--ui-radius-sm);
   padding: 2px 6px;
 }
 
@@ -1151,11 +1148,11 @@ function handleNpcClick(npcId: string) {
   0%,
   100% {
     transform: scale(1);
-    box-shadow: 0 0 0 2px var(--card-bg);
+    box-shadow: 0 0 0 2px var(--card-bg-strong);
   }
   50% {
     transform: scale(1.02);
-    box-shadow: 0 0 0 2px var(--card-bg);
+    box-shadow: 0 0 0 2px var(--card-bg-strong);
   }
 }
 
@@ -1199,8 +1196,9 @@ function handleNpcClick(npcId: string) {
     gap: 0;
   }
 
+  /* 只收紧左右，上下保持 0 —— 写成四边 10px 会把上留白加回来 */
   .info-card {
-    padding: 10px;
+    padding: 0 10px;
   }
 
   .info-row.two-col {

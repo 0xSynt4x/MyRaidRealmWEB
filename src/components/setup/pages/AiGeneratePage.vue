@@ -90,7 +90,7 @@
                     v-model="formData.world.worldOrganizationNetwork"
                     rows="4"
                     :placeholder="t('setup.aiGenerate.placeholder.worldOrganizationNetwork')"
-                    class="setup-field-input"
+                    class="ui-control"
                   />
                 </div>
               </div>
@@ -136,7 +136,7 @@
                   v-model="formData.world.additionalRequirement"
                   rows="6"
                   :placeholder="t('setup.aiGenerate.placeholder.worldAdditionalRequirement')"
-                  class="setup-field-input"
+                  class="ui-control"
                 />
               </div>
             </div>
@@ -157,7 +157,7 @@
                     :placeholder="
                       fieldMeta('玩家.姓名', { placeholder: t('setup.aiGenerate.placeholder.playerName') }).placeholder
                     "
-                    class="setup-field-input"
+                    class="ui-control"
                   />
                 </div>
 
@@ -172,7 +172,7 @@
                     :placeholder="
                       fieldMeta('玩家.年龄', { placeholder: t('setup.aiGenerate.placeholder.playerAge') }).placeholder
                     "
-                    class="setup-field-input"
+                    class="ui-control"
                   />
                 </div>
 
@@ -183,7 +183,7 @@
                     v-model="formData.player.playerGender"
                     type="text"
                     :placeholder="t('setup.aiGenerate.placeholder.playerGender')"
-                    class="setup-field-input"
+                    class="ui-control"
                   />
                 </div>
 
@@ -194,7 +194,7 @@
                     v-model="formData.player.playerIdentity"
                     type="text"
                     :placeholder="t('setup.aiGenerate.placeholder.playerIdentity')"
-                    class="setup-field-input"
+                    class="ui-control"
                   />
                 </div>
 
@@ -205,7 +205,7 @@
                     v-model="formData.player.playerGoal"
                     rows="3"
                     :placeholder="t('setup.aiGenerate.placeholder.playerGoal')"
-                    class="setup-field-input"
+                    class="ui-control"
                   />
                 </div>
 
@@ -216,7 +216,7 @@
                     v-model="formData.player.playerSkills"
                     rows="3"
                     :placeholder="t('setup.aiGenerate.placeholder.playerSkills')"
-                    class="setup-field-input"
+                    class="ui-control"
                   />
                 </div>
 
@@ -253,7 +253,7 @@
                       }).placeholder
                     "
                     min="0"
-                    class="setup-field-input"
+                    class="ui-control"
                   />
                 </div>
 
@@ -266,7 +266,7 @@
                     v-model="formData.player.factionRelationship"
                     rows="3"
                     :placeholder="t('setup.aiGenerate.placeholder.playerFactionRelationship')"
-                    class="setup-field-input"
+                    class="ui-control"
                   />
                 </div>
               </div>
@@ -299,7 +299,7 @@
                         v-model="secondaryCurrencyName"
                         type="text"
                         :placeholder="t('setup.aiGenerate.placeholder.secondaryCurrencyName')"
-                        class="setup-field-input"
+                        class="ui-control"
                       />
                     </div>
 
@@ -313,7 +313,7 @@
                         type="number"
                         :placeholder="t('setup.aiGenerate.placeholder.secondaryCurrencyAmount')"
                         min="0"
-                        class="setup-field-input"
+                        class="ui-control"
                       />
                     </div>
 
@@ -326,7 +326,7 @@
                         v-model="secondaryCurrencyRate"
                         type="text"
                         :placeholder="t('setup.aiGenerate.placeholder.secondaryCurrencyRate')"
-                        class="setup-field-input"
+                        class="ui-control"
                       />
                     </div>
 
@@ -339,7 +339,7 @@
                         v-model="secondaryCurrencyUsage"
                         type="text"
                         :placeholder="t('setup.aiGenerate.placeholder.secondaryCurrencyUsage')"
-                        class="setup-field-input"
+                        class="ui-control"
                       />
                     </div>
 
@@ -350,7 +350,7 @@
                         v-model="formData.player.inventory"
                         rows="3"
                         :placeholder="t('setup.aiGenerate.placeholder.playerInventory')"
-                        class="setup-field-input"
+                        class="ui-control"
                       />
                     </div>
 
@@ -361,7 +361,7 @@
                         v-model="formData.player.notebook"
                         rows="3"
                         :placeholder="t('setup.aiGenerate.placeholder.playerNotebook')"
-                        class="setup-field-input"
+                        class="ui-control"
                       />
                     </div>
 
@@ -372,7 +372,7 @@
                         v-model="formData.player.businessEntity"
                         rows="4"
                         :placeholder="t('setup.aiGenerate.placeholder.playerBusinessEntity')"
-                        class="setup-field-input"
+                        class="ui-control"
                       />
                     </div>
                   </div>
@@ -393,7 +393,7 @@
                   v-model="formData.player.additionalRequirement"
                   rows="6"
                   :placeholder="t('setup.aiGenerate.placeholder.playerAdditionalRequirement')"
-                  class="setup-field-input"
+                  class="ui-control"
                 />
               </div>
             </div>
@@ -410,7 +410,7 @@
                     v-model="formData.npc.importantNPCs"
                     rows="3"
                     :placeholder="t('setup.aiGenerate.placeholder.importantNpcs')"
-                    class="setup-field-input"
+                    class="ui-control"
                   />
                 </div>
 
@@ -421,7 +421,7 @@
                     v-model="formData.npc.npcCountPreference"
                     type="text"
                     :placeholder="t('setup.aiGenerate.placeholder.npcCountPreference')"
-                    class="setup-field-input"
+                    class="ui-control"
                   />
                 </div>
 
@@ -434,7 +434,7 @@
                     v-model="formData.npc.identityAndProfession"
                     type="text"
                     :placeholder="t('setup.aiGenerate.placeholder.npcIdentityAndProfession')"
-                    class="setup-field-input"
+                    class="ui-control"
                   />
                 </div>
 
@@ -445,7 +445,7 @@
                     v-model="formData.npc.personalityAndStatus"
                     rows="4"
                     :placeholder="t('setup.aiGenerate.placeholder.npcPersonalityAndStatus')"
-                    class="setup-field-input"
+                    class="ui-control"
                   />
                 </div>
 
@@ -458,7 +458,7 @@
                     v-model="formData.npc.playerRelationshipDirection"
                     rows="3"
                     :placeholder="t('setup.aiGenerate.placeholder.npcPlayerRelationshipDirection')"
-                    class="setup-field-input"
+                    class="ui-control"
                   />
                 </div>
               </div>
@@ -477,7 +477,7 @@
                   v-model="formData.npc.additionalRequirement"
                   rows="6"
                   :placeholder="t('setup.aiGenerate.placeholder.npcAdditionalRequirement')"
-                  class="setup-field-input"
+                  class="ui-control"
                 />
               </div>
             </div>
@@ -540,7 +540,7 @@
 
           <textarea
             v-model="currentModuleState.editableResult"
-            class="result-editor setup-field-input"
+            class="result-editor ui-control"
             rows="16"
             :placeholder="getModuleResultPlaceholder(currentEditingModuleKey)"
             @input="handleModuleResultInput(currentEditingModuleKey)"
@@ -618,7 +618,7 @@
 
         <textarea
           :value="finalAssemblyState.previewText"
-          class="result-editor result-editor--final setup-field-input"
+          class="result-editor result-editor--final ui-control"
           rows="18"
           readonly
           :placeholder="finalResultPlaceholder"
@@ -2095,9 +2095,9 @@ function handleBack() {
   align-items: center;
   gap: 12px;
   padding: 14px 16px;
-  border: 1px solid var(--border-light);
-  border-radius: 12px;
-  background: var(--bg-card);
+  border: 1px solid var(--card-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--card-bg-strong);
   color: var(--text-primary);
   text-align: left;
   cursor: pointer;
@@ -2106,19 +2106,19 @@ function handleBack() {
 
 .module-tab:hover {
   transform: translateY(-1px);
-  border-color: color-mix(in srgb, var(--accent-primary) 40%, var(--border-light));
+  border-color: color-mix(in srgb, var(--accent-primary) 40%, var(--card-border));
 }
 
 .module-tab.active {
   border-color: var(--accent-primary);
-  background: color-mix(in srgb, var(--accent-primary) 10%, var(--bg-card));
+  background: color-mix(in srgb, var(--accent-primary) 10%, var(--card-bg-strong));
   box-shadow: 0 10px 24px rgba(147, 51, 234, 0.12);
 }
 
 .module-tab__icon {
   width: 42px;
   height: 42px;
-  border-radius: 10px;
+  border-radius: var(--ui-radius-sm);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2153,9 +2153,9 @@ function handleBack() {
 }
 
 .form-section-group {
-  background: var(--bg-card);
-  border: 1px solid var(--border-light);
-  border-radius: 12px;
+  background: var(--card-bg-strong);
+  border: 1px solid var(--card-border);
+  border-radius: var(--ui-radius-md);
   padding: 16px;
   margin-bottom: 16px;
 }
@@ -2273,9 +2273,9 @@ button:focus-visible {
 .form-field textarea {
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid var(--border-light);
-  border-radius: 8px;
-  background: var(--bg-card);
+  border: 1px solid var(--card-border);
+  border-radius: var(--ui-radius-sm);
+  background: var(--card-bg-strong);
   color: var(--text-primary);
   font-size: calc(13px * var(--ui-font-scale));
   transition: border-color 0.2s ease;
@@ -2357,7 +2357,7 @@ button:focus-visible {
   gap: 8px;
   min-height: 40px;
   padding: 10px 16px;
-  border-radius: 8px;
+  border-radius: var(--ui-radius-sm);
   font-size: calc(14px * var(--ui-font-scale));
   font-weight: 600;
   cursor: pointer;
@@ -2376,8 +2376,8 @@ button:focus-visible {
 }
 
 .stop-button {
-  border: 1px solid var(--border-light);
-  background: var(--bg-card);
+  border: 1px solid var(--card-border);
+  background: var(--card-bg-strong);
   color: var(--text-primary);
 }
 
@@ -2413,8 +2413,8 @@ button:focus-visible {
   gap: 8px;
   padding: 10px 12px;
   border: 1px solid color-mix(in srgb, var(--accent-danger) 40%, transparent);
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--accent-danger) 8%, var(--bg-card));
+  border-radius: var(--ui-radius-sm);
+  background: color-mix(in srgb, var(--accent-danger) 8%, var(--card-bg-strong));
   color: var(--accent-danger);
   font-size: calc(13px * var(--ui-font-scale));
   line-height: 1.5;
@@ -2423,7 +2423,7 @@ button:focus-visible {
 .warning-panel {
   margin-bottom: 12px;
   padding: 12px 14px;
-  border-radius: 10px;
+  border-radius: var(--ui-radius-sm);
   border: 1px solid rgba(245, 158, 11, 0.24);
   background: rgba(245, 158, 11, 0.08);
   color: #a16207;
@@ -2461,9 +2461,9 @@ button:focus-visible {
 .result-editor {
   width: 100%;
   padding: 12px;
-  border: 1px solid var(--border-light);
-  border-radius: 8px;
-  background: var(--bg-card);
+  border: 1px solid var(--card-border);
+  border-radius: var(--ui-radius-sm);
+  background: var(--card-bg-strong);
   color: var(--text-primary);
   font-size: calc(13px * var(--ui-font-scale));
   font-family: 'Consolas', 'Monaco', monospace;
@@ -2478,7 +2478,7 @@ button:focus-visible {
 }
 
 .result-editor--final {
-  background: color-mix(in srgb, var(--bg-card) 92%, var(--accent-primary) 8%);
+  background: color-mix(in srgb, var(--card-bg-strong) 92%, var(--accent-primary) 8%);
 }
 
 .apply-row {
@@ -2489,8 +2489,8 @@ button:focus-visible {
 }
 
 .download-button {
-  border: 1px solid var(--border-light);
-  background: var(--bg-card);
+  border: 1px solid var(--card-border);
+  background: var(--card-bg-strong);
   color: var(--text-primary);
 }
 

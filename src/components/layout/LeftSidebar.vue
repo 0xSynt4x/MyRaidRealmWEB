@@ -1,5 +1,5 @@
 <template>
-  <div class="left-sidebar">
+  <div class="left-sidebar glass">
     <!-- 导航列表 -->
     <nav class="nav-list">
       <button
@@ -133,9 +133,6 @@ function getBadgeDisplay(tabId: TabType): string {
   height: 100%;
   padding: 6px 0;
   position: relative;
-  background: var(--glass-bg);
-  backdrop-filter: var(--glass-blur-light);
-  -webkit-backdrop-filter: var(--glass-blur-light);
 }
 
 .nav-list {

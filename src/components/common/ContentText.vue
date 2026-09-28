@@ -367,7 +367,7 @@ onBeforeUnmount(() => {
 }
 
 .message-history::-webkit-scrollbar-thumb {
-  background: var(--border-light);
+  background: var(--card-border);
   border-radius: 3px;
 }
 

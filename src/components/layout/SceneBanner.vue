@@ -674,7 +674,7 @@ async function handleRefreshApi() {
   white-space: nowrap;
   color: var(--ui-text);
   background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
+  border: 1px solid var(--card-border);
   box-shadow: var(--shadow-md);
   opacity: 0;
   pointer-events: none;

@@ -97,8 +97,8 @@ function handleNavClick(tabId: TabType) {
   overflow-y: hidden;
   padding: 4px;
   background: var(--card-bg-strong);
-  border-top: 1px solid var(--glass-border);
-  border-bottom: 1px solid var(--border-light);
+  border-top: 1px solid var(--card-border);
+  border-bottom: 1px solid var(--card-border);
   backdrop-filter: var(--glass-blur-light);
   -webkit-backdrop-filter: var(--glass-blur-light);
 }
@@ -111,7 +111,7 @@ function handleNavClick(tabId: TabType) {
   min-width: 52px;
   height: 44px;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--ui-radius-sm);
   background: transparent;
   color: var(--text-tertiary);
   display: flex;

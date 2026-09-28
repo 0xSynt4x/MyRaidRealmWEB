@@ -82,7 +82,7 @@ const survivalMode = computed(() => data.value.设置?.生存系统模式 ?? '�
 .mini-progress {
   flex: 1;
   height: 4px;
-  background: var(--border-light);
+  background: var(--card-border);
   border-radius: 2px;
   overflow: hidden;
   min-width: 0;

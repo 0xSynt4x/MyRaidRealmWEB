@@ -306,7 +306,7 @@ function handleNext() {
 .underline-input {
   flex: 1;
   border: none;
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--card-border);
   padding: 8px 4px;
   font-size: calc(14px * var(--ui-font-scale));
   background: transparent;
@@ -351,7 +351,7 @@ function handleNext() {
   flex: 1;
   max-width: 100px;
   border: none;
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--card-border);
   padding: 6px 4px;
   font-size: calc(13px * var(--ui-font-scale));
   background: transparent;

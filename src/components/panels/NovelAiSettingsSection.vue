@@ -427,7 +427,7 @@ async function handleFetchModels() {
 }
 
 .setting-row + .setting-row {
-  border-top: 1px solid var(--glass-border);
+  border-top: 1px solid var(--card-border);
 }
 
 .setting-row.stacked {
@@ -475,7 +475,7 @@ async function handleFetchModels() {
   left: 0;
   right: 0;
   bottom: 0;
-  background: var(--glass-border);
+  background: var(--card-border);
   border-radius: 22px;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -511,7 +511,7 @@ async function handleFetchModels() {
   font-weight: 500;
   color: var(--text-secondary);
   background: transparent;
-  border: 1px solid var(--glass-border);
+  border: 1px solid var(--card-border);
   border-radius: 999px;
   cursor: pointer;
   transition: all var(--motion-fast);
@@ -534,9 +534,9 @@ async function handleFetchModels() {
 .comfy-textarea {
   font-size: var(--text-sm);
   color: var(--text-primary);
-  background: var(--input-bg, var(--glass-border));
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-sm, 8px);
+  background: var(--input-bg, var(--card-border));
+  border: 1px solid var(--card-border);
+  border-radius: var(--ui-radius-sm);
   padding: 5px 8px;
   outline: none;
   transition: border-color var(--motion-fast);
@@ -616,16 +616,16 @@ async function handleFetchModels() {
   font-weight: 600;
   letter-spacing: 0.05em;
   color: var(--text-secondary);
-  border-top: 1px solid var(--glass-border);
+  border-top: 1px solid var(--card-border);
   padding-top: 10px;
 }
 
 .comfy-help {
   margin-top: 10px;
   padding: 10px 12px;
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--card-bg) 82%, transparent);
-  border: 1px solid var(--glass-border);
+  border-radius: var(--ui-radius-md);
+  background: color-mix(in srgb, var(--card-bg-strong) 82%, transparent);
+  border: 1px solid var(--card-border);
   font-size: calc(11px * var(--ui-font-scale));
   line-height: 1.6;
   color: var(--text-secondary);
@@ -661,7 +661,7 @@ async function handleFetchModels() {
   font-size: calc(12px * var(--ui-font-scale));
   color: var(--text-secondary);
   background: var(--bg-primary);
-  border: 1px solid var(--glass-border);
+  border: 1px solid var(--card-border);
   border-radius: 999px;
   cursor: pointer;
   transition: all var(--motion-fast);
