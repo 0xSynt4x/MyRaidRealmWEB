@@ -840,7 +840,14 @@
   「自动重试」开关语义不变（关掉时只留第一个候选，坏了也不换）。
 - 四道检查：`typecheck` ✓ ｜ `test` 107/107 ✓ ｜ `lint` 0 error（17 个存量 warning）✓ ｜ `build` ✓。
 
-### — chore: 回填 CHANGELOG 短哈希
+### `9022be8` — chore: 回填 CHANGELOG 短哈希
 
 - **Changed** 回填上两条记录的短哈希（`061ee7e` / `efb7706`）—— 纯文档改动。
   同批一并回填上一轮遗留的 `3f3ace4`。
+
+### — chore: 玩家更新日志补两条
+
+- **Changed** 玩家更新日志（`src/utils/changelog.ts`）260929 追加「变量更新失败自动换API」
+  与「面板与按钮样式统一」：上两个提交（`061ee7e` / `efb7706`）都有玩家在界面上看得见的变化 ——
+  变量更新遇坏内容会自己换备用 API、按钮与卡片样式统一 —— 玩家日志不该漏。
+- 四道检查：`typecheck` ✓ ｜ `test` 107/107 ✓ ｜ `lint` 0 error（17 个存量 warning）✓ ｜ `build` ✓。
