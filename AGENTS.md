@@ -26,7 +26,14 @@
 ## 临时文件与工作目录
 
 - 🔴 **临时脚本、截图、探测产物默认写项目 `Temp/`。** 该目录已被 `.gitignore` 忽略、
-  被 `eslint.config.mjs` 的 `ignores` 排除，是唯一约定好的临时落盘位置。
+  被 `eslint.config.mjs` 的 `ignores` 排除，是约定好的临时落盘位置。
+- 🔴 **可复用的工具脚本写 `tools/`，不要写 `Temp/`。** 判据：
+  **换个参数 / 换个目标还能再用 = 工具**，放 `tools/`；
+  **只验证过某一次具体改动 = 一次性产物**，留 `Temp/`。
+  `tools/` 与 `Temp/` 一样已被 `.gitignore` 忽略（仅本地保留，不随仓库公开）。
+  工具里的相对路径（`dist/`、`Temp/` 这类）**一律以项目根为基准**，即**从项目根运行**。
+  技能目录里已有的同类脚本（`web-release-preflight/scripts/`、`cloudflare-pages-deploy/scripts/` 等）
+  直接复用技能里的，不再往 `tools/` 里抄一份。
 - **唯一例外**：无头浏览器 / 单文件探测这类必须走系统临时目录的场景
   （如 `C:\Users\<用户>\AppData\Local\Temp`）。这类文件**用完立即删除**，
   不在系统临时目录留下自定义命名的目录或脚本。

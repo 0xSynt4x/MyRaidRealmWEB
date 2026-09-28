@@ -223,15 +223,21 @@ function collectClosedImagePrompts(contentText: string): string[] {
 }
 
 // 自动生图：开着时正文里一出现提示词就出图，不用手点。
-// 只在「正在生成」的消息上跑 —— 否则打开旧存档会把历史提示词一次性全灌进出图队列。
+// 两个触发来源：
+//   ① 流式 —— 逐段吐字，提示词一写闭合就能提前出图；
+//   ② 落地 —— 接口不支持流式（一次性回完整 JSON）时没有流式投影层，靠「刚落地」信号补上。
+// 只在这条消息「正在生成或刚落地」时跑 —— 否则打开旧存档会把历史提示词一次性全灌进出图队列。
+// immediate 是必需的：非流式下消息先落地、卡片随后才挂载，只靠值变化触发会漏掉那一次。
 watch(
   [
     () => props.message.content_text,
     () => props.message.is_streaming,
     () => settingsStore.imageGeneration.autoGenerate,
+    () => messagesStore.lastSettledMessageId,
   ],
   () => {
-    if (!props.message.is_streaming) return;
+    const justSettled = messagesStore.lastSettledMessageId === props.message.message_id;
+    if (!props.message.is_streaming && !justSettled) return;
     if (!settingsStore.imageGeneration.enabled || !settingsStore.imageGeneration.autoGenerate) return;
     if (!comfyUiImageGeneration.isReady.value) return;
 
@@ -242,6 +248,7 @@ watch(
       void comfyUiImageGeneration.generateForMessage(props.message.message_id, index, prompt);
     });
   },
+  { immediate: true },
 );
 
 const thinkFormatted = computed(() => {

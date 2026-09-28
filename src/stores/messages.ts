@@ -100,6 +100,17 @@ export const useMessagesStore = defineStore('messages', () => {
    * 先按楼层号暂存，等正式楼层落地再并回去，这样「生成中点出图」才不会白出。
    */
   const streamingImages = ref<Record<number, MessageGeneratedImage[]>>({});
+  /**
+   * 刚刚落地到正式楼层的消息号。
+   *
+   * 流式投影层只覆盖「逐段吐字」这一种传输方式：接口不支持流式、一次性回完整 JSON 时，
+   * 逐段回调一次都不触发，投影层压根不建立，组件里盯 is_streaming 的自动生图也就不会跑。
+   * 「落地」是流式与非流式两条路径的公共终点，所以在这里留一个信号，
+   * 让自动生图不依赖传输方式。
+   *
+   * 只在本次运行时真正落地时才置位；加载存档会置回 null，避免历史消息被误判成「刚落地」。
+   */
+  const lastSettledMessageId = ref<number | null>(null);
   const mainReplyContext = ref<MainReplyStreamingContext>({
     userMessageId: null,
     targetMessageId: null,
@@ -199,6 +210,9 @@ export const useMessagesStore = defineStore('messages', () => {
     }));
     const displayReadyRecords = normalizedRecords.map(normalizeRecordForDisplay);
     messages.value = repairStandaloneSnapshots(dedupeMessageRecords(displayReadyRecords));
+    // 换存档 / 重载窗口时清掉落地信号：否则历史消息里恰好同号的那条会被当成「刚落地」，
+    // 把旧提示词一股脑拉去出图。
+    lastSettledMessageId.value = null;
     persistStandaloneMessagesState();
     isLoading.value = false;
     console.info(`[MessagesStore] standalone 消息已加载 count=${messages.value.length}`);
@@ -547,6 +561,9 @@ export const useMessagesStore = defineStore('messages', () => {
 
     // 正式楼层已经在 messages 里了 —— 把流式期间出的图并回去，再撤掉投影层
     mergeStreamingImagesIntoMessage(message_id);
+    // 落地信号：自动生图据此触发一次。放在清流式状态之前 —— 清完投影层组件会切到正式楼层，
+    // 但这一步同步置位，卡片重新渲染时能立刻读到。
+    lastSettledMessageId.value = message_id;
     clearStreamingState(`formal_message_received:${message_id}`);
     return true;
   }
@@ -746,6 +763,7 @@ export const useMessagesStore = defineStore('messages', () => {
     editingMessageId.value = null;
     editingDraftContent.value = '';
     streamingImages.value = {};
+    lastSettledMessageId.value = null;
     clearStreamingState('clear_messages');
     console.info('[MessagesStore] 清空所有消息');
     persistStandaloneMessagesState();
@@ -825,6 +843,7 @@ export const useMessagesStore = defineStore('messages', () => {
     streamingMessageId,
     streamingRawContent,
     streamingRecord,
+    lastSettledMessageId,
 
     // 计算属性
     isEmpty,

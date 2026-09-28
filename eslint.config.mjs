@@ -24,6 +24,9 @@ export default tseslint.config(
       // 同上：docs/ 整个目录在 .gitignore 里（方案文档 + 配套实测脚本，本地留存不发布），
       // 里面的 .cjs 探针会被 no-undef / no-require-imports 误报成错误。
       'docs/**',
+      // 同上：tools/ 是可复用工具脚本目录（.gitignore 里忽略、仅本地保留），
+      // 里面的 .cjs/.js 是 Node 脚本，没有 TS 的 node 类型环境，同样会被误报成错误。
+      'tools/**',
     ],
   },
 
