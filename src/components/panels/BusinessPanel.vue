@@ -360,13 +360,17 @@ function openDeleteIntel(key: string) {
 .stats-bar {
   display: flex;
   flex-wrap: wrap;
+  /* 全局 .stats-bar 是 space-around + 渐变 border-image，面板里要紧凑靠左、单色底边 */
+  justify-content: flex-start;
+  align-items: center;
   gap: 10px;
   /* 上方不留白：外框已给 12px，这里再叠一层会让统计条上下不等距 */
   padding: 0 12px 12px;
-  background: var(--card-bg-strong);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  /* 底色交给浮层统一承担：这里再铺一层，在半透明主题下会与两侧割裂 */
+  background: transparent;
+  /* 背景已透明，backdrop-filter 会让这条栏自己重绘一层底，去掉才能和面板同色 */
   border-bottom: 1px solid var(--card-border);
+  border-image: none;
   position: relative;
 }
 
@@ -376,7 +380,8 @@ function openDeleteIntel(key: string) {
   gap: 6px;
   font-size: var(--text-sm);
   padding: 4px 10px;
-  background: var(--card-bg-strong);
+  /* 底色交给浮层统一承担，与头部栏 / 面板保持一致 */
+  background: transparent;
   border: 1px solid var(--card-border);
   border-radius: var(--ui-radius-md);
   transition: all var(--transition-fast) ease;
@@ -421,6 +426,9 @@ function openDeleteIntel(key: string) {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  /* 左右内距由外框 OverlayPanel .panel-body 统一给；上方补一条与统计条下内距等宽的白，
+     否则头部只剩一条细线收口，区块会贴着线（笔记页 tab 内容区就是这种做法） */
+  padding-top: 12px;
 }
 
 /* 区块 - 玻璃拟态 */
@@ -862,6 +870,11 @@ function openDeleteIntel(key: string) {
   .stats-bar {
     gap: 8px;
     padding: 0 10px 10px;
+  }
+
+  /* 统计条下内距收窄，内容区上方跟着收，保持细线两侧等距 */
+  .content-sections {
+    padding-top: 10px;
   }
 
   .stat-tile {

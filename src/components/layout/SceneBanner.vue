@@ -49,17 +49,6 @@
                 </button>
 
                 <button
-                  class="banner-menu-item"
-                  role="menuitem"
-                  :disabled="isArchiving"
-                  :aria-label="isArchiving ? t('header.archiving') : t('header.archiveAndDownload')"
-                  :data-tip="isArchiving ? t('header.archiving') : t('header.archiveAndDownload')"
-                  @click="runMenuAction(handleArchive)"
-                >
-                  <i :class="isArchiving ? 'ti ti-loader-2 ti-spin' : 'ti ti-device-floppy'"></i>
-                </button>
-
-                <button
                   class="banner-menu-item is-danger"
                   role="menuitem"
                   :disabled="isResetting"
@@ -111,7 +100,7 @@ import { useMessagesStore } from '../../stores/messages';
 import { useNotificationStore } from '../../stores/notification';
 import { useSetupStore } from '../../stores/setup';
 import { useStatDataStore } from '../../stores/statData';
-import { clearPendingStandaloneArchiveResume, saveCurrentArchive } from '../../utils/archive';
+import { clearPendingStandaloneArchiveResume } from '../../utils/archive';
 import { clearLocalGameState } from '../../utils/localGameState';
 import { matchWeather, isNight, type WeatherFamily, type WeatherVariant } from '../../utils/weatherFamily';
 
@@ -276,9 +265,8 @@ watch(
 // 夜色压暗：先看时间（19 点~次日 6 点），时间文本里没有钟点才看天气词带不带「夜 / 月明 / 星空」
 const 是夜里 = computed(() => isNight(当前时间.value, 当前天气.value));
 
-// —— 三点菜单（原顶栏下拉，四项：刷新变量 / 存档下载 / 回到首页 / 全屏）——
+// —— 三点菜单（原顶栏下拉，三项：刷新变量 / 回到首页 / 全屏）——
 const isRefreshing = ref(false);
-const isArchiving = ref(false);
 const isResetting = ref(false);
 const menuWrapRef = ref<HTMLElement | null>(null);
 const isMenuOpen = ref(false);
@@ -319,37 +307,6 @@ onBeforeUnmount(() => {
   document.removeEventListener('mousedown', handleMenuClickOutside);
   document.removeEventListener('keydown', handleMenuKeydown);
 });
-
-async function handleArchive() {
-  if (isArchiving.value) {
-    return;
-  }
-
-  const confirmed = await notificationStore.confirm({
-    title: t('header.archiveConfirmTitle'),
-    message: t('header.archiveConfirmMessage'),
-    type: 'info',
-    confirmText: t('header.continueArchive'),
-  });
-
-  if (!confirmed) {
-    return;
-  }
-
-  isArchiving.value = true;
-
-  try {
-    await saveCurrentArchive();
-    notificationStore.success(t('header.archiveSuccess'));
-  } catch (error) {
-    console.error('[SceneBanner] 存档失败:', error);
-    notificationStore.error(
-      t('header.archiveFailed', { error: error instanceof Error ? error.message : String(error) }),
-    );
-  } finally {
-    isArchiving.value = false;
-  }
-}
 
 async function handleResetGame() {
   if (isResetting.value) {
@@ -397,7 +354,7 @@ async function handleRefreshApi() {
   } catch (error) {
     console.error('[SceneBanner] 刷新失败:', error);
     notificationStore.error(
-      t('header.archiveFailed', { error: error instanceof Error ? error.message : String(error) }),
+      t('header.refreshFailed', { error: error instanceof Error ? error.message : String(error) }),
     );
   } finally {
     isRefreshing.value = false;

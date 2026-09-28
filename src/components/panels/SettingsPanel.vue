@@ -593,11 +593,37 @@
           </div>
         </div>
 
-        <label class="api-auto-retry-row">
-          <input v-model="apiAutoRetry" type="checkbox" />
-          <span>{{ t('settings.apiAutoRetry') }}</span>
-          <small>{{ t('settings.apiAutoRetryHint') }}</small>
-        </label>
+        <div class="api-switch-row">
+          <span class="api-switch-label">{{ t('settings.apiAutoRetry') }}</span>
+          <label class="toggle-switch">
+            <input v-model="apiAutoRetry" type="checkbox" />
+            <span class="toggle-track"></span>
+          </label>
+          <small class="api-switch-hint">{{ t('settings.apiAutoRetryHint') }}</small>
+        </div>
+
+        <div class="api-switch-row">
+          <span class="api-switch-label">{{ t('settings.apiFirstTokenTimeout') }}</span>
+          <label class="toggle-switch">
+            <input v-model="apiFirstTokenTimeout" type="checkbox" />
+            <span class="toggle-track"></span>
+          </label>
+          <small class="api-switch-hint">{{ t('settings.apiFirstTokenTimeoutHint') }}</small>
+        </div>
+
+        <div v-if="apiFirstTokenTimeout" class="api-switch-row">
+          <span class="api-switch-label">{{ t('settings.apiFirstTokenTimeoutSeconds') }}</span>
+          <input
+            v-model.number="apiFirstTokenTimeoutSeconds"
+            class="api-first-token-timeout-input"
+            type="number"
+            :min="FIRST_TOKEN_TIMEOUT_MIN_SECONDS"
+            :max="FIRST_TOKEN_TIMEOUT_MAX_SECONDS"
+            step="1"
+            @change="commitFirstTokenTimeoutSeconds"
+          />
+          <small class="api-switch-hint">{{ t('settings.apiFirstTokenTimeoutSecondsUnit') }}</small>
+        </div>
       </div>
     </div>
 
@@ -1022,12 +1048,19 @@
             <div class="asset-card-head">
               <div class="asset-title-wrap">
                 <span class="asset-title">{{ archive.presetName }}</span>
+                <span v-if="archive.kind === 'auto'" class="tag-chip auto-archive-chip">{{
+                  t('contentCenter.archive.autoArchiveBadge')
+                }}</span>
                 <span class="tag-chip">{{
                   t('contentCenter.archive.messagesCount', { count: archive.messageCount })
                 }}</span>
               </div>
               <span class="source-badge builtin"
-                >{{ t('contentCenter.archive.createdAt') }}：{{ archive.createdAt }}</span
+                >{{
+                  archive.kind === 'auto'
+                    ? t('contentCenter.archive.autoArchiveUpdatedAt')
+                    : t('contentCenter.archive.createdAt')
+                }}：{{ archive.createdAt }}</span
               >
             </div>
             <p class="asset-description">{{ archive.summary }}</p>
@@ -1092,7 +1125,15 @@ import {
   type StandaloneLocalContentKind,
   type StandaloneLocalContentRoute,
 } from '../../utils/standaloneLocalContent';
-import { useSettingsStore, type SurvivalMode, type Theme, type WorldDifficulty } from '../../stores/settings';
+import {
+  useSettingsStore,
+  normalizeFirstTokenTimeoutSeconds,
+  FIRST_TOKEN_TIMEOUT_MIN_SECONDS,
+  FIRST_TOKEN_TIMEOUT_MAX_SECONDS,
+  type SurvivalMode,
+  type Theme,
+  type WorldDifficulty,
+} from '../../stores/settings';
 import { useStatDataStore } from '../../stores/statData';
 import { useStatDataActions } from '../../stores/statDataActions';
 import { useSetupStore } from '../../stores/setup';
@@ -1122,6 +1163,8 @@ const {
   mainApiIds,
   assistantApiIds,
   apiAutoRetry,
+  apiFirstTokenTimeout,
+  apiFirstTokenTimeoutSeconds,
   backgroundImage,
   worldDifficulty,
   standaloneLocalContent,
@@ -1129,6 +1172,11 @@ const {
   stageSummaryThreshold,
 } = storeToRefs(settingsStore);
 const { selectedPreset } = storeToRefs(setupStore);
+
+/** 秒数输入框失焦/回车时才夹到合法区间，避免玩家删空重打时被中途改写 */
+function commitFirstTokenTimeoutSeconds() {
+  apiFirstTokenTimeoutSeconds.value = normalizeFirstTokenTimeoutSeconds(apiFirstTokenTimeoutSeconds.value);
+}
 
 // 顶部列表编辑的是唯一的 API 池；主 API / 辅助 API 只是从池里勾选
 const {
@@ -2934,21 +2982,57 @@ function removeBackgroundImage() {
   white-space: nowrap;
 }
 
-.api-auto-retry-row {
+.api-switch-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   margin-top: 14px;
   padding-top: 12px;
   border-top: 1px solid var(--card-border);
   font-size: var(--text-sm);
   color: var(--text-primary);
-  cursor: pointer;
 }
 
-.api-auto-retry-row small {
+/* 同组里只有第一行给分隔线，后面的行紧跟上一条 */
+.api-switch-row + .api-switch-row {
+  margin-top: 10px;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.api-switch-label {
+  min-width: 104px;
+  flex-shrink: 0;
+}
+
+.api-switch-hint {
   font-size: var(--text-xs);
   color: var(--text-tertiary);
+}
+
+/* 开关后面的说明居右，与文生图那边的排版一致。
+   只作用于紧跟在开关后的说明，秒数行的「秒」单位不受影响。 */
+.api-switch-row .toggle-switch + .api-switch-hint {
+  margin-left: auto;
+  text-align: right;
+}
+
+.api-first-token-timeout-input {
+  width: 76px;
+  padding: 6px 10px;
+  border: 1px solid var(--card-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--glass-bg);
+  font-size: var(--text-xs);
+  font-family: var(--font-base);
+  color: var(--text-primary);
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.api-first-token-timeout-input:focus {
+  outline: none;
+  border-color: rgba(var(--accent-primary-rgb), 0.5);
 }
 
 /* ─── 功能设置 · 上下文裁剪 ─── */
@@ -3162,6 +3246,12 @@ function removeBackgroundImage() {
 }
 
 .settings-management-panel .settings-managed-chip {
+  background: rgba(var(--accent-secondary-rgb), 0.14);
+  color: var(--accent-secondary);
+}
+
+/* 自动存档标识：跟手动存档的 tag-chip 同形，只换一套颜色把它挑出来 */
+.settings-management-panel .auto-archive-chip {
   background: rgba(var(--accent-secondary-rgb), 0.14);
   color: var(--accent-secondary);
 }

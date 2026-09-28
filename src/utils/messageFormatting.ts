@@ -66,7 +66,9 @@ function restoreBlockPlaceholders(text: string, placeholders: InlinePlaceholder[
 function wrapDialogueSegments(text: string): string {
   return text
     .replace(/“([^”]+)”/g, '<span class="quote">“$1”</span>')
-    .replace(/&quot;([^&]+?)&quot;/g, '<span class="quote">&quot;$1&quot;</span>')
+    // ⚠️ 中间不能用 [^&]：正文里的单引号/尖括号会被转义成 &#39; / &lt; / &gt;（都含 &），
+    // 一旦对话里出现它们，配对就会被切断 → 引号错位、颜色串到别的句子上。
+    .replace(/&quot;([\s\S]*?)&quot;/g, '<span class="quote">&quot;$1&quot;</span>')
     .replace(/「([^「」]+)」/g, '<span class="quote">「$1」</span>')
     .replace(/『([^『』]+)』/g, '<span class="quote">『$1』</span>');
 }

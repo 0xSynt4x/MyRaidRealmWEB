@@ -398,7 +398,8 @@ watch([hasData, factionRelations, worldNetwork, theme], debouncedInitNetwork, { 
   gap: 12px;
   /* 上方不留白：外框已给 12px，这里再叠一层会让统计条上下不等距 */
   padding: 0 16px 12px;
-  background: var(--card-bg-strong);
+  /* 底色交给浮层统一承担：这里再铺一层，在半透明主题下会与两侧割裂 */
+  background: transparent;
   border-bottom: 1px solid var(--card-border);
 }
 
@@ -436,7 +437,9 @@ watch([hasData, factionRelations, worldNetwork, theme], debouncedInitNetwork, { 
   overflow-y: auto;
   overflow-x: hidden;
   overscroll-behavior: contain;
-  /* 内距由外框 OverlayPanel .panel-body 统一给，面板自己不再叠加 */
+  /* 左右内距由外框 OverlayPanel .panel-body 统一给；上方补一条与统计条下内距等宽的白，
+     否则头部只剩一条细线收口，图表会贴着线（笔记页 tab 内容区就是这种做法） */
+  padding-top: 12px;
   display: flex;
   flex-direction: column;
 }
@@ -485,6 +488,11 @@ watch([hasData, factionRelations, worldNetwork, theme], debouncedInitNetwork, { 
   .stats-bar {
     gap: 8px;
     padding: 0 12px 10px;
+  }
+
+  /* 统计条下内距收窄，内容区上方跟着收，保持细线两侧等距 */
+  .graph-area {
+    padding-top: 10px;
   }
 
   .stat-item {

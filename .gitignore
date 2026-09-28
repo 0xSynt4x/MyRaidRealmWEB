@@ -6,6 +6,7 @@ dist/
 .idea/
 .omx/
 .playwright-mcp/
+.playwright-cli/
 .sisyphus/
 .workbuddy-ai/
 

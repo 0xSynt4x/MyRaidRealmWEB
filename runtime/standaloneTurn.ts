@@ -65,6 +65,8 @@ export type StandaloneLocalTurnInput = {
   assistantApis?: ApiConfig[];
   /** 前一个失败时是否自动试下一个；缺省 true */
   autoRetry?: boolean;
+  /** 正文流式请求的首字超时秒数；0 或未给 = 不启用（行为与之前一致） */
+  firstTokenTimeoutSeconds?: number;
   statData: StandaloneStatData;
   messages: MessageRecord[];
   latestUserMessage: MessageRecord;
@@ -894,6 +896,7 @@ async function requestAssistantReply(
   prompt: StandalonePromptBundle | StandalonePromptMessagesBundle,
   signal: AbortSignal,
   onPartialText?: (text: string) => void,
+  firstTokenTimeoutSeconds?: number,
 ): Promise<StandaloneProviderReply> {
   return requestStandaloneProviderText({
     api,
@@ -901,6 +904,10 @@ async function requestAssistantReply(
     signal,
     logPrefix: '[StandaloneLocalTurn]',
     onPartialText,
+    firstTokenTimeoutMs:
+      typeof firstTokenTimeoutSeconds === 'number' && firstTokenTimeoutSeconds > 0
+        ? firstTokenTimeoutSeconds * 1000
+        : undefined,
   });
 }
 
@@ -1119,6 +1126,7 @@ export async function runStandaloneLocalTurn(input: StandaloneLocalTurnInput): P
           prompt,
           controller.signal,
           input.onMainReplyPartialText,
+          input.firstTokenTimeoutSeconds,
         );
         const rawReply = normalizeLineEndings(mainReply.text);
         const sanitizedMainReply = normalizeLineEndings(stripUpdateVariableBlocks(rawReply));

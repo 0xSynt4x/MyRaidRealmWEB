@@ -6,6 +6,7 @@ import { useMessagesStore, type MessageRecord } from '../stores/messages';
 import { useNotificationStore } from '../stores/notification';
 import { useStatDataStore } from '../stores/statData';
 import { useSetupStore } from '../stores/setup';
+import { saveStandaloneAutoArchive } from '../utils/archive';
 import { formatMessageContentForDisplay } from '../utils/messageFormatting';
 import { notify } from '../utils/notify';
 import { commitStandaloneRuntimeStateFromStores, resolveStandaloneStageSummaryState } from '../utils/standaloneRuntime';
@@ -202,6 +203,8 @@ export function useMessageActions() {
         mainApis: settingsStore.mainApis,
         assistantApis: settingsStore.assistantApis,
         autoRetry: settingsStore.apiAutoRetry,
+        // 关掉开关就传 0，运行时不启用看门狗，行为与之前一致
+        firstTokenTimeoutSeconds: settingsStore.apiFirstTokenTimeout ? settingsStore.apiFirstTokenTimeoutSeconds : 0,
         statData: turnStartStatData,
         messages: messagesStore.messages,
         latestUserMessage,
@@ -460,6 +463,11 @@ export function useMessageActions() {
           `${reason}:${phaseOutcome.usedApiLabel}:variable_update_success`,
         );
         statDataStore.refreshData(`${reason}:${phaseOutcome.usedApiLabel}:variable_update_success`);
+        // 变量更新已落盘，紧接着自动存一份（固定编号、每轮覆盖，只留最新局面）。
+        // 单独 catch：存档失败不能连累按钮复位与本回合的成功提示。
+        void saveStandaloneAutoArchive().catch(error => {
+          console.warn('[useMessageActions] 自动存档失败（不影响本回合结果）:', error);
+        });
         notificationStore.success(
           settingsStore.locale === 'en'
             ? 'Reply generated and local game state updated.'

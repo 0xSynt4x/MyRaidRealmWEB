@@ -430,6 +430,25 @@ export interface ApiPoolSettings {
   assistantApiIds: string[];
   /** 前一个失败时是否自动试下一个 */
   autoRetry: boolean;
+  /** 是否启用「首字超时」：流式请求超过设定秒数还没出首字就判失败 */
+  firstTokenTimeoutEnabled: boolean;
+  /** 首字超时的秒数 */
+  firstTokenTimeoutSeconds: number;
+}
+
+/** 首字超时秒数的可填区间，界面与解析共用同一套边界 */
+export const FIRST_TOKEN_TIMEOUT_MIN_SECONDS = 1;
+export const FIRST_TOKEN_TIMEOUT_MAX_SECONDS = 600;
+export const DEFAULT_FIRST_TOKEN_TIMEOUT_SECONDS = 30;
+
+/** 秒数解析：非法值回落到默认，越界值夹到区间内，保证存进去的永远是可用值 */
+export function normalizeFirstTokenTimeoutSeconds(value: unknown): number {
+  const parsed = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(parsed)) {
+    return DEFAULT_FIRST_TOKEN_TIMEOUT_SECONDS;
+  }
+  const rounded = Math.round(parsed);
+  return Math.min(FIRST_TOKEN_TIMEOUT_MAX_SECONDS, Math.max(FIRST_TOKEN_TIMEOUT_MIN_SECONDS, rounded));
 }
 
 /** 主 API 一条都没选中时对外给出的空配置；模块级常量，保证引用稳定 */
@@ -507,6 +526,9 @@ export function resolveStoredApiPoolSettings(stored: Record<string, any> | null 
     mainApiIds,
     assistantApiIds,
     autoRetry: stored?.apiAutoRetry !== false,
+    // 默认关：老存档升级后行为与之前完全一致，想要的人自己去 API 配置页打开
+    firstTokenTimeoutEnabled: stored?.apiFirstTokenTimeout === true,
+    firstTokenTimeoutSeconds: normalizeFirstTokenTimeoutSeconds(stored?.apiFirstTokenTimeoutSeconds),
   };
 }
 
@@ -574,6 +596,10 @@ export const useSettingsStore = defineStore('settings', () => {
   const assistantApiIds = ref<string[]>(initialApiPoolSettings.assistantApiIds);
   /** 前一个失败时是否自动试下一个 */
   const apiAutoRetry = ref<boolean>(initialApiPoolSettings.autoRetry);
+  /** 是否启用「首字超时」判定 */
+  const apiFirstTokenTimeout = ref<boolean>(initialApiPoolSettings.firstTokenTimeoutEnabled);
+  /** 首字超时的秒数 */
+  const apiFirstTokenTimeoutSeconds = ref<number>(initialApiPoolSettings.firstTokenTimeoutSeconds);
 
   const pickApisFromPool = (ids: string[]): ApiConfig[] => {
     const byId = new Map(apiPool.value.map(api => [api.id, api]));
@@ -717,6 +743,8 @@ export const useSettingsStore = defineStore('settings', () => {
       mainApiIds: mainApiIds.value,
       assistantApiIds: assistantApiIds.value,
       apiAutoRetry: apiAutoRetry.value,
+      apiFirstTokenTimeout: apiFirstTokenTimeout.value,
+      apiFirstTokenTimeoutSeconds: apiFirstTokenTimeoutSeconds.value,
       // 老字段清掉，避免下次启动又走一遍迁移
       mainApi: undefined,
       assistantApis: undefined,
@@ -725,12 +753,14 @@ export const useSettingsStore = defineStore('settings', () => {
     });
   };
 
-  /** 只保存「谁当主 API / 谁当辅助 API / 要不要自动重试」，不动池里正在编辑的内容 */
+  /** 只保存「谁当主 API / 谁当辅助 API / 要不要自动重试 / 首字超时」，不动池里正在编辑的内容 */
   const persistApiSelection = () => {
     return saveStoragePatch({
       mainApiIds: mainApiIds.value,
       assistantApiIds: assistantApiIds.value,
       apiAutoRetry: apiAutoRetry.value,
+      apiFirstTokenTimeout: apiFirstTokenTimeout.value,
+      apiFirstTokenTimeoutSeconds: apiFirstTokenTimeoutSeconds.value,
     });
   };
 
@@ -762,9 +792,9 @@ export const useSettingsStore = defineStore('settings', () => {
     },
   );
 
-  // 勾选主 API / 辅助 API、切换自动重试开关 → 立即落盘（池里的编辑内容仍走显式保存）
+  // 勾选主 API / 辅助 API、切换自动重试开关、调首字超时 → 立即落盘（池里的编辑内容仍走显式保存）
   watch(
-    [mainApiIds, assistantApiIds, apiAutoRetry],
+    [mainApiIds, assistantApiIds, apiAutoRetry, apiFirstTokenTimeout, apiFirstTokenTimeoutSeconds],
     () => {
       persistApiSelection();
     },
@@ -830,6 +860,8 @@ export const useSettingsStore = defineStore('settings', () => {
     mainApiIds,
     assistantApiIds,
     apiAutoRetry,
+    apiFirstTokenTimeout,
+    apiFirstTokenTimeoutSeconds,
     backgroundImage,
     standaloneLocalContent,
     snapshotTrim,

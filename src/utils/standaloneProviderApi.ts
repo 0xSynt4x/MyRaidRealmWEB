@@ -30,6 +30,8 @@ type RequestStandaloneProviderTextInput = {
   logPrefix: string;
   onPartialText?: (text: string) => void;
   temperature?: number;
+  /** 首字超时（毫秒）：流式请求超过这个时间没出首字就判失败；缺省或非正数 = 不启用 */
+  firstTokenTimeoutMs?: number;
 };
 
 export function hasCompleteStandaloneApiConfig(api: ApiConfig): boolean {
@@ -56,6 +58,7 @@ export async function requestStandaloneProviderText(
     logPrefix: input.logPrefix,
     onPartialText: input.onPartialText,
     temperature: input.temperature,
+    firstTokenTimeoutMs: input.firstTokenTimeoutMs,
   });
 
   return {

@@ -272,7 +272,8 @@ watch(
   /* 上方不留白：外框已给 12px，这里再叠一层会让 tab 条上下不等距 */
   padding: 0 6px 10px;
   border-bottom: 2px solid var(--card-border);
-  background: var(--card-bg-strong);
+  /* 底色交给浮层统一承担：这里再铺一层，在半透明主题下会与两侧割裂 */
+  background: transparent;
   flex-shrink: 0;
   min-width: 0;
   overflow-x: auto;

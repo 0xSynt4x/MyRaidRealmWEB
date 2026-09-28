@@ -33,7 +33,12 @@
                    这里不走 formatArchiveSummaryForToast：那个是给 toast 的 HTML 转义用的，
                    在模板里会被 Vue 再转义一次，变成字面的 &amp; -->
               <span class="snapshot-summary">{{ archive.summary }}</span>
-              <span class="snapshot-time">{{ formatCreatedAt(archive.createdAt) }}</span>
+              <span class="snapshot-meta">
+                <span v-if="archive.kind === 'auto'" class="snapshot-badge">{{
+                  t('contentCenter.archive.autoArchiveBadge')
+                }}</span>
+                <span class="snapshot-time">{{ formatCreatedAt(archive.createdAt) }}</span>
+              </span>
             </button>
           </li>
         </ul>
@@ -264,6 +269,22 @@ onUnmounted(() => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.snapshot-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 自动存档标识：跟时间同一行，只在自动档出现 */
+.snapshot-badge {
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: calc(10px * var(--ui-font-scale));
+  line-height: 1.5;
+  color: var(--accent-secondary);
+  background: rgba(var(--accent-secondary-rgb), 0.14);
 }
 
 .snapshot-time {

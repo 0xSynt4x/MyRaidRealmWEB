@@ -283,11 +283,37 @@
               </div>
             </div>
 
-            <label class="api-auto-retry-row">
-              <input v-model="apiAutoRetry" type="checkbox" />
-              <span>{{ t('settings.apiAutoRetry') }}</span>
-              <small>{{ t('settings.apiAutoRetryHint') }}</small>
-            </label>
+            <div class="api-switch-row">
+              <span class="api-switch-label">{{ t('settings.apiAutoRetry') }}</span>
+              <label class="toggle-switch">
+                <input v-model="apiAutoRetry" type="checkbox" />
+                <span class="toggle-track"></span>
+              </label>
+              <small class="api-switch-hint">{{ t('settings.apiAutoRetryHint') }}</small>
+            </div>
+
+            <div class="api-switch-row">
+              <span class="api-switch-label">{{ t('settings.apiFirstTokenTimeout') }}</span>
+              <label class="toggle-switch">
+                <input v-model="apiFirstTokenTimeout" type="checkbox" />
+                <span class="toggle-track"></span>
+              </label>
+              <small class="api-switch-hint">{{ t('settings.apiFirstTokenTimeoutHint') }}</small>
+            </div>
+
+            <div v-if="apiFirstTokenTimeout" class="api-switch-row">
+              <span class="api-switch-label">{{ t('settings.apiFirstTokenTimeoutSeconds') }}</span>
+              <input
+                v-model.number="apiFirstTokenTimeoutSeconds"
+                class="api-first-token-timeout-input"
+                type="number"
+                :min="FIRST_TOKEN_TIMEOUT_MIN_SECONDS"
+                :max="FIRST_TOKEN_TIMEOUT_MAX_SECONDS"
+                step="1"
+                @change="commitFirstTokenTimeoutSeconds"
+              />
+              <small class="api-switch-hint">{{ t('settings.apiFirstTokenTimeoutSecondsUnit') }}</small>
+            </div>
           </div>
         </template>
 
@@ -769,7 +795,12 @@ import { useMessageActions } from '../../../composables/useMessageActions';
 import { useI18n } from '../../../i18n';
 import type { LocalContentEntryConfig } from '../../../presets/types';
 import { notify } from '../../../utils/notify';
-import { useSettingsStore } from '../../../stores/settings';
+import {
+  useSettingsStore,
+  normalizeFirstTokenTimeoutSeconds,
+  FIRST_TOKEN_TIMEOUT_MIN_SECONDS,
+  FIRST_TOKEN_TIMEOUT_MAX_SECONDS,
+} from '../../../stores/settings';
 import { useSetupStore } from '../../../stores/setup';
 import { useStatDataStore } from '../../../stores/statData';
 import { clearPendingStandaloneArchiveResume, loadPendingStandaloneArchiveResume } from '../../../utils/archive';
@@ -795,9 +826,22 @@ const statDataStore = useStatDataStore();
 const { persistApiPool } = settingsStore;
 const { t } = useI18n();
 
-const { apiPool, mainApiIds, assistantApiIds, apiAutoRetry, locale, standaloneLocalContent } =
-  storeToRefs(settingsStore);
+const {
+  apiPool,
+  mainApiIds,
+  assistantApiIds,
+  apiAutoRetry,
+  apiFirstTokenTimeout,
+  apiFirstTokenTimeoutSeconds,
+  locale,
+  standaloneLocalContent,
+} = storeToRefs(settingsStore);
 const { selectedPreset } = storeToRefs(setupStore);
+
+/** 秒数输入框失焦/回车时才夹到合法区间，避免玩家删空重打时被中途改写 */
+function commitFirstTokenTimeoutSeconds() {
+  apiFirstTokenTimeoutSeconds.value = normalizeFirstTokenTimeoutSeconds(apiFirstTokenTimeoutSeconds.value);
+}
 
 // 顶部列表编辑的是唯一的 API 池；主 API / 辅助 API 只是从池里勾选
 const {
@@ -2537,21 +2581,110 @@ async function startGame() {
   white-space: nowrap;
 }
 
-.api-auto-retry-row {
+.api-switch-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   margin-top: 14px;
   padding-top: 12px;
   border-top: 1px solid var(--card-border);
   font-size: 13px;
   color: var(--text-primary);
-  cursor: pointer;
 }
 
-.api-auto-retry-row small {
+/* 同组里只有第一行给分隔线，后面的行紧跟上一条 */
+.api-switch-row + .api-switch-row {
+  margin-top: 10px;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.api-switch-label {
+  min-width: 104px;
+  flex-shrink: 0;
+}
+
+.api-switch-hint {
   font-size: 12px;
   color: var(--text-tertiary);
+}
+
+/* 开关后面的说明居右，与文生图那边的排版一致。
+   只作用于紧跟在开关后的说明，秒数行的「秒」单位不受影响。 */
+.api-switch-row .toggle-switch + .api-switch-hint {
+  margin-left: auto;
+  text-align: right;
+}
+
+/* 开关：与文生图的「启用」开关同一套样式（限本区块，避免干扰世界书区块那份） */
+.api-switch-row .toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+.api-switch-row .toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.api-switch-row .toggle-track {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--card-border);
+  border-radius: 22px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.api-switch-row .toggle-track::before {
+  content: '';
+  position: absolute;
+  height: 16px;
+  width: 16px;
+  left: 3px;
+  bottom: 3px;
+  background: white;
+  border-radius: 50%;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.api-switch-row .toggle-switch input:checked + .toggle-track {
+  background: var(--accent-primary);
+  box-shadow: 0 0 8px rgba(var(--accent-primary-rgb), 0.3);
+}
+
+.api-switch-row .toggle-switch input:checked + .toggle-track::before {
+  transform: translateX(18px);
+}
+
+.api-switch-row .toggle-switch input:focus-visible + .toggle-track {
+  box-shadow: 0 0 0 3px rgba(var(--accent-primary-rgb), 0.2);
+}
+
+.api-first-token-timeout-input {
+  width: 76px;
+  padding: 6px 10px;
+  border: 1px solid var(--card-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--glass-bg);
+  font-size: 12px;
+  font-family: var(--font-base);
+  color: var(--text-primary);
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.api-first-token-timeout-input:focus {
+  outline: none;
+  border-color: rgba(var(--accent-primary-rgb), 0.5);
 }
 
 .api-card {

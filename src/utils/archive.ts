@@ -34,9 +34,20 @@ import {
 const STANDALONE_ARCHIVE_PENDING_RESUME_KEY = 'th1980s:standalone-archive-pending-resume';
 const STANDALONE_ARCHIVE_RESTORED_EVENT = 'th1980s:standalone-archive-restored';
 
+/**
+ * 存档来源：
+ * - `manual`：玩家手动保存 / 导入的存档，一槽一份、各自独立。
+ * - `auto`：每回合变量更新成功后自动写的存档，固定编号、每轮覆盖，只保留最新局面。
+ *
+ * 老存档没有这个字段，读取时按 `manual` 处理（见 buildStandaloneArchiveListItem），
+ * 所以不需要做数据迁移。
+ */
+export type StandaloneArchiveKind = 'auto' | 'manual';
+
 export interface StandaloneArchiveFile {
   version: '3.0.0';
   mode: 'standalone-runtime';
+  kind?: StandaloneArchiveKind;
   archiveId: string;
   createdAt: string;
   summary: string;
@@ -57,6 +68,7 @@ export interface StandaloneArchiveListItem {
   presetName: string;
   messageCount: number;
   updatedAt: string;
+  kind: StandaloneArchiveKind;
 }
 
 export interface PendingStandaloneArchiveResumeState {
@@ -111,6 +123,14 @@ export function getStandaloneArchiveRestoredEventName(): string {
 const STANDALONE_ARCHIVE_INDEX_STORAGE_KEY = 'th1980s:standalone-archive-index';
 const STANDALONE_ARCHIVE_STORAGE_KEY_PREFIX = 'th1980s:standalone-archive:';
 const STANDALONE_ARCHIVE_DEBUG_PRUNE_FLAG_KEY = 'th1980s:standalone-archive-debug-pruned';
+
+/**
+ * 自动存档固定用这一个编号。
+ *
+ * 每轮写的是同一个 storage key，天然覆盖 —— 不像手动存档那样每存一次多占一槽，
+ * 存档列表里也始终只占一行。
+ */
+const STANDALONE_AUTO_ARCHIVE_ID = 'standalone-archive-auto';
 
 function buildArchiveFileName(date: Date): string {
   const iso = date
@@ -233,6 +253,11 @@ function isStandaloneArchiveFile(data: unknown): data is StandaloneArchiveFile {
     typeof archive.session !== 'object' ||
     typeof archive.sendFullPreset !== 'boolean'
   ) {
+    return false;
+  }
+
+  // kind 是后加的字段：老存档没有它，按 manual 处理；但写了就必须是合法值
+  if (typeof archive.kind !== 'undefined' && archive.kind !== 'auto' && archive.kind !== 'manual') {
     return false;
   }
 
@@ -369,7 +394,11 @@ function getStandaloneArchiveSummary(
     : `${playerName}｜${location}｜${worldTime}｜${presetName}`;
 }
 
-function buildStandaloneArchivePayload(): StandaloneArchiveFile {
+function buildStandaloneArchivePayload(options?: {
+  /** 指定编号（自动存档用固定编号，实现「每轮覆盖」）；不传则每次生成新编号 */
+  archiveId?: string;
+  kind?: StandaloneArchiveKind;
+}): StandaloneArchiveFile {
   const settingsStore = useSettingsStore();
   const setupStore = useSetupStore();
   const bootstrap = ensureStandaloneRuntimeBaselineFromStores(loadStandaloneStatData());
@@ -382,7 +411,7 @@ function buildStandaloneArchivePayload(): StandaloneArchiveFile {
     return parsed;
   });
   const currentMessageIds = floorSnapshots.map(record => record.message_id);
-  const archiveId = createStandaloneArchiveId();
+  const archiveId = options?.archiveId ?? createStandaloneArchiveId();
   const createdAt = new Date().toISOString();
   const selectedPreset = setupStore.selectedPreset ? klona(setupStore.selectedPreset) : null;
   const standaloneLocalContent = settingsStore.standaloneLocalContent
@@ -392,6 +421,7 @@ function buildStandaloneArchivePayload(): StandaloneArchiveFile {
   return {
     version: '3.0.0',
     mode: 'standalone-runtime',
+    kind: options?.kind ?? 'manual',
     archiveId,
     createdAt,
     summary: getStandaloneArchiveSummary(bootstrap.session, runtimeMessages, selectedPreset),
@@ -491,6 +521,8 @@ function buildStandaloneArchiveListItem(payload: StandaloneArchiveFile): Standal
     presetName: payload.selectedPreset?.name || payload.session.preset_meta?.name || '未记录预设',
     messageCount: payload.currentMessageIds.length,
     updatedAt: payload.session.updatedAt,
+    // 老存档没带 kind，按手动存档显示
+    kind: payload.kind === 'auto' ? 'auto' : 'manual',
   };
 }
 
@@ -549,8 +581,11 @@ export async function downloadStandaloneArchiveById(archiveId: string): Promise<
   triggerJsonDownload(buildArchiveFileName(new Date(payload.createdAt)), payload);
 }
 
-export async function saveStandaloneArchiveSnapshot(): Promise<StandaloneArchiveListItem> {
-  const payload = buildStandaloneArchivePayload();
+/**
+ * 把一份存档载荷落盘，并按编号 upsert 索引项。
+ * 同编号 = 覆盖（自动存档靠这条做到「每轮只留最新一份」），新编号 = 新增一槽。
+ */
+async function upsertStandaloneArchive(payload: StandaloneArchiveFile): Promise<StandaloneArchiveListItem> {
   await writeStandaloneArchivePayload(payload);
 
   const nextEntry = buildStandaloneArchiveListItem(payload);
@@ -558,6 +593,39 @@ export async function saveStandaloneArchiveSnapshot(): Promise<StandaloneArchive
   nextIndex.push(nextEntry);
   writeStandaloneArchiveIndex(nextIndex);
   return nextEntry;
+}
+
+export async function saveStandaloneArchiveSnapshot(): Promise<StandaloneArchiveListItem> {
+  return upsertStandaloneArchive(buildStandaloneArchivePayload({ kind: 'manual' }));
+}
+
+/**
+ * 自动存档的写入队列。
+ *
+ * 存档是异步落盘的，而每回合都会触发一次。若两轮挨得极近（上一轮的写入还没落完，
+ * 这一轮又触发），两次写入可能乱序完成，把旧快照盖在新快照上。
+ * 用一条 Promise 链把写入排成先来后到，保证「最后写进去的 = 最新局面」。
+ */
+let autoArchiveWriteChain: Promise<unknown> = Promise.resolve();
+
+/**
+ * 每回合变量更新成功后的自动存档。
+ *
+ * 固定编号、每轮覆盖同一份，只保留最新局面；会出现在存档列表与「继续游戏」的存档选择器里。
+ * 调用方在回合收尾路径上，所以这里不抛错，失败只记日志（不让存档问题连累回合结果）。
+ */
+export function saveStandaloneAutoArchive(): Promise<StandaloneArchiveListItem> {
+  const run = () =>
+    upsertStandaloneArchive(
+      buildStandaloneArchivePayload({
+        archiveId: STANDALONE_AUTO_ARCHIVE_ID,
+        kind: 'auto',
+      }),
+    );
+
+  const next = autoArchiveWriteChain.then(run, run);
+  autoArchiveWriteChain = next.catch(() => undefined);
+  return next;
 }
 
 export function exportStandaloneCurrentArchive(): void {

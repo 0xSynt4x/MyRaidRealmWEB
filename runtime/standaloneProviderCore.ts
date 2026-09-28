@@ -51,7 +51,21 @@ export type RequestStandaloneProviderTextCoreInput = {
   logPrefix: string;
   onPartialText?: (text: string) => void;
   temperature?: number;
+  /**
+   * 首字超时（毫秒）：流式请求从发出算起，超过这个时间没收到任何正文增量就掐断、判为失败。
+   * 缺省或非正数 = 不启用，行为与之前完全一致。
+   */
+  firstTokenTimeoutMs?: number;
 };
+
+/**
+ * 首字超时错误的机器码前缀，消息形如 `standalone_first_token_timeout:30`。
+ * 上层（`src/utils/remoteApiError.ts`）据此换成对应语言的界面文案。
+ *
+ * ⚠️ 这里刻意不带 abort / cancel / stopped 字样：上层用正则识别「用户主动取消」，
+ * 误命中会把一次失败当成玩家自己掐的，静默吞掉错误提示。
+ */
+export const STANDALONE_FIRST_TOKEN_TIMEOUT_CODE = 'standalone_first_token_timeout';
 
 function isRecord(value: unknown): value is RecordLike {
   return typeof value === 'object' && value !== null;
@@ -364,56 +378,100 @@ export async function requestStandaloneProviderTextCore(
     headers.Authorization = `Bearer ${input.api.key}`;
   }
 
-  const response = await fetch(normalizedApiUrl, {
-    method: 'POST',
-    headers,
-    body: requestBodyText,
-    signal: input.signal,
-  });
-
-  if (!response.ok) {
-    const details = await readErrorResponseText(response, input.logPrefix);
-    throw new Error(`HTTP ${response.status} ${response.statusText}${details ? ` - ${details}` : ''}`);
+  // 首字看门狗与「玩家主动取消」共用同一个控制器：谁先触发都掐断这次请求。
+  // 外部 signal 原样桥接进来，保证点停止仍然立即生效。
+  const requestController = new AbortController();
+  const abortFromExternal = () => requestController.abort();
+  if (input.signal.aborted) {
+    requestController.abort();
+  } else {
+    input.signal.addEventListener('abort', abortFromExternal, { once: true });
   }
 
-  if (input.onPartialText && response.body) {
-    const streamingResult = await readOpenAiStreamingResponse(response, input.onPartialText);
+  const firstTokenTimeoutMs =
+    typeof input.firstTokenTimeoutMs === 'number' && input.firstTokenTimeoutMs > 0 ? input.firstTokenTimeoutMs : 0;
+  const onPartialText = input.onPartialText;
+  let firstTokenTimer: ReturnType<typeof setTimeout> | null = null;
+  let firstTokenTimedOut = false;
+  const stopFirstTokenWatch = () => {
+    if (firstTokenTimer !== null) {
+      clearTimeout(firstTokenTimer);
+      firstTokenTimer = null;
+    }
+  };
+
+  try {
+    // 计时从「请求发出」开始：连接挂死、响应头都不回的情况同样算失败。
+    if (onPartialText && firstTokenTimeoutMs > 0) {
+      firstTokenTimer = setTimeout(() => {
+        firstTokenTimedOut = true;
+        requestController.abort();
+      }, firstTokenTimeoutMs);
+    }
+
+    const response = await fetch(normalizedApiUrl, {
+      method: 'POST',
+      headers,
+      body: requestBodyText,
+      signal: requestController.signal,
+    });
+
+    if (!response.ok) {
+      const details = await readErrorResponseText(response, input.logPrefix);
+      throw new Error(`HTTP ${response.status} ${response.statusText}${details ? ` - ${details}` : ''}`);
+    }
+
+    if (onPartialText && response.body) {
+      // 收到第一段正文增量就停表；之后出字再慢也不再按首字超时处理。
+      const streamingResult = await readOpenAiStreamingResponse(response, text => {
+        stopFirstTokenWatch();
+        onPartialText(text);
+      });
+      return {
+        text: streamingResult.text,
+        model: streamingResult.model,
+        debugTrace: {
+          api_label: apiLabel,
+          api_mode: apiMode,
+          requested_at: requestedAt,
+          transport_mode: 'streaming',
+          request_messages: messages,
+          request_body_text: requestBodyText,
+          // 🔴 不落盘：流式原始抄本是整条 SSE 的逐字节转录（一个字要裹 150-200 字节的 JSON 包装），
+          // 体积可达正文的上百倍，而它只被调试面板在正文提取失败时当兜底用。正文已由 extracted_text 保存。
+          raw_response_text: '',
+          extracted_text: streamingResult.text,
+          error_message: null,
+        },
+      };
+    }
+
+    const rawResponseText = await response.text();
+    const parsedPayload = JSON.parse(rawResponseText) as unknown;
+    const extractedText = extractOpenAiResponseText(parsedPayload);
+
     return {
-      text: streamingResult.text,
-      model: streamingResult.model,
+      text: extractedText,
+      model: extractOpenAiResponseModel(parsedPayload),
       debugTrace: {
         api_label: apiLabel,
         api_mode: apiMode,
         requested_at: requestedAt,
-        transport_mode: 'streaming',
+        transport_mode: 'non_streaming',
         request_messages: messages,
         request_body_text: requestBodyText,
-        // 🔴 不落盘：流式原始抄本是整条 SSE 的逐字节转录（一个字要裹 150-200 字节的 JSON 包装），
-        // 体积可达正文的上百倍，而它只被调试面板在正文提取失败时当兜底用。正文已由 extracted_text 保存。
-        raw_response_text: '',
-        extracted_text: streamingResult.text,
+        raw_response_text: rawResponseText,
+        extracted_text: extractedText,
         error_message: null,
       },
     };
+  } catch (error) {
+    if (firstTokenTimedOut) {
+      throw new Error(`${STANDALONE_FIRST_TOKEN_TIMEOUT_CODE}:${Math.round(firstTokenTimeoutMs / 1000)}`);
+    }
+    throw error;
+  } finally {
+    stopFirstTokenWatch();
+    input.signal.removeEventListener('abort', abortFromExternal);
   }
-
-  const rawResponseText = await response.text();
-  const parsedPayload = JSON.parse(rawResponseText) as unknown;
-  const extractedText = extractOpenAiResponseText(parsedPayload);
-
-  return {
-    text: extractedText,
-    model: extractOpenAiResponseModel(parsedPayload),
-    debugTrace: {
-      api_label: apiLabel,
-      api_mode: apiMode,
-      requested_at: requestedAt,
-      transport_mode: 'non_streaming',
-      request_messages: messages,
-      request_body_text: requestBodyText,
-      raw_response_text: rawResponseText,
-      extracted_text: extractedText,
-      error_message: null,
-    },
-  };
 }

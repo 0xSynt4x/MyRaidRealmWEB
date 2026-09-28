@@ -19,9 +19,6 @@
     <!-- 主界面 - 三栏布局 -->
     <template v-else>
       <MainLayout>
-        <template #header>
-          <HeaderBar @reset-game="handleResetGame" />
-        </template>
         <template #left>
           <LeftSidebar />
         </template>
@@ -69,7 +66,6 @@ import ActionBar from './components/common/ActionBar.vue';
 import ConfirmDialog from './components/common/ConfirmDialog.vue';
 import NotificationContainer from './components/common/NotificationContainer.vue';
 import CenterContent from './components/layout/CenterContent.vue';
-import HeaderBar from './components/layout/HeaderBar.vue';
 import LeftSidebar from './components/layout/LeftSidebar.vue';
 import MainLayout from './components/layout/MainLayout.vue';
 import MobileBottomNav from './components/layout/MobileBottomNav.vue';

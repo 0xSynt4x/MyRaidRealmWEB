@@ -434,6 +434,21 @@ function testStandaloneMessageFormattingHighlightsDialogueQuotes(): void {
   assert.match(formatted, /<span class="quote">“嗯。”<\/span>/);
 }
 
+function testStandaloneMessageFormattingKeepsDialogueColorWithInnerQuotes(): void {
+  // 对话里嵌单引号：转义后是 &#39;（含 &），不能切断引号配对，否则颜色会串到别的句子上
+  const formatted = formatMessageContentForDisplay(
+    '"第二条，"她说，"你们那边说什么？\'吃饭了没\'？跟\'吃了没\'一个意思。"',
+    'assistant',
+    10,
+  );
+
+  assert.match(formatted, /<span class="quote">&quot;第二条，&quot;<\/span>/);
+  assert.match(
+    formatted,
+    /<span class="quote">&quot;你们那边说什么？&#39;吃饭了没&#39;？跟&#39;吃了没&#39;一个意思。&quot;<\/span>/,
+  );
+}
+
 async function testSupportsRawInterpolationWithoutHtmlEscaping(): Promise<void> {
   const result = renderStandaloneLocalContentTemplate({
     template: '<%= "<contenttext>保留原样</contenttext>" %>',
@@ -2172,15 +2187,20 @@ async function testMainPromptAlwaysIncludesRequiredMainReplyRule(): Promise<void
   assert.ok(systemMessages.includes('you should NOT output the update variable commands in the next reply'));
 }
 
+/**
+ * ⚠️ 未注册（2026-09-29 扫描发现）：期望与当前提示词组装不符 ——
+ * 首条 system 消息已不含 `[原版预设:主系统提示词]`，夹具里的 `世界` 字段也早已从
+ * `createRenderContext()` 移除（已就地修掉后者）。
+ * 它想覆盖的「不重复注入映射预设块」已由 `testMainPromptSkipsDuplicatedMappedPresetSections` 覆盖。
+ * 要复活它，需按当前 `buildMainTurnPrompt` 的真实输出重写断言。
+ */
 async function testMainPromptUsesOrderedMessagesAndStatSnapshotWithoutDuplicatedMappedBlocks(): Promise<void> {
   const input = createStandaloneTurnInput({
     statData: createRenderContext({
       statData: {
         ...createRenderContext().statData,
         世界: {
-          ...createRenderContext().statData.世界,
           空间定位: {
-            ...createRenderContext().statData.世界.空间定位,
             当前位置: '中国某市-测试地点',
           },
         },
@@ -2544,6 +2564,100 @@ async function testStandaloneProviderCoreStreamingRequestContract(): Promise<voi
     assert.equal(reply.text, '<UpdateVariable>[]</UpdateVariable>');
     assert.equal(latestPartialText, '<UpdateVariable>[]</UpdateVariable>');
     assert.equal(reply.debugTrace.transport_mode, 'streaming');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+}
+
+async function testStandaloneProviderCoreFailsOnFirstTokenTimeout(): Promise<void> {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (_input: string | URL | Request, init?: RequestInit) => {
+    const signal = init?.signal as AbortSignal | null | undefined;
+    return {
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      body: new ReadableStream<Uint8Array>({
+        start(controller) {
+          // 一直不出字；只有请求被掐断时流才报错，复刻真实 fetch 被 abort 的行为
+          signal?.addEventListener('abort', () => controller.error(new DOMException('Aborted', 'AbortError')), {
+            once: true,
+          });
+        },
+      }),
+      async text() {
+        return '';
+      },
+    } as Response;
+  }) as typeof fetch;
+
+  try {
+    await assert.rejects(
+      () =>
+        requestStandaloneProviderTextCore({
+          api: {
+            apiurl: 'https://stalled-stream.example.com/v1/chat/completions',
+            key: 'stalled-key',
+            model: 'stalled-model',
+            source: 'openai_compatible',
+          },
+          prompt: {
+            messages: [{ role: 'user', content: '请输出正文' }],
+          },
+          signal: new AbortController().signal,
+          logPrefix: '[StandaloneProviderCoreTimeoutTest]',
+          onPartialText() {},
+          firstTokenTimeoutMs: 1000,
+        }),
+      (error: unknown) =>
+        (error instanceof Error ? error.message : String(error)) === 'standalone_first_token_timeout:1',
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+}
+
+async function testStandaloneProviderCoreKeepsWaitingAfterFirstToken(): Promise<void> {
+  const originalFetch = globalThis.fetch;
+  const encoder = new TextEncoder();
+  globalThis.fetch = (async () => ({
+    ok: true,
+    status: 200,
+    statusText: 'OK',
+    body: new ReadableStream<Uint8Array>({
+      start(controller) {
+        // 首字立刻到，之后隔一段（超过首字超时值）才收尾：不该被判失败
+        controller.enqueue(encoder.encode('data: {"choices":[{"delta":{"content":"首字"}}]}\n'));
+        setTimeout(() => {
+          controller.enqueue(encoder.encode('data: {"choices":[{"delta":{"content":"收尾"}}]}\n'));
+          controller.enqueue(encoder.encode('data: [DONE]\n'));
+          controller.close();
+        }, 1200);
+      },
+    }),
+    async text() {
+      return '';
+    },
+  })) as typeof fetch;
+
+  try {
+    const reply = await requestStandaloneProviderTextCore({
+      api: {
+        apiurl: 'https://slow-but-alive.example.com/v1/chat/completions',
+        key: 'slow-key',
+        model: 'slow-model',
+        source: 'openai_compatible',
+      },
+      prompt: {
+        messages: [{ role: 'user', content: '请输出正文' }],
+      },
+      signal: new AbortController().signal,
+      logPrefix: '[StandaloneProviderCoreFirstTokenTest]',
+      onPartialText() {},
+      firstTokenTimeoutMs: 1000,
+    });
+
+    assert.equal(reply.text, '首字收尾');
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -5219,6 +5333,14 @@ async function run(): Promise<void> {
     ['passes through plain text', testPassesThroughPlainText],
     ['standalone message formatting supports rich text', testStandaloneMessageFormattingSupportsRichText],
     ['standalone auxiliary formatting supports rich text', testStandaloneAuxiliaryFormattingSupportsRichText],
+    [
+      'standalone message formatting highlights dialogue quotes',
+      testStandaloneMessageFormattingHighlightsDialogueQuotes,
+    ],
+    [
+      'standalone message formatting keeps dialogue color with inner quotes',
+      testStandaloneMessageFormattingKeepsDialogueColorWithInnerQuotes,
+    ],
     ['supports raw interpolation without html escaping', testSupportsRawInterpolationWithoutHtmlEscaping],
     ['supports getvar defaults and lodash random', testSupportsGetvarDefaultsAndLodashRandom],
     ['standalone prompt macro helpers', testStandalonePromptMacroReplacementHelpers],
@@ -5233,6 +5355,10 @@ async function run(): Promise<void> {
     [
       'assistant api debug trace preferred over legacy variable pass',
       testAssistantApiDebugTracePreferredOverLegacyVariablePass,
+    ],
+    [
+      'variable update second pass uses shared stat block and assistant before user',
+      testVariableUpdateSecondPassUsesSharedStatBlockAndAssistantBeforeUser,
     ],
     [
       'registered worldbook registry includes all current entries',
@@ -5316,6 +5442,7 @@ async function run(): Promise<void> {
       testMainPromptStillRequiresActionOptionsWithoutLocalActionOptionAsset,
     ],
     ['main prompt always includes required main reply rule', testMainPromptAlwaysIncludesRequiredMainReplyRule],
+    ['main prompt skips duplicated mapped preset sections', testMainPromptSkipsDuplicatedMappedPresetSections],
     [
       'built-in capua preset carries registered worldbook into main prompt',
       testBuiltInCapuaPresetCarriesRegisteredWorldbookIntoMainPrompt,
@@ -5327,6 +5454,8 @@ async function run(): Promise<void> {
     ],
     ['standalone main api openai request contract', testStandaloneMainApiOpenAiRequestContract],
     ['standalone provider core streaming request contract', testStandaloneProviderCoreStreamingRequestContract],
+    ['standalone provider core fails on first token timeout', testStandaloneProviderCoreFailsOnFirstTokenTimeout],
+    ['standalone provider core keeps waiting after first token', testStandaloneProviderCoreKeepsWaitingAfterFirstToken],
     ['standalone provider core supports api without key', testStandaloneProviderCoreSupportsApiWithoutKey],
     [
       'standalone provider core falls back when streaming returns whole json',

@@ -319,10 +319,10 @@ onUnmounted(() => {
 
 <style lang="scss" scoped>
 .main-layout {
-  /* ⚠️ 扁平化改版：顶栏已隐藏，整块高度归零 ——
-     HeaderBar 结构还在（只是 display:none），这里把「顶栏该多高」这个值也归零，
+  /* ⚠️ 扁平化改版：顶栏已删除（原 HeaderBar 组件与 App.vue 的 #header 插槽一并移除），
+     这里把「顶栏该多高」这个值钉成 0，让 header 行彻底塌掉，
      顺带让右侧抽屉 / 遮罩的 top 跟着落到 0，不会在顶部留一条空带。
-     要恢复顶栏：删掉下面这一行即可（会自动回到 global.css 的 --ui-topbar-h）。 */
+     要恢复顶栏：新写一个顶栏组件挂回 #header 插槽，再删掉下面这一行。 */
   --header-height: 0px;
 
   display: grid;
@@ -501,6 +501,5 @@ onUnmounted(() => {
   }
 }
 
-// 横屏手机原本会把顶栏压到 36px；顶栏已隐藏，这条不再有意义。
-// （恢复顶栏时把 .layout-header { --header-height: 36px } 加回来即可）
+// 横屏手机原本会把顶栏压到 36px；顶栏已删除，这条不再有意义。
 </style>
