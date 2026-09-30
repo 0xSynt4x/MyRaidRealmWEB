@@ -852,7 +852,7 @@
   变量更新遇坏内容会自己换备用 API、按钮与卡片样式统一 —— 玩家日志不该漏。
 - 四道检查：`typecheck` ✓ ｜ `test` 107/107 ✓ ｜ `lint` 0 error（17 个存量 warning）✓ ｜ `build` ✓。
 
-### — feat: 每回合自动存档、API 首字超时看门狗与一批界面修复
+### `e03e73c` — feat: 每回合自动存档、API 首字超时看门狗与一批界面修复
 
 > 短哈希待回填（按约定并入下一次提交）。
 
@@ -897,3 +897,19 @@
   「修复引号导致文字变色」「修复面板顶部样式」「每回合自动存档」「移除顶栏存档按钮」。
 - 四道检查：`typecheck` ✓ ｜ `test` 113/113 ✓ ｜ `lint` 0 error（14 个存量 warning）✓ ｜ `build` ✓ ｜
   `check:i18n` PASS。
+
+## 2026-09-30
+
+### — docs: 高敏感资产（schema / 提示词）改动前必须先确认
+
+- **Added** `CONTRIBUTING.md` 新增「🔴 高敏感资产：改动前必须先确认」一节：用表格列出四处逐字手工设计的
+  资产（`schema/` 数据契约、`src/assets/standalone-local-content/` 本地提示词与 EJS 模板、
+  `src/assets/standalone-worldbooks/` 内置世界资料、各预设里的提示词文本），并说明各自的敏感点
+  （`schema/` 影响存档兼容与变量更新链路；提示词文本会被**原样**拼进发给模型的提示词）。
+  规则要求先开 Issue 说明「改哪一句 / 改成什么 / 为什么」、确认后再提 PR，
+  明确「顺带调整」「统一措辞」不构成授权、未经确认的 PR 会被要求先回退。
+  此前 `CONTRIBUTING.md` 对这类资产**完全没有约定**。
+- **Changed** `AGENTS.md` 同一条 🔴🔴 准则的覆盖范围从两处（`schema/` 与 `standalone-local-content/`）
+  扩到四处，补上 `standalone-worldbooks/` 与各预设里的提示词文本，与 `CONTRIBUTING.md` 口径对齐。
+- **Changed** 顺带回填上一条提交 `e03e73c` 的短哈希（按约定并入本次提交，不单独开回填提交）。
+- 四道检查：`typecheck` ✓ ｜ `test` 113/113 ✓ ｜ `lint` 0 error（14 个存量 warning）✓ ｜ `build` ✓。
