@@ -117,6 +117,9 @@ export function useComfyUiImageGeneration() {
         return t('novelaiError.paymentRequired');
       case 'content-rejected':
         return t('novelaiError.contentRejected', detail);
+      case 'rate-limited':
+        // 与「配置错了」区分开：这条是等一会儿就好，重配参数没用
+        return t('novelaiError.rateLimited');
       case 'empty-output':
         return t('novelaiError.emptyOutput');
       case 'storage-full':

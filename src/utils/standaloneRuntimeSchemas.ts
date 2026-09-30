@@ -32,6 +32,9 @@ const StandaloneAiDebugPassTraceSchema = z.object({
   raw_response_text: z.string(),
   extracted_text: z.string(),
   error_message: z.string().nullable().optional(),
+  // 🔴 必须 optional：老消息里没有这两个键，缺了要能正常读进来。
+  api_url: z.string().optional(),
+  http_status: z.number().nullable().optional(),
 });
 
 const StandaloneAssistantDebugTraceSchema = z

@@ -75,6 +75,10 @@ const CHANGELOG_SOURCE: ReadonlyArray<{ date: string; items: readonly string[] }
       '移除顶栏存档按钮',
     ],
   },
+  {
+    date: '261001',
+    items: ['调试页可回看失败请求', '出图遇限流自动重试', '变量更新报错可定位'],
+  },
 ];
 
 /** 第 `index` 条（从 0 起）对应的版本号 */

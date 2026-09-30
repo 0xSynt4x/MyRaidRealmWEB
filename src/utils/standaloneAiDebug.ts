@@ -17,6 +17,16 @@ export interface StandaloneAiDebugPassTrace {
   raw_response_text: string;
   extracted_text: string;
   error_message?: string | null;
+  /**
+   * 实际请求的完整地址（含 query）。
+   * 🔴 必须是可选 —— 老消息里没有这个键，缺了要能正常读进来。
+   */
+  api_url?: string;
+  /**
+   * HTTP 状态码；网络 / CORS / 首字超时时为 null。
+   * 🔴 同上，老数据没有这个键。
+   */
+  http_status?: number | null;
 }
 
 export interface StandaloneAssistantDebugTrace {

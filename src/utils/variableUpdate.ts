@@ -84,17 +84,28 @@ function resolveParentContainer(root: unknown, tokens: string[]): { container: u
   }
 
   let container = root;
-  for (const token of tokens.slice(0, -1)) {
+  const parentTokens = tokens.slice(0, -1);
+
+  for (let index = 0; index < parentTokens.length; index += 1) {
+    const token = parentTokens[index]!;
     const nextValue = getContainerChild(container, token);
+
     if (nextValue === undefined) {
-      throw new Error(`Parent path does not exist: /${tokens.slice(0, -1).join('/')}`);
+      // 只报「父路径不存在」时看不出断在哪一段，排查得靠猜。补上断点段号与断点路径：
+      // 这条错误会一路显示到玩家的「变量更新失败」提示里，必须能一眼定位。
+      const missingPath = `/${parentTokens.slice(0, index + 1).join('/')}`;
+      throw new Error(
+        `Parent path does not exist: /${parentTokens.join('/')}` +
+          `（第 ${index + 1} 段 "${missingPath}" 在数据里不存在）`,
+      );
     }
+
     container = nextValue;
   }
 
   return {
     container,
-    finalToken: tokens[tokens.length - 1],
+    finalToken: tokens[tokens.length - 1]!,
   };
 }
 
@@ -304,6 +315,11 @@ export function filterVariableUpdatePatch(
   });
 }
 
+/** 把一条操作描述成「操作类型 + 完整路径」，供报错定位用。 */
+function describeOperation(operation: JsonPatchOperation): string {
+  return operation.op === 'move' ? `move ${operation.from} → ${operation.to}` : `${operation.op} ${operation.path}`;
+}
+
 export function applyVariableUpdatePatch(
   statData: StandaloneStatData,
   patch: JsonPatchOperation[],
@@ -312,23 +328,34 @@ export function applyVariableUpdatePatch(
   const nextState = cloneState(statData);
   const effectivePatch = guard ? filterVariableUpdatePatch(patch, guard) : patch;
 
-  for (const operation of effectivePatch) {
-    switch (operation.op) {
-      case 'replace':
-        applyReplace(nextState, operation);
-        break;
-      case 'delta':
-        applyDelta(nextState, operation);
-        break;
-      case 'insert':
-        applyInsert(nextState, operation);
-        break;
-      case 'remove':
-        applyRemove(nextState, operation);
-        break;
-      case 'move':
-        applyMove(nextState, operation);
-        break;
+  for (let index = 0; index < effectivePatch.length; index += 1) {
+    const operation = effectivePatch[index]!;
+
+    try {
+      switch (operation.op) {
+        case 'replace':
+          applyReplace(nextState, operation);
+          break;
+        case 'delta':
+          applyDelta(nextState, operation);
+          break;
+        case 'insert':
+          applyInsert(nextState, operation);
+          break;
+        case 'remove':
+          applyRemove(nextState, operation);
+          break;
+        case 'move':
+          applyMove(nextState, operation);
+          break;
+      }
+    } catch (error) {
+      // 整批补丁是「一条失败即全部作废」，所以必须说清是哪一条、打在哪个路径上，
+      // 否则玩家只看到「补丁无法应用」，既不知道错在哪条，也不知道错在哪段路径。
+      const detail = error instanceof Error ? error.message : String(error);
+      throw new Error(
+        `第 ${index + 1}/${effectivePatch.length} 条补丁（${describeOperation(operation)}）无法应用：${detail}`,
+      );
     }
   }
 

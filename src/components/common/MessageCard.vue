@@ -136,7 +136,7 @@
               {{ variableUpdateStatusInfo.hint }}
             </p>
             <p v-if="message.variable_update_warning" class="variable-update-warning">
-              <span class="variable-update-warning-label">{{ t('messageCard.variableUpdateReason') }}:</span>
+              <span class="variable-update-warning-label">{{ t('messageCard.variableUpdateReason') }}</span>
               <span>{{ message.variable_update_warning }}</span>
             </p>
             <div v-if="updateFormatted" class="text-content" v-html="updateFormatted"></div>

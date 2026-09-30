@@ -109,7 +109,7 @@
       <span class="row-label">{{ t('settings.novelai.sampler') }}</span>
       <select v-model="samplerSelectValue" class="comfy-select">
         <optgroup
-          v-for="group in NOVELAI_SAMPLER_GROUPS"
+          v-for="group in samplerGroups"
           :key="group.id"
           :label="t(`settings.novelai.optionGroup.${group.id}`)"
         >
@@ -134,7 +134,7 @@
       <span class="row-label">{{ t('settings.novelai.noiseSchedule') }}</span>
       <select v-model="noiseScheduleSelectValue" class="comfy-select">
         <optgroup
-          v-for="group in NOVELAI_NOISE_SCHEDULE_GROUPS"
+          v-for="group in noiseScheduleGroups"
           :key="group.id"
           :label="t(`settings.novelai.optionGroup.${group.id}`)"
         >
@@ -255,10 +255,9 @@ import {
   fetchNovelAiModels,
   NOVELAI_MODEL_OPTIONS,
   NOVELAI_NOISE_SCHEDULE_GROUPS,
-  NOVELAI_NOISE_SCHEDULE_OPTIONS,
   NOVELAI_OFFICIAL_BASE_URL,
   NOVELAI_SAMPLER_GROUPS,
-  NOVELAI_SAMPLER_OPTIONS,
+  resolveNovelAiChannel,
   testNovelAiConnection,
 } from '../../utils/novelAiImageClient';
 
@@ -293,6 +292,41 @@ function isCandidate(candidates: readonly string[], value: string): boolean {
 }
 
 /**
+ * 当前地址属于哪个渠道（官方 / 兼容站）—— 按域名自动判，玩家不用选。
+ * 只用来决定「采样器与调度该显示哪一组候选」。
+ */
+const novelAiChannel = computed(() => resolveNovelAiChannel(novelAi.value.baseUrl));
+
+/**
+ * 候选组按渠道收窄 —— 减少「填了兼容站却挑官方采样器名」这类错配
+ * （实测兼容站对 `k_euler_ancestral` 会回退成 `euler`）。
+ *
+ * 🔴 当前值永远并进本组：老配置里存的可能是另一组的名字，
+ * 直接过滤掉会让它掉成「自定义…」、看着像配置坏了。
+ */
+function narrowGroups(
+  groups: readonly { id: 'official' | 'compat'; options: readonly string[] }[],
+  currentValue: string,
+): { id: 'official' | 'compat'; options: readonly string[] }[] {
+  return groups
+    .filter(group => group.id === novelAiChannel.value)
+    .map(group => {
+      const current = currentValue.trim();
+      if (current && !group.options.includes(current)) {
+        return { id: group.id, options: [...group.options, current] };
+      }
+      return group;
+    });
+}
+
+const samplerGroups = computed(() => narrowGroups(NOVELAI_SAMPLER_GROUPS, novelAi.value.sampler));
+const noiseScheduleGroups = computed(() => narrowGroups(NOVELAI_NOISE_SCHEDULE_GROUPS, novelAi.value.noiseSchedule));
+
+/** 本渠道的候选（扁平）—— 用来判断当前值算不算候选 */
+const samplerCandidates = computed(() => samplerGroups.value.flatMap(group => group.options));
+const noiseScheduleCandidates = computed(() => noiseScheduleGroups.value.flatMap(group => group.options));
+
+/**
  * 「候选下拉 + 自定义手填」三处共用的双向绑定。
  *
  * 字段里存的**始终是最终要发出去的字符串**，下拉只负责显示：
@@ -323,7 +357,7 @@ const samplerSelectValue = createCandidateSelection(
   value => {
     novelAi.value.sampler = value;
   },
-  () => NOVELAI_SAMPLER_OPTIONS,
+  () => samplerCandidates.value,
 );
 
 const noiseScheduleSelectValue = createCandidateSelection(
@@ -331,12 +365,12 @@ const noiseScheduleSelectValue = createCandidateSelection(
   value => {
     novelAi.value.noiseSchedule = value;
   },
-  () => NOVELAI_NOISE_SCHEDULE_OPTIONS,
+  () => noiseScheduleCandidates.value,
 );
 
 const isCustomModel = computed(() => !isCandidate(modelCandidates.value, novelAi.value.model));
-const isCustomSampler = computed(() => !isCandidate(NOVELAI_SAMPLER_OPTIONS, novelAi.value.sampler));
-const isCustomNoiseSchedule = computed(() => !isCandidate(NOVELAI_NOISE_SCHEDULE_OPTIONS, novelAi.value.noiseSchedule));
+const isCustomSampler = computed(() => !isCandidate(samplerCandidates.value, novelAi.value.sampler));
+const isCustomNoiseSchedule = computed(() => !isCandidate(noiseScheduleCandidates.value, novelAi.value.noiseSchedule));
 
 /** ucPreset 的档位名，顺序与 NOVELAI_UC_PRESET_VALUES 对齐 */
 const UC_PRESET_KEYS: Record<number, string> = {

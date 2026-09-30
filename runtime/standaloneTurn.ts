@@ -7,6 +7,11 @@ import {
   type StandaloneAiDebugPassTrace,
   type StandaloneAssistantDebugTrace,
 } from '../src/utils/standaloneAiDebug';
+import {
+  appendStandaloneAiDebugFailure,
+  createFallbackFailureTrace,
+  readStandaloneProviderFailureTrace,
+} from '../src/utils/standaloneAiDebugFailures';
 import { normalizeRemoteApiErrorMessage } from '../src/utils/remoteApiError';
 import {
   parseTaggedAssistantReply,
@@ -1041,8 +1046,10 @@ async function requestVariableUpdateSecondPass(
   const failures: string[] = [];
   const patchGuard = resolveStandalonePatchGuard(input.statData);
 
-  for (const api of candidateApis) {
+  for (let index = 0; index < candidateApis.length; index += 1) {
+    const api = candidateApis[index]!;
     const apiLabel = toApiLabel(api);
+    const attempt = index + 1;
 
     try {
       const secondPassReply = await requestAssistantReply(api, secondPassPrompt, signal);
@@ -1051,6 +1058,12 @@ async function requestVariableUpdateSecondPass(
 
       if (!updateBlock) {
         failures.push(`${apiLabel}: 未返回合法的 <UpdateVariable> 块`);
+        appendStandaloneAiDebugFailure({
+          pass: 'variable_update_pass',
+          attempt,
+          totalAttempts: candidateApis.length,
+          trace: secondPassReply.debugTrace,
+        });
         continue;
       }
 
@@ -1061,11 +1074,23 @@ async function requestVariableUpdateSecondPass(
 
       if (trialResult.errorMessage) {
         failures.push(`${apiLabel}: 补丁无法应用（${trialResult.errorMessage}）`);
+        appendStandaloneAiDebugFailure({
+          pass: 'variable_update_pass',
+          attempt,
+          totalAttempts: candidateApis.length,
+          trace: secondPassReply.debugTrace,
+        });
         continue;
       }
 
       if (!trialResult.variableUpdateApplied) {
         failures.push(`${apiLabel}: 补丁未产生有效更新`);
+        appendStandaloneAiDebugFailure({
+          pass: 'variable_update_pass',
+          attempt,
+          totalAttempts: candidateApis.length,
+          trace: secondPassReply.debugTrace,
+        });
         continue;
       }
 
@@ -1081,6 +1106,14 @@ async function requestVariableUpdateSecondPass(
       }
 
       failures.push(`${apiLabel}: ${normalizeRemoteApiErrorMessage(error)}`);
+      appendStandaloneAiDebugFailure({
+        pass: 'variable_update_pass',
+        attempt,
+        totalAttempts: candidateApis.length,
+        trace:
+          readStandaloneProviderFailureTrace(error) ??
+          createFallbackFailureTrace({ api_label: apiLabel, api_mode: api.source }),
+      });
     }
   }
 
@@ -1119,6 +1152,9 @@ export async function runStandaloneLocalTurn(input: StandaloneLocalTurnInput): P
     for (let index = 0; index < candidateMainApis.length; index += 1) {
       const candidateApi = candidateMainApis[index]!;
       const candidateApiLabel = toApiLabel(candidateApi);
+      // 请求成功、但后续处理失败时（如「主 API 未返回正文内容」）也要能留档这次的 trace。
+      // 每轮重置，避免上一轮的 trace 被误当成这一轮的。
+      let lastMainTrace: StandaloneAiDebugPassTrace | null = null;
 
       try {
         const mainReply = await requestAssistantReply(
@@ -1128,6 +1164,7 @@ export async function runStandaloneLocalTurn(input: StandaloneLocalTurnInput): P
           input.onMainReplyPartialText,
           input.firstTokenTimeoutSeconds,
         );
+        lastMainTrace = mainReply.debugTrace;
         const rawReply = normalizeLineEndings(mainReply.text);
         const sanitizedMainReply = normalizeLineEndings(stripUpdateVariableBlocks(rawReply));
 
@@ -1251,6 +1288,17 @@ export async function runStandaloneLocalTurn(input: StandaloneLocalTurnInput): P
           message,
           attempt: index + 1,
           totalAttempts: candidateMainApis.length,
+        });
+
+        // 失败请求也留档：弹窗消失后，AI 调试页仍能看到「打到哪、服务端回了什么」。
+        appendStandaloneAiDebugFailure({
+          pass: 'main_pass',
+          attempt: index + 1,
+          totalAttempts: candidateMainApis.length,
+          trace:
+            readStandaloneProviderFailureTrace(error) ??
+            lastMainTrace ??
+            createFallbackFailureTrace({ api_label: candidateApiLabel, api_mode: candidateApi.source }),
         });
       }
     }

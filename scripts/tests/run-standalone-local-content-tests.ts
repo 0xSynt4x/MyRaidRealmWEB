@@ -4261,6 +4261,8 @@ async function testStandaloneMessageActionsClearBusyStateAfterVariableUpdateFail
     assert.equal(lastAssistantMessage?.content_text, '主回复已到达');
     assert.equal(lastAssistantMessage?.variable_update_status, 'failed');
     assert.match(lastAssistantMessage?.variable_update_warning ?? '', /Object target key does not exist|当前位置/);
+    // 报错必须能定位：带上「第 N/M 条补丁（操作 + 完整路径）」，而不是只有一句「补丁无法应用」。
+    assert.match(lastAssistantMessage?.variable_update_warning ?? '', /第 \d+\/\d+ 条补丁（.+）无法应用：/);
   } finally {
     globalThis.fetch = originalFetch;
   }

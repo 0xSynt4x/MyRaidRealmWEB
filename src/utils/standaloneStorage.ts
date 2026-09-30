@@ -55,6 +55,8 @@ const MIGRATED_FIXED_KEYS = [
   'th1980s:standalone-tavern-preset-override',
   // 「已裁剪过」标记：不同步读写的话每次启动都会重裁一遍
   'th1980s:standalone-tavern-preset-library-slimmed',
+  // AI 调试页「失败的请求」留档（不绑会话，只留最近 20 条）
+  'th1980s:standalone-ai-debug-failures',
 ] as const;
 
 /**

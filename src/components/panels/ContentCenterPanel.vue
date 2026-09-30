@@ -370,6 +370,223 @@
       aria-labelledby="content-center-tab-aiDebug"
     >
       <div class="ai-debug-stack-shell">
+        <!--
+          失败的请求：请求一发出就留了快照，失败时补上服务端返回与错误。
+          这些请求没有对应的 assistant 楼层，所以不在下面的「请求记录」里。
+        -->
+        <div v-if="aiDebugFailures.length > 0" class="preset-entry-list-card ai-debug-failures-card">
+          <div class="preset-browser-head">
+            <div>
+              <h5>{{ t('contentCenter.aiDebug.failureSectionTitle') }}</h5>
+              <p class="preset-section-note">{{ t('contentCenter.aiDebug.failureSectionSubtitle') }}</p>
+            </div>
+            <button type="button" class="ai-debug-failure-clear" @click="handleClearDebugFailures">
+              <i class="ti ti-trash"></i>
+              <span>{{ t('contentCenter.aiDebug.failureClearButton') }}</span>
+            </button>
+          </div>
+
+          <div class="ai-debug-stack-list" role="list">
+            <article
+              v-for="failure in aiDebugFailures"
+              :key="failure.id"
+              role="listitem"
+              :class="[
+                'preset-entry-detail-card',
+                'ai-debug-stack-card',
+                { active: expandedDebugFailureId === failure.id },
+              ]"
+            >
+              <button type="button" class="ai-debug-stack-trigger" @click="toggleDebugFailureCard(failure.id)">
+                <div class="ai-debug-stack-copy">
+                  <div class="ai-debug-stack-title-row">
+                    <span class="preset-entry-order compact-order">
+                      <i class="ti ti-alert-triangle"></i>
+                    </span>
+                    <strong class="ai-debug-stack-time">{{ formatDebugFailureTime(failure.occurred_at) }}</strong>
+                    <i
+                      :class="[
+                        'ti',
+                        expandedDebugFailureId === failure.id ? 'ti-chevron-up' : 'ti-chevron-down',
+                        'ai-debug-stack-chevron',
+                      ]"
+                    ></i>
+                  </div>
+
+                  <div class="compact-worldbook-meta-line ai-debug-stack-meta">
+                    <span
+                      :class="[
+                        'tag-chip',
+                        'compact-tag',
+                        'ai-debug-summary-chip',
+                        failure.pass === 'main_pass' ? 'main' : 'variable',
+                      ]"
+                    >
+                      <i :class="['ti', failure.pass === 'main_pass' ? 'ti-send' : 'ti-refresh']"></i>
+                      {{ debugFailurePassLabel(failure.pass) }}
+                    </span>
+                    <span class="tag-chip compact-tag ai-debug-summary-chip missing">
+                      {{
+                        t('contentCenter.aiDebug.failureAttemptLabel', {
+                          index: failure.attempt,
+                          total: failure.total_attempts,
+                        })
+                      }}
+                    </span>
+                    <span v-if="failure.trace.api_label" class="tag-chip compact-tag">
+                      {{ failure.trace.api_label }}
+                    </span>
+                  </div>
+
+                  <p class="ai-debug-failure-summary">
+                    {{ failure.trace.error_message || t('common.notAvailable') }}
+                  </p>
+                </div>
+              </button>
+
+              <div v-if="expandedDebugFailureId === failure.id" class="ai-debug-stack-body">
+                <div class="ai-debug-pass-strip">
+                  <span class="tag-chip compact-tag">
+                    {{ t('contentCenter.aiDebug.metaApiLabel') }}:
+                    {{ failure.trace.api_label || t('common.notAvailable') }}
+                  </span>
+                  <span class="tag-chip compact-tag">
+                    {{ t('contentCenter.aiDebug.metaApiUrl') }}:
+                    {{ failure.trace.api_url || t('common.notAvailable') }}
+                  </span>
+                  <span class="tag-chip compact-tag">
+                    {{ t('contentCenter.aiDebug.metaRequestedAt') }}: {{ failure.trace.requested_at }}
+                  </span>
+                  <span class="tag-chip compact-tag">
+                    {{ t('contentCenter.aiDebug.metaTransport') }}:
+                    {{ transportModeLabel(failure.trace.transport_mode) }}
+                  </span>
+                </div>
+
+                <button type="button" class="debug-sub-toggle" @click.stop="toggleDebugFailureSub('requestMessages')">
+                  <i
+                    :class="[
+                      'ti',
+                      isDebugFailureSubExpanded('requestMessages') ? 'ti-chevron-down' : 'ti-chevron-right',
+                    ]"
+                  ></i>
+                  <span>{{ t('contentCenter.aiDebug.requestMessagesTitle') }}</span>
+                </button>
+                <section
+                  v-if="isDebugFailureSubExpanded('requestMessages')"
+                  class="debug-block-section debug-block-section-reading"
+                >
+                  <div v-if="debugFailureRequestMessageItems.length > 0" class="debug-conversation-list" role="list">
+                    <article
+                      v-for="item in debugFailureRequestMessageItems"
+                      :key="`failure-request-message-${item.index}`"
+                      :class="['debug-conversation-card', item.roleTone]"
+                      role="listitem"
+                    >
+                      <div class="debug-conversation-card-head">
+                        <div class="debug-conversation-topline">
+                          <span :class="['debug-conversation-role', item.roleTone]">{{ item.roleLabel }}</span>
+                          <span class="debug-conversation-index">第 {{ item.index }} 条</span>
+                        </div>
+                        <div v-if="item.metaRows.length > 0" class="debug-conversation-meta">
+                          <span
+                            v-for="meta in item.metaRows"
+                            :key="`${item.index}-${meta.label}`"
+                            class="debug-conversation-meta-item"
+                          >
+                            <span>{{ meta.label }}</span>
+                            <strong>{{ meta.value }}</strong>
+                          </span>
+                        </div>
+                      </div>
+                      <p class="debug-reading-copy debug-conversation-content">{{ item.content }}</p>
+                    </article>
+                  </div>
+                  <div v-else class="empty-state compact-empty">{{ t('common.notAvailable') }}</div>
+                </section>
+
+                <button type="button" class="debug-sub-toggle" @click.stop="toggleDebugFailureSub('requestBody')">
+                  <i
+                    :class="['ti', isDebugFailureSubExpanded('requestBody') ? 'ti-chevron-down' : 'ti-chevron-right']"
+                  ></i>
+                  <span>{{ t('contentCenter.aiDebug.requestBodyTitle') }}</span>
+                </button>
+                <section
+                  v-if="isDebugFailureSubExpanded('requestBody')"
+                  class="debug-block-section debug-block-section-reading"
+                >
+                  <div v-if="debugFailureRequestBodyView.hasStructuredContent" class="debug-request-summary">
+                    <div v-if="debugFailureRequestBodyView.summaryRows.length > 0" class="debug-request-summary-grid">
+                      <article
+                        v-for="row in debugFailureRequestBodyView.summaryRows"
+                        :key="`failure-request-body-row-${row.label}`"
+                        class="debug-request-stat"
+                      >
+                        <span class="summary-label">{{ row.label }}</span>
+                        <strong class="summary-value break-all">{{ row.value }}</strong>
+                      </article>
+                    </div>
+
+                    <div v-if="debugFailureRequestBodyView.noteBlocks.length > 0" class="debug-request-notes">
+                      <article
+                        v-for="(note, noteIndex) in debugFailureRequestBodyView.noteBlocks"
+                        :key="`failure-request-body-note-${noteIndex}`"
+                        :class="['debug-request-note', { structured: note.structured }]"
+                      >
+                        <span class="summary-label">{{ note.label }}</span>
+                        <div
+                          :class="[
+                            'debug-reading-copy',
+                            note.structured ? 'debug-request-note-structured' : 'debug-request-note-copy',
+                          ]"
+                        >
+                          {{ note.value }}
+                        </div>
+                      </article>
+                    </div>
+                  </div>
+                  <article v-else class="debug-request-note debug-request-note-fallback">
+                    <span class="summary-label">请求体原文</span>
+                    <div class="debug-reading-copy debug-request-note-copy">
+                      {{ debugFailureRequestBodyView.fallbackText }}
+                    </div>
+                  </article>
+                </section>
+
+                <button type="button" class="debug-sub-toggle" @click.stop="toggleDebugFailureSub('rawResponse')">
+                  <i
+                    :class="['ti', isDebugFailureSubExpanded('rawResponse') ? 'ti-chevron-down' : 'ti-chevron-right']"
+                  ></i>
+                  <span>{{ t('contentCenter.aiDebug.rawResponseTitle') }}</span>
+                </button>
+                <section
+                  v-if="isDebugFailureSubExpanded('rawResponse')"
+                  class="debug-block-section debug-block-section-reading"
+                >
+                  <pre class="preset-body-content debug-pre debug-pre-reading">{{ debugFailureResponseText }}</pre>
+                </section>
+
+                <button
+                  type="button"
+                  class="debug-sub-toggle debug-sub-toggle-error"
+                  @click.stop="toggleDebugFailureSub('error')"
+                >
+                  <i :class="['ti', isDebugFailureSubExpanded('error') ? 'ti-chevron-down' : 'ti-chevron-right']"></i>
+                  <span>{{ t('contentCenter.aiDebug.errorLabel') }}</span>
+                </button>
+                <section
+                  v-if="isDebugFailureSubExpanded('error')"
+                  class="debug-block-section debug-block-section-structured"
+                >
+                  <pre class="preset-body-content debug-pre debug-pre-structured">{{
+                    failure.trace.error_message || t('common.notAvailable')
+                  }}</pre>
+                </section>
+              </div>
+            </article>
+          </div>
+        </div>
+
         <div class="preset-entry-list-card ai-debug-stack-header">
           <div class="preset-browser-head">
             <div>
@@ -806,6 +1023,9 @@
 import { computed, nextTick, onActivated, ref, watch } from 'vue';
 import { useI18n } from '../../i18n';
 import { useMessagesStore, type MessageRecord } from '../../stores/messages';
+import { useNotificationStore } from '../../stores/notification';
+import { useAiDebugFailuresStore } from '../../stores/aiDebugFailures';
+import type { StandaloneAiDebugFailurePass } from '../../utils/standaloneAiDebugFailures';
 import {
   resolvePreferredVariableDebugPass,
   type StandaloneAiDebugPassTrace,
@@ -853,6 +1073,8 @@ const currentTab = ref<ContentCenterTab>('presets');
 
 const { t } = useI18n();
 const messagesStore = useMessagesStore();
+const notificationStore = useNotificationStore();
+const aiDebugFailuresStore = useAiDebugFailuresStore();
 const tavernPresetImportInputRef = ref<HTMLInputElement | null>(null);
 const tavernPresetRefreshTick = ref(0);
 const tavernPresetImportStatus = ref('');
@@ -886,6 +1108,8 @@ const debugVarPassExpanded = ref(false);
 const debugFinalRawExpanded = ref(false);
 const debugMainSubSections = ref<Record<string, boolean>>({});
 const debugVarSubSections = ref<Record<string, boolean>>({});
+const expandedDebugFailureId = ref<string | null>(null);
+const debugFailureSubSections = ref<Record<string, boolean>>({});
 const tavernPresetParseLabel = computed(() =>
   tavernPresetSummary.value.parseOk ? t('contentCenter.presets.parseOk') : t('contentCenter.presets.parseFallback'),
 );
@@ -964,6 +1188,24 @@ const mainPassRequestBodyView = computed(() =>
 );
 const variablePassRequestBodyView = computed(() =>
   buildReadableDebugRequestBodyView(selectedPreferredVariableTrace.value?.request_body_text),
+);
+
+/**
+ * 「失败的请求」列表。
+ * 记录由 runtime 层直接写存储（不经过 store），所以切到本 tab 时要 refresh 一次。
+ */
+const aiDebugFailures = computed(() => aiDebugFailuresStore.failures);
+const expandedDebugFailure = computed(
+  () => aiDebugFailures.value.find(item => item.id === expandedDebugFailureId.value) ?? null,
+);
+const debugFailureRequestMessageItems = computed(() =>
+  buildReadableDebugRequestMessages(expandedDebugFailure.value?.trace.request_messages),
+);
+const debugFailureRequestBodyView = computed(() =>
+  buildReadableDebugRequestBodyView(expandedDebugFailure.value?.trace.request_body_text),
+);
+const debugFailureResponseText = computed(() =>
+  expandedDebugFailure.value ? readableDebugPassResponse(expandedDebugFailure.value.trace) : '',
 );
 const contentSelectorCards = computed(() => {
   const cards: Array<{
@@ -1383,6 +1625,50 @@ function resetDebugCollapseState() {
   debugVarSubSections.value = {};
 }
 
+function debugFailurePassLabel(pass: StandaloneAiDebugFailurePass) {
+  return pass === 'main_pass'
+    ? t('contentCenter.aiDebug.passMainShort')
+    : t('contentCenter.aiDebug.passVariableUpdateShort');
+}
+
+function formatDebugFailureTime(occurredAt: string) {
+  const date = new Date(occurredAt);
+  if (Number.isNaN(date.getTime())) {
+    return occurredAt || t('common.notAvailable');
+  }
+
+  return date.toLocaleString();
+}
+
+function toggleDebugFailureCard(failureId: string) {
+  expandedDebugFailureId.value = expandedDebugFailureId.value === failureId ? null : failureId;
+  debugFailureSubSections.value = {};
+}
+
+function isDebugFailureSubExpanded(key: string) {
+  return debugFailureSubSections.value[key] === true;
+}
+
+function toggleDebugFailureSub(key: string) {
+  debugFailureSubSections.value[key] = !debugFailureSubSections.value[key];
+}
+
+async function handleClearDebugFailures() {
+  const confirmed = await notificationStore.confirm({
+    title: t('contentCenter.aiDebug.failureClearConfirmTitle'),
+    message: t('contentCenter.aiDebug.failureClearConfirmMessage'),
+    type: 'warning',
+  });
+
+  if (!confirmed) {
+    return;
+  }
+
+  aiDebugFailuresStore.clear();
+  expandedDebugFailureId.value = null;
+  debugFailureSubSections.value = {};
+}
+
 function syncSelectedDebugMessage(preferredMessageId?: number | null) {
   const availableMessages = assistantMessagesForDebug.value;
   if (availableMessages.length === 0) {
@@ -1438,6 +1724,13 @@ watch(
 
 watch(selectedDebugMessageId, () => {
   resetDebugCollapseState();
+});
+
+// 记录由 runtime 直接写存储，切到本 tab 时重新读一次，避免看到上次打开时的旧列表。
+watch(currentTab, tab => {
+  if (tab === 'aiDebug') {
+    aiDebugFailuresStore.refresh();
+  }
 });
 
 watch(
@@ -1983,6 +2276,39 @@ onActivated(() => {
 
 .ai-debug-stack-header {
   gap: 8px;
+}
+
+.ai-debug-failure-clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid rgba(var(--accent-danger-rgb), 0.2);
+  border-radius: var(--ui-radius-md);
+  background: rgba(var(--accent-danger-rgb), 0.06);
+  color: var(--accent-danger);
+  font: inherit;
+  font-size: calc(12px * var(--ui-font-scale));
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.ai-debug-failure-clear:hover {
+  background: rgba(var(--accent-danger-rgb), 0.12);
+  border-color: rgba(var(--accent-danger-rgb), 0.3);
+}
+
+.ai-debug-failure-summary {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: calc(12px * var(--ui-font-scale));
+  line-height: 1.5;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ai-debug-stack-list {

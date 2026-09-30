@@ -305,6 +305,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'settings.novelai.fetchModelsFailed.unreachable': '地址不通：检查地址是否写错、站点是否还活着',
     'settings.novelai.fetchModelsFailed.unauthorized': '站点拒绝了这次请求（Key 不对或没权限），请手动填写模型名',
     'settings.novelai.fetchModelsFailed.unsupported': '这个站点没提供模型列表接口，请手动填写模型名',
+    'settings.novelai.fetchModelsFailed.official-unsupported': '官方没有公开的模型列表接口，请手动填写模型名',
     'settings.novelai.manualHint': '候选只是参考；选「自定义」就能手填兼容站上架的其他模型名。',
     'settings.novelai.customOption': '自定义…',
     'settings.novelai.customValue': '自定义值',
@@ -357,6 +358,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'novelaiError.unauthorized': 'API Key 被站点拒绝了：{detail}',
     'novelaiError.paymentRequired': '账号点数不足，去站点充值或换个 Key',
     'novelaiError.contentRejected': '这次请求被站点拒绝了：{detail}',
+    'novelaiError.rateLimited': '站点在限流：短时间请求太密，等一会儿再试',
     'novelaiError.emptyOutput': '站点返回了内容但里面没有图片',
     'novelaiError.storageFull': '图片生成成功了，但本机浏览器存不下：存储空间已满，先去清理生图缓存',
     'novelaiError.badResponse': '站点返回了意外的响应：{detail}',
@@ -452,7 +454,8 @@ const messages: Record<Locale, Record<string, string>> = {
     'messageCard.variableUpdateHintSuccess': '变量更新已完成',
     'messageCard.variableUpdateHintSkipped': '本次未进行变量更新',
     'messageCard.variableUpdateHintFailed': '变量更新失败，请检查辅助 API 或回复内容',
-    'messageCard.variableUpdateReason': '原因：{reason}',
+    // 只是「原因」这个标签本身，实际内容由组件单独渲染 —— 不要在这里写 {reason} 占位符。
+    'messageCard.variableUpdateReason': '原因：',
     'messageCard.variableUpdateRetry': '重试',
     'messageCard.analysis': '分析',
     'messageCard.saveEdit': '保存 (Ctrl+Enter)',
@@ -1072,6 +1075,15 @@ const messages: Record<Locale, Record<string, string>> = {
     'contentCenter.aiDebug.rawResponseTitle': '原始返回',
     'contentCenter.aiDebug.finalRawContentTitle': '最终正文',
     'contentCenter.aiDebug.finalRawContentHint': '这是系统最终采用的 AI 原文内容。',
+    'contentCenter.aiDebug.failureSectionTitle': '失败的请求',
+    'contentCenter.aiDebug.failureSectionSubtitle': '这些请求没有拿到可用结果，弹窗消失后仍可在这里回看。',
+    'contentCenter.aiDebug.failureClearButton': '清空',
+    'contentCenter.aiDebug.failureClearConfirmTitle': '清空失败记录',
+    'contentCenter.aiDebug.failureClearConfirmMessage': '将删除全部失败记录，确定吗？',
+    'contentCenter.aiDebug.failureAttemptLabel': '第 {index}/{total} 次尝试',
+    'contentCenter.aiDebug.metaApiUrl': '请求地址',
+    'contentCenter.aiDebug.passMainShort': '正文生成',
+    'contentCenter.aiDebug.passVariableUpdateShort': '变量更新',
 
     'contentCenter.archive.statusTitle': '存档状态',
     'contentCenter.archive.currentSnapshotTitle': '当前快照',
@@ -1777,6 +1789,8 @@ const messages: Record<Locale, Record<string, string>> = {
       'The host rejected the request (bad key or no permission) - type the model name manually',
     'settings.novelai.fetchModelsFailed.unsupported':
       'This host exposes no model list endpoint - type the model name manually',
+    'settings.novelai.fetchModelsFailed.official-unsupported':
+      'The official API has no public model list endpoint - type the model name manually',
     'settings.novelai.manualHint': 'The list is only a hint - pick Custom to type any model name the host offers.',
     'settings.novelai.customOption': 'Custom...',
     'settings.novelai.customValue': 'Custom value',
@@ -1831,6 +1845,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'novelaiError.unauthorized': 'The site rejected this API key: {detail}',
     'novelaiError.paymentRequired': 'Not enough credits on this account - top up or use another key',
     'novelaiError.contentRejected': 'The host rejected this request: {detail}',
+    'novelaiError.rateLimited': 'The host is rate limiting: requests came too fast - wait a moment and try again',
     'novelaiError.emptyOutput': 'The host returned a response with no image in it',
     'novelaiError.storageFull':
       'The image was generated but this browser could not store it: storage is full. Clear the image cache first.',
@@ -2922,6 +2937,16 @@ const messages: Record<Locale, Record<string, string>> = {
     'contentCenter.aiDebug.rawResponseTitle': 'Raw response',
     'contentCenter.aiDebug.finalRawContentTitle': 'Final content',
     'contentCenter.aiDebug.finalRawContentHint': 'The raw AI content the system finally used.',
+    'contentCenter.aiDebug.failureSectionTitle': 'Failed requests',
+    'contentCenter.aiDebug.failureSectionSubtitle':
+      'These requests returned no usable result; review them here after the toast is gone.',
+    'contentCenter.aiDebug.failureClearButton': 'Clear',
+    'contentCenter.aiDebug.failureClearConfirmTitle': 'Clear failure records',
+    'contentCenter.aiDebug.failureClearConfirmMessage': 'This deletes all failure records. Continue?',
+    'contentCenter.aiDebug.failureAttemptLabel': 'Attempt {index}/{total}',
+    'contentCenter.aiDebug.metaApiUrl': 'Request URL',
+    'contentCenter.aiDebug.passMainShort': 'Main reply',
+    'contentCenter.aiDebug.passVariableUpdateShort': 'Variable update',
 
     /* —— 内容中心 · 总览 / 标签 —— */
     'contentCenter.overview.tabAriaLabel': 'Content center sections',
@@ -2986,7 +3011,8 @@ const messages: Record<Locale, Record<string, string>> = {
     'messageCard.variableUpdateHintSuccess': 'Variable update complete',
     'messageCard.variableUpdateHintSkipped': 'No variable update this time',
     'messageCard.variableUpdateHintFailed': 'Variable update failed; check the auxiliary API or the reply content',
-    'messageCard.variableUpdateReason': 'Reason: {reason}',
+    // Label only; the reason text is rendered separately by the component.
+    'messageCard.variableUpdateReason': 'Reason:',
     'messageCard.variableUpdateRetry': 'Retry',
     'apiErrors.browserFetchBlocked':
       'The browser cannot reach this endpoint directly. Check the URL, CORS settings, or your network proxy.',

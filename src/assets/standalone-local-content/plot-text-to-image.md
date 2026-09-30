@@ -43,36 +43,36 @@ regex:: [引用正文里的关键描述]
 ## 四、句式模板（混合版）// by @Mouse_ed
 
 > 主体用完整句描述，细节用短句补充。
-> `[]` 是占位符，按剧情替换；`A` 是英文冠词，按后一个词的读音选 `a` 或 `an`；`[罩杯]` 填 `D cup` 这类写法；`[种族/国籍]` 从 `/个人信息/` 取。
+> `[]` 是占位符，按剧情替换；`A` 是英文冠词，按后一个词的读音选 `a` 或 `an`；`[体型]` 填 `slim` / `petite` / `curvy` 这类写法；`[种族/国籍]` 从 `/个人信息/` 取。
 > 各模板前的 `<imgthink>` 草稿按第三节统一写即可，不再逐条重复。
 
 **模板 1 · 单人（第三人称）**
 
-image### [角色名], [种族/国籍], A [镜头距离] of a beautiful woman with [发型发色] and [眼色], [罩杯]. She is wearing [服装], [动作/姿势]. [表情描述], [视线]. [场景设定], [光线], [氛围] atmosphere.
+image### [角色名], [种族/国籍], A [镜头距离] of a beautiful woman with [发型发色] and [眼色], [体型]. She is wearing [服装], [动作/姿势]. [表情描述], [视线]. [场景设定], [光线], [氛围] atmosphere.
 
 ###
 
 **模板 2 · 单人（POV）**
 
-image### [角色名], [种族/国籍], A [镜头距离], pov perspective of a beautiful woman with [发型发色] and [眼色], [罩杯]. She is wearing [服装], [动作/姿势]. [表情描述], [视线]. [场景设定], [光线], [氛围] atmosphere.
+image### [角色名], [种族/国籍], A [镜头距离], pov perspective of a beautiful woman with [发型发色] and [眼色], [体型]. She is wearing [服装], [动作/姿势]. [表情描述], [视线]. [场景设定], [光线], [氛围] atmosphere.
 
 ###
 
 **模板 3 · 双人**
 
-image### Two beautiful women [整体姿态], [场景位置]. On the left side, [角色名A], [种族/国籍A], a woman with [特征A], [罩杯A], wearing [服装A], [表情A], [视线A]. On the right side, [角色名B], [种族/国籍B], a woman with [特征B], [罩杯B], wearing [服装B], [表情B], [视线B]. [光线], [氛围] atmosphere.
+image### Two beautiful women [整体姿态], [场景位置]. On the left side, [角色名A], [种族/国籍A], a woman with [特征A], [体型A], wearing [服装A], [表情A], [视线A]. On the right side, [角色名B], [种族/国籍B], a woman with [特征B], [体型B], wearing [服装B], [表情B], [视线B]. [光线], [氛围] atmosphere.
 
 ###
 
 **模板 4 · 三人**
 
-image### Three beautiful women standing side by side in a row, [场景位置]. On the left, [角色名A], [种族/国籍A], a woman with [特征A], [罩杯A], wearing [服装A], [表情A]. In the middle, [角色名B], [种族/国籍B], a woman with [特征B], [罩杯B], wearing [服装B], [表情B]. On the right, [角色名C], [种族/国籍C], a woman with [特征C], [罩杯C], wearing [服装C], [表情C]. [光线], [氛围] atmosphere.
+image### Three beautiful women standing side by side in a row, [场景位置]. On the left, [角色名A], [种族/国籍A], a woman with [特征A], [体型A], wearing [服装A], [表情A]. In the middle, [角色名B], [种族/国籍B], a woman with [特征B], [体型B], wearing [服装B], [表情B]. On the right, [角色名C], [种族/国籍C], a woman with [特征C], [体型C], wearing [服装C], [表情C]. [光线], [氛围] atmosphere.
 
 ###
 
 **模板 5 · POV + 男性互动**
 
-image### [角色名], [种族/国籍], A [镜头距离], pov of a beautiful woman with [发型发色] and [眼色], [罩杯]. [身体/服装状态], [动作/姿势]. [表情], [视线]. [pov hands/male hand 描述]. [场景], [光线], [氛围] atmosphere.
+image### [角色名], [种族/国籍], A [镜头距离], pov of a beautiful woman with [发型发色] and [眼色], [体型]. [身体/服装状态], [动作/姿势]. [表情], [视线]. [pov hands/male hand 描述]. [场景], [光线], [氛围] atmosphere.
 
 ###
 

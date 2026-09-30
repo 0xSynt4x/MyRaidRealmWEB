@@ -32,6 +32,10 @@ export type StandaloneProviderReplyDebugTrace = {
   raw_response_text: string;
   extracted_text: string;
   error_message: string | null;
+  /** 实际请求的完整地址（含 query）；用于失败时定位「打到哪」。 */
+  api_url: string;
+  /** HTTP 状态码；连响应都没拿到（网络 / CORS / 超时）时为 null。 */
+  http_status?: number | null;
 };
 
 export type StandaloneProviderReply = {
@@ -345,6 +349,18 @@ export function hasCompleteStandaloneProviderApiConfig(api: Partial<StandalonePr
   return Boolean(normalizeOpenAiCompatibleApiUrl(api.apiurl) && api.model);
 }
 
+/**
+ * 把失败 trace 挂到抛出的异常上，交给上层留档。
+ *
+ * 用「挂属性」而不是自定义 Error 子类：调用链上有多处 `error instanceof Error`
+ * 与消息文案判断，换子类会改变它们的走向；挂属性对既有逻辑完全透明。
+ */
+function attachFailureTrace(error: unknown, trace: StandaloneProviderReplyDebugTrace): Error {
+  const wrapped = error instanceof Error ? error : new Error(String(error));
+  (wrapped as Error & { standaloneDebugTrace?: StandaloneProviderReplyDebugTrace }).standaloneDebugTrace = trace;
+  return wrapped;
+}
+
 export async function requestStandaloneProviderTextCore(
   input: RequestStandaloneProviderTextCoreInput,
 ): Promise<StandaloneProviderReply> {
@@ -371,6 +387,24 @@ export async function requestStandaloneProviderTextCore(
   const requestBodyText = JSON.stringify(requestBody);
   const apiMode = input.api.source;
   const apiLabel = `${input.api.source}:${input.api.model}`;
+
+  /**
+   * 失败留档的公共字段：请求一发出就有这些，失败时只缺响应侧的信息。
+   * 上层拿它拼 `standaloneDebugTrace`，让「失败的请求」在 AI 调试页里也能回看。
+   */
+  const failureTraceBase = {
+    api_label: apiLabel,
+    api_mode: apiMode,
+    requested_at: requestedAt,
+    request_messages: messages,
+    request_body_text: requestBodyText,
+    api_url: normalizedApiUrl,
+  };
+  /** HTTP 非 2xx 时已经拼好的 trace，在 catch 里原样复用，避免被兜底逻辑覆盖。 */
+  let httpFailureTrace: StandaloneProviderReplyDebugTrace | null = null;
+  /** 非流式路径读到的响应原文；解析失败时用它当「服务端回了什么」。 */
+  let nonStreamingRawText: string | null = null;
+
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
@@ -418,7 +452,17 @@ export async function requestStandaloneProviderTextCore(
 
     if (!response.ok) {
       const details = await readErrorResponseText(response, input.logPrefix);
-      throw new Error(`HTTP ${response.status} ${response.statusText}${details ? ` - ${details}` : ''}`);
+      const httpErrorMessage = `HTTP ${response.status} ${response.statusText}${details ? ` - ${details}` : ''}`;
+      // 先把 trace 备好再抛：catch 里直接复用，不会被下面的兜底逻辑覆盖掉。
+      httpFailureTrace = {
+        ...failureTraceBase,
+        transport_mode: onPartialText && response.body ? 'streaming' : 'non_streaming',
+        raw_response_text: details,
+        extracted_text: '',
+        error_message: httpErrorMessage,
+        http_status: response.status,
+      };
+      throw new Error(httpErrorMessage);
     }
 
     if (onPartialText && response.body) {
@@ -442,11 +486,13 @@ export async function requestStandaloneProviderTextCore(
           raw_response_text: '',
           extracted_text: streamingResult.text,
           error_message: null,
+          api_url: normalizedApiUrl,
         },
       };
     }
 
     const rawResponseText = await response.text();
+    nonStreamingRawText = rawResponseText;
     const parsedPayload = JSON.parse(rawResponseText) as unknown;
     const extractedText = extractOpenAiResponseText(parsedPayload);
 
@@ -463,13 +509,41 @@ export async function requestStandaloneProviderTextCore(
         raw_response_text: rawResponseText,
         extracted_text: extractedText,
         error_message: null,
+        api_url: normalizedApiUrl,
       },
     };
   } catch (error) {
     if (firstTokenTimedOut) {
-      throw new Error(`${STANDALONE_FIRST_TOKEN_TIMEOUT_CODE}:${Math.round(firstTokenTimeoutMs / 1000)}`);
+      const timeoutCode = `${STANDALONE_FIRST_TOKEN_TIMEOUT_CODE}:${Math.round(firstTokenTimeoutMs / 1000)}`;
+      throw attachFailureTrace(new Error(timeoutCode), {
+        ...failureTraceBase,
+        transport_mode: 'streaming',
+        raw_response_text: '',
+        extracted_text: '',
+        error_message: timeoutCode,
+        http_status: null,
+      });
     }
-    throw error;
+
+    // 玩家主动取消不算失败，不记档：原样抛出，上层按「已取消」处理。
+    if (requestController.signal.aborted) {
+      throw error;
+    }
+
+    // HTTP 非 2xx 的 trace 已在上面备好，别用兜底信息把它覆盖掉。
+    if (httpFailureTrace) {
+      throw attachFailureTrace(error, httpFailureTrace);
+    }
+
+    // 网络 / CORS / 响应解析失败：拿不到状态码，但非流式路径读到的原文要留下。
+    throw attachFailureTrace(error, {
+      ...failureTraceBase,
+      transport_mode: onPartialText ? 'streaming' : 'non_streaming',
+      raw_response_text: nonStreamingRawText ?? '',
+      extracted_text: '',
+      error_message: error instanceof Error ? error.message : String(error),
+      http_status: null,
+    });
   } finally {
     stopFirstTokenWatch();
     input.signal.removeEventListener('abort', abortFromExternal);
