@@ -948,3 +948,19 @@
   「出图遇限流自动重试」「变量更新报错可定位」。
 - 四道检查：`typecheck` ✓ ｜ `test` 113 + 35 ✓ ｜ `lint` 0 error（14 个存量 warning）✓ ｜ `build` ✓ ｜
   `check:i18n` PASS。
+
+### — chore: 出图与外貌提示词补「体型」「年龄」写法约束
+
+> 短哈希待回填（按约定并入下一次提交）。
+
+- **Changed** 出图提示词（`plot-text-to-image.md` / `plot-text-to-image-nai.md`）新增两条约束：
+  ① 明确「你写的这段是直接交给绘图模型的画面内容，画风与质量词由程序在后台拼在你这段前面」，
+  避免模型在正文里重复堆画风 / 质量标签；② 外貌只用体型词描述，不写三围 / 罩杯等具体数字或尺码
+  （即使 `/个人信息/外貌` 字段里有也不写）。
+- **Changed** 出图提示词新增「年龄感」写法：一律不写年龄数字，改用正向词带出
+  （年轻 `young` / `youthful`，成熟 `mature` / `elegant` / `sophisticated`，年长 `middle-aged` / `elderly`）；
+  成熟及以上**必须搭配** `beautiful` / `elegant` 类正向词，单写 `mature` / `middle-aged` 会显老，
+  可加 `smooth flawless skin` 往回拉。NovelAI 版按标签流给等价写法（`young woman` / `mature female` / `old woman`）。
+- **Changed** 变量更新规则（`variable-update-rules.txt`）外貌字段补「一律用体型描述，禁止写三围、罩杯等具体数字或尺码」。
+- **Changed** 顺带回填上一条提交 `80c0705` 的短哈希（按约定并入本次提交，不单独开回填提交）。
+- 四道检查：`typecheck` ✓ ｜ `test` 113/113 + 35 ✓ ｜ `lint` 0 error（14 个存量 warning）✓ ｜ `build` ✓。
