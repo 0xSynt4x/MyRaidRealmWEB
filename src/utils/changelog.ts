@@ -79,6 +79,10 @@ const CHANGELOG_SOURCE: ReadonlyArray<{ date: string; items: readonly string[] }
     date: '261001',
     items: ['调试页可回看失败请求', '出图遇限流自动重试', '变量更新报错可定位'],
   },
+  {
+    date: '261002',
+    items: ['新增NPC不再撞编号', '补丁报错提示更准确'],
+  },
 ];
 
 /** 第 `index` 条（从 0 起）对应的版本号 */

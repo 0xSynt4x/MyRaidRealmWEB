@@ -967,7 +967,7 @@
 
 ## 2026-10-02
 
-### — perf: 变量更新链优化：报错可定位、NPC 编号防撞、提示词大幅精简
+### `6e8a5f9` — perf: 变量更新链优化：报错可定位、NPC 编号防撞、提示词大幅精简
 
 > 短哈希待回填（按约定并入下一次提交）。
 
@@ -1022,3 +1022,12 @@
 - **Fixed** 语法错误：`output only contain exactly one` → `output exactly one <UpdateVariable> block containing one <Analysis> and one <JSONPatch>`。
 - 验证：渲染探针输出正常（警告无），四类 EJS 结构（脚本块 / 条件块 / 插值 / 内联条件）在三种存档场景下均正确。
 - 四道检查：`typecheck` ✓ ｜ `test` 114/114 + 35 ✓ ｜ `lint` 0 error（14 个存量 warning）✓ ｜ `build` ✓。
+
+### — chore: 补玩家更新日志（261002）
+
+> 短哈希待回填（按约定并入下一次提交）。
+
+- **Added** `src/utils/changelog.ts` 的 `CHANGELOG_SOURCE` 追加 `261002` 一条：
+  `新增NPC不再撞编号`、`补丁报错提示更准确` —— 上一批变量更新链改动里玩家能感知的两点。
+  那批改动原本按当时的口径没进玩家日志，本次补上（版本号随之 +0.01，玩家下次打开会弹一次）。
+- **Changed** 顺带回填上一条提交 `6e8a5f9` 的短哈希（按约定并入本次提交，不单独开回填提交）。
