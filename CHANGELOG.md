@@ -916,7 +916,7 @@
 
 ## 2026-10-01
 
-### — feat: 出图限流闸门与渠道判定、调试页留档失败请求、变量更新报错可定位
+### `80c0705` — feat: 出图限流闸门与渠道判定、调试页留档失败请求、变量更新报错可定位
 
 - **Added** 「内容中心 → 控制台调试」新增「失败的请求」区块。主 API / 辅助 API 报错后弹窗一闪而过，
   原先调试页里**一条都留不下** —— 列表是 assistant 消息楼层派生的，而失败回合根本不会产生楼层。
@@ -949,7 +949,7 @@
 - 四道检查：`typecheck` ✓ ｜ `test` 113 + 35 ✓ ｜ `lint` 0 error（14 个存量 warning）✓ ｜ `build` ✓ ｜
   `check:i18n` PASS。
 
-### — chore: 出图与外貌提示词补「体型」「年龄」写法约束
+### `a829a0c` — chore: 出图与外貌提示词补「体型」「年龄」写法约束
 
 > 短哈希待回填（按约定并入下一次提交）。
 
@@ -964,3 +964,61 @@
 - **Changed** 变量更新规则（`variable-update-rules.txt`）外貌字段补「一律用体型描述，禁止写三围、罩杯等具体数字或尺码」。
 - **Changed** 顺带回填上一条提交 `80c0705` 的短哈希（按约定并入本次提交，不单独开回填提交）。
 - 四道检查：`typecheck` ✓ ｜ `test` 113/113 + 35 ✓ ｜ `lint` 0 error（14 个存量 warning）✓ ｜ `build` ✓。
+
+## 2026-10-02
+
+### — perf: 变量更新链优化：报错可定位、NPC 编号防撞、提示词大幅精简
+
+> 短哈希待回填（按约定并入下一次提交）。
+
+- **Changed** 补丁报错补上**定位信息**。起因是两类「补丁文本看着一点没错、就是写不进去」的失败：
+  ① `replace` / `remove` 打到一个**挂在下层对象里**的键 —— 真实成因多半是**路径少写了一层**
+  （实测：`/人物档案/NPC_1/当前状态` 少了 `个人信息` 这一层），报错却只说「键不存在」，
+  看着像字段名写错，来回找也看不出问题；② `insert` 打到一个**已存在**的键 —— 新增 NPC 撞了已占用的编号。
+  现在 ① 会在下一层里找同名键，唯一命中就直接写出正确路径，例如
+  `Object target key does not exist: 当前状态（父对象 /人物档案/NPC_1 里没有这个键，但它挂在下层对象 "个人信息" 里 —— 正确路径应为 /人物档案/NPC_1/个人信息/当前状态）；replace 只能改已存在的键，新建字段请用 insert`；
+  ② 会指明「覆盖已存在的对象请用 replace，新建 NPC 请换一个未被占用的编号」。
+- **Changed** 下一层有**多个**同名键时只报父对象、**不给路径** —— 给错等于引导改坏数据，宁可不给。
+- **Changed** 其余报错各补一句：`delta` 打到非数字字段会带出当前值类型；数组下标类报错带出数组长度；
+  路径不以 `/` 开头、父级既不是对象也不是数组、整份数据替换等情形也各有一句说明。
+- **Added** 单测 `variable update patch error hints`：锁住「唯一命中下层对象时给出正确路径」
+  「歧义时不给路径」「insert 撞已存在键时指明改用 replace」三条。
+
+- **Fixed** 新增 NPC 撞编号。变量更新链的快照会按「在场」裁剪 NPC，被裁掉的 NPC 在提示词里
+  **彻底消失**，但补丁校验仍按完整数据做 —— 模型只能拿看得见的编号往后推，于是撞上一个不在场 NPC 的编号。
+  `src/assets/standalone-local-content/variable-update-format.txt` 开头新增一段脚本，从**完整存档**
+  （`stat_data`，不是裁剪后的快照）算出已占用编号与下一个可用编号，在 `rule` 段输出两行：
+  `NPC ids in use: NPC_1, NPC_2, NPC_4, NPC_7` 与
+  `next new NPC id: NPC_8 (snapshot omits absent NPCs, whose ids remain occupied)`。
+  没有 NPC 时自动省略「已占用」那行；键不是 `NPC_数字` 格式的不参与计数。
+- **Removed** 三句「没有变量可更新」的兜底说明（实际每轮必然有变量要更新）：`variable-update-format.txt`
+  的 `rule` 段与 `[Legality Check]` 段各一句，以及 `runtime/standaloneTurn.ts` 元指令里的第 4 条
+  —— 原第 5 条「商城刷新例外」顺位改为第 4 条，措辞去掉「例外」。
+- **Changed** 删两句、加两行，该文件渲染后体积基本持平。
+- 验证：渲染探针三种场景（编号跳号 `1/2/4/7`、一个 NPC 都没有、键不是 `NPC_数字` 格式）输出均正确。
+
+- **Changed** `src/assets/standalone-local-content/variable-update-format.txt` 的 `<Analysis>` 模板
+  从七段（场景锚点 / 角色状态速查 / 变量清单 / 意图校准 / 逻辑构建 / 跳过声明 / 合法性检查）压成 6 行。
+  `<Analysis>` 排在 `<JSONPatch>` **之前** —— 模型照模板逐项写满会拉长输出，
+  一旦截断**先丢的是补丁**，整批作废。源文件 5,832 → 4,158 字节（101 → 62 行）。
+- **Removed** 逐字段检查清单（10 行）压成一行 `before finalizing, check: ...`；
+  删掉 `[Skip Declaration]`、`[Logic Construction]`、`[Character Status Quick Check]` 三段纯思考引导。
+- **Removed** 三条创作约束（不过度解读玩家输入 / 不写支配服从框架 / 保持角色独立性）——
+  变量更新链只读正文、出补丁，不生成剧情，这类约束归正文链（预设侧）管。
+- **Added** 一句明确的写短指令：`keep it brief ... the patch matters, not the analysis`。
+- **Changed** 保留的硬约束一条没丢：输出语言、格式封口、关系变化需事件支撑、在场 NPC 状态必须更新、生存逻辑自检。
+- **Fixed** 连带修掉单测 `variable update format hides survival rules by mode` 的 4 条失效断言 ——
+  它们断言的字符串全部来自被删掉的 `<Analysis>` 模板。format 现在只区分「关闭 vs 开启」，
+  不再区分「基础 vs 生存」（逐字段清单的职责在 `variable-update-rules.txt`），断言据此改写。
+
+- **Changed** `variable-update-format.txt` 的 `rule` 段从 20 条压到 13 条，渲染后 2,041 → 1,380 字节（**−32%**），
+  整个文件 3,326 → 2,665 字节（**−20%**）。这是该文件渲染后的最大一块（占 61%），
+  压缩方式只有合并重复与精简措辞，**硬约束一条没删**（除下条）。
+- **Changed** `insert` 的 6 个子项（对象新建键 / 数组追加 `/-` / 数组下标 `/{index}` / 禁止 insert 到数组根 /
+  事件日志追加 / 增量优先）压成 2 条；`replace` / `delta` / `remove` 三条「目标须已存在」合并表述。
+- **Removed** `no redundant operations: do not emit duplicate writes to same path in one patch unless strictly ordered and necessary` ——
+  模型极少主动发重复写，且「除非严格有序且必要」这个例外等于把规则架空；校验层对重复写本就容忍（顺序执行），
+  删了最多多几条冗余操作，不影响正确性。
+- **Fixed** 语法错误：`output only contain exactly one` → `output exactly one <UpdateVariable> block containing one <Analysis> and one <JSONPatch>`。
+- 验证：渲染探针输出正常（警告无），四类 EJS 结构（脚本块 / 条件块 / 插值 / 内联条件）在三种存档场景下均正确。
+- 四道检查：`typecheck` ✓ ｜ `test` 114/114 + 35 ✓ ｜ `lint` 0 error（14 个存量 warning）✓ ｜ `build` ✓。

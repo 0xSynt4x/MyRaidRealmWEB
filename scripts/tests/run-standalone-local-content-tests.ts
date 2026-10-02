@@ -60,7 +60,7 @@ import {
   isStandaloneSurvivalDisabled,
   normalizeStandaloneSnapshotTrimSettings,
 } from '../../runtime/standaloneSnapshotTrim';
-import { filterVariableUpdatePatch } from '../../src/utils/variableUpdate';
+import { applyVariableUpdatePatch, filterVariableUpdatePatch } from '../../src/utils/variableUpdate';
 import { resolvePatchTextWithRescue } from '../../src/utils/variableUpdateRescue';
 import {
   attachRegisteredWorldbooksToBuiltInPresets,
@@ -4419,7 +4419,10 @@ async function testStandaloneMessageActionsClearBusyStateAfterVariableUpdateRequ
     ];
     setupStore.selectedPreset = null;
 
-    const sent = await actions.sendStandaloneUserMessage('测试变量失败后的收尾', 'variable_update_request_failure_test');
+    const sent = await actions.sendStandaloneUserMessage(
+      '测试变量失败后的收尾',
+      'variable_update_request_failure_test',
+    );
     assert.equal(sent, true);
     await flushScheduledUiEffects(8);
 
@@ -5204,9 +5207,7 @@ function testVariableUpdatePatchTextRescue(): void {
   const preserved = resolvePatchTextWithRescue(valueWithPunctuation);
   assert.equal(preserved.rescued, true);
   assert.deepEqual(preserved.steps, ['去掉多余的逗号']);
-  assert.deepEqual(JSON.parse(preserved.text), [
-    { op: 'replace', path: eraPath, value: '他说：“好，明天见”' },
-  ]);
+  assert.deepEqual(JSON.parse(preserved.text), [{ op: 'replace', path: eraPath, value: '他说：“好，明天见”' }]);
 
   // ④ 模型把数组包在对象里 → 取出里层数组，并留下说明
   const wrapped = `{"patch":${good}}`;
@@ -5221,6 +5222,49 @@ function testVariableUpdatePatchTextRescue(): void {
   assert.equal(notRescued.rescued, false);
   assert.deepEqual(notRescued.steps, []);
   assert.equal(notRescued.text, invalidStructure);
+}
+
+/**
+ * 补丁报错必须能一眼定位（而不是只说「键不存在」）。
+ *
+ * 覆盖三条真实踩过的坑：
+ * ① `replace` 打到一个「挂在下层对象里」的键 —— 报错要写出正确路径，
+ *    否则看着像字段名写错，来回找也看不出问题；
+ * ② 下一层有多个同名键（歧义）—— 宁可不给路径，也不能给错的（给错 = 引导改坏数据）；
+ * ③ `insert` 打到一个已存在的键 —— 报错要指明改用 replace / 换编号。
+ */
+function testVariableUpdatePatchErrorHints(): void {
+  const state = getStandaloneTestSchema().parse({
+    人物档案: {
+      NPC_1: { 姓名: '甲' },
+      NPC_2: { 姓名: '乙' },
+    },
+  });
+
+  const readError = (patch: unknown): string => {
+    try {
+      applyVariableUpdatePatch(state, patch as Parameters<typeof applyVariableUpdatePatch>[1]);
+    } catch (error) {
+      return error instanceof Error ? error.message : String(error);
+    }
+    throw new Error('预期这条补丁会失败，但它通过了');
+  };
+
+  // ① 下一层里唯一命中 → 直接给出正确路径
+  const nested = readError([{ op: 'replace', path: '/人物档案/NPC_1/当前状态', value: '在文渊阁' }]);
+  assert.match(nested, /Object target key does not exist: 当前状态/);
+  assert.match(nested, /正确路径应为 \/人物档案\/NPC_1\/个人信息\/当前状态/);
+  assert.match(nested, /replace 只能改已存在的键/);
+
+  // ② 两个 NPC 里都有「生存状态」→ 有歧义，不给路径
+  const ambiguous = readError([{ op: 'replace', path: '/人物档案/生存状态', value: 'x' }]);
+  assert.match(ambiguous, /Object target key does not exist: 生存状态/);
+  assert.equal(ambiguous.includes('正确路径'), false);
+
+  // ③ insert 打到已存在的键 → 指明改用 replace
+  const existing = readError([{ op: 'insert', path: '/人物档案/NPC_2', value: { 姓名: '丙' } }]);
+  assert.match(existing, /Object target key already exists: NPC_2/);
+  assert.match(existing, /覆盖已存在的对象请用 replace/);
 }
 
 function testVariableUpdateFormatHidesSurvivalRulesByMode(): void {
@@ -5247,14 +5291,12 @@ function testVariableUpdateFormatHidesSurvivalRulesByMode(): void {
   assert.equal(off.includes('生存'), false);
   assert.equal(off.toLowerCase().includes('survival'), false);
 
-  const basic = renderFor('基础模式');
-  assert.ok(basic.includes('玩家.生存状态（血量/体力值）'));
-  assert.equal(basic.includes('饥饿值'), false);
-  assert.ok(basic.includes('Focused NPCs (survival system)'));
-  assert.ok(basic.includes('confirm survival changes match action logic'));
-
-  const full = renderFor('生存模式');
-  assert.ok(full.includes('玩家.生存状态（血量/体力值/饥饿值/口渴值）'));
+  // 开启（基础 / 生存）：都保留生存自检那句。
+  // 具体字段清单（血量 / 体力 / 饥饿 / 口渴）在 variable-update-rules 里按模式切换，
+  // 本文件只留一句笼统约束，故两种开启模式的输出一致。
+  for (const mode of ['基础模式', '生存模式']) {
+    assert.ok(renderFor(mode).includes('survival changes must match action logic'));
+  }
 }
 
 /**
@@ -5597,13 +5639,11 @@ async function run(): Promise<void> {
     ['snapshot trim follows chain rules', testStandaloneSnapshotTrimFollowsChainRules],
     ['snapshot trim keeps every npc when nothing matches', testStandaloneSnapshotTrimKeepsEveryNpcWhenNothingMatches],
     ['snapshot trim survival modes', testStandaloneSnapshotTrimSurvivalModes],
-    [
-      'snapshot trim always applies',
-      testStandaloneSnapshotTrimAlwaysApplies,
-    ],
+    ['snapshot trim always applies', testStandaloneSnapshotTrimAlwaysApplies],
     ['snapshot trim defaults to enabled', testStandaloneSnapshotTrimDefaultsToEnabled],
     ['patch guard drops underscore and survival paths', testStandalonePatchGuardDropsUnderscoreAndSurvivalPaths],
     ['variable update patch text rescue', testVariableUpdatePatchTextRescue],
+    ['variable update patch error hints', testVariableUpdatePatchErrorHints],
     ['tagged reply rescues missing contenttext wrapper', testTaggedReplyRescuesMissingContentTextWrapper],
     [
       'streaming tagged reply rescues missing contenttext wrapper',

@@ -880,9 +880,8 @@ ${shopRefreshDirective ? `\n${shopRefreshDirective}\n` : ''}
 硬性要求：
 1. 只输出且必须输出一个 <UpdateVariable> 块。
 2. <UpdateVariable> 内必须有且只有一个 <Analysis> 和一个 <JSONPatch>。
-3. 不要输出 <contenttext>、<summary>、<action_options>、Markdown 代码块或其他文字。
-4. 如果没有需要更新的变量，就在 <JSONPatch> 中输出 []。${
-    shopRefreshTriggered ? '\n5. 例外：本回合商城刷新已触发，<JSONPatch> 不得为空，必须包含商城刷新补丁。' : ''
+3. 不要输出 <contenttext>、<summary>、<action_options>、Markdown 代码块或其他文字。${
+    shopRefreshTriggered ? '\n4. 本回合商城刷新已触发，<JSONPatch> 不得为空，必须包含商城刷新补丁。' : ''
   }
 `);
 

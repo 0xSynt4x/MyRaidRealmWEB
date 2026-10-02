@@ -44,7 +44,7 @@ function decodeJsonPointerToken(token: string): string {
 
 function parsePointer(path: string): string[] {
   if (!path.startsWith('/')) {
-    throw new Error(`Invalid JSON Pointer: ${path}`);
+    throw new Error(`Invalid JSON Pointer: ${path}（路径必须以 "/" 开头）`);
   }
 
   if (path === '/') {
@@ -56,6 +56,34 @@ function parsePointer(path: string): string[] {
 
 function isObjectLike(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** 报错里的「父对象」称呼：空 tokens 就是顶层。 */
+function formatParentLabel(parentTokens: string[]): string {
+  return parentTokens.length === 0 ? '顶层' : `父对象 /${parentTokens.join('/')}`;
+}
+
+/**
+ * 「父对象里没有这个键」时补一句定位信息。
+ *
+ * 最常见的真实成因不是字段名写错，而是**路径少写了一层** —— 字段真实存在，只是挂在
+ * 父对象下面的某个子对象里。只报「键不存在」会让人以为字段名写错了，来回找半天也看不出问题。
+ * 所以这里顺手在下一层里找同名键，找到就直接把正确路径写出来。
+ */
+function describeMissingObjectKeyHint(record: Record<string, unknown>, token: string, parentTokens: string[]): string {
+  const parentLabel = formatParentLabel(parentTokens);
+
+  // 只在下一层里找，且必须唯一命中 —— 有多个候选就是歧义，宁可不给路径也不能给错的。
+  const nestedParentKeys = Object.entries(record)
+    .filter(([, childValue]) => isObjectLike(childValue) && token in childValue)
+    .map(([childKey]) => childKey);
+
+  if (nestedParentKeys.length === 1) {
+    const correctPath = `/${[...parentTokens, nestedParentKeys[0]!, token].join('/')}`;
+    return `（${parentLabel} 里没有这个键，但它挂在下层对象 "${nestedParentKeys[0]}" 里 —— 正确路径应为 ${correctPath}）`;
+  }
+
+  return `（${parentLabel} 里没有这个键）`;
 }
 
 function getContainerChild(container: unknown, token: string): unknown {
@@ -80,7 +108,7 @@ function getContainerChild(container: unknown, token: string): unknown {
 
 function resolveParentContainer(root: unknown, tokens: string[]): { container: unknown; finalToken: string } {
   if (tokens.length === 0) {
-    throw new Error('Root path replacement is not supported');
+    throw new Error('Root path replacement is not supported（不支持整份数据替换，路径要指到具体字段）');
   }
 
   let container = root;
@@ -116,7 +144,7 @@ function getValueAtPointer(root: unknown, path: string): unknown {
   for (const token of tokens) {
     current = getContainerChild(current, token);
     if (current === undefined) {
-      throw new Error(`Target path does not exist: ${path}`);
+      throw new Error(`Target path does not exist: ${path}（整条路径在数据里解析不到；delta / move 要求目标已存在）`);
     }
   }
 
@@ -131,7 +159,9 @@ function setArrayValue(array: unknown[], token: string, value: unknown): void {
 
   const index = Number(token);
   if (!Number.isInteger(index) || index < 0 || index >= array.length) {
-    throw new Error(`Array target index does not exist: ${token}`);
+    throw new Error(
+      `Array target index does not exist: ${token}（数组长度为 ${array.length}，本操作需要已存在的下标）`,
+    );
   }
 
   array[index] = value;
@@ -145,7 +175,9 @@ function insertArrayValue(array: unknown[], token: string, value: unknown): void
 
   const index = Number(token);
   if (!Number.isInteger(index) || index < 0 || index > array.length) {
-    throw new Error(`Array insert index is invalid: ${token}`);
+    throw new Error(
+      `Array insert index is invalid: ${token}（数组长度为 ${array.length}，插入下标需在 0 ~ ${array.length} 之间；追加到末尾用 "-"）`,
+    );
   }
 
   array.splice(index, 0, value);
@@ -154,32 +186,50 @@ function insertArrayValue(array: unknown[], token: string, value: unknown): void
 function removeArrayValue(array: unknown[], token: string): unknown {
   const index = Number(token);
   if (!Number.isInteger(index) || index < 0 || index >= array.length) {
-    throw new Error(`Array remove index does not exist: ${token}`);
+    throw new Error(
+      `Array remove index does not exist: ${token}（数组长度为 ${array.length}，本操作需要已存在的下标）`,
+    );
   }
 
   const [removed] = array.splice(index, 1);
   return removed;
 }
 
-function setObjectValue(record: Record<string, unknown>, token: string, value: unknown): void {
+function setObjectValue(record: Record<string, unknown>, token: string, value: unknown, parentTokens: string[]): void {
   if (!(token in record)) {
-    throw new Error(`Object target key does not exist: ${token}`);
+    throw new Error(
+      `Object target key does not exist: ${token}` +
+        describeMissingObjectKeyHint(record, token, parentTokens) +
+        '；replace 只能改已存在的键，新建字段请用 insert',
+    );
   }
 
   record[token] = value;
 }
 
-function insertObjectValue(record: Record<string, unknown>, token: string, value: unknown): void {
+function insertObjectValue(
+  record: Record<string, unknown>,
+  token: string,
+  value: unknown,
+  parentTokens: string[],
+): void {
   if (token in record) {
-    throw new Error(`Object target key already exists: ${token}`);
+    throw new Error(
+      `Object target key already exists: ${token}（${formatParentLabel(parentTokens)} 里已经有这个键）；` +
+        'insert 只能新建不存在的键 —— 覆盖已存在的对象请用 replace，新建 NPC 请换一个未被占用的编号',
+    );
   }
 
   record[token] = value;
 }
 
-function removeObjectValue(record: Record<string, unknown>, token: string): unknown {
+function removeObjectValue(record: Record<string, unknown>, token: string, parentTokens: string[]): unknown {
   if (!(token in record)) {
-    throw new Error(`Object target key does not exist: ${token}`);
+    throw new Error(
+      `Object target key does not exist: ${token}` +
+        describeMissingObjectKeyHint(record, token, parentTokens) +
+        '；remove 只能删已存在的键',
+    );
   }
 
   const removed = record[token];
@@ -188,7 +238,9 @@ function removeObjectValue(record: Record<string, unknown>, token: string): unkn
 }
 
 function applyReplace(root: StandaloneStatData, operation: Extract<JsonPatchOperation, { op: 'replace' }>): void {
-  const { container, finalToken } = resolveParentContainer(root, parsePointer(operation.path));
+  const tokens = parsePointer(operation.path);
+  const { container, finalToken } = resolveParentContainer(root, tokens);
+  const parentTokens = tokens.slice(0, -1);
 
   if (Array.isArray(container)) {
     setArrayValue(container, finalToken, operation.value);
@@ -196,17 +248,21 @@ function applyReplace(root: StandaloneStatData, operation: Extract<JsonPatchOper
   }
 
   if (isObjectLike(container)) {
-    setObjectValue(container, finalToken, operation.value);
+    setObjectValue(container, finalToken, operation.value, parentTokens);
     return;
   }
 
-  throw new Error(`Replace target parent is not writable: ${operation.path}`);
+  throw new Error(`Replace target parent is not writable: ${operation.path}（该路径的父级既不是对象也不是数组）`);
 }
 
 function applyDelta(root: StandaloneStatData, operation: Extract<JsonPatchOperation, { op: 'delta' }>): void {
   const currentValue = getValueAtPointer(root, operation.path);
   if (typeof currentValue !== 'number') {
-    throw new Error(`Delta target is not a number: ${operation.path}`);
+    throw new Error(
+      `Delta target is not a number: ${operation.path}（当前值是 ${
+        currentValue === null ? 'null' : typeof currentValue
+      }，delta 只能作用于数字字段；改文本请用 replace）`,
+    );
   }
 
   applyReplace(root, {
@@ -217,7 +273,9 @@ function applyDelta(root: StandaloneStatData, operation: Extract<JsonPatchOperat
 }
 
 function applyInsert(root: StandaloneStatData, operation: Extract<JsonPatchOperation, { op: 'insert' }>): void {
-  const { container, finalToken } = resolveParentContainer(root, parsePointer(operation.path));
+  const tokens = parsePointer(operation.path);
+  const { container, finalToken } = resolveParentContainer(root, tokens);
+  const parentTokens = tokens.slice(0, -1);
 
   if (Array.isArray(container)) {
     insertArrayValue(container, finalToken, operation.value);
@@ -225,25 +283,27 @@ function applyInsert(root: StandaloneStatData, operation: Extract<JsonPatchOpera
   }
 
   if (isObjectLike(container)) {
-    insertObjectValue(container, finalToken, operation.value);
+    insertObjectValue(container, finalToken, operation.value, parentTokens);
     return;
   }
 
-  throw new Error(`Insert target parent is not writable: ${operation.path}`);
+  throw new Error(`Insert target parent is not writable: ${operation.path}（该路径的父级既不是对象也不是数组）`);
 }
 
 function applyRemove(root: StandaloneStatData, operation: Extract<JsonPatchOperation, { op: 'remove' }>): unknown {
-  const { container, finalToken } = resolveParentContainer(root, parsePointer(operation.path));
+  const tokens = parsePointer(operation.path);
+  const { container, finalToken } = resolveParentContainer(root, tokens);
+  const parentTokens = tokens.slice(0, -1);
 
   if (Array.isArray(container)) {
     return removeArrayValue(container, finalToken);
   }
 
   if (isObjectLike(container)) {
-    return removeObjectValue(container, finalToken);
+    return removeObjectValue(container, finalToken, parentTokens);
   }
 
-  throw new Error(`Remove target parent is not writable: ${operation.path}`);
+  throw new Error(`Remove target parent is not writable: ${operation.path}（该路径的父级既不是对象也不是数组）`);
 }
 
 function applyMove(root: StandaloneStatData, operation: Extract<JsonPatchOperation, { op: 'move' }>): void {
