@@ -73,6 +73,11 @@ export type StandaloneLocalTurnInput = {
   /** 正文流式请求的首字超时秒数；0 或未给 = 不启用（行为与之前一致） */
   firstTokenTimeoutSeconds?: number;
   statData: StandaloneStatData;
+  /**
+   * 读「当前的游戏数据」。正文回来时调一次 → 辅助 API 的输入快照 S；
+   * 应用补丁时再调一次 → 应用基底（含辅助 API 生成期间的前端改动）。缺省返回 statData。
+   */
+  readLiveStatData?: () => StandaloneStatData;
   messages: MessageRecord[];
   latestUserMessage: MessageRecord;
   worldDifficulty: WorldDifficulty;
@@ -120,6 +125,12 @@ export async function runStandaloneVariableUpdatePass(input: {
   /** 前一个失败时是否自动试下一个；缺省 true */
   autoRetry?: boolean;
   statData: StandaloneStatData;
+  /**
+   * 应用补丁时读「应用基底」。手动刷新时传 `() => 本条回复的输入基底 S`，
+   * 让补丁打在 S 上（而不是已含后续回合改动的当前数据，否则会重复累加）。
+   * 缺省返回 statData。
+   */
+  readLiveStatData?: () => StandaloneStatData;
   messages: MessageRecord[];
   latestUserMessage: MessageRecord;
   targetAssistantMessage: MessageRecord;
@@ -136,9 +147,12 @@ export async function runStandaloneVariableUpdatePass(input: {
   const sanitizedAssistantRawContent = normalizeLineEndings(
     stripUpdateVariableBlocks(input.targetAssistantMessage.raw_content),
   );
-  const patchGuard = resolveStandalonePatchGuard(input.statData);
+  // 手动刷新只跑这一条辅助链路：输入基底 `input.statData` 本身已是本条回复的 S，
+  // 应用基底也走 `readLiveStatData`（同样指向 S）—— 两者同源，读一次即可，补丁只净应用一次。
+  const applyBaseStatData = input.readLiveStatData?.() ?? input.statData;
+  const patchGuard = resolveStandalonePatchGuard(applyBaseStatData);
   // 主回复不携带变量补丁（提示词明确禁止，且这里已先剥掉变量块），只需解析标签。
-  let applyResult = parseReplyWithoutPatch(input.statData, sanitizedAssistantRawContent);
+  let applyResult = parseReplyWithoutPatch(applyBaseStatData, sanitizedAssistantRawContent);
   let effectiveRawReply = sanitizedAssistantRawContent;
   let variableUpdateWarning: string | null = null;
   let variableUpdateApiLabel: string | null = null;
@@ -170,6 +184,8 @@ export async function runStandaloneVariableUpdatePass(input: {
       },
       assistantContentText,
       controller.signal,
+      // 手动刷新：辅助 API 的输入快照就是本条回复的 S（= input.statData）。
+      input.statData,
     );
 
     variableUpdateApiLabel = secondPassResult.usedApiLabel;
@@ -187,7 +203,7 @@ export async function runStandaloneVariableUpdatePass(input: {
         sanitizedAssistantRawContent,
         secondPassResult.updateBlock,
       );
-      const mergedApplyResult = applyVariableUpdateFromReply(input.statData, mergedRawReply, patchGuard);
+      const mergedApplyResult = applyVariableUpdateFromReply(applyBaseStatData, mergedRawReply, patchGuard);
 
       if (mergedApplyResult.errorMessage) {
         variableUpdateWarning = mergedApplyResult.errorMessage;
@@ -950,9 +966,10 @@ function applyVariableUpdateFromReply(
     };
   }
 
-  // 补丁格式修复层：原文能用就原样返回，不能用才逐步整形。
-  // 整形结果仍然交回下面这套原流程（解析 → 护栏 → 写入），解析与写入逻辑一行不改。
-  const patchTextResolution = resolvePatchTextWithRescue(patchText);
+  // 补丁格式与路径修复层：原文能用就原样返回，不能用才逐步整形；
+  // 文本合法后再补一次「漏写 NPC 中间层」的路径（`/人物档案/<NPC>/<字段>` → 补 `个人信息` / `关系数据`）。
+  // 结果仍然交回下面这套原流程（解析 → 护栏 → 写入），解析与写入逻辑一行不改。
+  const patchTextResolution = resolvePatchTextWithRescue(patchText, currentStatData);
 
   try {
     const parsedPatch = parseVariableUpdatePatch(patchTextResolution.text);
@@ -1018,9 +1035,10 @@ async function requestVariableUpdateSecondPass(
   input: StandaloneLocalTurnInput,
   assistantContentText: string,
   signal: AbortSignal,
+  statDataSnapshot: StandaloneStatData,
 ): Promise<VariableUpdateSecondPassResult> {
   const secondPassPrompt = buildVariableUpdateSecondPassPrompt({
-    statData: input.statData,
+    statData: statDataSnapshot,
     latestUserMessage: input.latestUserMessage,
     assistantContentText,
     messages: input.messages,
@@ -1043,7 +1061,7 @@ async function requestVariableUpdateSecondPass(
   }
 
   const failures: string[] = [];
-  const patchGuard = resolveStandalonePatchGuard(input.statData);
+  const patchGuard = resolveStandalonePatchGuard(statDataSnapshot);
 
   for (let index = 0; index < candidateApis.length; index += 1) {
     const api = candidateApis[index]!;
@@ -1069,7 +1087,7 @@ async function requestVariableUpdateSecondPass(
       // 块存在 ≠ 能用。这里先按正式流程把补丁试算一遍（格式化 → 解析 → 写入护栏 → 应用），
       // 只有真的写进状态、界面上会显示「已更新」的候选才收下；否则换下一个继续试。
       // 试算与后面的正式应用读的是同一份状态、同一套护栏，结果一致。
-      const trialResult = applyVariableUpdateFromReply(input.statData, updateBlock, patchGuard);
+      const trialResult = applyVariableUpdateFromReply(statDataSnapshot, updateBlock, patchGuard);
 
       if (trialResult.errorMessage) {
         failures.push(`${apiLabel}: 补丁无法应用（${trialResult.errorMessage}）`);
@@ -1140,7 +1158,6 @@ export async function runStandaloneLocalTurn(input: StandaloneLocalTurnInput): P
   const controller = new AbortController();
   activeStandaloneTurnController = controller;
   let deferControllerCleanup = false;
-  const patchGuard = resolveStandalonePatchGuard(input.statData);
 
   try {
     const prompt = buildMainTurnPrompt(input);
@@ -1190,6 +1207,11 @@ export async function runStandaloneLocalTurn(input: StandaloneLocalTurnInput): P
         const finalizeVariableUpdate = (async (): Promise<StandaloneVariableUpdatePhaseOutcome> => {
           await new Promise<void>(resolve => setTimeout(resolve, 0));
 
+          // 正文回来那一刻的数据 = 本回合变量更新的输入基底 S（已含主 API 生成期间的前端改动）。
+          // 辅助 API 的提示词与「筛候选」试算都用它 —— 只读这一次，重试候选也复用同一份，
+          // 保证候选筛选与正式应用同源，不会因重试期间数据变动而错位。
+          const baseStatData = input.readLiveStatData?.() ?? input.statData;
+
           let applyResult = mainReplyApplyResult;
           let effectiveRawReply = sanitizedMainReply;
           let variableUpdateWarning: string | null = null;
@@ -1202,6 +1224,7 @@ export async function runStandaloneLocalTurn(input: StandaloneLocalTurnInput): P
               input,
               assistantContentText,
               controller.signal,
+              baseStatData,
             );
             variableUpdateApiLabel = secondPassResult.usedApiLabel;
             if (secondPassResult.debugTrace) {
@@ -1218,7 +1241,14 @@ export async function runStandaloneLocalTurn(input: StandaloneLocalTurnInput): P
                 sanitizedMainReply,
                 secondPassResult.updateBlock,
               );
-              const mergedApplyResult = applyVariableUpdateFromReply(input.statData, mergedRawReply, patchGuard);
+              // 应用那一刻再读一次：拿到最新的当前数据（含辅助 API 生成期间的前端改动）。
+              // 补丁全程只在这一处应用一次，修复层因此成为唯一必经关口，没有第二条路能绕过它。
+              const applyBaseStatData = input.readLiveStatData?.() ?? input.statData;
+              const mergedApplyResult = applyVariableUpdateFromReply(
+                applyBaseStatData,
+                mergedRawReply,
+                resolveStandalonePatchGuard(applyBaseStatData),
+              );
 
               if (mergedApplyResult.errorMessage) {
                 variableUpdateWarning = mergedApplyResult.errorMessage;

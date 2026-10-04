@@ -12,13 +12,7 @@ import { notify } from '../utils/notify';
 import { commitStandaloneRuntimeStateFromStores, resolveStandaloneStageSummaryState } from '../utils/standaloneRuntime';
 import { resolveStandaloneStageSummaryProgress } from '../utils/stageSummaryArchive';
 import { loadStandaloneStatData } from '../utils/standaloneStatData';
-import { parseUpdateVariableDetails, replaceOrAppendSummaryBlock, splitEditableBodyAndSummary } from '../utils/taggedReply';
-import {
-  applyVariableUpdatePatch,
-  parseVariableUpdatePatch,
-  type VariableUpdatePatchGuard,
-} from '../utils/variableUpdate';
-import { isStandaloneSurvivalDisabled } from '../../runtime/standaloneSnapshotTrim';
+import { replaceOrAppendSummaryBlock, splitEditableBodyAndSummary } from '../utils/taggedReply';
 import {
   FRONTEND_AUTHORITATIVE_FIELD_PATHS,
   preserveFrontendAuthoritativeFields,
@@ -51,14 +45,6 @@ export function useMessageActions() {
   const settingsStore = useSettingsStore();
   const setupStore = useSetupStore();
   const STANDALONE_GENERATION_EVENT = 'th1980s:standalone-generation-state';
-
-  /** 写入层护栏：`_` 前缀一律拦；生存系统关闭时才拦生存状态。与运行时同一套判据。 */
-  function resolveSnapshotTrimPatchGuard(statData: ReturnType<typeof Schema.parse>): VariableUpdatePatchGuard {
-    return {
-      blockUnderscoreKeys: true,
-      blockSurvivalPaths: isStandaloneSurvivalDisabled(statData),
-    };
-  }
 
   function emitStandaloneGenerationState(active: boolean, reason: string) {
     messagesStore.setStandaloneMainGenerationBusy(active);
@@ -206,6 +192,9 @@ export function useMessageActions() {
         // 关掉开关就传 0，运行时不启用看门狗，行为与之前一致
         firstTokenTimeoutSeconds: settingsStore.apiFirstTokenTimeout ? settingsStore.apiFirstTokenTimeoutSeconds : 0,
         statData: turnStartStatData,
+        // 让运行时在「正文回来」与「应用补丁」两个时点都能读到最新的当前数据：
+        // 辅助 API 的输入基底 S 与最终的应用基底都从这里取，生成期间的前端改动因此不会丢。
+        readLiveStatData: () => loadStandaloneStatData(),
         messages: messagesStore.messages,
         latestUserMessage,
         worldDifficulty: settingsStore.worldDifficulty,
@@ -224,9 +213,16 @@ export function useMessageActions() {
 
       messagesStore.flushStreamingProjection(`${reason}:main_reply_completed`);
 
+      // 正文回来那一刻的数据，同时落两份：
+      // - stat_data_snapshot：本楼层的展示 / 回退快照（回合收尾会被覆盖成最终状态）；
+      // - variable_update_base_snapshot：本回合变量更新的输入基底 S（此后不再改动），供手动刷新取基点。
+      // 🔴 这份 S 必须与 runtime finalize 起点 readLiveStatData() 读到的值相等 ——
+      //    从 append 到那里之间不写 session，两者读的是同一份数据。
+      const baseSnapshot = loadStandaloneStatData();
       const appendedAssistantMessage = messagesStore.appendStandaloneMessage({
         ...outcome.assistantMessage,
-        stat_data_snapshot: loadStandaloneStatData(),
+        stat_data_snapshot: baseSnapshot,
+        variable_update_base_snapshot: baseSnapshot,
       });
       messagesStore.settleStreamingWithFormalMessage(appendedAssistantMessage.message_id);
       messagesStore.syncStandaloneRuntimeContentContext(`${reason}:${outcome.usedApiLabel}:main_reply`);
@@ -300,37 +296,6 @@ export function useMessageActions() {
   }
 
   /**
-   * 将本回合 AI 产出的变量更新补丁重放到「回合收尾时的实时状态」上，复刻酒馆内嵌版 MVU 的
-   * 「增量合并」语义，避免独立版「发送时抓基线 + 整份覆盖 session」导致生成期间前端写入（签到、
-   * 刷新、购买等商城操作）被静默丢弃。
-   *
-   * 独立版原实现里 `phaseOutcome.nextStatData` = 发送时基线 + AI 补丁，会丢掉回合中途的前端写入；
-   * 这里改为把同一份 AI 补丁重新打在收尾时读取的实时 `session.stat_data`（liveStatData）上。
-   * 若补丁缺失或重放失败（例如 AI 补丁的数组索引/路径基于旧基线、与实时结构不符），则安全回退到
-   * 原 `nextStatData`，保证绝不因重放异常而中断收尾。
-   *
-   * @param phaseOutcome 变量更新阶段产出（含 AI 原始补丁与基于旧基线的 nextStatData）
-   * @param liveStatData 回合收尾时读取的实时状态（含生成期间的前端商城写入）
-   */
-  function rebaseVariableUpdateOntoLiveState(
-    phaseOutcome: StandaloneVariableUpdatePhaseOutcome,
-    liveStatData: ReturnType<typeof Schema.parse>,
-  ): ReturnType<typeof Schema.parse> {
-    const { updateJsonPatchText } = parseUpdateVariableDetails(phaseOutcome.assistantMessage.update_content ?? null);
-    if (!updateJsonPatchText) {
-      return phaseOutcome.nextStatData;
-    }
-
-    try {
-      const { patch } = parseVariableUpdatePatch(updateJsonPatchText);
-      return applyVariableUpdatePatch(liveStatData, patch, resolveSnapshotTrimPatchGuard(liveStatData));
-    } catch (error) {
-      console.warn('[useMessageActions] 变量更新补丁重放到实时状态失败，回退到回合基线结果:', error);
-      return phaseOutcome.nextStatData;
-    }
-  }
-
-  /**
    * 回合收尾时对前端权威状态做兜底对账，避免依赖 AI 自觉维护触发标志与前端专属字段。
    *
    * - Fix 1（商城刷新兜底重置）：`设置.积分系统.商城刷新` 是前端一次性触发开关。它只应清除「本
@@ -347,7 +312,8 @@ export function useMessageActions() {
    *   AI 规则明确「不可更新」。AI 若对货币子树做粗粒度 replace 会误改/抹掉积分，这里回合结束后用
    *   实时权威值强制回写，确保积分余额不被 AI 覆盖（对应商城点了签到后积分被打回初始的问题）。
    *
-   * @param candidate 回合产出的候选状态（变量更新已应用时为重放到实时状态的结果，否则为回合前状态）
+   * @param candidate 回合产出的候选状态（变量更新已应用时为「应用那一刻的当前数据 + 补丁」，
+   *                  否则为回合前状态 —— 补丁缺失/应用失败时前端回退到当前数据、丢弃 AI 补丁）
    * @param preTurn 回合收尾时的前端权威状态（含本地签到/刷新/购买写入）
    * @param turnStartShopRefresh 本回合「开始时」抓取基线里的商城刷新值，用于区分历史触发与回合中途的新请求
    */
@@ -389,27 +355,19 @@ export function useMessageActions() {
     messageId: number;
     phaseOutcome: StandaloneVariableUpdatePhaseOutcome;
     turnStartShopRefresh: boolean;
-    // 是否把 AI 补丁重放到「当前存档」：
-    // - 正常发送回合：true。基线是发送时快照，重放到当前存档以合并生成期间的前端写入。
-    // - 手动刷新变量：false。phaseOutcome.nextStatData 已是「回复前快照 + 补丁一次」的正确终态，
-    //   若再重放到当前存档（已含上次应用）会重复累加，故直接采用 nextStatData。
-    rebaseOntoLiveState?: boolean;
   }) {
-    const { reason, messageId, phaseOutcome, turnStartShopRefresh, rebaseOntoLiveState = true } = input;
+    const { reason, messageId, phaseOutcome, turnStartShopRefresh } = input;
 
     // 回合收尾时的实时前端权威状态（此刻 session 尚未写入本回合变量更新结果，仍保留生成期间的
-    // 商城签到/刷新/购买写入）。作为「增量合并」的基底与前端权威字段的对账来源。
+    // 商城签到/刷新/购买写入）。它既是前端权威字段的对账来源，也是「补丁未应用」时的回退基底。
     const preTurnStatData = Schema.parse(loadStandaloneStatData());
     // 统一对账后的最终状态：
-    // - 变量更新已应用 + 允许重放：把 AI 补丁重放到实时状态（而非发送时旧基线），复刻酒馆版 MVU 的
-    //   增量合并，避免生成期间的前端商城写入被整份覆盖丢弃；
-    // - 变量更新已应用 + 不重放（手动刷新）：直接采用 nextStatData（回复前快照+补丁一次），避免重复累加；
-    // - 未应用：直接以实时状态为基底。
+    // - 变量更新已应用：直接采用 nextStatData —— 它已经是「应用那一刻的当前数据 + 补丁一次」。
+    //   正常回合与手动刷新走的是同一条路（补丁在运行时那侧只应用一次），这里不再重放；
+    // - 未应用（补丁缺失 / 应用失败）：以实时状态为基底，保住生成期间的前端改动，AI 补丁整体丢弃。
     // 再叠加前端权威字段（商城刷新标志、签到日期、积分数量）的兜底修正。无论哪条分支都会提交该状态。
     const candidateStatData = phaseOutcome.variableUpdateApplied
-      ? rebaseOntoLiveState
-        ? rebaseVariableUpdateOntoLiveState(phaseOutcome, preTurnStatData)
-        : Schema.parse(phaseOutcome.nextStatData)
+      ? Schema.parse(phaseOutcome.nextStatData)
       : preTurnStatData;
     const finalStatData = reconcileFrontendAuthoritativeState(candidateStatData, preTurnStatData, turnStartShopRefresh);
 
@@ -541,15 +499,19 @@ export function useMessageActions() {
         : '正在为最新一条 AI 回复重跑变量更新...',
     );
 
-    // 重跑基线必须取「这条 AI 回复之前的状态」，即对应用户消息的快照，而不是「当前存档」。
-    // 当前存档已包含这条回复上次应用过的变量更新，若以它为基线再打一次补丁，增量类补丁
-    //（金钱+=X、库存-1、数组 push 等）会重复累加导致数值翻倍/物品重复。以「回复前快照」为基线
-    // 可保证变量更新对这条回复只净应用一次；玩家的积分/签到等前端权威字段会在收尾对账时从当前
-    // 存档保留回写，不受影响。
-    const replayBaseStatData = resolveStandaloneSnapshotForMessage(
-      latestUserMessage,
-      `manual-variable-refresh:${targetAssistantMessage.message_id}`,
-    );
+    // 重跑基点必须取「这条 AI 回复的主回复完成那一刻」，既不是「当前存档」，也不是「发送时快照」：
+    // - 用当前存档：它已含这条回复上次应用过的变量更新与后续回合的改动，再打一次会重复累加
+    //（金钱+=X、库存-1、数组 push 等会翻倍）；
+    // - 用发送时快照：会丢掉主 API 生成期间玩家的操作。
+    // 优先取本条消息上存的输入基底 S；旧存档没有这个字段时，回退到对应用户消息的快照（= 发送时状态）。
+    // 补丁只打在 S 上 → S + 补丁，中间的操作全丢（这正是为了不累加）；
+    // 玩家的积分/签到等前端权威字段会在收尾对账时从当前存档强制回写，不受影响。
+    const replayBaseStatData = targetAssistantMessage.variable_update_base_snapshot
+      ? Schema.parse(targetAssistantMessage.variable_update_base_snapshot)
+      : resolveStandaloneSnapshotForMessage(
+          latestUserMessage,
+          `manual-variable-refresh:${targetAssistantMessage.message_id}`,
+        );
     // 商城刷新触发标志按「当前存档」判定：区分历史触发与重跑期间玩家新点击的刷新。
     const turnStartShopRefresh = Boolean(_.get(loadStandaloneStatData(), '设置.积分系统.商城刷新', false));
 
@@ -559,6 +521,8 @@ export function useMessageActions() {
         assistantApis: settingsStore.assistantApis,
         autoRetry: settingsStore.apiAutoRetry,
         statData: replayBaseStatData,
+        // 应用目标 = S：补丁打在 S 上（不是「现在的当前数据」），避免与后续回合的改动重复累加。
+        readLiveStatData: () => replayBaseStatData,
         messages: messagesStore.messages,
         latestUserMessage,
         targetAssistantMessage,
@@ -575,8 +539,6 @@ export function useMessageActions() {
         messageId: targetAssistantMessage.message_id,
         phaseOutcome,
         turnStartShopRefresh,
-        // 手动刷新：基线已是「回复前快照」，补丁只净应用一次，不能再重放到当前存档。
-        rebaseOntoLiveState: false,
       });
       return true;
     } catch (error) {

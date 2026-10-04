@@ -146,6 +146,15 @@ export const StandaloneRuntimeMessageRecordSchema = z.object({
   is_streaming: z.boolean().optional(),
   is_partial: z.boolean().optional(),
   stat_data_snapshot: StandaloneRuntimeOptionalStatDataSchema,
+  /**
+   * 这条回复「主 API 回复完成那一刻」的游戏数据快照 —— 即本回合变量更新的输入基底 S。
+   *
+   * 为什么必须单独存一份：`stat_data_snapshot` 在回合收尾时会被覆盖成「打完补丁的最终状态」，
+   * 「主回复完成那一刻」的数据就留不下来；手动刷新变量要用它当基点，只能另存。
+   *
+   * 必须是 optional —— 旧存档没有这个键，缺了要能正常读进来（读取方回退到用户消息快照）。
+   */
+  variable_update_base_snapshot: StandaloneRuntimeOptionalStatDataSchema,
   variable_update_status: z.enum(['running', 'success', 'failed', 'skipped']).optional(),
   variable_update_warning: z.string().nullable().optional(),
   debug_trace: StandaloneAssistantDebugTraceSchema,

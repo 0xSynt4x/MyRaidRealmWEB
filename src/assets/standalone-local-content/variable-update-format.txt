@@ -34,8 +34,34 @@ _%>
     <Analysis>
     - IN ENGLISH
     - all reasoning goes inside this single <Analysis> block; no extra analysis tag, code fence, or preface
-    - keep it brief: a few lines on current time/location, present characters, and which variables this turn changes — the patch matters, not the analysis
-    - before finalizing, check: path legality, time, location, player items / skills / factions<%_ if (显示血量体力) { _%>, survival<%_ } _%>, present NPCs, shop
+    - Current time/location: {{read from world state}}
+    - Player state: {{brief current action / condition}}
+    - Present characters: {{list NPCs currently in scene}}
+
+    [Character Status Quick Check]
+    - Important NPCs (must check one by one): {{list all important NPCs and whether present}}
+<%_ if (显示血量体力) { _%>
+    - Focused NPCs (survival system): {{list NPCs where _关注=true}}
+<%_ } _%>
+    - Current favor / trust state: {{brief relation summary for present NPCs}}
+
+    [Variable Update Checklist]
+    - list all candidate variables touched by current reply; mark each as update / no-update with a short reason
+    - explicitly check at least:
+      - 世界.时间系统.当前时间
+      - 世界.空间定位.当前位置
+<%_ if (显示血量体力) { _%>
+      - 玩家.生存状态（血量/体力值<%_ if (显示饥饿口渴) { _%>/饥饿值/口渴值<%_ } _%>）
+<%_ } _%>
+      - 玩家.物品栏 / 玩家.货币资源
+      - 玩家.技能系统
+      - 玩家.势力关系
+      - 世界.势力网络
+      - 人物档案（important NPCs one by one —— 字段层级见下条）
+      - 商城.物品 / 商城.技能（must update when user requests refresh）
+      - other impacted variables
+    - for each update, state expected change briefly
+    - ⚠️ NPC 字段层级：当前穿着 / 当前位置 / 当前状态 / 当前想法 / 持有物品 / 外貌 / 表性格 / 里性格 / 特殊能力 / 备注 / 过往经历 都在 `人物档案.<NPC_ID>.个人信息` 下，**不在 NPC 顶层**；关系数据是独立对象；社会身份 / 交互记忆 / 近期事件 / 重要经历 / 姓名 等才在 NPC 顶层
     - every relationship change needs explicit event support; present NPC status and location must be updated when needed
 <%_ if (显示血量体力) { _%>
     - survival changes must match action logic

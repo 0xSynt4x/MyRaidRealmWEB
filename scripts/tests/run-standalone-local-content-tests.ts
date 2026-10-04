@@ -3900,6 +3900,214 @@ async function testManualRefreshLatestAssistantVariableUpdateFailureClearsRunnin
   }
 }
 
+async function testStandaloneLocalTurnAppliesPatchOntoLiveStatDataReadAtApplyTime(): Promise<void> {
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = (async (_input: string | URL | Request, init?: RequestInit) => {
+    const body = JSON.parse(String(init?.body ?? '{}'));
+
+    if (isStandaloneVariableUpdateRequest(body)) {
+      return createMockFetchResponse({
+        jsonData: {
+          choices: [
+            {
+              message: {
+                content:
+                  '<UpdateVariable><Analysis>apply onto live state</Analysis><JSONPatch>[{"op":"replace","path":"/玩家/姓名","value":"补丁结果"}]</JSONPatch></UpdateVariable>',
+              },
+            },
+          ],
+        },
+      });
+    }
+
+    return createMockFetchResponse({
+      jsonData: {
+        choices: [{ message: { content: '<contenttext>正文</contenttext>' } }],
+      },
+    });
+  }) as typeof fetch;
+
+  try {
+    const inputStatData = createArchiveStatData('发送时角色');
+    const liveStatData = createArchiveStatData('发送时角色');
+    // 模拟「辅助 API 生成期间玩家在前端改了数据」：只改 live，输入快照保持不动。
+    liveStatData.世界.空间定位.当前位置 = '生成期间前端改的基地';
+
+    const outcome = await runStandaloneLocalTurn(
+      createStandaloneTurnInput({
+        statData: inputStatData,
+        readLiveStatData: () => liveStatData,
+        assistantApis: [
+          {
+            ...createDefaultApiConfig(),
+            apiurl: 'https://assistant-live.example.com/v1/chat/completions',
+            key: 'assistant-live-key',
+            model: 'assistant-live-model',
+            source: 'openai_compatible',
+          },
+        ],
+      }),
+    );
+
+    const finalized = await outcome.finalizeVariableUpdate;
+
+    assert.equal(finalized.variableUpdateApplied, true);
+    assert.equal(finalized.variableUpdateStatus, 'success');
+    // 补丁生效
+    assert.equal(finalized.nextStatData.玩家.姓名, '补丁结果');
+    // 前端改动保留 —— 证明补丁打在 readLiveStatData() 上，而不是输入快照上
+    assert.equal(finalized.nextStatData.世界.空间定位.当前位置, '生成期间前端改的基地');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+}
+
+async function testStandaloneLocalTurnFallsBackToInputStatDataWhenLiveReaderMissing(): Promise<void> {
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = (async (_input: string | URL | Request, init?: RequestInit) => {
+    const body = JSON.parse(String(init?.body ?? '{}'));
+
+    if (isStandaloneVariableUpdateRequest(body)) {
+      return createMockFetchResponse({
+        jsonData: {
+          choices: [
+            {
+              message: {
+                content:
+                  '<UpdateVariable><Analysis>no live reader</Analysis><JSONPatch>[{"op":"replace","path":"/玩家/姓名","value":"缺省补丁结果"}]</JSONPatch></UpdateVariable>',
+              },
+            },
+          ],
+        },
+      });
+    }
+
+    return createMockFetchResponse({
+      jsonData: {
+        choices: [{ message: { content: '<contenttext>正文</contenttext>' } }],
+      },
+    });
+  }) as typeof fetch;
+
+  try {
+    const inputStatData = createArchiveStatData('缺省角色');
+
+    const outcome = await runStandaloneLocalTurn(
+      createStandaloneTurnInput({
+        statData: inputStatData,
+        assistantApis: [
+          {
+            ...createDefaultApiConfig(),
+            apiurl: 'https://assistant-default.example.com/v1/chat/completions',
+            key: 'assistant-default-key',
+            model: 'assistant-default-model',
+            source: 'openai_compatible',
+          },
+        ],
+      }),
+    );
+
+    const finalized = await outcome.finalizeVariableUpdate;
+
+    assert.equal(finalized.variableUpdateApplied, true);
+    assert.equal(finalized.nextStatData.玩家.姓名, '缺省补丁结果');
+    // 不传 readLiveStatData 时应用基底回退到 input.statData，其余字段保持输入快照原样
+    assert.equal(finalized.nextStatData.世界.空间定位.当前位置, '缺省角色的基地');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+}
+
+async function testManualRefreshLatestAssistantVariableUpdatePrefersStoredBaseSnapshot(): Promise<void> {
+  resetStandaloneTestEnvironment();
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = (async (_input: string | URL | Request, init?: RequestInit) => {
+    const body = JSON.parse(String(init?.body ?? '{}'));
+
+    if (!isStandaloneVariableUpdateRequest(body)) {
+      throw new Error('expected variable update second pass request');
+    }
+
+    return createMockFetchResponse({
+      jsonData: {
+        choices: [
+          {
+            message: {
+              content:
+                '<UpdateVariable><Analysis>refresh from stored base</Analysis><JSONPatch>[{"op":"replace","path":"/玩家/姓名","value":"刷新结果"}]</JSONPatch></UpdateVariable>',
+            },
+          },
+        ],
+      },
+    });
+  }) as typeof fetch;
+
+  try {
+    const settingsStore = useSettingsStore();
+    const setupStore = useSetupStore();
+    const messagesStore = useMessagesStore();
+    const actions = useMessageActions();
+
+    settingsStore.mainApi = {
+      ...createDefaultApiConfig(),
+      apiurl: 'https://main-base.example.com/v1/chat/completions',
+      key: 'main-base-key',
+      model: 'main-base-model',
+      source: 'openai_compatible',
+      saved: true,
+    };
+    settingsStore.assistantApis = [
+      {
+        ...createDefaultApiConfig(),
+        apiurl: 'https://assistant-base.example.com/v1/chat/completions',
+        key: 'assistant-base-key',
+        model: 'assistant-base-model',
+        source: 'openai_compatible',
+        saved: true,
+      },
+    ];
+    setupStore.selectedPreset = null;
+
+    const userSnapshot = createArchiveStatData('用户快照角色');
+    const storedBaseSnapshot = createArchiveStatData('基底角色');
+
+    messagesStore.appendStandaloneMessage({
+      role: 'user',
+      raw_content: '我想继续推进剧情',
+      content_text: '我想继续推进剧情',
+      formatted: '我想继续推进剧情',
+      action_options: [],
+      stat_data_snapshot: userSnapshot,
+    });
+    const assistantMessage = messagesStore.appendStandaloneMessage({
+      role: 'assistant',
+      raw_content: '<contenttext>这里是现有正文</contenttext>',
+      content_text: '这里是现有正文',
+      formatted: '这里是现有正文',
+      action_options: [],
+      variable_update_status: 'failed',
+      variable_update_warning: '旧错误',
+      stat_data_snapshot: storedBaseSnapshot,
+      variable_update_base_snapshot: storedBaseSnapshot,
+    });
+
+    const refreshed = await actions.refreshLatestAssistantVariableUpdate('manual_variable_refresh_stored_base');
+    assert.equal(refreshed, true);
+
+    const statData = loadStandaloneStatData();
+    assert.equal(statData.玩家.姓名, '刷新结果');
+    // 基点必须是消息上存的 variable_update_base_snapshot（'基底角色的基地'），
+    // 而不是用户消息快照（'用户快照角色的基地'），也不是当前数据。
+    assert.equal(statData.世界.空间定位.当前位置, '基底角色的基地');
+    assert.equal(messagesStore.getMessage(assistantMessage.message_id)?.variable_update_status, 'success');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+}
+
 async function testStandaloneResendPrefersSelectedUserMessageSnapshot(): Promise<void> {
   resetStandaloneTestEnvironment();
   const originalFetch = globalThis.fetch;
@@ -4983,9 +5191,9 @@ function testStandaloneSnapshotTrimFollowsChainRules(): void {
   const mainSnapshot = main.snapshot as Record<string, any>;
   const updateSnapshot = update.snapshot as Record<string, any>;
 
-  // 两条链都紧凑输出、都剔 `$` 前缀（含内层）、商城都只留两个空路径
-  assert.equal(main.compact, true);
-  assert.equal(update.compact, true);
+  // 两条链都带缩进输出（compact=false，嵌套层级可见）、都剔 `$` 前缀（含内层）、商城都只留两个空路径
+  assert.equal(main.compact, false);
+  assert.equal(update.compact, false);
   assert.equal('$time' in (mainSnapshot['世界'] as Record<string, unknown>), false);
   assert.equal('$time' in (mainSnapshot['人物档案']['NPC_1'] as Record<string, unknown>), false);
   assert.deepEqual(mainSnapshot['商城'], { 物品: {}, 技能: {} });
@@ -5084,10 +5292,10 @@ function testStandaloneSnapshotTrimAlwaysApplies(): void {
   };
   const settings = normalizeStandaloneSnapshotTrimSettings({});
 
-  // 正文链：紧凑输出、剔 `$` 前缀、剔「设置」、商城塌成两个空路径、生存状态按模式裁
+  // 正文链：带缩进输出、剔 `$` 前缀、剔「设置」、商城塌成两个空路径、生存状态按模式裁
   const main = buildStandaloneSnapshotForChain({ statData, settings, chain: 'main' });
   const mainSnapshot = main.snapshot as Record<string, any>;
-  assert.equal(main.compact, true);
+  assert.equal(main.compact, false);
   assert.equal('$foo' in mainSnapshot, false);
   assert.equal('$time' in mainSnapshot['人物档案']['NPC_1'], false);
   assert.equal('设置' in mainSnapshot, false);
@@ -5265,6 +5473,92 @@ function testVariableUpdatePatchErrorHints(): void {
   const existing = readError([{ op: 'insert', path: '/人物档案/NPC_2', value: { 姓名: '丙' } }]);
   assert.match(existing, /Object target key already exists: NPC_2/);
   assert.match(existing, /覆盖已存在的对象请用 replace/);
+}
+
+/**
+ * 补丁路径修复：漏写中间层时按数据实际结构补回来（不限定根）。
+ *
+ * 覆盖：
+ * ① 漏 `个人信息` 层 → 补全，且补全后的补丁真能写进正确位置（值不变）；
+ * ② 漏 `关系数据` 层（好感度）同样能补；
+ * ③ 玩家侧漏 `货币资源` / `生存状态` 层 → 补全；
+ * ④ 世界侧漏 `时间系统` 层 → 补全；
+ * ⑤ 本来就对的路径、顶层合法字段 → 不动（不误伤）；
+ * ⑥ 补不了的情形（字段不存在 / 断点不止一处 / 没给数据）原样放行，让上层按原口径报错。
+ */
+function testVariableUpdatePatchMissingLayerRescue(): void {
+  const state = getStandaloneTestSchema().parse({
+    玩家: { 姓名: '测试' },
+    人物档案: {
+      NPC_1: { 姓名: '甲' },
+    },
+  });
+
+  // ① 漏 `个人信息` 层 → 补全
+  const missingInfo = `[{"op":"replace","path":"/人物档案/NPC_1/当前状态","value":"在文渊阁"}]`;
+  const infoResolved = resolvePatchTextWithRescue(missingInfo, state);
+  assert.equal(infoResolved.rescued, true);
+  assert.deepEqual(infoResolved.steps, ['补全漏写的中间层']);
+  assert.deepEqual(JSON.parse(infoResolved.text), [
+    { op: 'replace', path: '/人物档案/NPC_1/个人信息/当前状态', value: '在文渊阁' },
+  ]);
+
+  const afterInfo = applyVariableUpdatePatch(state, JSON.parse(infoResolved.text));
+  const npc = (afterInfo.人物档案 as Record<string, any>).NPC_1;
+  assert.equal(npc.个人信息.当前状态, '在文渊阁');
+
+  // ② 漏 `关系数据` 层 → 补全
+  const missingRelation = `[{"op":"delta","path":"/人物档案/NPC_1/好感度","value":5}]`;
+  const relationResolved = resolvePatchTextWithRescue(missingRelation, state);
+  assert.equal(relationResolved.rescued, true);
+  assert.deepEqual(JSON.parse(relationResolved.text), [
+    { op: 'delta', path: '/人物档案/NPC_1/关系数据/好感度', value: 5 },
+  ]);
+
+  // ③ 玩家侧：漏 `货币资源` / `生存状态` 层
+  const playerCases: Array<[string, string]> = [
+    ['/玩家/主货币/数量', '/玩家/货币资源/主货币/数量'],
+    ['/玩家/血量', '/玩家/生存状态/血量'],
+  ];
+  for (const [wrong, right] of playerCases) {
+    const resolved = resolvePatchTextWithRescue(`[{"op":"replace","path":"${wrong}","value":1}]`, state);
+    assert.equal(resolved.rescued, true, `${wrong} 应该被补全`);
+    assert.deepEqual(JSON.parse(resolved.text), [{ op: 'replace', path: right, value: 1 }]);
+  }
+
+  // ④ 世界侧：漏 `时间系统` 层
+  const worldResolved = resolvePatchTextWithRescue(
+    `[{"op":"replace","path":"/世界/当前时间","value":"1985-03-02"}]`,
+    state,
+  );
+  assert.equal(worldResolved.rescued, true);
+  assert.deepEqual(JSON.parse(worldResolved.text), [
+    { op: 'replace', path: '/世界/时间系统/当前时间', value: '1985-03-02' },
+  ]);
+
+  // ⑤ 本来就对的路径 / 顶层合法字段：不动
+  const alreadyCorrect = `[{"op":"replace","path":"/人物档案/NPC_1/个人信息/当前状态","value":"在文渊阁"}]`;
+  const correctResolved = resolvePatchTextWithRescue(alreadyCorrect, state);
+  assert.equal(correctResolved.rescued, false);
+  assert.equal(correctResolved.text, alreadyCorrect);
+  assert.equal(
+    resolvePatchTextWithRescue(`[{"op":"replace","path":"/人物档案/NPC_1/姓名","value":"乙"}]`, state).rescued,
+    false,
+  );
+  assert.equal(resolvePatchTextWithRescue(`[{"op":"replace","path":"/玩家/姓名","value":"乙"}]`, state).rescued, false);
+
+  // ⑥-1 字段名本身就不存在 → 不动
+  const unknownField = `[{"op":"replace","path":"/人物档案/NPC_1/不存在的字段","value":"x"}]`;
+  assert.equal(resolvePatchTextWithRescue(unknownField, state).rescued, false);
+
+  // ⑥-2 断点不止一处（补一层仍解析不到）→ 不动，保留原报错
+  assert.equal(
+    resolvePatchTextWithRescue(`[{"op":"replace","path":"/玩家/主货币/数量/数值","value":1}]`, state).rescued,
+    false,
+  );
+
+  // ⑥-3 没给数据 → 不动（保持旧行为）
+  assert.equal(resolvePatchTextWithRescue(missingInfo).rescued, false);
 }
 
 function testVariableUpdateFormatHidesSurvivalRulesByMode(): void {
@@ -5564,6 +5858,18 @@ async function run(): Promise<void> {
       'manual refresh latest assistant variable update failure clears running state',
       testManualRefreshLatestAssistantVariableUpdateFailureClearsRunningState,
     ],
+    [
+      'standalone local turn applies patch onto live stat data read at apply time',
+      testStandaloneLocalTurnAppliesPatchOntoLiveStatDataReadAtApplyTime,
+    ],
+    [
+      'standalone local turn falls back to input stat data when live reader missing',
+      testStandaloneLocalTurnFallsBackToInputStatDataWhenLiveReaderMissing,
+    ],
+    [
+      'manual refresh latest assistant variable update prefers stored base snapshot',
+      testManualRefreshLatestAssistantVariableUpdatePrefersStoredBaseSnapshot,
+    ],
     ['standalone resend prefers selected user snapshot', testStandaloneResendPrefersSelectedUserMessageSnapshot],
     [
       'standalone regenerate prefers selected assistant snapshot',
@@ -5643,6 +5949,7 @@ async function run(): Promise<void> {
     ['snapshot trim defaults to enabled', testStandaloneSnapshotTrimDefaultsToEnabled],
     ['patch guard drops underscore and survival paths', testStandalonePatchGuardDropsUnderscoreAndSurvivalPaths],
     ['variable update patch text rescue', testVariableUpdatePatchTextRescue],
+    ['variable update patch missing layer rescue', testVariableUpdatePatchMissingLayerRescue],
     ['variable update patch error hints', testVariableUpdatePatchErrorHints],
     ['tagged reply rescues missing contenttext wrapper', testTaggedReplyRescuesMissingContentTextWrapper],
     [

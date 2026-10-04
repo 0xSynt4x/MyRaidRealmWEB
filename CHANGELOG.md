@@ -1023,11 +1023,44 @@
 - 验证：渲染探针输出正常（警告无），四类 EJS 结构（脚本块 / 条件块 / 插值 / 内联条件）在三种存档场景下均正确。
 - 四道检查：`typecheck` ✓ ｜ `test` 114/114 + 35 ✓ ｜ `lint` 0 error（14 个存量 warning）✓ ｜ `build` ✓。
 
-### — chore: 补玩家更新日志（261002）
-
-> 短哈希待回填（按约定并入下一次提交）。
+### `00e8860` — chore: 补玩家更新日志（261002）
 
 - **Added** `src/utils/changelog.ts` 的 `CHANGELOG_SOURCE` 追加 `261002` 一条：
   `新增NPC不再撞编号`、`补丁报错提示更准确` —— 上一批变量更新链改动里玩家能感知的两点。
   那批改动原本按当时的口径没进玩家日志，本次补上（版本号随之 +0.01，玩家下次打开会弹一次）。
 - **Changed** 顺带回填上一条提交 `6e8a5f9` 的短哈希（按约定并入本次提交，不单独开回填提交）。
+
+## 2026-10-04
+
+### — fix: 变量更新补丁漏层路径修复：快照带缩进、兜底补全中间层、手动刷新取基点
+
+> 短哈希待回填（按约定并入下一次提交）。
+
+- **Fixed** 快照改回**带缩进**输出（`runtime/standaloneSnapshotTrim.ts` 的 `compact: true` → `false`）。
+  根因：单行紧凑 JSON 把 NPC 的 `个人信息` 这一层埋进上千字符的长行里，模型分不清
+  `当前状态` / `当前位置` 挂在哪一层，写出 `/人物档案/NPC_1/当前状态` 这类**少一层**的路径被写入层拦下。
+  实测同一快照单行 1,437 字符 vs 多行 2,859 字符（约翻倍），属正确性必要开销，不再为省 token 压成单行。
+- **Fixed** 补丁修复层（`src/utils/variableUpdateRescue.ts`）新增「**漏写中间层**」路径补全：
+  文本能读成合法补丁后，逐条检查路径，对走不到的段在父对象的直接子对象里找**恰好一个**含该字段名的对象补回去。
+  三条闸门缺一不可 —— ① 只补一层、断点前缀须全部真实存在；② 候选唯一命中（0 个或 ≥2 个都不动）；
+  ③ 补完必须能走通。不限定根（`玩家` / `人物档案.<NPC>` / `世界`… 任何一层都适用），**只改写法、不改值**。
+  例：`/玩家/主货币/数量` → `/玩家/货币资源/主货币/数量`；`/人物档案/NPC_1/当前状态` → `/人物档案/NPC_1/个人信息/当前状态`。
+- **Fixed** 手动刷新变量的**取基点**错误。新增消息字段 `variable_update_base_snapshot`（`src/stores/messages.ts`
+  + `src/utils/standaloneRuntimeSchemas.ts`）：记录「主回复完成那一刻」的游戏数据 S，写入后不再改动
+  （区别于回合收尾会被覆盖成最终状态的 `stat_data_snapshot`）。刷新时优先取它，避免用「当前存档」
+  （已含后续回合改动 → 重复累加）或「发送时快照」（丢掉主 API 生成期间的操作）；旧存档没有该键则回退用户消息快照。
+- **Changed** 运行时（`runtime/standaloneTurn.ts`）新增 `readLiveStatData` 回调，把「辅助 API 的输入基底」
+  与「应用补丁的基底」统一到同一处读取：正文回来读一次作 S，应用补丁时再读一次作基底（含生成期间的前端改动），
+  补丁全程只在运行时**净应用一次**。
+- **Removed** 前端（`src/composables/useMessageActions.ts`）的 `rebaseVariableUpdateOntoLiveState` 补丁重放逻辑
+  及其 `rebaseOntoLiveState` 开关 —— 改由运行时单点应用后不再需要，同时消除「重放导致重复累加」的隐患。
+- **Changed** 提示词（`variable-update-format.txt`）：`<Analysis>` 段恢复逐项检查清单，并补一句
+  **NPC 字段层级说明**（`当前穿着` / `当前位置` / `当前状态` … 在 `人物档案.<NPC_ID>.个人信息` 下、关系数据是独立对象）；
+  `variable-update-rules.txt` 去掉重要 NPC 行里冗余的「个人信息.」前缀。
+- **Changed** 世界书 `standalone-worldbooks/time-loop.md` 的 NPC 结构改为 `个人信息` / `关系数据` 两层嵌套，与 schema 对齐。
+- **Changed** `spec/05-prompt-pipeline.md`：把「去 JSON 缩进（紧凑输出）」一条改为「快照带缩进输出（不做紧凑化）」，
+  并补上单行 vs 多行的实测数据与原因。
+- **Added** 单测（`scripts/tests/run-standalone-local-content-tests.ts`，+317 行）：补丁应用到「应用时刻读到的实时数据」、
+  缺 `readLiveStatData` 时回退、手动刷新优先用存的 S、快照 `compact === false`、漏层路径补全（个人信息层 / 关系数据层 /
+  世界层 / 正确路径不动 / 未知字段不动 / 歧义不动）。
+- 四道检查：`typecheck` ✓ ｜ `test` 118/118 + 35 ✓ ｜ `lint` 0 error（14 个存量 warning）✓ ｜ `build` ✓。

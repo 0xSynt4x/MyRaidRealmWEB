@@ -9,6 +9,8 @@
  *    因此渲染上下文始终使用原始完整数据，只有快照走整形结果。
  * 3. 除「NPC 按在场裁」外，所有裁剪都无条件生效，不设开关 —— 它们要么是正确性要求，
  *    要么是纯收益无风险的整形。唯一的用户开关是「只发在场 NPC」，且只作用于辅助链。
+ *    ⚠️ 但「去 JSON 缩进」不在其中：它曾被当作纯收益整形无条件开启，结果让模型看不清
+ *    嵌套层级、把深层字段写成顶层路径（详见 `buildStandaloneSnapshotForChain` 注释）。
  */
 
 type PlainRecord = Record<string, unknown>;
@@ -307,9 +309,15 @@ export type StandaloneSnapshotTrimResult = {
  * 按链路组装发送用快照。
  *
  * 🔴 **除「NPC 按在场裁」外，所有裁剪都无条件生效。**
- * - 紧凑 JSON、剔 `$` 前缀键、商城塌成空路径、生存状态按模式裁：两条链都做。
+ * - 剔 `$` 前缀键、商城塌成空路径、生存状态按模式裁：两条链都做。
  * - 剔「设置」块：只做正文链；辅助链必须保留，否则模型无法回写积分触发开关。
  * - NPC 按在场裁：只做辅助链，且受唯一开关 `trimNpc` 控制（正文链全发）。
+ *
+ * ⚠️ **快照必须带缩进输出（`compact: false`），不要改回紧凑单行。**
+ * 实测（2026-10-04）：单行紧凑 JSON 把 `个人信息` 这一层埋进 1400+ 字符的长行里，
+ * 模型分不清 `当前状态` / `当前位置` 挂在哪一层，写出 `/人物档案/NPC_1/当前状态`
+ * 这类少一层的路径，被写入层拦下。带缩进后层级一眼可见，问题消失。
+ * 代价是字符数约翻倍（实测 1437 → 2859），属正确性必要开销，不能为省 token 砍掉。
  */
 export function buildStandaloneSnapshotForChain(input: {
   statData: unknown;
@@ -336,6 +344,6 @@ export function buildStandaloneSnapshotForChain(input: {
       survivalMode: resolveSurvivalMode(input.statData),
       presentNpcIds,
     }),
-    compact: true,
+    compact: false,
   };
 }

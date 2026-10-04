@@ -54,6 +54,14 @@ export interface MessageRecord {
   is_partial?: boolean;
   createdAt?: string;
   stat_data_snapshot?: ReturnType<typeof Schema.parse>;
+  /**
+   * 这条回复「主 API 回复完成那一刻」的游戏数据快照 = 本回合变量更新的输入基底。
+   *
+   * 与 `stat_data_snapshot` 的区别：后者回合收尾会被覆盖成「打完补丁的最终状态」，
+   * 而这份只在追加 assistant 消息那一刻写入，之后不再改动；手动刷新变量取基点时读它。
+   * 旧存档没有这个键 → undefined，读取方回退到用户消息快照。
+   */
+  variable_update_base_snapshot?: ReturnType<typeof Schema.parse>;
   variable_update_status?: 'running' | 'success' | 'failed' | 'skipped';
   variable_update_warning?: string | null;
   debug_trace?: StandaloneAssistantDebugTrace;
@@ -206,6 +214,10 @@ export const useMessagesStore = defineStore('messages', () => {
       createdAt: record.createdAt ?? new Date().toISOString(),
       stat_data_snapshot:
         typeof record.stat_data_snapshot === 'undefined' ? undefined : Schema.parse(record.stat_data_snapshot),
+      variable_update_base_snapshot:
+        typeof record.variable_update_base_snapshot === 'undefined'
+          ? undefined
+          : Schema.parse(record.variable_update_base_snapshot),
       debug_trace: pruneOversizedStreamingRawFromTrace((record as MessageRecord).debug_trace),
     }));
     const displayReadyRecords = normalizedRecords.map(normalizeRecordForDisplay);
@@ -229,6 +241,12 @@ export const useMessagesStore = defineStore('messages', () => {
           ...item,
           action_options: item.action_options ?? [],
           stat_data_snapshot: item.stat_data_snapshot ? Schema.parse(item.stat_data_snapshot) : undefined,
+          // 运行时消息 schema 把这个键定成「必需但可为 undefined」，所以这里显式赋一次；
+          // 只靠 `...item` 展开会带出 `MessageRecord` 上的 optional 语义，与 schema 输出类型对不上。
+          variable_update_base_snapshot:
+            typeof item.variable_update_base_snapshot === 'undefined'
+              ? undefined
+              : Schema.parse(item.variable_update_base_snapshot),
           createdAt: item.createdAt ?? new Date().toISOString(),
         })),
       },
@@ -237,11 +255,19 @@ export const useMessagesStore = defineStore('messages', () => {
 
   function appendStandaloneMessage(record: Omit<MessageRecord, 'message_id'>): MessageRecord {
     const nextMessageId = messages.value.reduce((max, item) => Math.max(max, item.message_id), -1) + 1;
+    // 🔴 前提：调用方（发送回合的 append 处）抓的 `variable_update_base_snapshot` 必须与
+    // runtime 在 finalize 起点 `readLiveStatData()` 读到的值相等 —— 从本函数到这里之间不写 session，
+    // 两者读的是同一份数据。日后若在中间插入 session 写入，会让「辅助 API 输入基底」与
+    // 「应用基底」静默错位，务必同步检查。
     const nextRecord = normalizeRecordForDisplay({
       ...record,
       action_options: record.action_options ?? [],
       createdAt: record.createdAt ?? new Date().toISOString(),
       stat_data_snapshot: Schema.parse(record.stat_data_snapshot ?? resolveLatestStandaloneStatSnapshot()),
+      variable_update_base_snapshot:
+        typeof record.variable_update_base_snapshot === 'undefined'
+          ? undefined
+          : Schema.parse(record.variable_update_base_snapshot),
       message_id: nextMessageId,
     });
 
