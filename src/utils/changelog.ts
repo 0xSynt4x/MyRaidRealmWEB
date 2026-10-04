@@ -83,6 +83,10 @@ const CHANGELOG_SOURCE: ReadonlyArray<{ date: string; items: readonly string[] }
     date: '261002',
     items: ['新增NPC不再撞编号', '补丁报错提示更准确'],
   },
+  {
+    date: '261004',
+    items: ['NPC 变量更新更稳', '刷新变量不再算错'],
+  },
 ];
 
 /** 第 `index` 条（从 0 起）对应的版本号 */
