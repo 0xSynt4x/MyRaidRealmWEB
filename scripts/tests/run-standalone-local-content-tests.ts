@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import { createPinia, setActivePinia } from 'pinia';
 import { nextTick } from 'vue';
-import { plotLotteryRulesTemplate, variableUpdateRulesTemplate } from '../../src/assets/standalone-local-content';
+import {
+  lotteryItemSkillRulesTemplate,
+  lotteryRequestPromptTemplate,
+  variableUpdateRulesTemplate,
+} from '../../src/assets/standalone-local-content';
 import { legacyWorldbookContentByName } from '../../src/assets/legacy-worldbook-compat';
 import { getBuiltInPresets, isWorkshopPreset } from '../../src/utils/preset-groups';
 import {
@@ -88,6 +92,8 @@ import { useNotificationStore } from '../../src/stores/notification';
 import { useSetupStore } from '../../src/stores/setup';
 import { useMessageActions } from '../../src/composables/useMessageActions';
 import { useStatDataStore } from '../../src/stores/statData';
+import { useLotteryStore } from '../../src/stores/lottery';
+import { planLotteryDraw } from '../../src/utils/lottery';
 import {
   createSeededStandaloneRuntimeSession,
   loadStandaloneRuntimeMessages,
@@ -294,8 +300,7 @@ function createRenderContext(
     设置: {
       生存系统模式: '生存模式',
       积分系统: {
-        抽奖次数: 1,
-        保底触发: true,
+        商城刷新: false,
       },
     },
     玩家: {
@@ -1024,17 +1029,23 @@ function testResolveMainPassWorldbookPromptFromTracePrefersActualSentSnapshot():
   assert.match(prompt, /\[WB\]高考模拟器/);
 }
 
-async function testRendersLotteryRulesTemplate(): Promise<void> {
-  const template = plotLotteryRulesTemplate;
+async function testRendersLotteryRequestPromptTemplate(): Promise<void> {
+  const template = lotteryRequestPromptTemplate;
   const result = renderStandaloneLocalContentTemplate({
     template,
-    renderContext: createRenderContext(),
-    sourceName: '[mvu_plot]抽奖规则.txt',
+    renderContext: createRenderContext({
+      // 品质清单由前端算好后经 extraVars 注入，抽奖提示词只负责渲染它
+      extraVars: { lottery: { qualities: ['传说', '普通', '精良'] } },
+    }),
+    sourceName: 'lottery-request-prompt.txt',
   });
 
   assert.equal(result.warning, null);
-  assert.ok(result.content.includes('系统已强制生成如下1次抽奖结果'));
+  assert.ok(result.content.includes('本次为独立抽奖环节，不是剧情回合'));
   assert.ok(result.content.includes('第1次：【传说】'));
+  assert.ok(result.content.includes('第2次：【普通】'));
+  assert.ok(result.content.includes('第3次：【精良】'));
+  assert.ok(result.content.includes('按顺序列出 3 次结果'));
   assert.ok(!result.content.includes('<%'));
 }
 
@@ -1293,7 +1304,6 @@ function createStandaloneTurnInput(overrides: Partial<StandaloneLocalTurnInput> 
     localContentEnabledMap: {
       'main-api-prompt': true,
       'current-stat-snapshot': true,
-      'plot-lottery-rules': true,
       'plot-world-difficulty': true,
       'variable-update-format': true,
       'variable-update-rules': true,
@@ -1949,45 +1959,10 @@ async function testVariableUpdateFormatPromptBlockAlwaysPresentInFixedMode(): Pr
   assert.ok(enabledSecondPassPrompt.messages[4]?.content.includes('[本地内容:变量更新规则]'));
 }
 
-async function testLotteryRulePromptBlockOnlyAppearsForScriptedLotteryTurn(): Promise<void> {
-  const normalPrompt = buildMainTurnPrompt(createStandaloneTurnInput());
-  const lotteryPrompt = buildMainTurnPrompt(
-    createStandaloneTurnInput({
-      statData: createRenderContext({
-        statData: {
-          ...createRenderContext().statData,
-          设置: {
-            ...createRenderContext().statData.设置,
-            积分系统: {
-              ...createRenderContext().statData.设置.积分系统,
-              抽奖次数: 11,
-              保底触发: true,
-            },
-          },
-        },
-      }).statData as StandaloneLocalTurnInput['statData'],
-      scriptedTurn: {
-        kind: 'lottery',
-        promptText: '## 🎰 开始抽奖!测试玩家发起了11次抽奖，请生成抽奖结果。',
-      },
-    }),
-  );
-
-  const normalPromptCombined = normalPrompt.messages.map(message => message.content).join('\n\n');
-  const lotteryPromptCombined = lotteryPrompt.messages.map(message => message.content).join('\n\n');
-
-  assert.ok(!normalPromptCombined.includes('[本地内容:抽奖结果规则]'));
-  assert.ok(lotteryPromptCombined.includes('[本地内容:抽奖结果规则]'));
-  assert.ok(lotteryPromptCombined.includes('以下是内部规则,知晓即可'));
-  assert.ok(lotteryPromptCombined.includes('系统已强制生成如下11次抽奖结果'));
-  assert.doesNotMatch(lotteryPromptCombined, /<%[\s\S]*?%>/);
-}
-
 async function testStandaloneFeatureLocalContentBlocksFollowDedicatedToggles(): Promise<void> {
   const baseEnabledMap = {
     'main-api-prompt': true,
     'current-stat-snapshot': true,
-    'plot-lottery-rules': true,
     'plot-world-difficulty': true,
     'plot-text-to-image': false,
     'plot-online-mode': false,
@@ -2115,7 +2090,6 @@ async function testWorldDifficultyBlocksFollowSelectedDifficulty(): Promise<void
   const enabledMap = {
     'main-api-prompt': true,
     'current-stat-snapshot': true,
-    'plot-lottery-rules': true,
     'plot-world-difficulty': true,
     'plot-text-to-image': false,
     'plot-online-mode': false,
@@ -2173,7 +2147,6 @@ async function testMainPromptAlwaysIncludesRequiredMainReplyRule(): Promise<void
     localContentEnabledMap: {
       'main-api-prompt': false,
       'current-stat-snapshot': true,
-      'plot-lottery-rules': true,
       'plot-world-difficulty': true,
       'variable-update-format': true,
       'variable-update-rules': true,
@@ -4392,6 +4365,148 @@ async function testStandaloneDeleteBlocksFormalDeletionWithoutSnapshot(): Promis
   assert.equal(loadStandaloneStatData().玩家.姓名, '删除前角色');
 }
 
+function testLotteryItemSkillRulesStayInSyncWithVariableUpdateRules(): void {
+  // 抽奖请求单独抄了一份「物品与技能规则」（它不带 variable-update-rules）。
+  // 两份的关键定义必须逐字一致：改了一处忘了另一处，这条会红。
+  const sharedDefinitions = [
+    "'普通' | '精良' | '稀有' | '史诗' | '传说'",
+    '- 品质只能是: 普通/精良/稀有/史诗/传说 五个等级之一',
+    '- ⚠️ 必须使用完整对象格式',
+    '- 随身携带可即时使用:装备/证件/少量消耗品/工具/任务道具',
+    "- 物品名称中绝对不可以包含'.'",
+    '- ❌排除:大宗货物/商业库存/大型资产/生产设施',
+    '特殊属性: string;  // 特殊效果或属性,初次生成后不可更改',
+  ];
+
+  for (const definition of sharedDefinitions) {
+    assert.ok(
+      variableUpdateRulesTemplate.includes(definition),
+      `variable-update-rules.txt 缺少共享定义：${definition}`,
+    );
+    assert.ok(
+      lotteryItemSkillRulesTemplate.includes(definition),
+      `lottery-item-skill-rules.txt 缺少共享定义：${definition}`,
+    );
+  }
+
+  // 技能生成时机一句两份**有意不同**：主链按「行动」、抽奖按「剧情」。
+  // 不做一致性断言，但两份各自的表述仍要守住，谁误改都会红。
+  assert.ok(
+    variableUpdateRulesTemplate.includes('- 根据行动自动生成,名称具体(如"单手剑术")'),
+    'variable-update-rules.txt 缺少技能生成时机的表述',
+  );
+  assert.ok(
+    lotteryItemSkillRulesTemplate.includes('- 根据剧情生成,名称具体(如"单手剑术")'),
+    'lottery-item-skill-rules.txt 缺少技能生成时机的表述',
+  );
+}
+
+function testPlanLotteryDrawPityBoundaries(): void {
+  const allQualities = new Set(['普通', '精良', '稀有', '史诗', '传说']);
+
+  // 单抽：累计正好踩到阈值倍数才触发保底，触发后进度归零
+  const singlePity = planLotteryDraw({ count: 1, pityCountBefore: 99 });
+  assert.equal(singlePity.pityTriggered, true);
+  assert.equal(singlePity.pityCountAfter, 0);
+  assert.equal(singlePity.qualities[0], '传说');
+
+  const singleMiss = planLotteryDraw({ count: 1, pityCountBefore: 0 });
+  assert.equal(singleMiss.pityTriggered, false);
+  assert.equal(singleMiss.pityCountAfter, 1);
+  assert.ok(allQualities.has(singleMiss.qualities[0]!));
+
+  // 十连跨阈值：本次跨越即触发，只在第 1 次强制传说，其余照常随机
+  const crossing = planLotteryDraw({ count: 10, pityCountBefore: 95 });
+  assert.equal(crossing.pityTriggered, true);
+  assert.equal(crossing.qualities.length, 10);
+  assert.equal(crossing.qualities[0], '传说');
+  assert.equal(crossing.pityCountAfter, 5);
+  for (const quality of crossing.qualities) {
+    assert.ok(allQualities.has(quality));
+  }
+
+  // 十连正好踩到阈值：进度归零
+  const exact = planLotteryDraw({ count: 10, pityCountBefore: 90 });
+  assert.equal(exact.pityTriggered, true);
+  assert.equal(exact.pityCountAfter, 0);
+
+  // 十连未跨阈值：不触发，进度照常累加
+  const noCross = planLotteryDraw({ count: 10, pityCountBefore: 50 });
+  assert.equal(noCross.pityTriggered, false);
+  assert.equal(noCross.pityCountAfter, 60);
+
+  // 非法入参兜底：次数至少 1，进度不为负
+  const clamped = planLotteryDraw({ count: 0, pityCountBefore: -5 });
+  assert.equal(clamped.qualities.length, 1);
+  assert.equal(clamped.pityTriggered, false);
+  assert.equal(clamped.pityCountAfter, 1);
+}
+
+async function testLotteryPityRollsBackWithTimeline(): Promise<void> {
+  resetStandaloneTestEnvironment();
+
+  const settingsStore = useSettingsStore();
+  const messagesStore = useMessagesStore();
+  const lotteryStore = useLotteryStore();
+  const actions = useMessageActions();
+
+  // 抽奖进度要写进会话存档，没有会话时写入会失败，先建一个
+  syncStandaloneRuntimeSessionStatData(createArchiveStatData('抽奖回退角色'), {
+    preset: null,
+    standaloneLocalContent: settingsStore.standaloneLocalContent,
+    sendFullPreset: true,
+  });
+
+  messagesStore.appendStandaloneMessage({
+    role: 'user',
+    raw_content: '开场',
+    content_text: '开场',
+    formatted: '开场',
+    action_options: [],
+    stat_data_snapshot: createArchiveStatData('抽奖回退角色'),
+  });
+  messagesStore.appendStandaloneMessage({
+    role: 'assistant',
+    raw_content: createAssistantReply('开场回复', '抽奖回退角色'),
+    content_text: '开场回复',
+    formatted: '开场回复',
+    action_options: [],
+    stat_data_snapshot: createArchiveStatData('抽奖回退角色'),
+  });
+
+  const firstLottery = messagesStore.appendStandaloneMessage({
+    role: 'assistant',
+    raw_content: '抽奖结果一',
+    content_text: '抽奖结果一',
+    formatted: '抽奖结果一',
+    action_options: [],
+    lottery: true,
+    lottery_state_snapshot: { 保底计数: 3 },
+    stat_data_snapshot: createArchiveStatData('抽奖后一'),
+  });
+  const secondLottery = messagesStore.appendStandaloneMessage({
+    role: 'assistant',
+    raw_content: '抽奖结果二',
+    content_text: '抽奖结果二',
+    formatted: '抽奖结果二',
+    action_options: [],
+    lottery: true,
+    lottery_state_snapshot: { 保底计数: 5 },
+    stat_data_snapshot: createArchiveStatData('抽奖后二'),
+  });
+
+  lotteryStore.applyState({ 保底计数: 5 });
+  assert.equal(lotteryStore.pityCount, 5);
+
+  // 删掉最后一条抽奖层：进度退回上一条抽奖层的快照
+  assert.equal(await actions.deleteFromHere(secondLottery.message_id, true), true);
+  assert.equal(lotteryStore.pityCount, 3);
+
+  // 再删掉剩下的抽奖层：已无抽奖记录可依据，进度归零
+  assert.equal(await actions.deleteFromHere(firstLottery.message_id, true), true);
+  assert.equal(lotteryStore.pityCount, 0);
+}
+
 async function testStandaloneMessageActionsClearBusyStateAfterVariableUpdateFailure(): Promise<void> {
   resetStandaloneTestEnvironment();
   const originalFetch = globalThis.fetch;
@@ -5168,7 +5283,7 @@ function restoreStandaloneTestGlobals(snapshot: StandaloneTestGlobalSnapshot): v
 
 function testStandaloneSnapshotTrimFollowsChainRules(): void {
   const statData = {
-    设置: { 生存系统模式: '生存模式', 积分系统: { $保底次数: 3, 抽奖次数: 2 } },
+    设置: { 生存系统模式: '生存模式', 积分系统: { $内部标记: 3, 商城刷新: true } },
     世界: { $time: 1, 时间系统: { 当前时间: '1985-03-12' } },
     玩家: { 姓名: '测试玩家', 生存状态: { 血量: 90, 体力值: 70, 饥饿值: 60, 口渴值: 50 } },
     人物档案: {
@@ -5205,7 +5320,7 @@ function testStandaloneSnapshotTrimFollowsChainRules(): void {
 
   // 辅助链：保留「设置」（模型要回写积分开关），但「设置」内部的 `$` 字段同样剔除
   assert.equal('设置' in updateSnapshot, true);
-  assert.deepEqual(Object.keys(updateSnapshot['设置']['积分系统']), ['抽奖次数']);
+  assert.deepEqual(Object.keys(updateSnapshot['设置']['积分系统']), ['商城刷新']);
   // 辅助链：只留在场 NPC —— 老周被正文提到；另外两人不在场被裁
   assert.deepEqual(Object.keys(updateSnapshot['人物档案']), ['NPC_1']);
 
@@ -5214,7 +5329,7 @@ function testStandaloneSnapshotTrimFollowsChainRules(): void {
 
   // 真状态与存档一个字节都不能动
   assert.deepEqual(Object.keys(statData['人物档案']), ['NPC_1', 'NPC_2', 'NPC_3']);
-  assert.equal(statData['设置']['积分系统']['$保底次数'], 3);
+  assert.equal(statData['设置']['积分系统']['$内部标记'], 3);
   assert.equal(statData['世界']['$time'], 1);
 }
 
@@ -5725,7 +5840,7 @@ async function run(): Promise<void> {
       testResolveMainPassWorldbookPromptFromTracePrefersActualSentSnapshot,
     ],
     ['messages store assistant api debug trace event bridge', testMessagesStoreAssistantApiDebugTraceEventBridge],
-    ['renders lottery rules template', testRendersLotteryRulesTemplate],
+    ['renders lottery request prompt template', testRendersLotteryRequestPromptTemplate],
     ['renders variable update rules template', testRendersVariableUpdateRulesTemplate],
     ['falls back to raw template on render error', testFallsBackToRawTemplateOnRenderError],
     ['resolves preset-aware local content entries', testResolvesPresetAwareLocalContentEntries],
@@ -5753,10 +5868,6 @@ async function run(): Promise<void> {
     [
       'variable update format prompt block stays out of main prompt but present in second pass',
       testVariableUpdateFormatPromptBlockAlwaysPresentInFixedMode,
-    ],
-    [
-      'lottery rule prompt block only appears for scripted lottery turn',
-      testLotteryRulePromptBlockOnlyAppearsForScriptedLotteryTurn,
     ],
     [
       'removed variable update thought template stays out of manifest and prompts',
@@ -5957,6 +6068,12 @@ async function run(): Promise<void> {
       testStreamingTaggedReplyRescuesMissingContentTextWrapper,
     ],
     ['variable update format hides survival rules by mode', testVariableUpdateFormatHidesSurvivalRulesByMode],
+    [
+      'lottery item skill rules stay in sync with variable update rules',
+      testLotteryItemSkillRulesStayInSyncWithVariableUpdateRules,
+    ],
+    ['plan lottery draw pity boundaries', testPlanLotteryDrawPityBoundaries],
+    ['lottery pity rolls back with timeline', testLotteryPityRollsBackWithTimeline],
   ] as const;
 
   const filter = process.env.TEST_FILTER?.trim();

@@ -12,7 +12,6 @@ import {
   syncStandaloneRuntimeSessionStatDataFromStores,
 } from '../utils/standaloneRuntime';
 import { loadStandaloneStatData } from '../utils/standaloneStatData';
-import { preserveFrontendAuthoritativeFields } from '../utils/frontendAuthoritativeState';
 import {
   composeEditableContent,
   parseStreamingTaggedAssistantReply,
@@ -71,6 +70,20 @@ export interface MessageRecord {
    * 只用于楼层头展示；拿不到或旧存档没有时为 undefined，展示层回退到占位文案。
    */
   model?: string;
+  /**
+   * 抽奖结果消息标记：为 true 时这条回复只在聊天流展示，不参与剧情历史与前情提要。
+   */
+  lottery?: boolean;
+  /**
+   * 这条消息落地时的抽奖进度快照。回退楼层时用它把抽奖次数/保底恢复到当时的值。
+   */
+  lottery_state_snapshot?: { 保底计数: number };
+  /** 抽奖请求的参数快照（次数 / 品质清单 / 抽完后的保底计数），只挂在抽奖请求消息上 */
+  lottery_request?: {
+    count: number;
+    qualities: string[];
+    pity_count_after: number;
+  };
 }
 
 interface MainReplyStreamingContext {
@@ -333,12 +346,10 @@ export const useMessagesStore = defineStore('messages', () => {
   }
 
   function syncStandaloneStatSnapshotAfterTimelineChange(reason: string) {
-    // 回退到剩余楼层的旧快照时，剧情类字段跟随回退，但前端权威字段（商城刷新/签到/积分）保留
-    // 玩家在回退前的最新写入，避免删除/重发/重新生成时把刚点的签到、刷新、加积分静默抹掉。
-    const liveStatData = Schema.parse(loadStandaloneStatData());
+    // 回退到剩余楼层的旧快照：所有字段（含积分 / 商城刷新 / 签到日期）一起回退，
+    // 保证「回滚 = 回到过去」—— 资源与物品不会脱钩（买了东西回滚，物品和积分一起回来）。
     const rollbackStatData = resolveRollbackStandaloneStatData();
-    const nextStatData = preserveFrontendAuthoritativeFields(rollbackStatData, liveStatData);
-    syncStandaloneRuntimeSessionStatDataFromStores(nextStatData);
+    syncStandaloneRuntimeSessionStatDataFromStores(rollbackStatData);
     console.info(`[MessagesStore] standalone 时间线回退后已恢复本地 stat_data reason=${reason}`);
   }
 
@@ -900,6 +911,7 @@ export const useMessagesStore = defineStore('messages', () => {
     settleStreamingWithFormalMessage,
     isPartialPreviewMessage,
     clearPartialPreview,
+    clearStreamingState,
     syncStandaloneRuntimeContentContext,
 
     // 编辑状态

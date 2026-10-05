@@ -11,12 +11,8 @@ export const Schema = z.object({
         .object({
           // === 触发变量（前端设置，AI回复后重置） ===
           商城刷新: z.boolean().prefault(false),
-          抽奖触发: z.boolean().prefault(false),
-          $保底次数: z.coerce.number().prefault(0), // 前端专用，AI不可见
-          保底触发: z.boolean().prefault(false), // 是否触发保底
 
           // === 持久化状态变量 ===
-          抽奖次数: z.coerce.number().prefault(0), // 本次抽奖次数，抽奖后重置为0
           上次签到日期: z.string().prefault(''), // 格式: "YYYY-MM-DD"
           _兑换比例: z.coerce.number().prefault(100), // X 主货币 = 100 积分，0表示禁用兑换（只读）
         })

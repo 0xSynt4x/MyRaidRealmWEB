@@ -88,6 +88,16 @@ const StandaloneRuntimeCustomWorldbookEntrySchema = z.object({
   enabled: z.boolean().optional(),
 });
 
+/**
+ * 抽奖进度：品质由前端算、次数与保底全由前端维护，因此不进 stat_data（AI 看不到），
+ * 只随会话与楼层快照走。`保底计数` 同时承担「累计抽奖次数」展示与保底进度两个用途。
+ */
+export const StandaloneRuntimeLotteryStateSchema = z
+  .object({
+    保底计数: z.coerce.number().int().nonnegative().default(0),
+  })
+  .prefault({});
+
 export const StandaloneRuntimeSessionSchema = z
   .object({
     id: z.string().min(1),
@@ -110,6 +120,10 @@ export const StandaloneRuntimeSessionSchema = z
      * 不用再单独塞进提示词。默认 -1 表示一条都没归档。
      */
     stage_summary_archived_until_message_id: z.number().int().default(-1),
+    /**
+     * 抽奖进度：不进 stat_data，只由前端维护；跟着会话存，读档时一起回来。
+     */
+    lottery_state: StandaloneRuntimeLotteryStateSchema,
   })
   .transform(session => ({
     ...session,
@@ -168,6 +182,28 @@ export const StandaloneRuntimeMessageRecordSchema = z.object({
    * 必须是 optional —— 旧存档没有这个键，缺了要能正常读进来，只是展示时回退到占位文案。
    */
   model: z.string().optional(),
+  /**
+   * 抽奖结果消息标记：为 true 时，这条回复只在聊天流展示，不参与剧情历史与前情提要。
+   * 必须是 optional —— 旧存档没有这个键。
+   */
+  lottery: z.boolean().optional(),
+  /**
+   * 这条消息落地时的抽奖进度快照。回退楼层时用它把抽奖次数/保底恢复到当时的值。
+   * 必须是 optional —— 旧存档没有这个键，缺了回退时沿用当前值。
+   */
+  lottery_state_snapshot: StandaloneRuntimeLotteryStateSchema.optional(),
+  /**
+   * 抽奖请求的参数快照（次数 / 品质清单 / 抽完后的保底计数），只挂在抽奖请求消息（user）上。
+   * 「重新发送」重来这次抽奖时复用这份品质清单，保证重来不会改变本次摇出的品质。
+   * 必须是 optional —— 旧存档与非抽奖消息都没有这个键。
+   */
+  lottery_request: z
+    .object({
+      count: z.coerce.number().int().positive(),
+      qualities: z.array(z.string()),
+      pity_count_after: z.coerce.number().int().nonnegative(),
+    })
+    .optional(),
 });
 
 export const StandaloneRuntimeMessagesSchema = z.object({
@@ -177,6 +213,7 @@ export const StandaloneRuntimeMessagesSchema = z.object({
 });
 
 export type StandaloneRuntimeSession = z.infer<typeof StandaloneRuntimeSessionSchema>;
+export type StandaloneRuntimeLotteryState = z.infer<typeof StandaloneRuntimeLotteryStateSchema>;
 export type StandaloneRuntimeMessageRole = z.infer<typeof StandaloneRuntimeMessageRoleSchema>;
 export type StandaloneRuntimeMessageRecord = z.infer<typeof StandaloneRuntimeMessageRecordSchema>;
 export type StandaloneRuntimeMessages = z.infer<typeof StandaloneRuntimeMessagesSchema>;

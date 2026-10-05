@@ -1,6 +1,7 @@
 import currentStatSnapshotTemplate from './current-stat-snapshot.txt?raw';
+import lotteryItemSkillRulesTemplate from './lottery-item-skill-rules.txt?raw';
+import lotteryRequestPromptTemplate from './lottery-request-prompt.txt?raw';
 import mainApiPromptTemplate from './main-api-prompt.txt?raw';
-import plotLotteryRulesTemplate from './plot-lottery-rules.txt?raw';
 import plotOnlineModeTemplate from './plot-online-mode.md?raw';
 import plotTextToImageNaiTemplate from './plot-text-to-image-nai.md?raw';
 import plotTextToImageTemplate from './plot-text-to-image.md?raw';
@@ -9,8 +10,9 @@ import variableUpdateRulesTemplate from './variable-update-rules.txt?raw';
 
 export {
   currentStatSnapshotTemplate,
+  lotteryItemSkillRulesTemplate,
+  lotteryRequestPromptTemplate,
   mainApiPromptTemplate,
-  plotLotteryRulesTemplate,
   plotOnlineModeTemplate,
   plotTextToImageNaiTemplate,
   plotTextToImageTemplate,

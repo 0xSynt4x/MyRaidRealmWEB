@@ -14,10 +14,6 @@ export const specialPresets: PresetConfig[] = [
         生存系统模式: '关闭',
         积分系统: {
           商城刷新: false,
-          抽奖触发: false,
-          $保底次数: 0,
-          保底触发: false,
-          抽奖次数: 0,
           上次签到日期: '',
           _兑换比例: 170, // 170人民币 = 100积分（大学生兼职日收入）
         },
@@ -162,10 +158,6 @@ export const specialPresets: PresetConfig[] = [
         生存系统模式: '生存模式',
         积分系统: {
           商城刷新: false,
-          抽奖触发: false,
-          $保底次数: 0,
-          保底触发: false,
-          抽奖次数: 0,
           上次签到日期: '',
           _兑换比例: 0, // 无货币系统，禁用兑换
         },

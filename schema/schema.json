@@ -18,18 +18,6 @@
             "商城刷新": {
               "type": "boolean"
             },
-            "抽奖触发": {
-              "type": "boolean"
-            },
-            "$保底次数": {
-              "type": "number"
-            },
-            "保底触发": {
-              "type": "boolean"
-            },
-            "抽奖次数": {
-              "type": "number"
-            },
             "上次签到日期": {
               "type": "string"
             },

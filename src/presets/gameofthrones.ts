@@ -14,10 +14,6 @@ export const gameOfThronesPresets: PresetConfig[] = [
         生存系统模式: '关闭',
         积分系统: {
           商城刷新: false,
-          抽奖触发: false,
-          $保底次数: 0,
-          保底触发: false,
-          抽奖次数: 0,
           上次签到日期: '',
           _兑换比例: 25, // 25金龙 = 100积分 (骑士月薪约10-20金龙)
         },

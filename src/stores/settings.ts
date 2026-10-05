@@ -428,6 +428,8 @@ export interface ApiPoolSettings {
   mainApiIds: string[];
   /** 辅助 API 选中项，按尝试顺序排列 */
   assistantApiIds: string[];
+  /** 抽奖 API 选中项（按尝试顺序）；为空表示回退主 API */
+  lotteryApiIds: string[];
   /** 前一个失败时是否自动试下一个 */
   autoRetry: boolean;
   /** 是否启用「首字超时」：流式请求超过设定秒数还没出首字就判失败 */
@@ -500,6 +502,8 @@ export function resolveStoredApiPoolSettings(stored: Record<string, any> | null 
 
   let mainApiIds = normalizeApiIdList(stored?.mainApiIds, pool);
   let assistantApiIds = normalizeApiIdList(stored?.assistantApiIds, pool);
+  // 抽奖 API 不迁移老数据：没配过就是空，运行时自动回退主 API
+  const lotteryApiIds = normalizeApiIdList(stored?.lotteryApiIds, pool);
 
   // 池字段不存在 → 说明还是老结构，把老的两份配置搬进来
   if (!hasStoredPool) {
@@ -525,6 +529,7 @@ export function resolveStoredApiPoolSettings(stored: Record<string, any> | null 
     apiPool: pool,
     mainApiIds,
     assistantApiIds,
+    lotteryApiIds,
     autoRetry: stored?.apiAutoRetry !== false,
     // 默认关：老存档升级后行为与之前完全一致，想要的人自己去 API 配置页打开
     firstTokenTimeoutEnabled: stored?.apiFirstTokenTimeout === true,
@@ -594,6 +599,8 @@ export const useSettingsStore = defineStore('settings', () => {
   const mainApiIds = ref<string[]>(initialApiPoolSettings.mainApiIds);
   /** 辅助 API 选中项（按尝试顺序） */
   const assistantApiIds = ref<string[]>(initialApiPoolSettings.assistantApiIds);
+  /** 抽奖 API 选中项（按尝试顺序）；为空表示回退主 API */
+  const lotteryApiIds = ref<string[]>(initialApiPoolSettings.lotteryApiIds);
   /** 前一个失败时是否自动试下一个 */
   const apiAutoRetry = ref<boolean>(initialApiPoolSettings.autoRetry);
   /** 是否启用「首字超时」判定 */
@@ -634,6 +641,9 @@ export const useSettingsStore = defineStore('settings', () => {
       assistantApiIds.value = nextIds;
     },
   });
+
+  /** 抽奖 API 候选列表；没单独配置时为空，运行时回退主 API */
+  const lotteryApis = computed(() => pickApisFromPool(lotteryApiIds.value));
 
   /**
    * 主 API 第一条的兼容读法。
@@ -742,6 +752,7 @@ export const useSettingsStore = defineStore('settings', () => {
       apiPool: apiPool.value,
       mainApiIds: mainApiIds.value,
       assistantApiIds: assistantApiIds.value,
+      lotteryApiIds: lotteryApiIds.value,
       apiAutoRetry: apiAutoRetry.value,
       apiFirstTokenTimeout: apiFirstTokenTimeout.value,
       apiFirstTokenTimeoutSeconds: apiFirstTokenTimeoutSeconds.value,
@@ -753,11 +764,12 @@ export const useSettingsStore = defineStore('settings', () => {
     });
   };
 
-  /** 只保存「谁当主 API / 谁当辅助 API / 要不要自动重试 / 首字超时」，不动池里正在编辑的内容 */
+  /** 只保存「谁当主 API / 谁当辅助 API / 谁当抽奖 API / 要不要自动重试 / 首字超时」，不动池里正在编辑的内容 */
   const persistApiSelection = () => {
     return saveStoragePatch({
       mainApiIds: mainApiIds.value,
       assistantApiIds: assistantApiIds.value,
+      lotteryApiIds: lotteryApiIds.value,
       apiAutoRetry: apiAutoRetry.value,
       apiFirstTokenTimeout: apiFirstTokenTimeout.value,
       apiFirstTokenTimeoutSeconds: apiFirstTokenTimeoutSeconds.value,
@@ -792,9 +804,9 @@ export const useSettingsStore = defineStore('settings', () => {
     },
   );
 
-  // 勾选主 API / 辅助 API、切换自动重试开关、调首字超时 → 立即落盘（池里的编辑内容仍走显式保存）
+  // 勾选主 API / 辅助 API / 抽奖 API、切换自动重试开关、调首字超时 → 立即落盘（池里的编辑内容仍走显式保存）
   watch(
-    [mainApiIds, assistantApiIds, apiAutoRetry, apiFirstTokenTimeout, apiFirstTokenTimeoutSeconds],
+    [mainApiIds, assistantApiIds, lotteryApiIds, apiAutoRetry, apiFirstTokenTimeout, apiFirstTokenTimeoutSeconds],
     () => {
       persistApiSelection();
     },
@@ -856,9 +868,11 @@ export const useSettingsStore = defineStore('settings', () => {
     mainApi,
     mainApis,
     assistantApis,
+    lotteryApis,
     apiPool,
     mainApiIds,
     assistantApiIds,
+    lotteryApiIds,
     apiAutoRetry,
     apiFirstTokenTimeout,
     apiFirstTokenTimeoutSeconds,

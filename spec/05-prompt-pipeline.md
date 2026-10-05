@@ -69,8 +69,16 @@
 | `variable_update` | 只发给变量更新模型 |
 | `shared`          | 两边都发           |
 
-主链里有一个特例：**抽奖规则**只在 `scriptedTurn.kind === 'lottery'` 时才注入
-（按 `LOTTERY_LOCAL_CONTENT_BLOCK_PREFIX` 前缀过滤）。普通回合不带抽奖规则。
+主链**不含抽奖内容**：抽奖已拆成一次独立请求（专用提示词 + 抽奖 API），
+正文链与变量更新链都不再出现任何抽奖规则或抽奖字段。抽奖结果只进聊天流、不进剧情历史。
+
+抽奖请求由四段组成：**变量快照 → 物品 / 技能 / 品质定义 → 最近一条非抽奖 AI 回复 → 抽奖专用提示词**。
+「物品 / 技能 / 品质定义」抄自 `variable-update-rules.txt`（抽奖请求不带该文件），
+两份的一致性由测试 `lottery item skill rules stay in sync with variable update rules` 守住。
+
+抽奖重来走「抽奖请求楼层」的**重新发送**：复用楼层上存的抽奖参数（`lottery_request`）与
+「扣费后」快照，重走抽奖链路、不重复扣费；抽奖结果楼层屏蔽编辑 / 重新生成 / 删除 / 重试变量更新。
+抽奖失败不退款、不删请求楼层，状态停在「发送抽奖那一刻」。
 
 详见 `06-content-assets.md`。
 

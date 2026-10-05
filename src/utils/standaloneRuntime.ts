@@ -2,8 +2,10 @@ import type { LocalContentEntryConfig, PresetConfig } from '../presets/types';
 import type { StandaloneLocalContentSettings } from '../stores/settings';
 import { createStandaloneRuntimeWorldbookContext } from './standaloneLocalContent';
 import {
+  StandaloneRuntimeLotteryStateSchema,
   StandaloneRuntimeMessagesSchema,
   StandaloneRuntimeSessionSchema,
+  type StandaloneRuntimeLotteryState,
   type StandaloneRuntimeMessages,
   type StandaloneRuntimeSession,
 } from './standaloneRuntimeSchemas';
@@ -315,6 +317,31 @@ export function persistStandaloneStageSummary(input: StandaloneStageSummaryState
     stageSummary: nextSession.stage_summary,
     archivedUntilMessageId: nextSession.stage_summary_archived_until_message_id,
   };
+}
+
+/** 抽奖进度：品质由前端算，次数与保底全由前端维护，跟着会话存、读档一起回来 */
+export function resolveStandaloneLotteryState(): StandaloneRuntimeLotteryState {
+  const session = loadStandaloneRuntimeSession();
+
+  return StandaloneRuntimeLotteryStateSchema.parse(session?.lottery_state ?? {});
+}
+
+export function persistStandaloneLotteryState(state: StandaloneRuntimeLotteryState): StandaloneRuntimeLotteryState {
+  const session = loadStandaloneRuntimeSession();
+
+  if (!session) {
+    throw new Error('当前没有可写入的会话，无法保存抽奖进度');
+  }
+
+  const nextSession = StandaloneRuntimeSessionSchema.parse({
+    ...session,
+    lottery_state: StandaloneRuntimeLotteryStateSchema.parse(state),
+    updatedAt: new Date().toISOString(),
+  });
+
+  persistStandaloneRuntimeSession(nextSession);
+
+  return nextSession.lottery_state;
 }
 
 export function loadStandaloneRuntimeMessages(): StandaloneRuntimeMessages | null {

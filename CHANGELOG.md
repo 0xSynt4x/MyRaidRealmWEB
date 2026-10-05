@@ -1063,11 +1063,52 @@
   世界层 / 正确路径不动 / 未知字段不动 / 歧义不动）。
 - 四道检查：`typecheck` ✓ ｜ `test` 118/118 + 35 ✓ ｜ `lint` 0 error（14 个存量 warning）✓ ｜ `build` ✓。
 
-### — chore: 补玩家更新日志（261004）
-
-> 短哈希待回填（按约定并入下一次提交）。
+### `e465c44` — chore: 补玩家更新日志（261004）
 
 - **Added** `src/utils/changelog.ts` 的 `CHANGELOG_SOURCE` 追加 `261004` 一条：
   `NPC 变量更新更稳`、`刷新变量不再算错` —— 上一条提交 `d720893` 里玩家能感知的两点。
   版本号 1.14 → **1.15**，玩家下次打开会弹一次。
 - **Changed** 顺带回填上一条提交 `d720893` 的短哈希（按约定并入本次提交，不单独开回填提交）。
+
+## 2026-10-05
+
+### — refactor: 抽奖拆成独立 AI 请求；提示词补补丁规则与物品 / 技能定义独立成段
+
+> 短哈希待回填（按约定并入下一次提交）。
+
+- **Changed** 抽奖从「挂在剧情回合上」重构为**一次独立 AI 请求**（专用提示词 + 抽奖 API），
+  正文链与变量更新链不再出现任何抽奖规则或抽奖字段；抽奖结果只进聊天流，不进剧情历史与前情提要。
+- **Added** 设置新增**抽奖 API**（可单独指定，缺省回退主 API）；新增抽奖专用提示词
+  `src/assets/standalone-local-content/lottery-request-prompt.txt`。
+- **Changed** 品质 / 次数 / 保底改由前端算好（`src/utils/lottery.ts` 的 `planLotteryDraw`）再交给模型，
+  模型只按指定品质生成物品 / 技能；抽奖进度存会话（`lottery_state`）并随楼层快照（`lottery_state_snapshot`）回退。
+- **Changed** 抽奖请求的「重新发送」= **重来**：复用原楼层存的抽奖参数（`lottery_request`）与「扣费后」快照，
+  不重复扣费；抽奖结果楼层屏蔽「编辑 / 重新生成 / 删除 / 重试变量更新」按钮。
+- **Changed** 抽奖失败不再退款、不再删请求楼层 —— 请求楼层原地保留，状态停在「发送抽奖那一刻」，
+  玩家点「重新发送」重来；失败仍弹错误提示。
+- **Removed** 抽奖四个 schema 字段（`抽奖触发` / `$保底次数` / `保底触发` / `抽奖次数`）从 schema、
+  约 34 个预设、21 个世界包、i18n 白名单中全部移除；旧存档由 zod 自动剥除未知字段。
+- **Removed** 抽奖的积分强制回写（`restoreFrontendPointsForLottery`）、失败退款逻辑、旧的
+  `scriptedTurn` 权宜机制与 `plot-lottery-rules.txt`。
+- **Fixed** **积分 / 商城刷新 / 签到日期改随楼层回退**：原先 `preserveFrontendAuthoritativeFields`
+  在回退时保留这三个字段的实时值，导致「买了东西回滚后物品没了、积分也没回来」；
+  现改为所有字段一起回退，保证「回滚 = 回到过去」。该机制仅保留「AI 回合收尾对账」用途。
+- **Changed** 抽奖 API 轮询的应用基底固定为「发送抽奖那一刻」的快照（不再每次读实时会话），
+  多次候选 API 尝试互不累积。
+- **Changed** `spec/05-prompt-pipeline.md`、`spec/06-content-assets.md`、`spec/08-state-and-save.md` 同步更新。
+- **Added** `src/assets/standalone-local-content/lottery-item-skill-rules.txt`：物品栏 / 技能系统 / 品质五档的定义，
+  从 `variable-update-rules.txt` 抄一份给抽奖请求用（抽奖请求不带 `variable-update-rules.txt`，
+  原先模型拿不到品质语义与字段契约）。
+- **Changed** 抽奖请求消息由三段扩为四段：
+  **变量快照 → 物品 / 技能 / 品质定义 → 最近一条非抽奖 AI 回复 → 抽奖专用提示词**。
+- **Changed** `lottery-request-prompt.txt`：补 `<JSONPatch>` 规则（合法 JSON 数组、新增用 `insert`、
+  同名用 `delta` 加数量、路径只落在物品栏 / 技能系统、每次抽奖结果都要有对应写入）与完整输出示例；
+  删掉与新规则段重复的字段说明与半截品质说明。
+- **Added** 测试三条：两份定义的一致性守卫（防漂移）、`planLotteryDraw` 保底边界、抽奖进度随楼层回退。
+  其中技能生成时机一句两份**有意不同**（主链「根据行动自动生成」/ 抽奖「根据剧情生成」），
+  不纳入一致性断言，改为两份各自守住自己的表述。
+- **Removed** 清掉抽奖调用入参里一个从未被消费的字段（`pityTriggered`）：
+  保底提示文案用的是前端算出的抽奖计划结果，这个入参传进来后没有任何消费者。
+- **Added** 玩家更新日志 `261005`：抽奖不再推进剧情 / 抽奖失败可重来 / 抽奖可单独配 API / 回滚时积分一起退回。
+- **Removed** 玩家日志里 `261004` 那条（事后补的）；**约定改为玩家日志随代码一起提交**，不再事后补。
+- 四道检查：`typecheck` ✓ ｜ `test` 120/120 + 35 ✓ ｜ `lint` 0 error（14 个存量 warning）✓ ｜ `build` ✓。

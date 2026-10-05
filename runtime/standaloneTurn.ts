@@ -40,6 +40,11 @@ import {
 import { formatMessageContentForDisplay } from '../src/utils/messageFormatting';
 import { normalizeLineEndingsTrimmed as normalizeLineEndings } from '../src/utils/textNormalize';
 import {
+  lotteryItemSkillRulesTemplate,
+  lotteryRequestPromptTemplate,
+} from '../src/assets/standalone-local-content';
+import { renderStandaloneLocalContentTemplate } from '../src/utils/standaloneLocalContentEjs';
+import {
   applyVariableUpdatePatch,
   filterVariableUpdatePatch,
   parseVariableUpdatePatch,
@@ -89,16 +94,10 @@ export type StandaloneLocalTurnInput = {
   /** 发送前快照裁剪开关；缺省用默认值（全开） */
   snapshotTrim?: StandaloneSnapshotTrimSettings;
   onMainReplyPartialText?: (text: string) => void;
-  scriptedTurn?: StandaloneScriptedTurnInput;
   /** 玩家手动归档出来的整体剧情摘要，空＝还没归档过 */
   stageSummary?: string;
   /** 归档水位线：message_id 小于等于它的回合已被上面那段覆盖 */
   archivedUntilMessageId?: number;
-};
-
-export type StandaloneScriptedTurnInput = {
-  kind: 'lottery';
-  promptText: string;
 };
 
 export type StandaloneLocalTurnOutcome = {
@@ -315,7 +314,6 @@ type StandaloneVariableUpdatePromptSections = {
 };
 
 const RECENT_MESSAGE_LIMIT = 8;
-const LOTTERY_LOCAL_CONTENT_BLOCK_PREFIX = '[本地内容:抽奖结果规则]';
 
 const STANDALONE_PRESET_COMPACT_IDENTIFIERS = new Set(['main']);
 
@@ -388,6 +386,8 @@ function resolveStandaloneRecentHistoryMessages(input: {
   return input.messages
     .slice(-RECENT_MESSAGE_LIMIT)
     .filter(message => message.message_id !== input.latestUserMessage.message_id)
+    // 抽奖结果只在聊天流展示，不进剧情历史
+    .filter(message => !message.lottery)
     .map(message => ({
       role: message.role,
       content: (message.content_text || message.raw_content || '（空）').trim() || '（空）',
@@ -416,6 +416,8 @@ export function collectStandalonePriorSummaryItems(input: {
   return input.messages
     .slice(0, windowStart)
     .filter(message => message.role === 'assistant')
+    // 抽奖结果没有小总结，也不进前情提要
+    .filter(message => !message.lottery)
     .filter(message => message.message_id !== input.excludeMessageId)
     .filter(message => message.message_id > archivedUntilMessageId)
     .map(message => ({
@@ -685,17 +687,12 @@ export function buildMainTurnPrompt(input: StandaloneLocalTurnInput): Standalone
       compactSnapshot: snapshotForSend.compact,
     },
   });
-  const shouldIncludeLotteryRules = input.scriptedTurn?.kind === 'lottery';
-  const effectiveLocalContentBlocks = shouldIncludeLotteryRules
-    ? localContentBlocks
-    : localContentBlocks.filter(block => !block.startsWith(LOTTERY_LOCAL_CONTENT_BLOCK_PREFIX));
-
   return {
     messages: buildStandaloneOrderedMainMessages({
       statData: input.statData,
       messages: input.messages,
       latestUserMessage: input.latestUserMessage,
-      localContentBlocks: effectiveLocalContentBlocks,
+      localContentBlocks,
       includeFullPreset,
       snapshotStatData: snapshotForSend.snapshot,
       compactSnapshot: snapshotForSend.compact,
@@ -1335,6 +1332,229 @@ export async function runStandaloneLocalTurn(input: StandaloneLocalTurnInput): P
     throw new Error(failures.length > 1 ? failures.join(' | ') : lastErrorMessage || '独立模式主 API 调用失败');
   } finally {
     if (!deferControllerCleanup && activeStandaloneTurnController === controller) {
+      activeStandaloneTurnController = null;
+    }
+  }
+}
+
+// ===== 抽奖独立请求 =====
+
+export type StandaloneLotteryTurnInput = {
+  /** 抽奖 API 候选；为空时回退主 API */
+  lotteryApis?: ApiConfig[];
+  /** 主 API 候选（抽奖 API 未配置时回退用） */
+  mainApis: ApiConfig[];
+  autoRetry?: boolean;
+  firstTokenTimeoutSeconds?: number;
+  statData: StandaloneStatData;
+  messages: MessageRecord[];
+  /** 前端算好的本次每次抽奖品质，顺序对应第 1..N 次 */
+  qualities: string[];
+  worldDifficulty: WorldDifficulty;
+  localContentEnabledMap: Record<string, boolean>;
+  localContentBuiltinRouteOverrides: StandaloneBuiltinAssetRouteOverrideMap;
+  localContentCustomEntries?: LocalContentEntryConfig[];
+  selectedPreset?: PresetConfig | null;
+  snapshotTrim?: StandaloneSnapshotTrimSettings;
+  onPartialText?: (text: string) => void;
+};
+
+export type StandaloneLotteryTurnOutcome = {
+  assistantMessage: Omit<MessageRecord, 'message_id'>;
+  nextStatData: StandaloneStatData;
+  variableUpdateApplied: boolean;
+  variableUpdateWarning: string | null;
+  usedApiLabel: string;
+};
+
+/**
+ * 组装抽奖请求：变量快照 + 最近一条「非抽奖」AI 回复 + 抽奖专用提示词。
+ *
+ * 刻意不带预设主提示词与世界书 —— 抽奖不是剧情回合，只给模型「当前局势 + 上次剧情收尾 + 抽奖规则」，
+ * 让它专注按前端指定的品质生成物品/技能，避免把抽奖写成剧情。
+ */
+function buildLotteryTurnPrompt(input: StandaloneLotteryTurnInput): StandalonePromptMessagesBundle {
+  const snapshotForSend = buildStandaloneSnapshotForChain({
+    statData: input.statData,
+    settings: input.snapshotTrim ?? DEFAULT_STANDALONE_SNAPSHOT_TRIM_SETTINGS,
+    chain: 'main',
+  });
+
+  const rendered = renderStandaloneLocalContentTemplate({
+    template: lotteryRequestPromptTemplate,
+    renderContext: {
+      statData: input.statData,
+      messages: input.messages,
+      latestUserMessage: null,
+      worldDifficulty: input.worldDifficulty,
+      snapshotStatData: snapshotForSend.snapshot,
+      compactSnapshot: snapshotForSend.compact,
+      extraVars: {
+        lottery: { qualities: input.qualities },
+      },
+    },
+    sourceName: 'lottery-request-prompt',
+  });
+
+  const messages: StandaloneProviderChatMessage[] = [
+    {
+      role: 'user',
+      content: buildStandaloneCurrentStatDataBlock(snapshotForSend.snapshot, {
+        compact: snapshotForSend.compact,
+      }),
+    },
+    // 物品与技能规则紧跟快照：先给「当前局势」，再给「物品 / 技能 / 品质的定义」，
+    // 最后才是抽奖规则。抽奖请求不带 variable-update-rules，这份是它的字段契约来源。
+    {
+      role: 'user',
+      content: lotteryItemSkillRulesTemplate.trim(),
+    },
+  ];
+
+  const lastAssistantReply = input.messages
+    .slice()
+    .reverse()
+    .find(message => message.role === 'assistant' && !message.lottery);
+  const lastAssistantContent = lastAssistantReply
+    ? (lastAssistantReply.content_text || lastAssistantReply.raw_content || '').trim()
+    : '';
+
+  if (lastAssistantContent) {
+    messages.push({ role: 'assistant', content: lastAssistantContent });
+  }
+
+  messages.push({ role: 'user', content: rendered.content.trim() });
+
+  return { messages };
+}
+
+/**
+ * 抽奖独立请求：一次请求返回抽奖结果（`<contenttext>`）+ 写入补丁（`<JSONPatch>`）。
+ *
+ * - 与主链共用同一个「正在生成」控制器，因此抽奖期间无法发起剧情回合；
+ * - 补丁复用与变量更新完全相同的修复层与写入护栏；
+ * - 候选 API 逐个尝试：正文缺失 / 补丁无法应用 / 补丁没产生更新，都换下一个。
+ */
+export async function runStandaloneLotteryTurn(
+  input: StandaloneLotteryTurnInput,
+): Promise<StandaloneLotteryTurnOutcome> {
+  const lotteryCandidates = input.lotteryApis?.length ? input.lotteryApis : input.mainApis;
+  const candidateApis = limitApiCandidates(resolveConfiguredMainApis(lotteryCandidates), input.autoRetry);
+
+  if (candidateApis.length === 0) {
+    throw new Error('未找到已保存且完整可用的抽奖 API 配置');
+  }
+
+  if (activeStandaloneTurnController) {
+    throw new Error('已有独立模式生成任务正在进行中');
+  }
+
+  const controller = new AbortController();
+  activeStandaloneTurnController = controller;
+
+  try {
+    const prompt = buildLotteryTurnPrompt(input);
+    const failures: string[] = [];
+    let lastErrorMessage = '';
+
+    for (let index = 0; index < candidateApis.length; index += 1) {
+      const api = candidateApis[index]!;
+      const apiLabel = toApiLabel(api);
+
+      try {
+        const reply = await requestAssistantReply(
+          api,
+          prompt,
+          controller.signal,
+          input.onPartialText,
+          input.firstTokenTimeoutSeconds,
+        );
+        const rawReply = normalizeLineEndings(reply.text);
+        // 每次候选 API 尝试都从「发送抽奖那一刻」的同一份快照重算，不在上一次尝试的结果上累积。
+        const applyBaseStatData = input.statData;
+        const applyResult = applyVariableUpdateFromReply(
+          applyBaseStatData,
+          rawReply,
+          resolveStandalonePatchGuard(applyBaseStatData),
+        );
+        const assistantContentText = applyResult.parsedReply.contentText.trim();
+
+        if (!assistantContentText) {
+          failures.push(`${apiLabel}: 未返回抽奖结果内容`);
+          appendStandaloneAiDebugFailure({
+            pass: 'lottery_pass',
+            attempt: index + 1,
+            totalAttempts: candidateApis.length,
+            trace: reply.debugTrace,
+          });
+          continue;
+        }
+
+        if (applyResult.errorMessage) {
+          failures.push(`${apiLabel}: 补丁无法应用（${applyResult.errorMessage}）`);
+          appendStandaloneAiDebugFailure({
+            pass: 'lottery_pass',
+            attempt: index + 1,
+            totalAttempts: candidateApis.length,
+            trace: reply.debugTrace,
+          });
+          continue;
+        }
+
+        if (!applyResult.variableUpdateApplied) {
+          failures.push(`${apiLabel}: 未返回有效的抽奖补丁`);
+          appendStandaloneAiDebugFailure({
+            pass: 'lottery_pass',
+            attempt: index + 1,
+            totalAttempts: candidateApis.length,
+            trace: reply.debugTrace,
+          });
+          continue;
+        }
+
+        const debugTrace = mergeStandaloneAssistantDebugTrace(undefined, {
+          main_pass: {
+            ...reply.debugTrace,
+            extracted_text: rawReply,
+          },
+        });
+        const nextStatData = applyResult.nextStatData;
+        const warning = applyResult.rescueNote;
+
+        return {
+          assistantMessage: {
+            ...buildAssistantMessagePayload(applyResult.parsedReply, rawReply, debugTrace, reply.model),
+            variable_update_status: 'success',
+            variable_update_warning: warning,
+          },
+          nextStatData,
+          variableUpdateApplied: true,
+          variableUpdateWarning: warning,
+          usedApiLabel: apiLabel,
+        };
+      } catch (error) {
+        if (controller.signal.aborted) {
+          throw new Error('standalone_lottery_aborted');
+        }
+
+        const message = normalizeRemoteApiErrorMessage(error);
+        lastErrorMessage = message;
+        failures.push(`${apiLabel}: ${message}`);
+
+        appendStandaloneAiDebugFailure({
+          pass: 'lottery_pass',
+          attempt: index + 1,
+          totalAttempts: candidateApis.length,
+          trace:
+            readStandaloneProviderFailureTrace(error) ??
+            createFallbackFailureTrace({ api_label: apiLabel, api_mode: api.source }),
+        });
+      }
+    }
+
+    throw new Error(failures.length > 1 ? failures.join(' | ') : lastErrorMessage || '抽奖 API 调用失败');
+  } finally {
+    if (activeStandaloneTurnController === controller) {
       activeStandaloneTurnController = null;
     }
   }

@@ -1845,7 +1845,7 @@ function getFriendlyValidationHints(errorText: string): string[] {
     hints.push(t('setup.aiGenerate.hint.npcSequentialKeys'));
   }
 
-  if (/$time|_关注|_兑换比例|\$保底次数/.test(message)) {
+  if (/$time|_关注|_兑换比例/.test(message)) {
     hints.push(t('setup.aiGenerate.hint.systemManagedFields'));
   }
 

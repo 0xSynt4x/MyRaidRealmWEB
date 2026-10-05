@@ -13,20 +13,32 @@ import { commitStandaloneRuntimeStateFromStores, resolveStandaloneStageSummarySt
 import { resolveStandaloneStageSummaryProgress } from '../utils/stageSummaryArchive';
 import { loadStandaloneStatData } from '../utils/standaloneStatData';
 import { replaceOrAppendSummaryBlock, splitEditableBodyAndSummary } from '../utils/taggedReply';
-import {
-  FRONTEND_AUTHORITATIVE_FIELD_PATHS,
-  preserveFrontendAuthoritativeFields,
-} from '../utils/frontendAuthoritativeState';
+import { FRONTEND_AUTHORITATIVE_FIELD_PATHS } from '../utils/frontendAuthoritativeState';
 import {
   runStandaloneLocalTurn,
+  runStandaloneLotteryTurn,
   runStandaloneVariableUpdatePass,
-  type StandaloneScriptedTurnInput,
   type StandaloneVariableUpdatePhaseOutcome,
 } from '../utils/standaloneLocalTurn';
 import { useSettingsStore } from '../stores/settings';
+import { useLotteryStore } from '../stores/lottery';
+import { useStatDataActions } from '../stores/statDataActions';
 
-type SendStandaloneUserMessageOptions = {
-  scriptedTurn?: StandaloneScriptedTurnInput;
+/**
+ * 一次抽奖的入参。品质清单、扣费与保底进度都由前端算好再传进来 ——
+ * 抽奖 AI 只负责「按前端指定的品质生成物品/技能」，不参与概率与保底判定。
+ */
+type SendStandaloneLotteryDrawOptions = {
+  /** 本次抽奖次数（1 = 单抽、10 = 十连…） */
+  count: number;
+  /** 前端算好的每次品质，顺序对应第 1..N 次 */
+  qualities: string[];
+  /** 抽奖后的累计抽奖次数（保底进度），落地到会话存档 */
+  pityCountAfter: number;
+  /** 本次扣除的积分 */
+  cost: number;
+  /** 聊天流里那条抽奖请求的显示文案 */
+  requestLabel: string;
 };
 
 /**
@@ -44,6 +56,8 @@ export function useMessageActions() {
   const notificationStore = useNotificationStore();
   const settingsStore = useSettingsStore();
   const setupStore = useSetupStore();
+  const lotteryStore = useLotteryStore();
+  const statDataActions = useStatDataActions();
   const STANDALONE_GENERATION_EVENT = 'th1980s:standalone-generation-state';
 
   function emitStandaloneGenerationState(active: boolean, reason: string) {
@@ -75,6 +89,8 @@ export function useMessageActions() {
   function syncAfterTimelineChange(reason: string) {
     messagesStore.syncVisibleWindow(reason);
     statDataStore.handleTimelineRollback(reason);
+    // 抽奖进度也跟着楼层走：剩下的最后一条抽奖记录决定当前保底进度
+    restoreLotteryStateAfterTimelineChange(reason);
   }
 
   function resolveStandaloneSnapshotForMessage(
@@ -90,14 +106,14 @@ export function useMessageActions() {
   }
 
   function restoreStandaloneSnapshot(snapshot: ReturnType<typeof Schema.parse>, reason: string) {
-    // 回退到历史楼层旧快照时，剧情类字段跟随旧快照回退，但前端权威字段（商城刷新/签到/积分）
-    // 保留玩家在回退操作前的最新写入，避免刚点的签到/刷新/加积分被旧快照静默抹掉。
-    const liveStatData = Schema.parse(loadStandaloneStatData());
-    const mergedSnapshot = preserveFrontendAuthoritativeFields(snapshot, liveStatData);
+    // 回退到历史楼层旧快照：所有字段（含积分 / 商城刷新 / 签到日期）一起回退，
+    // 保证「回滚 = 回到过去」—— 资源与物品不会脱钩（买了东西回滚，物品和积分一起回来）。
     commitStandaloneRuntimeStateFromStores({
-      statData: mergedSnapshot,
+      statData: snapshot,
     });
     statDataStore.refreshData(`${reason}:restore_snapshot`);
+    // 回退到旧快照时，抽奖进度同样回退到该楼层记录的值
+    restoreLotteryStateAfterTimelineChange(`${reason}:restore_snapshot`);
   }
 
   function isAbortLikeError(error: unknown): boolean {
@@ -166,7 +182,6 @@ export function useMessageActions() {
   async function generateStandaloneAssistantReply(
     latestUserMessageId: number,
     reason: string,
-    options: SendStandaloneUserMessageOptions = {},
   ): Promise<boolean> {
     const latestUserMessage = messagesStore.getMessage(latestUserMessageId);
     if (!latestUserMessage || latestUserMessage.role !== 'user') {
@@ -203,7 +218,6 @@ export function useMessageActions() {
         localContentCustomEntries: setupStore.customWorldbookEntries,
         selectedPreset: setupStore.selectedPreset,
         snapshotTrim: settingsStore.snapshotTrim,
-        scriptedTurn: options.scriptedTurn,
         stageSummary: stageSummaryState.stageSummary,
         archivedUntilMessageId: stageSummaryState.archivedUntilMessageId,
         onMainReplyPartialText: partialText => {
@@ -459,7 +473,7 @@ export function useMessageActions() {
     }
 
     const targetAssistantMessage = messagesStore.messages
-      .filter(message => message.role === 'assistant')
+      .filter(message => message.role === 'assistant' && !message.lottery)
       .slice()
       .reverse()[0] as MessageRecord | undefined;
 
@@ -473,7 +487,7 @@ export function useMessageActions() {
     }
 
     const latestUserMessage = messagesStore.messages
-      .filter(message => message.role === 'user' && message.message_id < targetAssistantMessage.message_id)
+      .filter(message => message.role === 'user' && !message.lottery && message.message_id < targetAssistantMessage.message_id)
       .slice()
       .reverse()[0] as MessageRecord | undefined;
 
@@ -565,11 +579,7 @@ export function useMessageActions() {
     }
   }
 
-  async function sendStandaloneUserMessage(
-    text: string,
-    reason = 'standalone_send',
-    options: SendStandaloneUserMessageOptions = {},
-  ): Promise<boolean> {
+  async function sendStandaloneUserMessage(text: string, reason = 'standalone_send'): Promise<boolean> {
     if (guardStandaloneBusyAction()) {
       return false;
     }
@@ -588,10 +598,179 @@ export function useMessageActions() {
         action_options: [],
       });
 
-      return generateStandaloneAssistantReply(userMessage.message_id, reason, options);
+      return generateStandaloneAssistantReply(userMessage.message_id, reason);
     } catch (error) {
       console.error('[MessageActions] standalone 发送消息失败:', error);
       return false;
+    }
+  }
+
+  /** 积分货币节点路径；抽奖只动这里的数量 */
+  const LOTTERY_POINTS_CURRENCY_PATH = '玩家.货币资源.次级货币.积分';
+
+  /** 扣/退积分前先保证积分货币节点存在，缺了就按老规矩补齐说明字段 */
+  function ensureLotteryPointsCurrency(draft: ReturnType<typeof Schema.parse>) {
+    if (!_.get(draft, LOTTERY_POINTS_CURRENCY_PATH)) {
+      _.set(draft, LOTTERY_POINTS_CURRENCY_PATH, {
+        数量: 0,
+        兑换比例: '100主货币 = 100积分',
+        用途说明: '用于商城购物和抽奖',
+      });
+    }
+
+    return `${LOTTERY_POINTS_CURRENCY_PATH}.数量`;
+  }
+
+  /**
+   * 抽奖进度跟着楼层回退：取「还留在历史里的最后一条抽奖消息」的进度快照覆盖当前进度，
+   * 一条都没有就归零。删除 / 重发 / 重新生成后调用，保证保底进度与聊天记录一致。
+   */
+  function restoreLotteryStateAfterTimelineChange(reason: string) {
+    const latestLotteryRecord = messagesStore.messages
+      .filter(message => typeof message.lottery_state_snapshot !== 'undefined')
+      .slice()
+      .reverse()[0];
+    const nextPityCount = latestLotteryRecord?.lottery_state_snapshot?.保底计数 ?? 0;
+
+    try {
+      lotteryStore.applyState({ 保底计数: nextPityCount });
+      console.info(`[MessageActions] 抽奖进度已随楼层回退 reason=${reason} 保底计数=${nextPityCount}`);
+    } catch (error) {
+      // 还没开局（会话不存在）时写不进存档，只刷内存值，不影响回退本身
+      lotteryStore.setPityCountInMemory(nextPityCount);
+      console.warn('[MessageActions] 抽奖进度回退写入会话失败，已仅更新内存值:', error);
+    }
+  }
+
+  /**
+   * 独立抽奖请求。
+   *
+   * 与剧情完全解耦：抽奖不是剧情回合，走独立提示词 + 独立 API，返回的正文只进聊天流，
+   * 返回的补丁照常写进游戏状态。品质由前端算好（`qualities`）后交给模型严格执行。
+   *
+   * 忙碌锁与主回合共用同一个控制器，因此抽奖期间发送按钮会变灰，无法继续推剧情。
+   */
+  async function sendStandaloneLotteryDraw(options: SendStandaloneLotteryDrawOptions): Promise<boolean> {
+    if (guardStandaloneBusyAction()) {
+      return false;
+    }
+
+    const chargeCost = Math.max(0, Math.floor(options.cost));
+
+    // 先扣费再发请求：抽奖补丁的应用基底取的是「扣费后」的快照，
+    // 扣费必须发生在它之前，否则补丁会盖在未扣费的余额上，把刚花掉的积分又写回来。
+    try {
+      await statDataActions.mutateStatData('lottery:charge', draft => {
+        const amountPath = ensureLotteryPointsCurrency(draft);
+        const current = Number(_.get(draft, amountPath, 0)) || 0;
+        _.set(draft, amountPath, Math.max(0, current - chargeCost));
+      });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      notificationStore.error(
+        settingsStore.locale === 'en' ? `Lottery could not start: ${errorMessage}` : `抽奖无法开始：${errorMessage}`,
+      );
+      return false;
+    }
+
+    return dispatchStandaloneLotteryTurn({
+      requestLabel: options.requestLabel,
+      qualities: options.qualities,
+      count: options.count,
+      pityCountAfter: options.pityCountAfter,
+      statData: Schema.parse(loadStandaloneStatData()),
+    });
+  }
+
+  /**
+   * 发一次抽奖请求并把结果落地（**不扣费** —— 扣费由调用方负责）。
+   *
+   * 首次抽奖在扣费后调用；重来（重新发送抽奖请求）复用原请求楼层的「扣费后」快照直接调用，
+   * 因此不会重复扣费。会先追加一条抽奖请求楼层（带本次抽奖参数），成功后追加结果楼层。
+   */
+  async function dispatchStandaloneLotteryTurn(params: {
+    requestLabel: string;
+    qualities: string[];
+    count: number;
+    pityCountAfter: number;
+    statData: ReturnType<typeof Schema.parse>;
+  }): Promise<boolean> {
+    emitStandaloneGenerationState(true, 'standalone_lottery');
+
+    try {
+      const lotteryRequestMessage = messagesStore.appendStandaloneMessage({
+        role: 'user',
+        raw_content: params.requestLabel,
+        content_text: params.requestLabel,
+        formatted: formatMessageContentForDisplay(params.requestLabel, 'user', -1),
+        action_options: [],
+        stat_data_snapshot: params.statData,
+        // 标记为抽奖消息：只在聊天流展示，不进剧情历史与前情提要
+        lottery: true,
+        // 存下本次抽奖参数，重来（重新发送）时复用同一份品质清单，避免重摇刷品质
+        lottery_request: {
+          count: params.count,
+          qualities: params.qualities,
+          pity_count_after: params.pityCountAfter,
+        },
+      });
+      messagesStore.lockMainReplyTarget(lotteryRequestMessage.message_id, 'standalone_lottery');
+      messagesStore.beginStreamingSession('standalone_lottery');
+
+      const outcome = await runStandaloneLotteryTurn({
+        lotteryApis: settingsStore.lotteryApis,
+        mainApis: settingsStore.mainApis,
+        autoRetry: settingsStore.apiAutoRetry,
+        firstTokenTimeoutSeconds: settingsStore.apiFirstTokenTimeout ? settingsStore.apiFirstTokenTimeoutSeconds : 0,
+        statData: params.statData,
+        messages: messagesStore.messages,
+        qualities: params.qualities,
+        worldDifficulty: settingsStore.worldDifficulty,
+        localContentEnabledMap: settingsStore.standaloneLocalContent.enabledAssets,
+        localContentBuiltinRouteOverrides: settingsStore.standaloneLocalContent.builtinAssetRouteOverrides,
+        localContentCustomEntries: setupStore.customWorldbookEntries,
+        selectedPreset: setupStore.selectedPreset,
+        snapshotTrim: settingsStore.snapshotTrim,
+        onPartialText: partialText => messagesStore.updateStandaloneStreamingPreview(partialText, 'standalone_lottery'),
+      });
+
+      messagesStore.flushStreamingProjection('standalone_lottery:completed');
+
+      const finalStatData = Schema.parse(outcome.nextStatData);
+      commitStandaloneRuntimeStateFromStores({ statData: finalStatData });
+      statDataStore.refreshData('standalone_lottery:applied');
+
+      // 抽奖进度先落会话存档，再写进消息快照 —— 读档与楼层回退都以存档为准
+      lotteryStore.applyState({ 保底计数: params.pityCountAfter });
+
+      const appendedLotteryMessage = messagesStore.appendStandaloneMessage({
+        ...outcome.assistantMessage,
+        lottery: true,
+        lottery_state_snapshot: { 保底计数: params.pityCountAfter },
+        stat_data_snapshot: finalStatData,
+      });
+      messagesStore.settleStreamingWithFormalMessage(appendedLotteryMessage.message_id);
+      messagesStore.syncStandaloneRuntimeContentContext(`standalone_lottery:${outcome.usedApiLabel}`);
+      console.info(
+        `[MessageActions] 抽奖完成 message_id=${appendedLotteryMessage.message_id} 次数=${params.count} 保底计数=${params.pityCountAfter}`,
+      );
+      return true;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const aborted = errorMessage === 'standalone_lottery_aborted';
+
+      // 抽奖失败：不退款、不删消息。积分扣了就扣了（玩家删掉这层或重来才会随快照回滚），
+      // 抽奖请求楼层原地保留 —— 玩家可以点它的「重新发送」重来，状态停在发送抽奖那一刻。
+      messagesStore.clearStreamingState('standalone_lottery:failed');
+
+      if (!aborted) {
+        notificationStore.error(
+          settingsStore.locale === 'en' ? `Lottery failed: ${errorMessage}` : `抽奖失败：${errorMessage}`,
+        );
+      }
+      return false;
+    } finally {
+      emitStandaloneGenerationState(false, 'standalone_lottery');
     }
   }
 
@@ -798,6 +977,16 @@ export function useMessageActions() {
       return false;
     }
 
+    // 抽奖结果楼层不提供重新生成（UI 已屏蔽按钮，这里兜底）：要重来就点上面那条抽奖请求的「重新发送」
+    if (record.lottery) {
+      notificationStore.warning(
+        settingsStore.locale === 'en'
+          ? 'Lottery results cannot be regenerated. Resend the lottery request above to rerun it.'
+          : '抽奖结果不能重新生成。请点上面那条抽奖请求的「重新发送」重来。',
+      );
+      return false;
+    }
+
     const preferredSnapshot = resolveStandaloneSnapshotForMessage(record, `standalone-regenerate:${message_id}`);
 
     const lastId = messagesStore.lastMessageId;
@@ -822,7 +1011,7 @@ export function useMessageActions() {
     }
 
     const latestUserBeforeReply = messagesStore.messages
-      .filter(message => message.role === 'user' && message.message_id < message_id)
+      .filter(message => message.role === 'user' && !message.lottery && message.message_id < message_id)
       .slice()
       .reverse()[0];
 
@@ -863,6 +1052,18 @@ export function useMessageActions() {
       return false;
     }
 
+    // 抽奖请求的「重新发送」= 重来这一次抽奖：复用原楼层的抽奖参数与「扣费后」快照，不重复扣费。
+    // 旧存档的抽奖消息没有 lottery_request，无法重来，提示去抽奖面板重抽。
+    const lotteryRequest = record.lottery ? record.lottery_request : undefined;
+    if (record.lottery && !lotteryRequest) {
+      notificationStore.warning(
+        settingsStore.locale === 'en'
+          ? 'This lottery request has no saved draw parameters and cannot be rerun. Draw again from the lottery panel.'
+          : '这条抽奖请求没有保存抽奖参数，无法重来。请到抽奖面板重新抽。',
+      );
+      return false;
+    }
+
     const lastId = messagesStore.lastMessageId;
     const willDeleteCount = lastId - message_id + 1;
 
@@ -896,8 +1097,19 @@ export function useMessageActions() {
     syncAfterTimelineChange(`standalone-resend:${message_id}`);
     restoreStandaloneSnapshot(preferredSnapshot, `standalone-resend:${message_id}`);
 
-    // restore 后 session 已是「旧快照 + 前端权威字段（玩家最新签到/刷新/积分）」的合并结果，
-    // 重发用户消息的快照取该 session，保证记录与 session 一致，避免快照仍带旧的前端字段。
+    // 抽奖重来：恢复到原请求楼层的「扣费后」快照后，直接重走抽奖链路（不重复扣费）。
+    if (lotteryRequest) {
+      notificationStore.info(tCurrent('messageActions.resending'));
+      return dispatchStandaloneLotteryTurn({
+        requestLabel: messageContent,
+        qualities: lotteryRequest.qualities,
+        count: lotteryRequest.count,
+        pityCountAfter: lotteryRequest.pity_count_after,
+        statData: Schema.parse(loadStandaloneStatData()),
+      });
+    }
+
+    // 重发用户消息的快照取恢复后的 session，保证记录与 session 一致。
     const resentUserSnapshot = Schema.parse(loadStandaloneStatData());
     const resentUserMessage = messagesStore.appendStandaloneMessage({
       role: 'user',
@@ -933,6 +1145,7 @@ export function useMessageActions() {
     resend,
     refreshLatestAssistantVariableUpdate,
     sendStandaloneUserMessage,
+    sendStandaloneLotteryDraw,
     startEdit,
     cancelEdit,
     checkAndFillUserInput,

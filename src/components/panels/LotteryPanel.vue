@@ -18,9 +18,7 @@
     <section class="pity-section">
       <div class="pity-header">
         <span class="pity-label">{{ t('lottery.pityProgress') }}</span>
-        <span class="pity-count"
-          >{{ (data.设置?.积分系统?.$保底次数 || 0) % PITY_THRESHOLD }} / {{ PITY_THRESHOLD }}</span
-        >
+        <span class="pity-count">{{ pityCount % PITY_THRESHOLD }} / {{ PITY_THRESHOLD }}</span>
       </div>
       <div class="pity-bar">
         <div class="pity-fill" :style="{ width: pityProgress + '%' }"></div>
@@ -101,40 +99,44 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia';
 import { notify } from '../../utils/notify';
-import { computed } from 'vue';
+import { computed, onMounted } from 'vue';
 import { useMessageActions } from '../../composables/useMessageActions';
 import { useI18n } from '../../i18n';
+import { useLotteryStore } from '../../stores/lottery';
 import { useMessagesStore } from '../../stores/messages';
 import { useStatDataStore } from '../../stores/statData';
-import { useStatDataActions } from '../../stores/statDataActions';
+import { LOTTERY_PITY_THRESHOLD, LOTTERY_SINGLE_PRICE, LOTTERY_TEN_PRICE, planLotteryDraw } from '../../utils/lottery';
 
 const statDataStore = useStatDataStore();
 const messagesStore = useMessagesStore();
-const statDataActions = useStatDataActions();
+const lotteryStore = useLotteryStore();
 const messageActions = useMessageActions();
 const { data } = storeToRefs(statDataStore);
+const { pityCount } = storeToRefs(lotteryStore);
 const { isStandaloneGenerationLocked } = storeToRefs(messagesStore);
 const { t } = useI18n();
 
-// 常量
-const SINGLE_PRICE = 100;
-const TEN_PRICE = 900; // 十连优惠100积分
-const PITY_THRESHOLD = 100;
+// 常量：价格与保底阈值都从抽奖规则模块取，避免两处各写一份
+const SINGLE_PRICE = LOTTERY_SINGLE_PRICE;
+const TEN_PRICE = LOTTERY_TEN_PRICE;
+const PITY_THRESHOLD = LOTTERY_PITY_THRESHOLD;
+
+// 抽奖进度只由前端维护，进面板时从会话存档读一次
+onMounted(() => {
+  lotteryStore.initFromSession();
+});
 
 // 获取当前积分
 const currentPoints = computed(() => {
   return data.value.玩家?.货币资源?.次级货币?.['积分']?.数量 || 0;
 });
 
-// 获取累计抽奖次数（用于显示）
-const totalLotteryCount = computed(() => {
-  return data.value.设置?.积分系统?.$保底次数 || 0;
-});
+// 累计抽奖次数（= 保底计数，触发保底时归零，与旧版显示口径一致）
+const totalLotteryCount = computed(() => pityCount.value);
 
-// 保底进度百分比（基于 $保底次数）
+// 保底进度百分比
 const pityProgress = computed(() => {
-  const total = data.value.设置?.积分系统?.$保底次数 || 0;
-  return ((total % PITY_THRESHOLD) / PITY_THRESHOLD) * 100;
+  return ((pityCount.value % PITY_THRESHOLD) / PITY_THRESHOLD) * 100;
 });
 
 // 是否可以单抽
@@ -152,122 +154,45 @@ function formatNumber(num: number): string {
   return num.toLocaleString();
 }
 
-function resolvePlayerName(): string {
-  const playerName = data.value.玩家?.姓名;
-  return typeof playerName === 'string' && playerName.trim() ? playerName.trim() : '玩家';
-}
+/**
+ * 发起一次抽奖。
+ *
+ * 品质、扣费、保底进度全在前端算好：先按当前进度摇出本次每次的品质与保底结果，
+ * 再把品质清单交给独立的抽奖请求，让模型按品质生成物品/技能。
+ */
+async function runLotteryDraw(count: number, cost: number, label: string) {
+  if (isStandaloneGenerationLocked.value) return;
+  if (currentPoints.value < cost) return;
 
-function ensurePointsCurrency(draft: typeof data.value) {
-  if (!draft.玩家.货币资源.次级货币) {
-    draft.玩家.货币资源.次级货币 = {};
+  const plan = planLotteryDraw({ count, pityCountBefore: pityCount.value });
+  const requestLabel = t('lottery.requestLabel', { label });
+
+  const succeeded = await messageActions.sendStandaloneLotteryDraw({
+    count,
+    qualities: plan.qualities,
+    pityCountAfter: plan.pityCountAfter,
+    cost,
+    requestLabel,
+  });
+
+  if (!succeeded) return;
+
+  if (plan.pityTriggered) {
+    notify.success(t('lottery.triggerPity', { totalDraws: count, pityCount: plan.pityCountAfter }));
+    return;
   }
 
-  if (!draft.玩家.货币资源.次级货币['积分']) {
-    draft.玩家.货币资源.次级货币['积分'] = {
-      数量: 0,
-      兑换比例: '100主货币 = 100积分',
-      用途说明: '用于商城购物和抽奖',
-    };
-  }
-
-  return draft.玩家.货币资源.次级货币['积分'];
+  notify.info(t('lottery.drawProgress', { totalDraws: count, pityCount: plan.pityCountAfter }));
 }
 
 // 处理单抽
 async function handleSingleDraw() {
-  if (!canSingleDraw.value) return;
-
-  const currentDrawCount = data.value.设置?.积分系统?.抽奖次数 || 0;
-  const newDrawCount = currentDrawCount + 1;
-  const promptText = `## 🎰 开始抽奖!${resolvePlayerName()}发起了${newDrawCount}次抽奖，请生成抽奖结果。`;
-
-  let totalDraws = newDrawCount;
-  let newPityCount = 0;
-  let isPity = false;
-
-  await statDataActions.mutateStatData('lottery.single', draft => {
-    const points = ensurePointsCurrency(draft);
-    points.数量 -= SINGLE_PRICE;
-
-    const currentCount = draft.设置.积分系统.抽奖次数 || 0;
-    draft.设置.积分系统.抽奖次数 = currentCount + 1;
-    totalDraws = draft.设置.积分系统.抽奖次数;
-
-    const oldPityCount = draft.设置.积分系统.$保底次数 || 0;
-    draft.设置.积分系统.$保底次数 = oldPityCount + 1;
-    newPityCount = draft.设置.积分系统.$保底次数;
-
-    isPity = newPityCount % PITY_THRESHOLD === 0 && newPityCount > 0;
-    draft.设置.积分系统.保底触发 = isPity;
-
-    if (isPity) {
-      draft.设置.积分系统.$保底次数 = 0;
-    }
-
-    draft.设置.积分系统.抽奖触发 = true;
-  });
-
-  if (isPity) {
-    notify.success(t('lottery.triggerPity', { totalDraws, pityCount: newPityCount }));
-  } else {
-    notify.info(t('lottery.drawProgress', { totalDraws, pityCount: newPityCount }));
-  }
-
-  await messageActions.sendStandaloneUserMessage(promptText, 'lottery_single', {
-    scriptedTurn: {
-      kind: 'lottery',
-      promptText,
-    },
-  });
+  await runLotteryDraw(1, SINGLE_PRICE, t('lottery.singleDraw'));
 }
 
 // 处理十连抽
 async function handleTenDraw() {
-  if (!canTenDraw.value) return;
-
-  const currentDrawCount = data.value.设置?.积分系统?.抽奖次数 || 0;
-  const newDrawCount = currentDrawCount + 10;
-  const promptText = `## 🎰 开始抽奖!${resolvePlayerName()}发起了${newDrawCount}次抽奖，请生成抽奖结果。`;
-
-  let totalDraws = newDrawCount;
-  let newPityCount = 0;
-  let isPity = false;
-
-  await statDataActions.mutateStatData('lottery.ten', draft => {
-    const points = ensurePointsCurrency(draft);
-    points.数量 -= TEN_PRICE;
-
-    const currentCount = draft.设置.积分系统.抽奖次数 || 0;
-    draft.设置.积分系统.抽奖次数 = currentCount + 10;
-    totalDraws = draft.设置.积分系统.抽奖次数;
-
-    const oldPityCount = draft.设置.积分系统.$保底次数 || 0;
-    draft.设置.积分系统.$保底次数 = oldPityCount + 10;
-    newPityCount = draft.设置.积分系统.$保底次数;
-
-    const oldProgress = oldPityCount % PITY_THRESHOLD;
-    isPity = oldProgress + 10 >= PITY_THRESHOLD;
-    draft.设置.积分系统.保底触发 = isPity;
-
-    if (isPity) {
-      draft.设置.积分系统.$保底次数 = newPityCount % PITY_THRESHOLD;
-    }
-
-    draft.设置.积分系统.抽奖触发 = true;
-  });
-
-  if (isPity) {
-    notify.success(t('lottery.triggerPity', { totalDraws, pityCount: newPityCount }));
-  } else {
-    notify.info(t('lottery.drawProgress', { totalDraws, pityCount: newPityCount }));
-  }
-
-  await messageActions.sendStandaloneUserMessage(promptText, 'lottery_ten', {
-    scriptedTurn: {
-      kind: 'lottery',
-      promptText,
-    },
-  });
+  await runLotteryDraw(10, TEN_PRICE, t('lottery.tenDraw'));
 }
 </script>
 

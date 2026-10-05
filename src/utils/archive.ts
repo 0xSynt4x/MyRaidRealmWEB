@@ -8,6 +8,7 @@ import { useMessagesStore } from '../stores/messages';
 import { useSettingsStore } from '../stores/settings';
 import { useSetupStore } from '../stores/setup';
 import { useStatDataStore } from '../stores/statData';
+import { useLotteryStore } from '../stores/lottery';
 import {
   commitStandaloneRuntimeStateFromStores,
   ensureStandaloneRuntimeBaselineFromStores,
@@ -477,6 +478,8 @@ function applyStandaloneArchivePayloadToStores(payload: StandaloneArchiveFile): 
 
   messagesStore.loadAllMessages();
   statDataStore.refreshData('archive_restore');
+  // 抽奖进度存在会话里，会话刚被换掉，重新读一遍
+  useLotteryStore().initFromSession();
 }
 
 function buildStandaloneArchiveRestoreOutcome(archiveId: string): StandaloneArchiveRestoreOutcome {

@@ -1,0 +1,47 @@
+<%
+  const 玩家名 = getvar('stat_data.玩家.姓名', { defaults: '玩家' });
+  const 品质清单 = getvar('lottery.qualities', { defaults: [] }) || [];
+  const 总次数 = 品质清单.length || 1;
+%>
+<抽奖规则>
+本次为独立抽奖环节，不是剧情回合。
+rules:
+  - 抽奖积分已由前端扣除，不要提及积分增减
+  - 只在 <contenttext> 内输出抽奖结果，不要描写剧情、不要推进时间线
+  - 系统已固定本次每次抽奖的品质，你必须严格遵守，不得更改：
+<% for (let i = 0; i < 品质清单.length; i++) { -%>
+    - 第<%= i + 1 %>次：【<%= 品质清单[i] %>】
+<% } -%>
+  - 为每次抽奖生成一个贴合当前世界观与玩家处境的物品或技能，品质必须等于上面指定的品质
+输出格式:
+  - <contenttext> 内按顺序列出 <%= 总次数 %> 次结果，每次一行：第N次：物品或技能名（品质）——一句话效果/来历
+  - 用 <UpdateVariable> 包裹 <Analysis> 与 <JSONPatch>，把获得的物品/技能写入 /玩家/物品栏 与 /玩家/技能系统（字段与品质规则见上方「物品与技能规则」）
+  - <JSONPatch> 规则:
+    - 必须是合法 JSON 数组：不能有注释、尾逗号，数组外不能有其它文字
+    - 新增物品/技能用 "insert"，路径为 /玩家/物品栏/<名称> 或 /玩家/技能系统/<名称>，其父级必须已存在
+    - 名称已存在时不要重复 insert：用 "delta" 给该物品的「数量」加 1
+    - 路径只能落在 /玩家/物品栏 与 /玩家/技能系统 下，不要凭空造其它路径
+    - 每次抽奖结果都要有对应写入，不能漏项
+  - 不要更新积分数量，不要改动 /设置 下任何字段，不要触碰 _ 开头的字段
+
+示例（以抽 2 次、一次物品一次技能为例）:
+  <contenttext>
+  第1次：<物品名>（<品质>）——<一句话效果/来历>
+  第2次：<技能名>（<品质>）——<一句话效果/来历>
+  </contenttext>
+  <UpdateVariable>
+  <Analysis>
+  - IN ENGLISH
+  - independent lottery turn: 2 draws, qualities are fixed by the system and must not be changed
+  - draw 1: <物品名> (<品质>) -> insert into 玩家.物品栏
+  - draw 2: <技能名> (<品质>) -> insert into 玩家.技能系统
+  - no other variables touched
+  </Analysis>
+  <JSONPatch>
+  [
+    { "op": "insert", "path": "/玩家/物品栏/<物品名>", "value": { "数量": 1, "类型": "<类型>", "品质": "<品质>", "有效期": "永久", "特殊属性": "<特殊属性>", "备注": "抽奖获得" } },
+    { "op": "insert", "path": "/玩家/技能系统/<技能名>", "value": { "品质": "<品质>", "描述": "<描述>", "类型": "<类型>" } }
+  ]
+  </JSONPatch>
+  </UpdateVariable>
+</抽奖规则>

@@ -36,7 +36,8 @@
 | `variable-update-rules.txt`  | 变量更新规则（**正式口径**）       |
 | `variable-update-format.txt` | 变量更新输出格式（**正式口径**）   |
 | `current-stat-snapshot.txt`  | 当前变量快照的包装模板             |
-| `plot-lottery-rules.txt`     | 抽奖玩法规则（仅抽奖回合注入）     |
+| `lottery-request-prompt.txt` | 抽奖专用提示词（独立抽奖请求专用） |
+| `lottery-item-skill-rules.txt` | 物品 / 技能 / 品质定义（抽奖请求专用，抄自 `variable-update-rules.txt`） |
 | `plot-online-mode.md`        | 联机模式剧情规则                   |
 | `plot-text-to-image.md`      | 文生图剧情规则                     |
 | `index.ts`                   | 注册表：把上面这些挂成可开关的条目 |

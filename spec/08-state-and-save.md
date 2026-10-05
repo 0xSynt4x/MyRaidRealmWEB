@@ -147,7 +147,10 @@ IndexedDB 在磁盘压力下，浏览器**可能整体回收整个站点的数�
 | 本地存储（落盘入口）                      | `src/utils/standaloneStorage.ts`，底层是 `src/utils/standaloneIndexedDb.ts`                   |
 
 🔴 **不要从组件里绕过 store 直接改 `stat_data`，也不要绕过 `standaloneStorage.ts` 直接碰 IndexedDB 或 localStorage。**
-前端权威状态的判定在 `src/utils/frontendAuthoritativeState.ts`，别在别处再实现一套。
+前端权威字段（商城刷新 / 上次签到日期 / 积分数量）的判定在 `src/utils/frontendAuthoritativeState.ts`，别在别处再实现一套。
+它们**只服务于「AI 回合收尾对账」**（防止 AI 的变量更新补丁改写这些前端字段），**不参与任何回退保护**：
+回退（删除 / 重发 / 重新生成）时**所有字段一起回退**，保证「回滚 = 回到过去」，
+资源与物品不会脱钩（买了东西回滚，物品和积分一起回来）。
 
 ## 相关约束
 

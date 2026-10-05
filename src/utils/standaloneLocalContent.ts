@@ -4,7 +4,6 @@ import type { ImageBackend, WorldDifficulty } from '../stores/settings';
 import {
   currentStatSnapshotTemplate as rawCurrentStatSnapshot,
   mainApiPromptTemplate as rawMainApiPrompt,
-  plotLotteryRulesTemplate as rawPlotLotteryRules,
   plotOnlineModeTemplate as rawPlotOnlineMode,
   plotTextToImageNaiTemplate as rawPlotTextToImageNai,
   plotTextToImageTemplate as rawPlotTextToImage,
@@ -224,16 +223,6 @@ const STANDALONE_LOCAL_CONTENT_MANIFEST: StandaloneLocalContentAsset[] = [
     defaultEnabled: true,
     description: '把当前本地游戏状态作为提示词片段送进主回复和变量更新流程。',
     rawContent: rawCurrentStatSnapshot,
-  },
-  {
-    id: 'plot-lottery-rules',
-    title: '抽奖结果规则',
-    sourceName: '[mvu_plot]抽奖规则.txt',
-    kind: 'plot_rule',
-    route: 'main',
-    defaultEnabled: true,
-    description: '当积分系统触发抽奖时，根据当前变量动态渲染抽奖结果约束。',
-    rawContent: rawPlotLotteryRules,
   },
   {
     id: 'plot-world-difficulty',

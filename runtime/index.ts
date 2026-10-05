@@ -3,8 +3,11 @@ export {
   buildVariableUpdateSecondPassPrompt,
   cancelStandaloneLocalTurn,
   runStandaloneLocalTurn,
+  runStandaloneLotteryTurn,
   type StandaloneLocalTurnInput,
   type StandaloneLocalTurnOutcome,
+  type StandaloneLotteryTurnInput,
+  type StandaloneLotteryTurnOutcome,
 } from './standaloneTurn';
 export {
   clearStandaloneCurrentStatData,

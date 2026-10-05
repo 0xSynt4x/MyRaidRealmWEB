@@ -28,8 +28,13 @@
       </div>
 
       <div class="message-actions">
-        <!-- 编辑按钮（用户和AI楼层都有） -->
-        <button class="btn-action btn-edit" :title="t('messageCard.editMessage')" @click="handleEdit">
+        <!-- 编辑按钮（用户和AI楼层都有，抽奖结果楼层除外） -->
+        <button
+          v-if="!isLotteryResult"
+          class="btn-action btn-edit"
+          :title="t('messageCard.editMessage')"
+          @click="handleEdit"
+        >
           <i class="ti ti-pencil"></i>
         </button>
 
@@ -44,9 +49,9 @@
           <i class="ti ti-send"></i>
         </button>
 
-        <!-- AI楼层：重新生成按钮 -->
+        <!-- AI楼层：重新生成按钮（抽奖结果楼层不提供） -->
         <button
-          v-if="message.role === 'assistant'"
+          v-if="message.role === 'assistant' && !isLotteryResult"
           class="btn-action btn-regenerate"
           :title="t('messageCard.regenerate')"
           :disabled="actionsDisabled"
@@ -55,8 +60,9 @@
           <i class="ti ti-refresh"></i>
         </button>
 
-        <!-- 删除按钮（所有楼层都有） -->
+        <!-- 删除按钮（所有楼层都有，抽奖结果楼层除外） -->
         <button
+          v-if="!isLotteryResult"
           class="btn-action btn-delete"
           :title="t('messageCard.deleteMessage')"
           :disabled="actionsDisabled"
@@ -118,7 +124,7 @@
               {{ variableUpdateStatusInfo.label }}
             </span>
             <button
-              v-if="showVariableUpdateRetry"
+              v-if="showVariableUpdateRetry && !isLotteryResult"
               class="variable-update-retry"
               :title="t('messageCard.variableUpdateRetry')"
               :disabled="actionsDisabled"
@@ -192,6 +198,8 @@ const statDataStore = useStatDataStore();
 const settingsStore = useSettingsStore();
 const { t } = useI18n();
 const actionsDisabled = computed(() => messagesStore.isStandaloneGenerationLocked);
+// 抽奖结果楼层：不提供编辑 / 重新生成 / 删除 —— 要重来就点上面那条抽奖请求的「重新发送」
+const isLotteryResult = computed(() => Boolean(props.message.lottery) && props.message.role === 'assistant');
 const comfyUiImageGeneration = useComfyUiImageGeneration();
 
 // 正文按生图提示词切开，提示词位置换成图片槽。

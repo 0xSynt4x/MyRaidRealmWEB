@@ -84,8 +84,8 @@ const CHANGELOG_SOURCE: ReadonlyArray<{ date: string; items: readonly string[] }
     items: ['新增NPC不再撞编号', '补丁报错提示更准确'],
   },
   {
-    date: '261004',
-    items: ['NPC 变量更新更稳', '刷新变量不再算错'],
+    date: '261005',
+    items: ['抽奖不再推进剧情', '抽奖失败可重来', '抽奖可单独配 API', '回滚时积分一起退回'],
   },
 ];
 

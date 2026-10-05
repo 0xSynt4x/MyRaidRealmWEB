@@ -15,6 +15,11 @@ export type StandaloneLocalContentRenderContext = {
   snapshotStatData?: unknown;
   /** 快照是否使用紧凑 JSON。 */
   compactSnapshot?: boolean;
+  /**
+   * 额外注入的模板变量（顶层可用，也可通过 `getvar('key.sub')` 读取）。
+   * 用于把前端算好的数据（如抽奖品质清单）交给专用提示词模板。
+   */
+  extraVars?: Record<string, unknown>;
 };
 
 type TemplateUtilityContext = {
@@ -57,8 +62,10 @@ function fallbackGet(object: unknown, path: string, defaultValue?: unknown): unk
 }
 
 function createTemplateUtilityContext(renderContext: StandaloneLocalContentRenderContext): TemplateUtilityContext {
+  const extraVars = renderContext.extraVars ?? {};
   const runtimeRoot = {
     stat_data: renderContext.statData,
+    ...extraVars,
   };
 
   const templateLodash = {
@@ -85,6 +92,7 @@ function createTemplateUtilityContext(renderContext: StandaloneLocalContentRende
   };
 
   return {
+    ...extraVars,
     stat_data: renderContext.statData,
     latest_user_message: renderContext.latestUserMessage?.content_text ?? '',
     recent_messages: renderContext.messages,
