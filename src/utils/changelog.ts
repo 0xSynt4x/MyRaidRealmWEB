@@ -89,7 +89,7 @@ const CHANGELOG_SOURCE: ReadonlyArray<{ date: string; items: readonly string[] }
   },
   {
     date: '261006',
-    items: ['抽奖物品贴合最近剧情'],
+    items: ['抽奖物品贴合当前场景'],
   },
 ];
 

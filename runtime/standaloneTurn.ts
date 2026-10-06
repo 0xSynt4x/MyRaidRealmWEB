@@ -381,11 +381,12 @@ ${protocolLocalContentBlocks.join('\n\n')}
 
 function resolveStandaloneRecentHistoryMessages(input: {
   messages: MessageRecord[];
-  latestUserMessage: MessageRecord;
+  /** 要排除的「玩家最新输入」楼层；抽奖等旁路请求没有这一条，可不传 */
+  latestUserMessage?: MessageRecord;
 }): StandaloneProviderChatMessage[] {
   return input.messages
     .slice(-RECENT_MESSAGE_LIMIT)
-    .filter(message => message.message_id !== input.latestUserMessage.message_id)
+    .filter(message => !input.latestUserMessage || message.message_id !== input.latestUserMessage.message_id)
     // 抽奖结果只在聊天流展示，不进剧情历史
     .filter(message => !message.lottery)
     .map(message => ({
@@ -1368,9 +1369,9 @@ export type StandaloneLotteryTurnOutcome = {
 };
 
 /**
- * 组装抽奖请求：变量快照 + 最近一条「非抽奖」AI 回复 + 抽奖专用提示词。
+ * 组装抽奖请求：变量快照 + 物品 / 技能规则 + 最近一段剧情上下文 + 抽奖专用提示词。
  *
- * 刻意不带预设主提示词与世界书 —— 抽奖不是剧情回合，只给模型「当前局势 + 上次剧情收尾 + 抽奖规则」，
+ * 刻意不带预设主提示词与世界书 —— 抽奖不是剧情回合，只给模型「当前局势 + 最近剧情 + 抽奖规则」，
  * 让它专注按前端指定的品质生成物品/技能，避免把抽奖写成剧情。
  */
 function buildLotteryTurnPrompt(input: StandaloneLotteryTurnInput): StandalonePromptMessagesBundle {
@@ -1411,17 +1412,10 @@ function buildLotteryTurnPrompt(input: StandaloneLotteryTurnInput): StandalonePr
     },
   ];
 
-  const lastAssistantReply = input.messages
-    .slice()
-    .reverse()
-    .find(message => message.role === 'assistant' && !message.lottery);
-  const lastAssistantContent = lastAssistantReply
-    ? (lastAssistantReply.content_text || lastAssistantReply.raw_content || '').trim()
-    : '';
-
-  if (lastAssistantContent) {
-    messages.push({ role: 'assistant', content: lastAssistantContent });
-  }
+  // 带上最近一段剧情上下文：只给一条 AI 回复时，模型看不到「玩家此刻在哪、在做什么」，
+  // 只能凭变量快照猜。这里复用主链的最近窗口（同一常量、同一过滤口径），保留原始
+  // user / assistant 角色，让抽奖请求看到最近几轮实际发生了什么。
+  messages.push(...resolveStandaloneRecentHistoryMessages({ messages: input.messages }));
 
   messages.push({ role: 'user', content: rendered.content.trim() });
 
