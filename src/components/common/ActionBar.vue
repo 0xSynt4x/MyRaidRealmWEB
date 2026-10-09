@@ -17,6 +17,23 @@
       </div>
     </Transition>
 
+    <!-- 命令提示层：输入 / 开头时列出候选，Tab 补全 -->
+    <Transition name="slide-up">
+      <div v-if="showCommandHints" class="command-hints">
+        <button
+          v-for="(command, index) in commandHintList"
+          :key="command.name"
+          class="command-hint-btn"
+          :class="{ 'is-highlighted': index === commandHighlightIndex }"
+          @click="applyCommandCompletion(command.name)"
+          @mouseenter="commandHighlightIndex = index"
+        >
+          <span class="command-hint-name">/{{ command.name }}</span>
+          <span class="command-hint-text">{{ command.hint }}</span>
+        </button>
+      </div>
+    </Transition>
+
     <!-- 输入区（始终可见） -->
     <div class="input-container">
       <!-- 选项开关：方形辅助键 -->
@@ -39,6 +56,9 @@
         :disabled="isInputLocked"
         rows="1"
         @keydown.enter.exact.prevent="handleSend"
+        @keydown.tab.exact="handleTabComplete"
+        @keydown.up.exact="handleCommandArrowKey($event, -1)"
+        @keydown.down.exact="handleCommandArrowKey($event, 1)"
         @input="autoResize"
       ></textarea>
       <button
@@ -67,6 +87,14 @@ import { useMessagesStore } from '../../stores/messages';
 import { useSettingsStore } from '../../stores/settings';
 import { useNotificationStore } from '../../stores/notification';
 import { cancelStandaloneLocalTurn, isStandaloneLocalTurnActive } from '../../utils/standaloneLocalTurn';
+import { useStandaloneArchiveManager } from '../../composables/useStandaloneArchiveManager';
+import {
+  findSlashCommand,
+  isSlashCommandInput,
+  matchSlashCommands,
+  parseSlashCommandName,
+  SLASH_COMMAND_PREFIX,
+} from '../../utils/slashCommands';
 
 interface ActionOption {
   description: string;
@@ -356,6 +384,174 @@ async function preSendAutoSaveEditing(): Promise<boolean> {
   }
 }
 
+// ===== 斜杠命令 =====
+// 命令是本地手势：命中后执行对应流程，**不发给模型**，输入框清空。
+// 打错的命令拦下来提示，不当普通消息发出去 —— 免得白白烧一次 token。
+
+const archiveManager = useStandaloneArchiveManager();
+
+/** 输入栏当前内容是否在「敲命令」状态（斜杠开头且还没敲空格 —— 带空格就当普通文字） */
+const isCommandDraft = computed(() => {
+  const raw = inputText.value.trim();
+  if (!isSlashCommandInput(raw)) {
+    return false;
+  }
+
+  // `/正文优化 别的字` 这种带空格的，说明玩家在写正文而不是选命令，不再提示
+  return !raw.includes(' ');
+});
+
+const commandHintList = computed(() => matchSlashCommands(inputText.value));
+
+const showCommandHints = computed(() => isCommandDraft.value && commandHintList.value.length > 0);
+
+/**
+ * 候选列表里高亮到第几条。
+ *
+ * 用 -1 表示「还没动过键盘」—— 这时不高亮任何一条，回车按输入框字面量走。
+ * 一旦按了 ↑↓ 就变成实数下标，回车改成执行高亮那条。
+ * 候选集合变化（玩家继续打字）时重置回 -1，免得高亮停在一条已经不相关的命令上。
+ */
+const commandHighlightIndex = ref(-1);
+
+// 只看命令名序列 —— computed 每次返回新数组，直接 watch 它会被无关的重算带偏。
+watch(
+  () => commandHintList.value.map(command => command.name).join('\n'),
+  () => {
+    commandHighlightIndex.value = -1;
+  },
+);
+
+/** 高亮整体下移/上移，到底了就循环回另一头 —— 只有 4 条，循环比卡住好用 */
+function moveCommandHighlight(step: number) {
+  const total = commandHintList.value.length;
+  if (total === 0) {
+    return;
+  }
+
+  const current = commandHighlightIndex.value;
+  // 第一次按 ↓ 落在第一条、第一次按 ↑ 落在最后一条，符合"还没选过"的直觉
+  if (current < 0) {
+    commandHighlightIndex.value = step > 0 ? 0 : total - 1;
+    return;
+  }
+
+  commandHighlightIndex.value = (current + step + total) % total;
+}
+
+/**
+ * 命令候选浮层开着时的方向键处理。浮层没开就完全不碰方向键 ——
+ * 否则光标在输入框里按 ↑↓ 挪不动，那是真把输入废了。
+ */
+function handleCommandArrowKey(event: KeyboardEvent, step: number) {
+  if (!showCommandHints.value) {
+    return;
+  }
+
+  event.preventDefault();
+  moveCommandHighlight(step);
+}
+
+/** 把候选命令名填回输入框（Tab 补全 / 点选提示都用它） */
+function applyCommandCompletion(name: string) {
+  actionInputStore.setInputText(`${SLASH_COMMAND_PREFIX}${name}`);
+  nextTick(() => {
+    autoResize();
+    inputRef.value?.focus();
+  });
+}
+
+/**
+ * Tab 补全。
+ *
+ * 只在「正在敲命令」时接管 Tab —— 其余情况**不拦截**，让 Tab 保持浏览器默认的
+ * 焦点切换，不然键盘导航就废了。所以 preventDefault 写在函数体里，不写在模板上。
+ */
+function handleTabComplete(event: KeyboardEvent) {
+  if (!isCommandDraft.value) {
+    return;
+  }
+
+  const candidates = commandHintList.value;
+  if (candidates.length === 0) {
+    return;
+  }
+
+  event.preventDefault();
+
+  // 已经精确命中一条就不再改动，避免反复按 Tab 抖动
+  if (findSlashCommand(inputText.value)) {
+    return;
+  }
+
+  applyCommandCompletion(candidates[0].name);
+}
+
+/** 取最新一条 AI 回复（抽奖楼层不算），供 /重新生成 与 /正文优化 判断可用性 */
+function resolveLatestAssistantMessage() {
+  return messages.value
+    .filter(message => message.role === 'assistant' && !message.lottery)
+    .slice()
+    .reverse()[0];
+}
+
+/**
+ * 执行一条命令。返回 true 表示已处理（调用方不再走发送逻辑）。
+ *
+ * 命令**没命中**或**前置条件不满足**时只提示、不清空输入框 ——
+ * 让玩家能改一改接着敲，不用重打一遍。
+ */
+async function runSlashCommand(raw: string): Promise<boolean> {
+  const command = findSlashCommand(raw);
+  const typedName = parseSlashCommandName(raw) ?? '';
+
+  if (!command) {
+    notificationStore.warning(t('actionBar.commandUnknown', { name: typedName }));
+    return true;
+  }
+
+  switch (command.name) {
+    case '正文优化': {
+      actionInputStore.clearInput();
+      resetTextareaHeight();
+      showOptions.value = false;
+      await messageActions.refreshLatestAssistantStoryReview('slash_command_story_review');
+      return true;
+    }
+    case '重新生成': {
+      // 只认最新一条：必须是 AI 回复楼层，否则不执行
+      const latest = resolveLatestAssistantMessage();
+      const latestMessage = messages.value[messages.value.length - 1];
+      if (!latest || !latestMessage || latestMessage.message_id !== latest.message_id) {
+        notificationStore.warning(t('actionBar.commandRegenerateNeedsAssistant'));
+        return true;
+      }
+
+      actionInputStore.clearInput();
+      resetTextareaHeight();
+      showOptions.value = false;
+      await messageActions.regenerate(latest.message_id);
+      return true;
+    }
+    case '保存进度': {
+      actionInputStore.clearInput();
+      resetTextareaHeight();
+      showOptions.value = false;
+      await archiveManager.handleSaveStandaloneArchive();
+      return true;
+    }
+    case '下载': {
+      actionInputStore.clearInput();
+      resetTextareaHeight();
+      showOptions.value = false;
+      await archiveManager.handleArchiveExport();
+      return true;
+    }
+    default:
+      return false;
+  }
+}
+
 async function handleSend() {
   if (isGenerating.value) {
     await cancelGeneration();
@@ -365,6 +561,14 @@ async function handleSend() {
   const text = inputText.value.trim();
 
   if (!text) return;
+
+  // 斜杠开头一律当命令处理：命中的执行，没命中的提示「没有这个命令」，都不发给模型。
+  // 若玩家用 ↑↓ 高亮选了某条候选，则执行高亮那条 —— 敲半截命令也能直接回车执行（如敲 /重 再 ↓）。
+  if (isSlashCommandInput(text)) {
+    const highlighted = showCommandHints.value ? commandHintList.value[commandHighlightIndex.value] : undefined;
+    await runSlashCommand(highlighted ? `${SLASH_COMMAND_PREFIX}${highlighted.name}` : text);
+    return;
+  }
 
   // 发送前：若存在任意楼层编辑中，先自动保存
   const readyToSend = await preSendAutoSaveEditing();
@@ -480,6 +684,78 @@ async function cancelGeneration() {
 
 .option-btn:active:not(:disabled) {
   background: var(--ui-surface-2);
+}
+
+/* ===== 命令提示层 =====
+   跟选项弹层同款：贴输入区上沿、圆角块、无阴影。 */
+.command-hints {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  background: var(--ui-panel);
+  border: 1px solid var(--ui-line-soft);
+  border-bottom: none;
+  padding: var(--ui-space-1);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-space-1);
+  max-height: 220px;
+  overflow: hidden auto;
+  z-index: 21;
+}
+
+.command-hint-btn {
+  display: flex;
+  align-items: baseline;
+  gap: var(--ui-space-3);
+  width: 100%;
+  flex: 0 0 auto;
+  padding: var(--ui-space-3) var(--ui-space-4);
+  border: none;
+  border-radius: var(--ui-radius-sm);
+  background: transparent;
+  color: var(--ui-text);
+  font-family: var(--font-base);
+  font-size: calc(var(--ui-fs-opt) * var(--ui-font-scale));
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    padding-left var(--transition-fast);
+}
+
+/* 悬停与键盘高亮共用一套外观 —— 两处各写一份迟早会长歪 */
+.command-hint-btn:hover,
+.command-hint-btn.is-highlighted {
+  background: var(--ui-surface-2);
+  padding-left: var(--ui-space-5);
+}
+
+/* 高亮时命令名跟着提亮，跟选项层悬停时正文染色同一个手法 */
+.command-hint-btn.is-highlighted .command-hint-name {
+  color: var(--ui-accent);
+  font-weight: 600;
+}
+
+.command-hint-btn.is-highlighted .command-hint-text {
+  color: var(--ui-muted);
+}
+
+/* 命令名走等宽字，跟选项层的彩色编号一个位置感 */
+.command-hint-name {
+  flex: 0 0 auto;
+  font-family: var(--font-mono);
+  font-size: calc(var(--ui-fs-label) * var(--ui-font-scale));
+  color: var(--ui-accent);
+}
+
+.command-hint-text {
+  flex: 1;
+  min-width: 0;
+  color: var(--ui-dim);
+  font-size: calc(var(--ui-fs-label) * var(--ui-font-scale));
+  line-height: 1.45;
 }
 
 /* ===== 弹出动画 ===== */
