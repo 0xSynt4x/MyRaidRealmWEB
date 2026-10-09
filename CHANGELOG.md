@@ -1173,13 +1173,21 @@
 - **Added** 单测覆盖（`scripts/tests/run-standalone-local-content-tests.ts`）：新增分词检索校验、BM25 伏笔召回与不在场 NPC 瘦身 3 项自动化测试（123/123 项全过）。
 - 四道检查：`typecheck` ✓ ｜ `test` 123/123 + 35 ✓ ｜ `lint` 0 error（14 个存量 warning）✓ ｜ `build` ✓。
 
-### — feat: 输入栏支持斜杠快捷手势（/正文优化、/重新生成等）
-
-> 短哈希待回填（按约定并入下一次提交）。
+### `9529751` — feat: 输入栏支持斜杠快捷手势（/正文优化、/重新生成等）
 
 - **Added** 输入栏斜杠命令系统（`src/utils/slashCommands.ts`、`src/components/common/ActionBar.vue`）：
   - 输入 `/` 弹出贴边命令候选层，支持键盘上下方向键循环切换高亮、Tab 键补全。
   - 内置 4 条本地命令：`/正文优化`（审稿改稿）、`/重新生成`、`/保存进度`、`/下载`（导出存档文件）。
   - 命令全部在本地拦截执行，输入错误拦截提示，绝不发给模型消耗 token。
 - **Added** 玩家更新日志 `261009`：输入框支持快捷手势。
+- 四道检查：`typecheck` ✓ ｜ `test` 123/123 + 35 ✓ ｜ `lint` 0 error（14 个存量 warning）✓ ｜ `build` ✓。
+
+### — style: 场景横幅排版对齐微调；收紧变量位置字数限制与更新记忆指引
+
+- **Changed** 场景横幅排版与视觉对齐（`src/components/layout/SceneBanner.vue`）：
+  - 地点字号调紧凑并改用等宽字体，补充时钟图标，保证地点与时间/天气两行在各分辨率下视觉基线严格对齐。
+- **Changed** 变量更新规则微调（`src/assets/standalone-local-content/variable-update-rules.txt`）：
+  - 明确「当前位置」必须简短，总长不超过 8 个字，只写当前所在的单点位置。
+- **Changed** 规范文档与记忆指引同步：`spec/05-prompt-pipeline.md` 补全 BM25 智能召回策略与不在场 NPC 瘦身规则；`AGENTS.md` 补齐项目三层记忆规范与索引。
+- **Added** 玩家更新日志 `261009`：场景横幅排版微调。
 - 四道检查：`typecheck` ✓ ｜ `test` 123/123 + 35 ✓ ｜ `lint` 0 error（14 个存量 warning）✓ ｜ `build` ✓。

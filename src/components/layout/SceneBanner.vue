@@ -81,6 +81,7 @@
           <span class="banner-place-txt">{{ 当前地点 }}</span>
         </div>
         <div class="banner-sub">
+          <i class="ti ti-clock"></i>
           <span>{{ 当前时间 }}</span>
           <b>/</b>
           <span>{{ 当前天气 }}</span>
@@ -659,9 +660,11 @@ async function handleRefreshApi() {
   align-items: center;
   gap: var(--ui-space-2);
   min-width: 0;
-  font-size: calc(var(--ui-fs-scene) * var(--ui-font-scale));
-  font-weight: 600;
-  text-shadow: 0 1px 12px rgba(var(--ui-scrim-rgb), 0.6);
+  font-family: var(--font-mono);
+  font-size: calc(var(--ui-fs-meta) * var(--ui-font-scale));
+  color: var(--ui-on-scrim);
+  opacity: 0.62;
+  text-shadow: 0 1px 10px rgba(var(--ui-scrim-rgb), 0.6);
 }
 
 .banner-place i {
@@ -692,6 +695,13 @@ async function handleRefreshApi() {
 .banner-sub b {
   font-weight: 400;
   opacity: 0.42;
+}
+
+/* 时间图标与地点图标同一套规格，两行才对得齐 */
+.banner-sub i {
+  flex: 0 0 auto;
+  font-size: calc(var(--ui-fs-label) * var(--ui-font-scale));
+  color: var(--ui-on-scrim-accent);
 }
 
 /* ===== 响应式：断点与主项目一致（1023 / 767 / 480）===== */
@@ -728,10 +738,6 @@ async function handleRefreshApi() {
 @media (max-width: 480px) {
   .banner-era {
     font-size: calc(var(--ui-fs-meta) * var(--ui-font-scale));
-  }
-
-  .banner-place {
-    font-size: calc(var(--ui-fs-name) * var(--ui-font-scale));
   }
 }
 </style>
