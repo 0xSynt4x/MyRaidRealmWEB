@@ -17,3 +17,10 @@ export {
   writeStandaloneCurrentStatData,
   type StandaloneCurrentStatData,
 } from './standaloneState';
+export {
+  searchStandaloneBm25,
+  tokenizeStandaloneText,
+  type StandaloneBm25Options,
+  type StandaloneSearchDocument,
+  type StandaloneSearchResult,
+} from './standaloneBm25';

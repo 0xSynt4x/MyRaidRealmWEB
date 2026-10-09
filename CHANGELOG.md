@@ -1146,9 +1146,7 @@
 
 ## 2026-10-09
 
-### — feat: 正文支持多候选页并发生成与楼层翻页，引入独立审稿改稿流水线
-
-> 短哈希待回填（按约定并入下一次提交）。
+### `52e8175` — feat: 正文支持多候选页并发生成与楼层翻页，引入独立审稿改稿流水线
 
 - **Added** 正文多候选页并行生成与楼层翻页：
   - 设置面板支持配置「正文请求次数」（1~5 次，默认 1 次；`src/stores/settings.ts`、`src/components/panels/SettingsPanel.vue`）。
@@ -1163,3 +1161,16 @@
 - **Added** 规范文档同步：`spec/03-ui-system.md`（翻页按钮交互规范）、`spec/05-prompt-pipeline.md`（多页正文与下一轮上下文规范）、`spec/08-state-and-save.md`（消息记录结构与扩展字段兼容规范）。
 - **Added** 玩家更新日志 `261009`：正文支持多候选页翻页、新增审稿与改稿功能。
 - 四道检查：`typecheck` ✓ ｜ `test` 120/120 + 35 ✓ ｜ `lint` 0 error（14 个存量 warning）✓ ｜ `build` ✓。
+
+### — feat: 历史小总结支持基于 BM25 算法精准召回；正文链快照支持不在场 NPC 瘦身与同场景在场判定
+
+> 短哈希待回填（按约定并入下一次提交）。
+
+- **Added** 纯前端轻量分词与 BM25 检索模块（`runtime/standaloneBm25.ts`）：
+  - 纯 TypeScript 实现，零外部依赖，毫秒级响应，中英双语混合分词（英文单词 + 中文 1-gram / 2-gram）结合停用词过滤。
+  - 从历史长轮次小总结中按玩家输入与情境精准召回高相关的前情提要事实与伏笔，缓解长轮次遗忘。
+- **Added** 正文链快照裁剪能力优化（`runtime/standaloneSnapshotTrim.ts`）：
+  - 新增「同场景判定」：玩家所在当前位置与 NPC 所在当前位置完全一致时，自动认定为同场在场并保留完整档案。
+  - 正文链专用不在场 NPC 瘦身（`slimAbsentNpcs`）：保留不在场 NPC 核心身份定位与属性，剔除冗余长文本经历、创伤、穿着、外貌与近期事件，显著压缩主链 Prompt 冗余。
+- **Added** 单测覆盖（`scripts/tests/run-standalone-local-content-tests.ts`）：新增分词检索校验、BM25 伏笔召回与不在场 NPC 瘦身 3 项自动化测试（123/123 项全过）。
+- 四道检查：`typecheck` ✓ ｜ `test` 123/123 + 35 ✓ ｜ `lint` 0 error（14 个存量 warning）✓ ｜ `build` ✓。

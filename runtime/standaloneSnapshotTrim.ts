@@ -33,6 +33,8 @@ export type StandaloneSnapshotTrimOptions = {
   survivalMode: string;
   /** 保留的 NPC 档案键集合。null 表示本轮不裁剪 NPC。 */
   presentNpcIds: Set<string> | null;
+  /** 正文链专用：是否对不在场的 NPC 进行轻量化瘦身（保留核心属性，剔除深层经历与过往杂项）。默认 false */
+  slimAbsentNpcs?: boolean;
 };
 
 function isPlainObject(value: unknown): value is PlainRecord {
@@ -126,6 +128,37 @@ function trimNpcArchive(statData: PlainRecord, presentNpcIds: Set<string>): void
   }
 }
 
+/** 针对不在场的 NPC 进行轻量化瘦身（保留关键定位与关系，剔除长文本经历与冗余外貌）。 */
+function slimAbsentNpcArchive(statData: PlainRecord, presentNpcIds: Set<string>): void {
+  const archive = statData['人物档案'];
+  if (!isPlainObject(archive)) {
+    return;
+  }
+
+  for (const [id, npc] of Object.entries(archive)) {
+    if (presentNpcIds.has(id) || !isPlainObject(npc)) {
+      continue;
+    }
+
+    // 不在场 NPC：剔除冗余历史与长描述
+    delete npc['重要经历'];
+    delete npc['近期事件'];
+
+    if (isPlainObject(npc['交互记忆'])) {
+      delete (npc['交互记忆'] as PlainRecord)['赠礼记录'];
+    }
+
+    const personal = npc['个人信息'];
+    if (isPlainObject(personal)) {
+      delete personal['过往经历'];
+      delete personal['心理创伤'];
+      delete personal['当前想法'];
+      delete personal['当前穿着'];
+      delete personal['外貌'];
+    }
+  }
+}
+
 /**
  * 生成一份整形后的快照数据副本。
  * 返回的是深拷贝，调用方可以放心序列化，不会影响原始状态。
@@ -146,7 +179,11 @@ export function trimStandaloneSnapshot(statData: unknown, options: StandaloneSna
   }
 
   if (options.presentNpcIds) {
-    trimNpcArchive(trimmed, options.presentNpcIds);
+    if (options.slimAbsentNpcs) {
+      slimAbsentNpcArchive(trimmed, options.presentNpcIds);
+    } else {
+      trimNpcArchive(trimmed, options.presentNpcIds);
+    }
   }
 
   if (options.dropSettings) {
@@ -217,6 +254,24 @@ export function collectPresentNpcIds(input: {
     // 名字命中必须先记「有命中」再决定去留 —— 否则「本轮唯一被提到的人是重要 NPC」这种
     // 情况会因为提前 continue 而不计命中，把整轮裁剪误判成「一个名字都没扫到」。
     if (haystack.includes(name)) {
+      matchedAny = true;
+      kept.add(id);
+      continue;
+    }
+
+    // 同场景判定：若玩家所在当前位置与 NPC 所在当前位置一致，认定为同场在场
+    const playerLocation =
+      isPlainObject(input.statData) &&
+      isPlainObject((input.statData as PlainRecord)['世界']) &&
+      isPlainObject(((input.statData as PlainRecord)['世界'] as PlainRecord)['空间定位'])
+        ? String(((input.statData as PlainRecord)['世界'] as any)['空间定位']['当前位置'] || '').trim()
+        : '';
+    const npcLocation =
+      isPlainObject(npc['个人信息']) && typeof (npc['个人信息'] as PlainRecord)['当前位置'] === 'string'
+        ? String((npc['个人信息'] as PlainRecord)['当前位置']).trim()
+        : '';
+
+    if (playerLocation && npcLocation && playerLocation === npcLocation) {
       matchedAny = true;
       kept.add(id);
       continue;
@@ -323,26 +378,29 @@ export function buildStandaloneSnapshotForChain(input: {
   statData: unknown;
   settings: StandaloneSnapshotTrimSettings;
   chain: StandaloneSnapshotChain;
-  /** 待扫描文本（本轮正文 + 玩家输入）。只有辅助链的 NPC 裁剪会用到。 */
+  /** 待扫描文本（本轮正文 + 玩家输入）。正文链与辅助链的 NPC 在场判定均会使用。 */
   texts?: string[];
 }): StandaloneSnapshotTrimResult {
-  const presentNpcIds =
-    input.chain === 'variable_update' && input.settings.trimNpc
-      ? collectPresentNpcIds({
-          statData: input.statData,
-          texts: input.texts ?? [],
-          keepImportant: true,
-          keepFocused: true,
-        })
-      : null;
+  const isMain = input.chain === 'main';
+  const shouldCollectNpc = isMain || input.settings.trimNpc;
+
+  const presentNpcIds = shouldCollectNpc
+    ? collectPresentNpcIds({
+        statData: input.statData,
+        texts: input.texts ?? [],
+        keepImportant: true,
+        keepFocused: true,
+      })
+    : null;
 
   return {
     snapshot: trimStandaloneSnapshot(input.statData, {
       dropDollarKeys: true,
-      dropSettings: input.chain === 'main',
+      dropSettings: isMain,
       collapseShop: true,
       survivalMode: resolveSurvivalMode(input.statData),
       presentNpcIds,
+      slimAbsentNpcs: isMain,
     }),
     compact: false,
   };

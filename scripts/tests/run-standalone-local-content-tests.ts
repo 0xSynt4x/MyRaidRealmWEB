@@ -64,6 +64,8 @@ import {
   isStandaloneSurvivalDisabled,
   normalizeStandaloneSnapshotTrimSettings,
 } from '../../runtime/standaloneSnapshotTrim';
+import { searchStandaloneBm25, tokenizeStandaloneText } from '../../runtime/standaloneBm25';
+import { selectPriorSummaryItemsForPrompt } from '../../runtime/standaloneTurn';
 import { applyVariableUpdatePatch, filterVariableUpdatePatch } from '../../src/utils/variableUpdate';
 import { resolvePatchTextWithRescue } from '../../src/utils/variableUpdateRescue';
 import {
@@ -5463,6 +5465,141 @@ function testStandaloneSnapshotTrimDefaultsToEnabled(): void {
   assert.equal('生存状态' in snapshot['玩家'], false);
 }
 
+function testStandaloneBm25SearchAndTokenize(): void {
+  const tokens = tokenizeStandaloneText('测试英文 hello world 123 与中文血玉佩，张掌柜在客栈');
+  assert.ok(tokens.includes('hello'));
+  assert.ok(tokens.includes('world'));
+  assert.ok(tokens.includes('123'));
+  assert.ok(tokens.includes('血玉'));
+  assert.ok(tokens.includes('玉佩'));
+  assert.ok(tokens.includes('掌柜'));
+  // 停用词被过滤
+  assert.ok(!tokens.includes('在'));
+  assert.ok(!tokens.includes('与'));
+
+  const docs = [
+    { id: 1, text: '第1回：老周在田间耕作，偶遇路过的商队。' },
+    { id: 2, text: '第2回：张掌柜在破庙偶遇重伤的主角，交出血玉佩相认。' },
+    { id: 3, text: '第3回：主角在客栈饮酒休息，向小二打听京城消息。' },
+  ];
+
+  const results = searchStandaloneBm25(docs, '破庙里的血玉佩，找张掌柜');
+  assert.ok(results.length > 0);
+  assert.equal(results[0].id, 2);
+  assert.ok(results[0].score > 0);
+}
+
+function testStandalonePriorSummaryBm25Recall(): void {
+  const latestUserMessage = createMessage({
+    message_id: 31,
+    role: 'user',
+    content_text: '掌柜的，你还记得当年在破庙托付给我的血玉佩吗？',
+  });
+  const history: MessageRecord[] = [];
+
+  for (let round = 1; round <= 15; round += 1) {
+    let summary = `第${round}轮：主角在城中游历，处理各种琐碎日常事务。`;
+    if (round === 3) {
+      summary = '第3轮：张掌柜在城郊破庙托付血玉佩给主角，约定日后以此为凭。';
+    }
+    history.push(
+      createMessage({ message_id: round * 2 - 1, role: 'user', content_text: `第${round}轮输入` }),
+      createMessage({
+        message_id: round * 2,
+        role: 'assistant',
+        content_text: `第${round}轮正文`,
+        summary_content: summary,
+      }),
+    );
+  }
+
+  const combined = buildMainTurnPrompt(
+    createStandaloneTurnInput({
+      messages: [...history, latestUserMessage],
+      latestUserMessage,
+    }),
+  )
+    .messages.map(message => message.content)
+    .join('\n\n');
+
+  assert.ok(combined.includes('[前情提要]'));
+  // 关键远期记忆（第3轮血玉佩）必须被成功召回
+  assert.ok(combined.includes('破庙托付血玉佩'));
+  // 最近 2 轮未归档小总结作为保底也应在其中（第10轮、第11轮未归档）
+  assert.ok(combined.includes('第11轮：主角在城中游历'));
+  // 中间无关琐事（如第5轮）不应全塞进来
+  assert.ok(!combined.includes('第5轮：主角在城中游历'));
+}
+
+function testStandaloneSnapshotTrimSlimsAbsentNpcs(): void {
+  const statData = {
+    设置: { 生存系统模式: '关闭' },
+    世界: {
+      空间定位: { 当前位置: '悦来客栈·大堂' },
+    },
+    玩家: { 姓名: '测试玩家' },
+    人物档案: {
+      NPC_1: {
+        姓名: '老周',
+        重要NPC: false,
+        个人信息: {
+          当前位置: '悦来客栈·大堂',
+          当前想法: '想跟主角喝一杯',
+          心理创伤: '早年战乱丧妻',
+        },
+        重要经历: ['曾被流马贼抢劫'],
+      },
+      NPC_2: {
+        姓名: '王丽',
+        重要NPC: false,
+        个人信息: {
+          当前位置: '城南药铺',
+          当前想法: '药草快卖完了',
+          心理创伤: '害怕打雷',
+        },
+        重要经历: ['救治过中毒猎户'],
+      },
+      NPC_3: {
+        姓名: '赵六',
+        重要NPC: false,
+        个人信息: {
+          当前位置: '边境荒漠',
+          当前想法: '准备深入大漠寻宝',
+          心理创伤: '被同门背叛',
+        },
+        重要经历: ['在大漠击退狼群'],
+      },
+    },
+    商城: { 物品: {}, 技能: {} },
+  };
+
+  const settings = normalizeStandaloneSnapshotTrimSettings({});
+  const result = buildStandaloneSnapshotForChain({
+    statData,
+    settings,
+    chain: 'main',
+    texts: ['我看着王丽，问她药方准备得怎么样了。'],
+  });
+
+  const snapshot = result.snapshot as Record<string, any>;
+  const npcs = snapshot['人物档案'];
+
+  assert.deepEqual(Object.keys(npcs), ['NPC_1', 'NPC_2', 'NPC_3']);
+
+  // 在场 NPC（老周同场景、王丽名字提及）深层字段保留
+  assert.equal(npcs['NPC_1']['个人信息']['当前想法'], '想跟主角喝一杯');
+  assert.deepEqual(npcs['NPC_1']['重要经历'], ['曾被流马贼抢劫']);
+  assert.equal(npcs['NPC_2']['个人信息']['当前想法'], '药草快卖完了');
+  assert.deepEqual(npcs['NPC_2']['重要经历'], ['救治过中毒猎户']);
+
+  // 不在场 NPC（赵六）深层冗余字段被瘦身清除
+  assert.equal('当前想法' in npcs['NPC_3']['个人信息'], false);
+  assert.equal('心理创伤' in npcs['NPC_3']['个人信息'], false);
+  assert.equal('重要经历' in npcs['NPC_3'], false);
+  assert.equal(npcs['NPC_3']['姓名'], '赵六');
+  assert.equal(npcs['NPC_3']['个人信息']['当前位置'], '边境荒漠');
+}
+
 function testStandalonePatchGuardDropsUnderscoreAndSurvivalPaths(): void {
   const patch = [
     { op: 'replace' as const, path: '/玩家/生存状态/血量', value: 1 },
@@ -6058,6 +6195,9 @@ async function run(): Promise<void> {
     ['snapshot trim survival modes', testStandaloneSnapshotTrimSurvivalModes],
     ['snapshot trim always applies', testStandaloneSnapshotTrimAlwaysApplies],
     ['snapshot trim defaults to enabled', testStandaloneSnapshotTrimDefaultsToEnabled],
+    ['bm25 search and tokenize', testStandaloneBm25SearchAndTokenize],
+    ['prior summary bm25 recall', testStandalonePriorSummaryBm25Recall],
+    ['snapshot trim slims absent npcs', testStandaloneSnapshotTrimSlimsAbsentNpcs],
     ['patch guard drops underscore and survival paths', testStandalonePatchGuardDropsUnderscoreAndSurvivalPaths],
     ['variable update patch text rescue', testVariableUpdatePatchTextRescue],
     ['variable update patch missing layer rescue', testVariableUpdatePatchMissingLayerRescue],
