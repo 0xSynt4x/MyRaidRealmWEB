@@ -95,6 +95,10 @@ const CHANGELOG_SOURCE: ReadonlyArray<{ date: string; items: readonly string[] }
     date: '261009',
     items: ['正文支持多候选页翻页', '新增审稿与改稿功能', '输入框支持快捷手势', '场景横幅排版微调'],
   },
+  {
+    date: '261010',
+    items: ['长剧情关键旧事精准唤醒', 'NPC深层羁绊不随楼层遗忘', '长跑团上下文加载大幅提速'],
+  },
 ];
 
 /** 第 `index` 条（从 0 起）对应的版本号 */

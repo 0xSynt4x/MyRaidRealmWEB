@@ -5561,7 +5561,7 @@ function testStandaloneSnapshotTrimSlimsAbsentNpcs(): void {
       },
       NPC_3: {
         姓名: '赵六',
-        重要NPC: false,
+        重要NPC: true,
         个人信息: {
           当前位置: '边境荒漠',
           当前想法: '准备深入大漠寻宝',

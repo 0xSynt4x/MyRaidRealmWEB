@@ -128,6 +128,23 @@ function trimNpcArchive(statData: PlainRecord, presentNpcIds: Set<string>): void
   }
 }
 
+/**
+ * 判定玩家与 NPC 是否处于同一细分场景。
+ * 比较最具体的场景后缀（如“少爷跨院” vs “少爷跨院卧房” -> 匹配；vs “老太太上房暖炕” -> 不匹配）。
+ */
+function isSameSceneLocation(playerLoc: string, npcLoc: string): boolean {
+  if (!playerLoc || !npcLoc) return false;
+  if (playerLoc === npcLoc) return true;
+  const playerSub = playerLoc.split(/[·，,\s/]+/).filter(Boolean).pop() || '';
+  const npcSub = npcLoc.split(/[·，,\s/]+/).filter(Boolean).pop() || '';
+  if (playerSub.length >= 2 && npcSub.length >= 2) {
+    if (playerSub.includes(npcSub) || npcSub.includes(playerSub)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /** 针对不在场的 NPC 进行轻量化瘦身（保留关键定位与关系，剔除长文本经历与冗余外貌）。 */
 function slimAbsentNpcArchive(statData: PlainRecord, presentNpcIds: Set<string>): void {
   const archive = statData['人物档案'];
@@ -271,7 +288,7 @@ export function collectPresentNpcIds(input: {
         ? String((npc['个人信息'] as PlainRecord)['当前位置']).trim()
         : '';
 
-    if (playerLocation && npcLocation && playerLocation === npcLocation) {
+    if (isSameSceneLocation(playerLocation, npcLocation)) {
       matchedAny = true;
       kept.add(id);
       continue;
@@ -384,12 +401,13 @@ export function buildStandaloneSnapshotForChain(input: {
   const isMain = input.chain === 'main';
   const shouldCollectNpc = isMain || input.settings.trimNpc;
 
+  // 正文链只保留真正出场/在场的 NPC 作为近景特写；不在场的重要 NPC 同样进入远景轻量瘦身，不能被 keepImportant 整体短路
   const presentNpcIds = shouldCollectNpc
     ? collectPresentNpcIds({
         statData: input.statData,
         texts: input.texts ?? [],
-        keepImportant: true,
-        keepFocused: true,
+        keepImportant: !isMain,
+        keepFocused: !isMain,
       })
     : null;
 
