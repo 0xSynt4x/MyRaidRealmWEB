@@ -1126,9 +1126,7 @@
   —— 均按约定并入本次提交，不单独开回填提交。
 - 四道检查：`typecheck` ✓ ｜ `test` 120/120 + 35 ✓ ｜ `lint` 0 error（14 个存量 warning）✓ ｜ `build` ✓。
 
-### — fix: 抽奖请求多带一段剧情上下文；抽奖提示词不再约束生成内容
-
-> 短哈希待回填（按约定并入下一次提交）。
+### `068488e` — fix: 抽奖请求多带一段剧情上下文；抽奖提示词不再约束生成内容
 
 - **Changed** 抽奖请求的历史消息由「最近一条非抽奖 AI 回复」扩为**最近一段剧情上下文**
   （`runtime/standaloneTurn.ts`）：复用主链的最近窗口（`RECENT_MESSAGE_LIMIT = 8` 条、同一过滤口径，
@@ -1144,4 +1142,24 @@
 - **Changed** `spec/05-prompt-pipeline.md` 同步：抽奖请求第三段由「最近一条非抽奖 AI 回复」改为「最近一段剧情上下文」。
 - **Changed** 玩家更新日志 `261006` 文案由「抽奖物品贴合最近剧情」改为「抽奖物品贴合当前场景」
   （该条尚未上线，直接改文案；上一条提交里的记录保持原样）。
+- 四道检查：`typecheck` ✓ ｜ `test` 120/120 + 35 ✓ ｜ `lint` 0 error（14 个存量 warning）✓ ｜ `build` ✓。
+
+## 2026-10-09
+
+### — feat: 正文支持多候选页并发生成与楼层翻页，引入独立审稿改稿流水线
+
+> 短哈希待回填（按约定并入下一次提交）。
+
+- **Added** 正文多候选页并行生成与楼层翻页：
+  - 设置面板支持配置「正文请求次数」（1~5 次，默认 1 次；`src/stores/settings.ts`、`src/components/panels/SettingsPanel.vue`）。
+  - 当配置大于 1 次时，首条回复照常打字机流式回显并启动变量更新链，其余 N-1 次在后台静默并行发出，落地为该楼层的备选正文（`runtime/standaloneTurn.ts`、`src/composables/useMessageActions.ts`）。
+  - `MessageCard.vue` 右上角提供紧凑翻页按钮组（`‹ n/m ›`），支持正向/反向浏览历史候选页。
+  - 数据结构兼容与当前页镜像：`MessageRecord` 与运行时消息 Schema 扩展可选字段 `body_pages` 与 `body_page_index`；老存档无损加载并归一化；`content_text` 与 `raw_content` 永远镜像当前所选分页，保证后续剧情上下文组装（`recent_history`）与手动变量刷新天然认当前选中的正文。
+- **Added** 独立审稿改稿流水线（`story-review-prompt.txt`、`story-revise-prompt.txt`、`runtime/standaloneTurn.ts`）：
+  - 最新 AI 楼层增加「审稿改稿」操作与二次确认弹窗；先执行审稿定位结构与局部瑕疵，再按意见执行改稿（只修正语言文字表面，不动事件因果、不重跑变量更新链）。
+  - 改稿产物作为新的一页直接追加进多页候选列表并切至新页。
+  - 支持在设置中为审稿与改稿单独配置独立的 API 池（未配则回退主 API 池）。
+  - 内容中心 AI 调试面板增加审稿（`review_pass`）与改稿（`revise_pass`）展开卡片，支持查看完整请求报文与模型回复原文。
+- **Added** 规范文档同步：`spec/03-ui-system.md`（翻页按钮交互规范）、`spec/05-prompt-pipeline.md`（多页正文与下一轮上下文规范）、`spec/08-state-and-save.md`（消息记录结构与扩展字段兼容规范）。
+- **Added** 玩家更新日志 `261009`：正文支持多候选页翻页、新增审稿与改稿功能。
 - 四道检查：`typecheck` ✓ ｜ `test` 120/120 + 35 ✓ ｜ `lint` 0 error（14 个存量 warning）✓ ｜ `build` ✓。

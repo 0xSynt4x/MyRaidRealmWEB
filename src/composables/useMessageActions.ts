@@ -8,15 +8,17 @@ import { useStatDataStore } from '../stores/statData';
 import { useSetupStore } from '../stores/setup';
 import { saveStandaloneAutoArchive } from '../utils/archive';
 import { formatMessageContentForDisplay } from '../utils/messageFormatting';
+import { mergeStandaloneAssistantDebugTrace } from '../utils/standaloneAiDebug';
 import { notify } from '../utils/notify';
 import { commitStandaloneRuntimeStateFromStores, resolveStandaloneStageSummaryState } from '../utils/standaloneRuntime';
 import { resolveStandaloneStageSummaryProgress } from '../utils/stageSummaryArchive';
 import { loadStandaloneStatData } from '../utils/standaloneStatData';
-import { replaceOrAppendSummaryBlock, splitEditableBodyAndSummary } from '../utils/taggedReply';
+import { replaceContentTextBlock, replaceOrAppendSummaryBlock, splitEditableBodyAndSummary } from '../utils/taggedReply';
 import { FRONTEND_AUTHORITATIVE_FIELD_PATHS } from '../utils/frontendAuthoritativeState';
 import {
   runStandaloneLocalTurn,
   runStandaloneLotteryTurn,
+  runStandaloneReviewRevise,
   runStandaloneVariableUpdatePass,
   type StandaloneVariableUpdatePhaseOutcome,
 } from '../utils/standaloneLocalTurn';
@@ -218,6 +220,7 @@ export function useMessageActions() {
         localContentCustomEntries: setupStore.customWorldbookEntries,
         selectedPreset: setupStore.selectedPreset,
         snapshotTrim: settingsStore.snapshotTrim,
+        bodyRequestCount: settingsStore.bodyRequestCount,
         stageSummary: stageSummaryState.stageSummary,
         archivedUntilMessageId: stageSummaryState.archivedUntilMessageId,
         onMainReplyPartialText: partialText => {
@@ -238,6 +241,18 @@ export function useMessageActions() {
         stat_data_snapshot: baseSnapshot,
         variable_update_base_snapshot: baseSnapshot,
       });
+
+      if (outcome.collectAdditionalPages) {
+        outcome.collectAdditionalPages
+          .then(additionalPages => {
+            if (additionalPages && additionalPages.length > 0) {
+              messagesStore.appendInitialMessageBodyPages(appendedAssistantMessage.message_id, additionalPages);
+            }
+          })
+          .catch(error => {
+            console.warn('[useMessageActions] 收集并发候选正文页失败:', error);
+          });
+      }
       messagesStore.settleStreamingWithFormalMessage(appendedAssistantMessage.message_id);
       messagesStore.syncStandaloneRuntimeContentContext(`${reason}:${outcome.usedApiLabel}:main_reply`);
       emitStandaloneGenerationState(false, reason);
@@ -388,6 +403,18 @@ export function useMessageActions() {
     // 第一优先级：无论后续任何副作用是否抛错，都必须完成 busy 复位与消息状态终态化，
     // 否则发送按钮会永久卡在忙碌态。因此这两步单独包在 try/finally 里，且复位放 finally。
     try {
+      const currentTargetRecord = messagesStore.getMessage(messageId);
+      const updatedPages = currentTargetRecord?.body_pages ? [...currentTargetRecord.body_pages] : undefined;
+      let currentPageIdx = currentTargetRecord?.body_page_index ?? 0;
+      if (updatedPages && updatedPages.length > 0) {
+        currentPageIdx = Math.max(0, Math.min(currentPageIdx, updatedPages.length - 1));
+        updatedPages[currentPageIdx] = {
+          ...updatedPages[currentPageIdx],
+          text: phaseOutcome.assistantMessage.content_text,
+          raw: phaseOutcome.assistantMessage.raw_content,
+        };
+      }
+
       messagesStore.patchMessageRecord(messageId, {
         raw_content: phaseOutcome.assistantMessage.raw_content,
         content_text: phaseOutcome.assistantMessage.content_text,
@@ -400,6 +427,8 @@ export function useMessageActions() {
         variable_update_warning: phaseOutcome.variableUpdateWarning,
         stat_data_snapshot: finalStatData,
         debug_trace: phaseOutcome.assistantMessage.debug_trace,
+        body_pages: updatedPages,
+        body_page_index: updatedPages ? currentPageIdx : undefined,
       });
     } catch (patchError) {
       // patchMessageRecord 内部的 Schema.parse 等可能抛错。此时兜底把该消息强制翻出 running，
@@ -576,6 +605,140 @@ export function useMessageActions() {
           : `更新变量失败：${errorMessage}`,
       );
       return false;
+    }
+  }
+
+  /**
+   * 手动触发「审稿 → 改稿」：审最新一条 AI 回复的正文，再按审稿意见改一遍（只改文字表面）。
+   *
+   * - 只处理**最新一条** AI 回复（与变量更新重试同规矩）；
+   * - 审稿 / 改稿的请求与返回都写进这条消息的调试记录（控制台可见），问题清单不给玩家看；
+   * - 任一步失败都**不动原正文**，只报错；
+   * - 改稿只动文字，**不重跑变量更新链** —— 变量不受影响，重跑反而会覆盖已落盘数据。
+   */
+  async function refreshLatestAssistantStoryReview(reason = 'manual_story_review'): Promise<boolean> {
+    if (guardStandaloneBusyAction()) {
+      return false;
+    }
+
+    const targetAssistantMessage = messagesStore.messages
+      .filter(message => message.role === 'assistant' && !message.lottery)
+      .slice()
+      .reverse()[0] as MessageRecord | undefined;
+
+    if (!targetAssistantMessage) {
+      notificationStore.warning(
+        settingsStore.locale === 'en' ? 'There is no AI reply available to review.' : '当前没有可审稿的 AI 回复。',
+      );
+      return false;
+    }
+
+    const contentText = (targetAssistantMessage.content_text ?? '').trim();
+    if (!contentText) {
+      notificationStore.warning(
+        settingsStore.locale === 'en'
+          ? 'This AI reply has no body text to review.'
+          : '这条 AI 回复没有可审稿的正文。',
+      );
+      return false;
+    }
+
+    // 这一步要额外花两次模型调用、并且会直接替换正文，所以先弹框把「干什么 / 边界 / 代价」讲清楚，
+    // 玩家点 ✓ 才真跑。用项目现成的页面内确认对话框（与删除楼层、重新生成同一个）。
+    const confirmed = await notificationStore.confirm({
+      title: tCurrent('messageActions.confirmReviewStory'),
+      message: tCurrent('messageActions.reviewStoryMessage', { messageId: targetAssistantMessage.message_id }),
+      type: 'info',
+      confirmText: tCurrent('messageActions.reviewStoryConfirmText'),
+    });
+
+    if (!confirmed) {
+      return false;
+    }
+
+    messagesStore.setStandaloneAssistantGenerationBusy(true);
+    notificationStore.info(
+      settingsStore.locale === 'en'
+        ? 'Reviewing and revising the latest AI reply...'
+        : '正在审稿并改稿最新一条 AI 回复...',
+    );
+
+    const stageSummaryState = resolveStandaloneStageSummaryState();
+
+    try {
+      const outcome = await runStandaloneReviewRevise({
+        contentText,
+        statData: loadStandaloneStatData(),
+        messages: messagesStore.messages,
+        targetMessage: targetAssistantMessage,
+        worldDifficulty: settingsStore.worldDifficulty,
+        localContentEnabledMap: settingsStore.standaloneLocalContent.enabledAssets,
+        localContentBuiltinRouteOverrides: settingsStore.standaloneLocalContent.builtinAssetRouteOverrides,
+        localContentCustomEntries: setupStore.customWorldbookEntries,
+        selectedPreset: setupStore.selectedPreset,
+        snapshotTrim: settingsStore.snapshotTrim,
+        stageSummary: stageSummaryState.stageSummary,
+        archivedUntilMessageId: stageSummaryState.archivedUntilMessageId,
+        mainApis: settingsStore.mainApis,
+        reviewApis: settingsStore.reviewApis,
+        reviseApis: settingsStore.reviseApis,
+        autoRetry: settingsStore.apiAutoRetry,
+      });
+
+      // 审稿 / 改稿的请求与返回一并并进这条消息的调试记录 —— 控制台按 pass 展示。
+      const mergedTrace = mergeStandaloneAssistantDebugTrace(targetAssistantMessage.debug_trace, {
+        ...(outcome.reviewTrace ? { review_pass: outcome.reviewTrace } : {}),
+        ...(outcome.reviseTrace ? { revise_pass: outcome.reviseTrace } : {}),
+      });
+
+      if (!outcome.revisedContentText) {
+        // 失败：只更新调试记录，正文一字不动。
+        if (mergedTrace) {
+          messagesStore.patchMessageRecord(targetAssistantMessage.message_id, { debug_trace: mergedTrace });
+        }
+        notificationStore.error(
+          settingsStore.locale === 'en'
+            ? `Review failed, the original text was kept: ${outcome.warning ?? 'unknown error'}`
+            : `审稿失败，正文已保留：${outcome.warning ?? '未知错误'}`,
+        );
+        return false;
+      }
+
+      // 改稿结果追加为新的一页并立即切到新页：
+      // - content_text 与 raw_content 随切页同步换掉；
+      // - 模型名跟着新页走；
+      // - 调试记录合并留档。
+      const newPageRaw = replaceContentTextBlock(targetAssistantMessage.raw_content, outcome.revisedContentText);
+      messagesStore.appendMessageBodyPage(
+        targetAssistantMessage.message_id,
+        {
+          text: outcome.revisedContentText,
+          raw: newPageRaw,
+          model: outcome.revisedModel ?? targetAssistantMessage.model,
+        },
+        true,
+      );
+      if (mergedTrace) {
+        messagesStore.patchMessageRecord(targetAssistantMessage.message_id, { debug_trace: mergedTrace });
+      }
+      messagesStore.syncStandaloneRuntimeContentContext(`${reason}:story_revise`);
+
+      notificationStore.success(
+        settingsStore.locale === 'en'
+          ? 'Review and revision finished; added as a new page.'
+          : '审稿与改稿完成，已作为新的一页追加到末尾。',
+      );
+      return true;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      notificationStore.error(
+        settingsStore.locale === 'en'
+          ? `Review and revision failed: ${errorMessage}`
+          : `审稿改稿失败：${errorMessage}`,
+      );
+      return false;
+    } finally {
+      messagesStore.setStandaloneAssistantGenerationBusy(false);
     }
   }
 
@@ -1144,6 +1307,7 @@ export function useMessageActions() {
     regenerate,
     resend,
     refreshLatestAssistantVariableUpdate,
+    refreshLatestAssistantStoryReview,
     sendStandaloneUserMessage,
     sendStandaloneLotteryDraw,
     startEdit,

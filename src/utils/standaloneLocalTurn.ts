@@ -4,6 +4,7 @@ export {
   inspectStandaloneMainChainView,
   runStandaloneLocalTurn,
   runStandaloneLotteryTurn,
+  runStandaloneReviewRevise,
   runStandaloneVariableUpdatePass,
   buildVariableUpdateSecondPassPrompt,
   cancelStandaloneLocalTurn,
@@ -16,6 +17,9 @@ export {
   type StandaloneMainChainViewEntry,
   type StandaloneMainChainViewEntryKey,
   type StandalonePriorSummaryItem,
+  type StandaloneReviewReviseInput,
+  type StandaloneReviewReviseOutcome,
+  type StandaloneStoryPromptInput,
   type StandaloneVariableUpdatePhaseOutcome,
   type StandaloneVariableUpdateStatus,
 } from '../../runtime/standaloneTurn';

@@ -60,6 +60,43 @@
           <i class="ti ti-refresh"></i>
         </button>
 
+        <!-- AI楼层：审稿 + 改稿按钮（只挂最新一条 AI 回复；抽奖结果楼层不提供） -->
+        <button
+          v-if="message.role === 'assistant' && !isLotteryResult && isLatestAssistantMessage"
+          class="btn-action btn-review"
+          :title="t('messageCard.reviewStory')"
+          :disabled="actionsDisabled"
+          @click="handleReviewStory"
+        >
+          <i class="ti ti-wand"></i>
+        </button>
+
+        <!-- AI楼层：正文翻页（多于 1 页时显示；抽奖结果楼层不提供） -->
+        <template v-if="hasMultipleBodyPages">
+          <button
+            class="btn-action btn-page-prev"
+            :title="t('messageCard.prevPage')"
+            :disabled="actionsDisabled || !canGoPrevPage"
+            @click="handlePrevPage"
+          >
+            <i class="ti ti-chevron-left"></i>
+          </button>
+          <span
+            class="body-page-indicator"
+            :title="t('messageCard.pageIndicatorHint', { current: currentBodyPageIndex + 1, total: totalBodyPages })"
+          >
+            {{ currentBodyPageIndex + 1 }}/{{ totalBodyPages }}
+          </span>
+          <button
+            class="btn-action btn-page-next"
+            :title="t('messageCard.nextPage')"
+            :disabled="actionsDisabled || !canGoNextPage"
+            @click="handleNextPage"
+          >
+            <i class="ti ti-chevron-right"></i>
+          </button>
+        </template>
+
         <!-- 删除按钮（所有楼层都有，抽奖结果楼层除外） -->
         <button
           v-if="!isLotteryResult"
@@ -405,6 +442,36 @@ function handleRetryVariableUpdate() {
   void actions.refreshLatestAssistantVariableUpdate('message_card_retry_variable_update');
 }
 
+// 审稿 + 改稿：审最新一条 AI 回复的正文，再按审稿意见改一遍（只改文字表面）。
+// 审稿 / 改稿的请求与返回进控制台，问题清单不给玩家看。
+function handleReviewStory() {
+  void actions.refreshLatestAssistantStoryReview('message_card_review_story');
+}
+
+// 正文多页翻页
+const bodyPages = computed(() => props.message.body_pages ?? []);
+const totalBodyPages = computed(() => bodyPages.value.length);
+const currentBodyPageIndex = computed(() => {
+  if (totalBodyPages.value <= 1) return 0;
+  const idx = props.message.body_page_index ?? 0;
+  return Math.max(0, Math.min(idx, totalBodyPages.value - 1));
+});
+const hasMultipleBodyPages = computed(() => {
+  return props.message.role === 'assistant' && !isLotteryResult.value && totalBodyPages.value > 1;
+});
+const canGoPrevPage = computed(() => currentBodyPageIndex.value > 0);
+const canGoNextPage = computed(() => currentBodyPageIndex.value < totalBodyPages.value - 1);
+
+function handlePrevPage() {
+  if (!canGoPrevPage.value || actionsDisabled.value) return;
+  messagesStore.switchMessageBodyPage(props.message.message_id, currentBodyPageIndex.value - 1);
+}
+
+function handleNextPage() {
+  if (!canGoNextPage.value || actionsDisabled.value) return;
+  messagesStore.switchMessageBodyPage(props.message.message_id, currentBodyPageIndex.value + 1);
+}
+
 // AI 楼层的名称：优先用本次回复实际用到的模型名，拿不到才回退到占位文案
 // 服务端回传的名字可能带目录前缀（例如「[公益]官方/deepseek」），只取最后一段
 const assistantFloorName = computed(() => {
@@ -685,6 +752,20 @@ function handleEditInput() {
 .message-actions {
   display: flex;
   gap: 6px;
+  align-items: center;
+}
+
+.body-page-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: max(26px, var(--touch-target-min));
+  padding: 0 4px;
+  font-size: calc(11px * var(--ui-font-scale));
+  font-weight: 600;
+  color: var(--ui-muted);
+  user-select: none;
+  white-space: nowrap;
 }
 
 .message-actions button {

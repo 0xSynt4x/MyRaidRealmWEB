@@ -242,6 +242,102 @@ export function replaceOrAppendSummaryBlock(rawContent: string, summaryContent: 
   return `${rawContent.slice(0, updateIndex)}${block}\n${rawContent.slice(updateIndex)}`;
 }
 
+/** 带开闭标签的正文块，捕获开标签本身以便保留它的属性 */
+const CONTENT_TEXT_REPLACE_REGEX = /(<contenttext\b[^>]*>)([\s\S]*?)(<\/contenttext>)/i;
+
+/** 收集所有「非正文块」在原串里的区间，按起点升序 */
+function collectNonBodyBlockRanges(text: string): Array<[number, number]> {
+  const ranges: Array<[number, number]> = [];
+
+  for (const regex of NON_BODY_BLOCK_REGEXES) {
+    const globalRegex = new RegExp(regex.source, regex.flags.includes('g') ? regex.flags : `${regex.flags}g`);
+    let match: RegExpExecArray | null;
+    while ((match = globalRegex.exec(text)) !== null) {
+      if (match[0].length === 0) {
+        globalRegex.lastIndex += 1;
+        continue;
+      }
+      ranges.push([match.index, match.index + match[0].length]);
+    }
+  }
+
+  return ranges.sort((a, b) => a[0] - b[0]);
+}
+
+/**
+ * 定位「裸正文」在原串里的区间。
+ *
+ * 正文的定义是「剥掉非正文块后剩下的内容」—— 它可能被夹在正文里的**字面块状文本**
+ * （例如正文里恰好写到 `<summary>…</summary>`）劈成几段。所以这里取
+ * 「第一段非空内容 到 最末一段非空内容」的**整段区间**，与 `resolveContentText` 的裸正文口径保持一致；
+ * 只取最长的一段会让 `raw_content` 半新半旧。
+ *
+ * 两端空白不纳入区间，替换时保留原有排版。整段都定位不到时返回 null。
+ */
+function locateBareBodySpan(text: string): { start: number; end: number } | null {
+  const ranges = collectNonBodyBlockRanges(text);
+  const gaps: Array<[number, number]> = [];
+  let cursor = 0;
+
+  for (const [start, end] of ranges) {
+    if (start > cursor) {
+      gaps.push([cursor, start]);
+    }
+    cursor = Math.max(cursor, end);
+  }
+  if (cursor < text.length) {
+    gaps.push([cursor, text.length]);
+  }
+
+  let firstStart = -1;
+  let lastEnd = -1;
+
+  for (const [start, end] of gaps) {
+    const segment = text.slice(start, end);
+    const innerStart = start + (segment.match(/^\s*/)?.[0].length ?? 0);
+    const innerEnd = end - (segment.match(/\s*$/)?.[0].length ?? 0);
+    if (innerEnd <= innerStart) {
+      continue;
+    }
+    if (!stripNonBodyBlocks(text.slice(innerStart, innerEnd)).trim()) {
+      continue;
+    }
+
+    if (firstStart === -1) {
+      firstStart = innerStart;
+    }
+    lastEnd = innerEnd;
+  }
+
+  return firstStart !== -1 ? { start: firstStart, end: lastEnd } : null;
+}
+
+/**
+ * 把改稿后的正文写回原始回复。
+ *
+ * 正文在原始回复里有两种形态，分别处理：
+ * - **有 `<contenttext>` 标签**：只换标签内的内容，开标签属性与其它块逐字保留；
+ * - **裸正文**（模型漏写标签）：定位「剥掉非正文块后剩下的那段」在原串里的位置，整段换成新正文，
+ *   其余块（analysis_block / summary / UpdateVariable / action_options）逐字保留。
+ *
+ * 定位不到正文段时原样返回 —— 宁可不动，也不要把原始回复写坏。
+ */
+export function replaceContentTextBlock(rawContent: string, contentText: string): string {
+  if (CONTENT_TEXT_REPLACE_REGEX.test(rawContent)) {
+    return rawContent.replace(
+      CONTENT_TEXT_REPLACE_REGEX,
+      (_match, openTag: string) => `${openTag}\n${contentText}\n</contenttext>`,
+    );
+  }
+
+  const span = locateBareBodySpan(rawContent);
+  if (!span) {
+    return rawContent;
+  }
+
+  return `${rawContent.slice(0, span.start)}${contentText}${rawContent.slice(span.end)}`;
+}
+
 export function extractStreamingTaggedSection(message: string, tagName: string): string | null {
   const contents: string[] = [];
   const fullTagRegex = new RegExp(`<${tagName}>([\\s\\S]*?)</${tagName}>`, 'gi');

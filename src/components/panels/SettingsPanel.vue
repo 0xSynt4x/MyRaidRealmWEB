@@ -365,6 +365,21 @@
           <span class="row-value status">{{ t('settings.worldDifficulty.alwaysOnRule') }}</span>
         </div>
 
+        <!-- 正文请求次数 -->
+        <div class="setting-row">
+          <span class="row-label">{{ t('settings.bodyRequestCount') }}</span>
+          <input
+            v-model.number="bodyRequestCount"
+            class="api-first-token-timeout-input"
+            type="number"
+            :min="BODY_REQUEST_COUNT_MIN"
+            :max="BODY_REQUEST_COUNT_MAX"
+            step="1"
+            @change="commitBodyRequestCount"
+          />
+          <span class="row-value status">{{ t('settings.bodyRequestCountHint') }}</span>
+        </div>
+
         <!-- 选项点击行为 -->
         <div class="setting-row">
           <span class="row-label">{{ t('settings.optionClick') }}</span>
@@ -623,6 +638,82 @@
                   class="inline-icon-btn ui-icon-btn"
                   :disabled="lotteryApiIds.indexOf(api.id) === lotteryApiIds.length - 1"
                   @click="moveLotteryApiSelection(lotteryApiIds.indexOf(api.id), 1)"
+                >
+                  <i class="ti ti-arrow-down"></i>
+                </button>
+              </template>
+            </div>
+          </div>
+        </div>
+
+        <div class="api-role-block">
+          <div class="api-role-head">
+            <span>{{ t('settings.reviewApiRoleLabel') }}</span>
+            <small>{{ t('settings.reviewApiRoleHint') }}</small>
+          </div>
+          <div class="api-role-list">
+            <div
+              v-for="api in reviewApiOrderedPool"
+              :key="api.id"
+              :class="['api-role-row', { active: reviewApiIds.includes(api.id) }]"
+            >
+              <button class="api-role-toggle" @click="toggleReviewApiSelection(api.id)">
+                <span class="api-role-check"><i class="ti ti-check"></i></span>
+                <span>{{ apiPoolLabel(api, apiPool.indexOf(api)) }}</span>
+              </button>
+              <template v-if="reviewApiIds.includes(api.id)">
+                <span class="api-role-order">
+                  {{ t('settings.apiOrderBadge', { index: reviewApiIds.indexOf(api.id) + 1 }) }}
+                </span>
+                <button
+                  class="inline-icon-btn ui-icon-btn"
+                  :disabled="reviewApiIds.indexOf(api.id) === 0"
+                  @click="moveReviewApiSelection(reviewApiIds.indexOf(api.id), -1)"
+                >
+                  <i class="ti ti-arrow-up"></i>
+                </button>
+                <button
+                  class="inline-icon-btn ui-icon-btn"
+                  :disabled="reviewApiIds.indexOf(api.id) === reviewApiIds.length - 1"
+                  @click="moveReviewApiSelection(reviewApiIds.indexOf(api.id), 1)"
+                >
+                  <i class="ti ti-arrow-down"></i>
+                </button>
+              </template>
+            </div>
+          </div>
+        </div>
+
+        <div class="api-role-block">
+          <div class="api-role-head">
+            <span>{{ t('settings.reviseApiRoleLabel') }}</span>
+            <small>{{ t('settings.reviseApiRoleHint') }}</small>
+          </div>
+          <div class="api-role-list">
+            <div
+              v-for="api in reviseApiOrderedPool"
+              :key="api.id"
+              :class="['api-role-row', { active: reviseApiIds.includes(api.id) }]"
+            >
+              <button class="api-role-toggle" @click="toggleReviseApiSelection(api.id)">
+                <span class="api-role-check"><i class="ti ti-check"></i></span>
+                <span>{{ apiPoolLabel(api, apiPool.indexOf(api)) }}</span>
+              </button>
+              <template v-if="reviseApiIds.includes(api.id)">
+                <span class="api-role-order">
+                  {{ t('settings.apiOrderBadge', { index: reviseApiIds.indexOf(api.id) + 1 }) }}
+                </span>
+                <button
+                  class="inline-icon-btn ui-icon-btn"
+                  :disabled="reviseApiIds.indexOf(api.id) === 0"
+                  @click="moveReviseApiSelection(reviseApiIds.indexOf(api.id), -1)"
+                >
+                  <i class="ti ti-arrow-up"></i>
+                </button>
+                <button
+                  class="inline-icon-btn ui-icon-btn"
+                  :disabled="reviseApiIds.indexOf(api.id) === reviseApiIds.length - 1"
+                  @click="moveReviseApiSelection(reviseApiIds.indexOf(api.id), 1)"
                 >
                   <i class="ti ti-arrow-down"></i>
                 </button>
@@ -1168,6 +1259,9 @@ import {
   normalizeFirstTokenTimeoutSeconds,
   FIRST_TOKEN_TIMEOUT_MIN_SECONDS,
   FIRST_TOKEN_TIMEOUT_MAX_SECONDS,
+  normalizeBodyRequestCount,
+  BODY_REQUEST_COUNT_MIN,
+  BODY_REQUEST_COUNT_MAX,
   type SurvivalMode,
   type Theme,
   type WorldDifficulty,
@@ -1201,6 +1295,8 @@ const {
   mainApiIds,
   assistantApiIds,
   lotteryApiIds,
+  reviewApiIds,
+  reviseApiIds,
   apiAutoRetry,
   apiFirstTokenTimeout,
   apiFirstTokenTimeoutSeconds,
@@ -1209,12 +1305,18 @@ const {
   standaloneLocalContent,
   snapshotTrim,
   stageSummaryThreshold,
+  bodyRequestCount,
 } = storeToRefs(settingsStore);
 const { selectedPreset } = storeToRefs(setupStore);
 
 /** 秒数输入框失焦/回车时才夹到合法区间，避免玩家删空重打时被中途改写 */
 function commitFirstTokenTimeoutSeconds() {
   apiFirstTokenTimeoutSeconds.value = normalizeFirstTokenTimeoutSeconds(apiFirstTokenTimeoutSeconds.value);
+}
+
+/** 同理：正文请求次数的输入框失焦/回车时才夹到 1~上限之间 */
+function commitBodyRequestCount() {
+  bodyRequestCount.value = normalizeBodyRequestCount(bodyRequestCount.value);
 }
 
 // 顶部列表编辑的是唯一的 API 池；主 API / 辅助 API 只是从池里勾选
@@ -1753,7 +1855,7 @@ function duplicateApiAndPersist(index: number) {
   saveResult.value = null;
 }
 
-/** 池里某条 API 被删掉时，顺手把三处勾选里的它摘掉 */
+/** 池里某条 API 被删掉时，顺手把五处勾选里的它摘掉 */
 function removeApiAndDetach(index: number) {
   const removedId = apiPool.value[index]?.id;
   removeApi(index);
@@ -1765,6 +1867,8 @@ function removeApiAndDetach(index: number) {
   mainApiIds.value = mainApiIds.value.filter(id => id !== removedId);
   assistantApiIds.value = assistantApiIds.value.filter(id => id !== removedId);
   lotteryApiIds.value = lotteryApiIds.value.filter(id => id !== removedId);
+  reviewApiIds.value = reviewApiIds.value.filter(id => id !== removedId);
+  reviseApiIds.value = reviseApiIds.value.filter(id => id !== removedId);
 }
 
 function toggleMainApiSelection(id: string) {
@@ -1785,6 +1889,18 @@ function toggleLotteryApiSelection(id: string) {
     : [...lotteryApiIds.value, id];
 }
 
+function toggleReviewApiSelection(id: string) {
+  reviewApiIds.value = reviewApiIds.value.includes(id)
+    ? reviewApiIds.value.filter(item => item !== id)
+    : [...reviewApiIds.value, id];
+}
+
+function toggleReviseApiSelection(id: string) {
+  reviseApiIds.value = reviseApiIds.value.includes(id)
+    ? reviseApiIds.value.filter(item => item !== id)
+    : [...reviseApiIds.value, id];
+}
+
 /** 勾选上的按重试顺序排最前，未勾选的按池内顺序跟在后面 —— 这样行号与「第 N 位」才对得上 */
 function orderApisBySelection<T extends { id: string }>(pool: T[], ids: string[]): T[] {
   const picked = ids.map(id => pool.find(api => api.id === id)).filter((api): api is T => Boolean(api));
@@ -1795,6 +1911,8 @@ function orderApisBySelection<T extends { id: string }>(pool: T[], ids: string[]
 const mainApiOrderedPool = computed(() => orderApisBySelection(apiPool.value, mainApiIds.value));
 const assistantApiOrderedPool = computed(() => orderApisBySelection(apiPool.value, assistantApiIds.value));
 const lotteryApiOrderedPool = computed(() => orderApisBySelection(apiPool.value, lotteryApiIds.value));
+const reviewApiOrderedPool = computed(() => orderApisBySelection(apiPool.value, reviewApiIds.value));
+const reviseApiOrderedPool = computed(() => orderApisBySelection(apiPool.value, reviseApiIds.value));
 
 /** 主 API / 辅助 API 都按顺序尝试，所以要能调先后 */
 function moveSelectedId(ids: string[], index: number, offset: number): string[] | null {
@@ -1828,6 +1946,20 @@ function moveLotteryApiSelection(index: number, offset: number) {
   const next = moveSelectedId(lotteryApiIds.value, index, offset);
   if (next) {
     lotteryApiIds.value = next;
+  }
+}
+
+function moveReviewApiSelection(index: number, offset: number) {
+  const next = moveSelectedId(reviewApiIds.value, index, offset);
+  if (next) {
+    reviewApiIds.value = next;
+  }
+}
+
+function moveReviseApiSelection(index: number, offset: number) {
+  const next = moveSelectedId(reviseApiIds.value, index, offset);
+  if (next) {
+    reviseApiIds.value = next;
   }
 }
 

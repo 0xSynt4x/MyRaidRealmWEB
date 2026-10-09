@@ -91,6 +91,10 @@ const CHANGELOG_SOURCE: ReadonlyArray<{ date: string; items: readonly string[] }
     date: '261006',
     items: ['抽奖物品贴合当前场景'],
   },
+  {
+    date: '261009',
+    items: ['正文支持多候选页翻页', '新增审稿与改稿功能', '输入框支持快捷手势', '场景横幅排版微调'],
+  },
 ];
 
 /** 第 `index` 条（从 0 起）对应的版本号 */

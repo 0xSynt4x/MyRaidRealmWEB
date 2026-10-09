@@ -160,3 +160,11 @@ IndexedDB 在磁盘压力下，浏览器**可能整体回收整个站点的数�
 4. 新增需要持久化的数据，**先判断该进 IndexedDB 还是 localStorage**（见「本地存储」的取舍表），
    并同步更新 `standaloneStorage.ts` 的迁移清单——漏了清单里的 key，老用户的数据不会跟着搬过去。
 5. 存储 key 的字符串一律**不要改**：迁移逻辑靠前缀识别老数据，改了会让老用户数据读不回来。
+
+## 消息记录结构与扩展字段兼容
+
+`MessageRecord` 与运行时消息 Schema（`StandaloneRuntimeMessageRecordSchema`）的扩展规则：
+- `body_pages?: Array<{ text: string; raw: string; model?: string }>`：多页候选/追加页列表。
+- `body_page_index?: number`：当前翻阅的页码（0-based）。
+- 🔴 **所有新增字段必须是 `.optional()`**：老存档缺少这些字段时必须能够无损加载，读取层自动归一化为单页模式。
+- 🔴 **当前页镜像原则**：`content_text` 与 `raw_content` 永远镜像 `body_pages[body_page_index]`，保证任何只读正文的外部系统（变量更新、下一轮历史、图文提取、草稿编辑）天然跟着当前页走。

@@ -33,6 +33,10 @@ export interface StandaloneAssistantDebugTrace {
   main_pass?: StandaloneAiDebugPassTrace;
   variable_update_pass?: StandaloneAiDebugPassTrace;
   assistant_api_pass?: StandaloneAiDebugPassTrace;
+  /** 审稿环节（玩家点「审稿」按钮时产生） */
+  review_pass?: StandaloneAiDebugPassTrace;
+  /** 改稿环节（玩家点「审稿」按钮时产生） */
+  revise_pass?: StandaloneAiDebugPassTrace;
 }
 
 export function mergeStandaloneAssistantDebugTrace(
@@ -44,7 +48,13 @@ export function mergeStandaloneAssistantDebugTrace(
     ...patch,
   };
 
-  return next.main_pass || next.variable_update_pass || next.assistant_api_pass ? next : undefined;
+  return next.main_pass ||
+    next.variable_update_pass ||
+    next.assistant_api_pass ||
+    next.review_pass ||
+    next.revise_pass
+    ? next
+    : undefined;
 }
 
 export function resolvePreferredVariableDebugPass(

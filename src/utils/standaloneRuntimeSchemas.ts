@@ -42,6 +42,8 @@ const StandaloneAssistantDebugTraceSchema = z
     main_pass: StandaloneAiDebugPassTraceSchema.optional(),
     variable_update_pass: StandaloneAiDebugPassTraceSchema.optional(),
     assistant_api_pass: StandaloneAiDebugPassTraceSchema.optional(),
+    review_pass: StandaloneAiDebugPassTraceSchema.optional(),
+    revise_pass: StandaloneAiDebugPassTraceSchema.optional(),
   })
   .optional();
 
@@ -147,11 +149,27 @@ export const StandaloneRuntimeGeneratedImageSchema = z.object({
   error: z.string().optional(),
 });
 
+export const StandaloneRuntimeMessageBodyPageSchema = z.object({
+  text: z.string(),
+  raw: z.string(),
+  model: z.string().optional(),
+});
+
 export const StandaloneRuntimeMessageRecordSchema = z.object({
   message_id: z.number().int().nonnegative(),
   role: StandaloneRuntimeMessageRoleSchema,
   raw_content: z.string(),
   content_text: z.string(),
+  /**
+   * 正文多页列表（一次请求多条候选，或改稿追加成新页）。
+   * 必须是 optional —— 旧存档没有这个键，缺了按单页处理。
+   */
+  body_pages: z.array(StandaloneRuntimeMessageBodyPageSchema).optional(),
+  /**
+   * 当前查看的正文页码（从 0 开始）。
+   * 必须是 optional —— 旧存档没有这个键，缺了默认为 0。
+   */
+  body_page_index: z.coerce.number().int().nonnegative().optional(),
   think_content: z.string().nullable().optional(),
   summary_content: z.string().nullable().optional(),
   update_content: z.string().nullable().optional(),
@@ -215,5 +233,6 @@ export const StandaloneRuntimeMessagesSchema = z.object({
 export type StandaloneRuntimeSession = z.infer<typeof StandaloneRuntimeSessionSchema>;
 export type StandaloneRuntimeLotteryState = z.infer<typeof StandaloneRuntimeLotteryStateSchema>;
 export type StandaloneRuntimeMessageRole = z.infer<typeof StandaloneRuntimeMessageRoleSchema>;
+export type StandaloneRuntimeMessageBodyPage = z.infer<typeof StandaloneRuntimeMessageBodyPageSchema>;
 export type StandaloneRuntimeMessageRecord = z.infer<typeof StandaloneRuntimeMessageRecordSchema>;
 export type StandaloneRuntimeMessages = z.infer<typeof StandaloneRuntimeMessagesSchema>;

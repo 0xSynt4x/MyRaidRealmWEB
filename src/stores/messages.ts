@@ -39,11 +39,26 @@ export interface MessageGeneratedImage {
   error?: string;
 }
 
+export interface MessageBodyPage {
+  text: string;
+  raw: string;
+  model?: string;
+}
+
 export interface MessageRecord {
   message_id: number;
   role: 'user' | 'assistant';
   raw_content: string; // 原始消息内容
   content_text: string; // 提取/过滤后的内容
+  /**
+   * 正文多页候选或追加页。
+   * 为空或 undefined 时代表单页。
+   */
+  body_pages?: MessageBodyPage[];
+  /**
+   * 当前查看的正文页码（从 0 开始）。
+   */
+  body_page_index?: number;
   think_content?: string | null; // 思维链内容
   summary_content?: string | null; // 总结内容
   update_content?: string | null; // 变量更新内容
@@ -204,7 +219,13 @@ export const useMessagesStore = defineStore('messages', () => {
     }
 
     let pruned = false;
-    for (const pass of [trace.main_pass, trace.variable_update_pass, trace.assistant_api_pass]) {
+    for (const pass of [
+      trace.main_pass,
+      trace.variable_update_pass,
+      trace.assistant_api_pass,
+      trace.review_pass,
+      trace.revise_pass,
+    ]) {
       if (pass && pass.transport_mode === 'streaming' && pass.raw_response_text) {
         pass.raw_response_text = '';
         pruned = true;
@@ -221,18 +242,45 @@ export const useMessagesStore = defineStore('messages', () => {
   function loadStandaloneMessages() {
     const { messages: bootstrappedMessages } = ensureStandaloneRuntimeBootstrapFromStores(loadStandaloneStatData());
     const runtimeMessages = loadStandaloneRuntimeMessages() ?? bootstrappedMessages;
-    const normalizedRecords: MessageRecord[] = runtimeMessages.records.map(record => ({
-      ...(record as MessageRecord),
-      action_options: record.action_options ?? [],
-      createdAt: record.createdAt ?? new Date().toISOString(),
-      stat_data_snapshot:
-        typeof record.stat_data_snapshot === 'undefined' ? undefined : Schema.parse(record.stat_data_snapshot),
-      variable_update_base_snapshot:
-        typeof record.variable_update_base_snapshot === 'undefined'
-          ? undefined
-          : Schema.parse(record.variable_update_base_snapshot),
-      debug_trace: pruneOversizedStreamingRawFromTrace((record as MessageRecord).debug_trace),
-    }));
+    const normalizedRecords: MessageRecord[] = runtimeMessages.records.map(record => {
+      const pages = record.body_pages && record.body_pages.length > 0 ? [...record.body_pages] : undefined;
+      let pageIndex = typeof record.body_page_index === 'number' ? record.body_page_index : 0;
+      let contentText = record.content_text;
+      let rawContent = record.raw_content;
+      let model = record.model;
+
+      if (pages) {
+        if (pageIndex < 0 || pageIndex >= pages.length) {
+          pageIndex = Math.max(0, Math.min(pageIndex, pages.length - 1));
+        }
+        const currentPage = pages[pageIndex];
+        if (currentPage) {
+          contentText = currentPage.text;
+          rawContent = currentPage.raw;
+          if (currentPage.model) {
+            model = currentPage.model;
+          }
+        }
+      }
+
+      return {
+        ...(record as MessageRecord),
+        content_text: contentText,
+        raw_content: rawContent,
+        model,
+        body_pages: pages,
+        body_page_index: pages ? pageIndex : undefined,
+        action_options: record.action_options ?? [],
+        createdAt: record.createdAt ?? new Date().toISOString(),
+        stat_data_snapshot:
+          typeof record.stat_data_snapshot === 'undefined' ? undefined : Schema.parse(record.stat_data_snapshot),
+        variable_update_base_snapshot:
+          typeof record.variable_update_base_snapshot === 'undefined'
+            ? undefined
+            : Schema.parse(record.variable_update_base_snapshot),
+        debug_trace: pruneOversizedStreamingRawFromTrace((record as MessageRecord).debug_trace),
+      };
+    });
     const displayReadyRecords = normalizedRecords.map(normalizeRecordForDisplay);
     messages.value = repairStandaloneSnapshots(dedupeMessageRecords(displayReadyRecords));
     // 换存档 / 重载窗口时清掉落地信号：否则历史消息里恰好同号的那条会被当成「刚落地」，
@@ -252,6 +300,8 @@ export const useMessagesStore = defineStore('messages', () => {
         next_message_id: messages.value.reduce((max, item) => Math.max(max, item.message_id), -1) + 1,
         records: messages.value.map(item => ({
           ...item,
+          body_pages: item.body_pages ? item.body_pages.map(page => ({ ...page })) : undefined,
+          body_page_index: item.body_pages && item.body_pages.length > 0 ? (item.body_page_index ?? 0) : undefined,
           action_options: item.action_options ?? [],
           stat_data_snapshot: item.stat_data_snapshot ? Schema.parse(item.stat_data_snapshot) : undefined,
           // 运行时消息 schema 把这个键定成「必需但可为 undefined」，所以这里显式赋一次；
@@ -666,6 +716,16 @@ export const useMessagesStore = defineStore('messages', () => {
       const nextRawContent = rawContent ?? contentText;
       record.raw_content = nextRawContent;
       record.content_text = contentText;
+      if (record.body_pages && record.body_pages.length > 0) {
+        const pageIdx = Math.max(0, Math.min(record.body_page_index ?? 0, record.body_pages.length - 1));
+        const updatedPages = [...record.body_pages];
+        updatedPages[pageIdx] = {
+          ...updatedPages[pageIdx],
+          text: contentText,
+          raw: nextRawContent,
+        };
+        record.body_pages = updatedPages;
+      }
       if (record.role === 'assistant') {
         const parsedReply = parseTaggedAssistantReply(nextRawContent);
         record.think_content = parsedReply.thinkContent;
@@ -704,6 +764,17 @@ export const useMessagesStore = defineStore('messages', () => {
       action_options: patch.action_options ?? currentRecord.action_options ?? [],
     });
 
+    if (patch.body_pages === undefined && nextRecord.body_pages && nextRecord.body_pages.length > 0) {
+      const pageIdx = Math.max(0, Math.min(nextRecord.body_page_index ?? 0, nextRecord.body_pages.length - 1));
+      const updatedPages = [...nextRecord.body_pages];
+      updatedPages[pageIdx] = {
+        ...updatedPages[pageIdx],
+        text: nextContentText,
+        raw: nextRawContent,
+      };
+      nextRecord.body_pages = updatedPages;
+    }
+
     if (currentRecord.role === 'assistant') {
       const parsedReply = parseTaggedAssistantReply(nextRawContent);
       nextRecord = normalizeRecordForDisplay({
@@ -718,6 +789,123 @@ export const useMessagesStore = defineStore('messages', () => {
     messages.value.splice(index, 1, nextRecord);
     console.info(`[MessagesStore] 局部更新消息 ${message_id}`);
     persistStandaloneMessagesState();
+  }
+
+  /**
+   * 切换某条消息的正文页码
+   */
+  function switchMessageBodyPage(message_id: number, targetIndex: number): boolean {
+    const record = messages.value.find(m => m.message_id === message_id);
+    if (!record || !record.body_pages || record.body_pages.length <= 1) {
+      return false;
+    }
+    if (targetIndex < 0 || targetIndex >= record.body_pages.length) {
+      return false;
+    }
+    if (targetIndex === record.body_page_index) {
+      return true;
+    }
+
+    const targetPage = record.body_pages[targetIndex];
+    if (!targetPage) {
+      return false;
+    }
+
+    const patch: Partial<MessageRecord> = {
+      body_page_index: targetIndex,
+      content_text: targetPage.text,
+      raw_content: targetPage.raw,
+      model: targetPage.model ?? record.model,
+    };
+
+    if (record.role === 'assistant') {
+      const parsedReply = parseTaggedAssistantReply(targetPage.raw);
+      patch.think_content = parsedReply.thinkContent;
+      patch.summary_content = parsedReply.summaryContent;
+      patch.update_content = parsedReply.updateContent;
+      patch.action_options = parsedReply.actionOptions;
+    }
+
+    patchMessageRecord(message_id, patch);
+    console.info(`[MessagesStore] 切换消息 ${message_id} 正文页至 ${targetIndex + 1}/${record.body_pages.length}`);
+    return true;
+  }
+
+  /**
+   * 为某条消息追加一页正文（例如改稿产物）
+   */
+  function appendMessageBodyPage(message_id: number, page: MessageBodyPage, switchNow: boolean = false): boolean {
+    const record = messages.value.find(m => m.message_id === message_id);
+    if (!record) {
+      return false;
+    }
+
+    const currentPages =
+      record.body_pages && record.body_pages.length > 0
+        ? [...record.body_pages]
+        : [{ text: record.content_text, raw: record.raw_content, model: record.model }];
+
+    currentPages.push({ ...page });
+    const targetIndex = switchNow ? currentPages.length - 1 : (record.body_page_index ?? 0);
+
+    const patch: Partial<MessageRecord> = {
+      body_pages: currentPages,
+      body_page_index: targetIndex,
+    };
+
+    if (switchNow) {
+      patch.content_text = page.text;
+      patch.raw_content = page.raw;
+      if (page.model) {
+        patch.model = page.model;
+      }
+      if (record.role === 'assistant') {
+        const parsedReply = parseTaggedAssistantReply(page.raw);
+        patch.think_content = parsedReply.thinkContent;
+        patch.summary_content = parsedReply.summaryContent;
+        patch.update_content = parsedReply.updateContent;
+        patch.action_options = parsedReply.actionOptions;
+      }
+    }
+
+    patchMessageRecord(message_id, patch);
+    console.info(`[MessagesStore] 追加消息 ${message_id} 正文页，当前共 ${currentPages.length} 页`);
+    return true;
+  }
+
+  /**
+   * 填充并发初始候选正文页
+   */
+  function appendInitialMessageBodyPages(message_id: number, additionalPages: MessageBodyPage[]): boolean {
+    if (!additionalPages || additionalPages.length === 0) {
+      return false;
+    }
+    const record = messages.value.find(m => m.message_id === message_id);
+    if (!record) {
+      return false;
+    }
+
+    const currentPages =
+      record.body_pages && record.body_pages.length > 0
+        ? [...record.body_pages]
+        : [{ text: record.content_text, raw: record.raw_content, model: record.model }];
+
+    for (const page of additionalPages) {
+      if (page && page.text && page.text.trim()) {
+        currentPages.push({ ...page });
+      }
+    }
+
+    if (currentPages.length <= 1) {
+      return false;
+    }
+
+    patchMessageRecord(message_id, {
+      body_pages: currentPages,
+      body_page_index: record.body_page_index ?? 0,
+    });
+    console.info(`[MessagesStore] 填充并发初始候选正文页 message_id=${message_id} totalPages=${currentPages.length}`);
+    return true;
   }
 
   /**
@@ -895,6 +1083,9 @@ export const useMessagesStore = defineStore('messages', () => {
     removeMessages,
     updateMessage,
     patchMessageRecord,
+    switchMessageBodyPage,
+    appendMessageBodyPage,
+    appendInitialMessageBodyPages,
     getMessage,
     getGeneratedImage,
     writeGeneratedImage,

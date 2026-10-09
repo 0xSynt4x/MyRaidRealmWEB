@@ -1,6 +1,6 @@
 import { Schema } from '../schema/schema';
 import type { LocalContentEntryConfig, PresetConfig } from '../src/presets/types';
-import type { MessageRecord } from '../src/stores/messages';
+import type { MessageBodyPage, MessageRecord } from '../src/stores/messages';
 import type { ApiConfig, WorldDifficulty } from '../src/stores/settings';
 import {
   mergeStandaloneAssistantDebugTrace,
@@ -42,6 +42,8 @@ import { normalizeLineEndingsTrimmed as normalizeLineEndings } from '../src/util
 import {
   lotteryItemSkillRulesTemplate,
   lotteryRequestPromptTemplate,
+  storyReviewPromptTemplate,
+  storyRevisePromptTemplate,
 } from '../src/assets/standalone-local-content';
 import { renderStandaloneLocalContentTemplate } from '../src/utils/standaloneLocalContentEjs';
 import {
@@ -52,6 +54,7 @@ import {
 } from '../src/utils/variableUpdate';
 import { resolvePatchTextWithRescue } from '../src/utils/variableUpdateRescue';
 import { applyStandalonePromptMacroReplacements, buildStandaloneCurrentStatDataBlock } from './standalonePromptUtils';
+import { searchStandaloneBm25 } from './standaloneBm25';
 import {
   buildStandaloneSnapshotForChain,
   DEFAULT_STANDALONE_SNAPSHOT_TRIM_SETTINGS,
@@ -98,12 +101,19 @@ export type StandaloneLocalTurnInput = {
   stageSummary?: string;
   /** 归档水位线：message_id 小于等于它的回合已被上面那段覆盖 */
   archivedUntilMessageId?: number;
+  /** 正文请求次数（1~5）；缺省 1 */
+  bodyRequestCount?: number;
 };
 
 export type StandaloneLocalTurnOutcome = {
   assistantMessage: Omit<MessageRecord, 'message_id'>;
   usedApiLabel: string;
   finalizeVariableUpdate: Promise<StandaloneVariableUpdatePhaseOutcome>;
+  /**
+   * 并发请求的后续正文候选页（第 2~N 页）。
+   * 只有在 bodyRequestCount > 1 时才会发起；后台静默执行，完成后兑现，失败项静默丢弃。
+   */
+  collectAdditionalPages?: Promise<MessageBodyPage[]>;
 };
 
 export type StandaloneVariableUpdateStatus = 'running' | 'success' | 'failed' | 'skipped';
@@ -428,11 +438,85 @@ export function collectStandalonePriorSummaryItems(input: {
     .filter(item => Boolean(item.summary));
 }
 
+/**
+ * 从待归档的小总结池中，结合 BM25 检索与近期连贯性筛选注入提示词的前情提要条目。
+ * - 当待归档小总结 <= 6 条时，全量保留（条数少，直接按时间顺序呈现）；
+ * - 当待归档小总结 > 6 条时，利用 BM25 按当前输入/场景检索最相关的记忆，
+ *   并与最近 2 条小总结保底合并去重，控制在 3~5 条以内，防止上下文爆炸。
+ */
+export function selectPriorSummaryItemsForPrompt(input: {
+  pendingItems: StandalonePriorSummaryItem[];
+  latestUserMessage: MessageRecord;
+  statData?: unknown;
+}): StandalonePriorSummaryItem[] {
+  const { pendingItems, latestUserMessage, statData } = input;
+  if (pendingItems.length <= 6) {
+    return pendingItems;
+  }
+
+  const docs = pendingItems.map(item => ({
+    id: item.messageId,
+    text: item.summary,
+    meta: item,
+  }));
+
+  const queryParts: string[] = [];
+  if (typeof latestUserMessage.content_text === 'string' && latestUserMessage.content_text.trim()) {
+    queryParts.push(latestUserMessage.content_text.trim());
+  }
+  if (
+    typeof latestUserMessage.raw_content === 'string' &&
+    latestUserMessage.raw_content.trim() &&
+    latestUserMessage.raw_content !== latestUserMessage.content_text
+  ) {
+    queryParts.push(latestUserMessage.raw_content.trim());
+  }
+
+  if (typeof statData === 'object' && statData !== null) {
+    const loc = (statData as Record<string, any>)?.世界?.空间定位?.当前位置;
+    if (typeof loc === 'string' && loc.trim()) {
+      queryParts.push(loc.trim());
+    }
+  }
+
+  const query = queryParts.join(' ').trim();
+  const searchResults = searchStandaloneBm25(docs, query, {
+    topK: 3,
+    minScore: 0.1,
+    boostRecency: true,
+  });
+
+  const selectedMap = new Map<number, StandalonePriorSummaryItem>();
+
+  for (const res of searchResults) {
+    if (res.meta) {
+      selectedMap.set(Number(res.id), res.meta);
+    }
+  }
+
+  // 总是保底包含最近 2 条小总结，确保刚出窗口的过渡剧情不脱节
+  const recents = pendingItems.slice(-2);
+  for (const item of recents) {
+    selectedMap.set(item.messageId, item);
+  }
+
+  // 如果没有命中强相关的历史（纯新话题），则取最近 4 条
+  if (selectedMap.size <= 2) {
+    const fallbackRecents = pendingItems.slice(-4);
+    for (const item of fallbackRecents) {
+      selectedMap.set(item.messageId, item);
+    }
+  }
+
+  return Array.from(selectedMap.values()).sort((a, b) => a.messageId - b.messageId);
+}
+
 function buildStandalonePriorSummaryBlock(input: {
   messages: MessageRecord[];
   latestUserMessage: MessageRecord;
   stageSummary?: string;
   archivedUntilMessageId?: number;
+  statData?: unknown;
 }): string {
   const stageSummary = typeof input.stageSummary === 'string' ? input.stageSummary.trim() : '';
   const pendingItems = collectStandalonePriorSummaryItems({
@@ -447,12 +531,18 @@ function buildStandalonePriorSummaryBlock(input: {
     blocks.push(['[阶段总结]', '以下是更早剧情的归档摘要（越靠后越接近当前）：', stageSummary].join('\n'));
   }
 
-  if (pendingItems.length > 0) {
+  const selectedItems = selectPriorSummaryItemsForPrompt({
+    pendingItems,
+    latestUserMessage: input.latestUserMessage,
+    statData: input.statData,
+  });
+
+  if (selectedItems.length > 0) {
     blocks.push(
       [
         '[前情提要]',
         '以下是尚未归档的更早回合剧情总结（按时间顺序，越靠后越接近当前）：',
-        ...pendingItems.map(item => item.summary),
+        ...selectedItems.map(item => item.summary),
       ].join('\n\n'),
     );
   }
@@ -495,6 +585,7 @@ function buildStandaloneOrderedMainMessages(input: {
     latestUserMessage: input.latestUserMessage,
     stageSummary: input.stageSummary,
     archivedUntilMessageId: input.archivedUntilMessageId,
+    statData: input.statData,
   });
 
   orderedPrompts.forEach(prompt => {
@@ -666,12 +757,22 @@ function limitApiCandidates<T>(candidates: T[], autoRetry: boolean | undefined):
 
 export function buildMainTurnPrompt(input: StandaloneLocalTurnInput): StandalonePromptMessagesBundle {
   const includeFullPreset = true;
-  // 发送用快照：正文链不裁 NPC，只做去缩进、剔 `$`、剔「设置」、商城只留路径、生存状态按模式裁。
+  const recentAssistantText = [...input.messages]
+    .reverse()
+    .find(m => m.role === 'assistant' && !m.lottery)?.content_text ?? '';
+  const scanTexts = [
+    input.latestUserMessage?.content_text,
+    input.latestUserMessage?.raw_content,
+    recentAssistantText,
+  ].filter((t): t is string => typeof t === 'string' && Boolean(t.trim()));
+
+  // 发送用快照：正文链不在场 NPC 做轻量化瘦身，在场 NPC 完整保留；剔 `$`、剔「设置」、商城只留路径、生存状态按模式裁。
   // renderContext.statData 保持完整数据（预设主提示词的宏与脚本要读它）。
   const snapshotForSend = buildStandaloneSnapshotForChain({
     statData: input.statData,
     settings: input.snapshotTrim ?? DEFAULT_STANDALONE_SNAPSHOT_TRIM_SETTINGS,
     chain: 'main',
+    texts: scanTexts,
   });
   const localContentBlocks = resolveStandaloneLocalContentBlocks({
     route: 'main',
@@ -1139,8 +1240,71 @@ async function requestVariableUpdateSecondPass(
   };
 }
 
+const activeParallelVariantControllers = new Set<AbortController>();
+
 export function cancelStandaloneLocalTurn(): void {
   activeStandaloneTurnController?.abort();
+  for (const controller of activeParallelVariantControllers) {
+    controller.abort();
+  }
+  activeParallelVariantControllers.clear();
+}
+
+async function requestSilentBodyVariant(
+  candidateApis: ApiConfig[],
+  prompt: StandalonePromptBundle | StandalonePromptMessagesBundle,
+  autoRetry: boolean | undefined,
+  parentController: AbortController,
+): Promise<MessageBodyPage | null> {
+  const variantController = new AbortController();
+  activeParallelVariantControllers.add(variantController);
+
+  const onParentAbort = () => {
+    variantController.abort();
+  };
+  parentController.signal.addEventListener('abort', onParentAbort, { once: true });
+
+  try {
+    for (let index = 0; index < candidateApis.length; index += 1) {
+      if (variantController.signal.aborted || parentController.signal.aborted) {
+        return null;
+      }
+      const api = candidateApis[index]!;
+      try {
+        const reply = await requestAssistantReply(
+          api,
+          prompt,
+          variantController.signal,
+          undefined,
+          0,
+        );
+        const rawReply = normalizeLineEndings(reply.text);
+        const sanitizedReply = normalizeLineEndings(stripUpdateVariableBlocks(rawReply));
+        const parsed = parseTaggedAssistantReply(sanitizedReply);
+        const contentText = parsed.contentText.trim() || sanitizedReply;
+        if (!contentText) {
+          continue;
+        }
+        return {
+          text: contentText,
+          raw: sanitizedReply,
+          model: reply.model,
+        };
+      } catch (err) {
+        if (variantController.signal.aborted || parentController.signal.aborted) {
+          return null;
+        }
+        console.warn('[StandaloneLocalTurn] 并行正文变体生成失败（静默丢弃）:', err);
+        if (!autoRetry && candidateApis.length > 1) {
+          break;
+        }
+      }
+    }
+    return null;
+  } finally {
+    parentController.signal.removeEventListener('abort', onParentAbort);
+    activeParallelVariantControllers.delete(variantController);
+  }
 }
 
 export async function runStandaloneLocalTurn(input: StandaloneLocalTurnInput): Promise<StandaloneLocalTurnOutcome> {
@@ -1161,6 +1325,22 @@ export async function runStandaloneLocalTurn(input: StandaloneLocalTurnInput): P
     const prompt = buildMainTurnPrompt(input);
     const failures: string[] = [];
     let lastErrorMessage = '';
+
+    const totalRequests = Math.max(1, Math.min(5, Math.floor(input.bodyRequestCount ?? 1)));
+    const extraCount = totalRequests - 1;
+
+    let collectAdditionalPages: Promise<MessageBodyPage[]> | undefined = undefined;
+    if (extraCount > 0) {
+      const variantPromises: Promise<MessageBodyPage | null>[] = [];
+      for (let i = 0; i < extraCount; i += 1) {
+        variantPromises.push(
+          requestSilentBodyVariant(candidateMainApis, prompt, input.autoRetry, controller),
+        );
+      }
+      collectAdditionalPages = Promise.all(variantPromises).then(results =>
+        results.filter((item): item is MessageBodyPage => Boolean(item && item.text.trim())),
+      );
+    }
 
     // 主 API 可以有多个候选：第一个失败就换下一个；关掉自动重试时只剩一个
     for (let index = 0; index < candidateMainApis.length; index += 1) {
@@ -1291,14 +1471,25 @@ export async function runStandaloneLocalTurn(input: StandaloneLocalTurnInput): P
           }
         });
 
+        const initialPages: MessageBodyPage[] = [
+          {
+            text: assistantContentText,
+            raw: sanitizedMainReply,
+            model: mainReply.model,
+          },
+        ];
+
         return {
           assistantMessage: {
             ...assistantMessage,
+            body_pages: extraCount > 0 ? initialPages : undefined,
+            body_page_index: extraCount > 0 ? 0 : undefined,
             variable_update_status: 'running',
             variable_update_warning: null,
           },
           usedApiLabel: candidateApiLabel,
           finalizeVariableUpdate,
+          collectAdditionalPages,
         };
       } catch (error) {
         if (controller.signal.aborted) {
@@ -1332,8 +1523,14 @@ export async function runStandaloneLocalTurn(input: StandaloneLocalTurnInput): P
 
     throw new Error(failures.length > 1 ? failures.join(' | ') : lastErrorMessage || '独立模式主 API 调用失败');
   } finally {
-    if (!deferControllerCleanup && activeStandaloneTurnController === controller) {
-      activeStandaloneTurnController = null;
+    if (!deferControllerCleanup) {
+      for (const parallelController of activeParallelVariantControllers) {
+        parallelController.abort();
+      }
+      activeParallelVariantControllers.clear();
+      if (activeStandaloneTurnController === controller) {
+        activeStandaloneTurnController = null;
+      }
     }
   }
 }
@@ -1367,6 +1564,295 @@ export type StandaloneLotteryTurnOutcome = {
   variableUpdateWarning: string | null;
   usedApiLabel: string;
 };
+
+/**
+ * 审稿 / 改稿请求的输入：两者共用同一套上下文取数。
+ */
+export type StandaloneStoryPromptInput = {
+  /** 待审 / 待改的正文 */
+  contentText: string;
+  /** 审稿意见；只有改稿用得到 */
+  reviewIssues?: string;
+  statData: StandaloneStatData;
+  messages: MessageRecord[];
+  /** 待审 / 待改的那条 AI 回复；组装上下文时排除它，避免与正文重复 */
+  targetMessage: MessageRecord;
+  worldDifficulty: WorldDifficulty;
+  localContentEnabledMap: Record<string, boolean>;
+  localContentBuiltinRouteOverrides: StandaloneBuiltinAssetRouteOverrideMap;
+  /** 玩家在设置里手动添加的条目；没选预设时靠它把内容送进提示词 */
+  localContentCustomEntries?: LocalContentEntryConfig[];
+  selectedPreset?: PresetConfig | null;
+  /** 发送前快照裁剪开关；缺省用默认值（全开） */
+  snapshotTrim?: StandaloneSnapshotTrimSettings;
+  /** 玩家手动归档出来的整体剧情摘要，空＝还没归档过 */
+  stageSummary?: string;
+  /** 归档水位线：message_id 小于等于它的回合已被上面那段覆盖 */
+  archivedUntilMessageId?: number;
+};
+
+/**
+ * 组装审稿 / 改稿的上下文取值（快照 / 世界书 / 前情提要 / 最近 8 轮）。
+ *
+ * 口径与正文链完全一致：同一套取数、同一个窗口大小、同一个世界书筛选，
+ * 保证「审稿看到的历史」就是「写正文时看到的历史」。
+ * 唯一区别：排除待审的那条 AI 回复本身 —— 它的正文由模板里的「待审正文」单独给出，避免重复。
+ */
+function buildStoryPromptContextValues(input: StandaloneStoryPromptInput): Record<string, string> {
+  const snapshotForSend = buildStandaloneSnapshotForChain({
+    statData: input.statData,
+    settings: input.snapshotTrim ?? DEFAULT_STANDALONE_SNAPSHOT_TRIM_SETTINGS,
+    chain: 'main',
+  });
+
+  const localContentBlocks = resolveStandaloneLocalContentBlocks({
+    route: 'main',
+    enabledMap: input.localContentEnabledMap,
+    builtinRouteOverrides: input.localContentBuiltinRouteOverrides,
+    customEntries: input.localContentCustomEntries,
+    preset: input.selectedPreset,
+    renderContext: {
+      statData: input.statData,
+      messages: input.messages,
+      latestUserMessage: null,
+      worldDifficulty: input.worldDifficulty,
+      snapshotStatData: snapshotForSend.snapshot,
+      compactSnapshot: snapshotForSend.compact,
+    },
+  });
+
+  const worldbookPrompt = resolveStandaloneMainWorldbookPrompt(localContentBlocks);
+  const priorSummaryBlock = buildStandalonePriorSummaryBlock({
+    messages: input.messages,
+    latestUserMessage: input.targetMessage,
+    stageSummary: input.stageSummary,
+    archivedUntilMessageId: input.archivedUntilMessageId,
+    statData: input.statData,
+  });
+
+  const historyText = resolveStandaloneRecentHistoryMessages({
+    messages: input.messages.filter(message => message.message_id !== input.targetMessage.message_id),
+  })
+    .map(message => `${message.role === 'user' ? '玩家' : '剧情'}：${message.content}`)
+    .join('\n\n');
+
+  return {
+    快照: buildStandaloneCurrentStatDataBlock(snapshotForSend.snapshot, {
+      compact: snapshotForSend.compact,
+    }),
+    世界书条目: worldbookPrompt || '（本预设未配置世界书）',
+    '更早的小总结': priorSummaryBlock || '（无）',
+    '最近 8 轮原文': historyText || '（无）',
+    正文: input.contentText,
+    问题清单: input.reviewIssues ?? '',
+  };
+}
+
+/** 把模板里的 `{{槽位}}` 换成实际内容；未命中的槽位原样保留，方便发现漏配。 */
+function fillStoryPromptTemplate(template: string, values: Record<string, string>): string {
+  return template.replace(/\{\{\s*([^{}]+?)\s*\}\}/g, (match, key: string) =>
+    Object.prototype.hasOwnProperty.call(values, key) ? values[key]! : match,
+  );
+}
+
+/** 组装审稿请求：上下文 + 审稿规则 + 待审正文（一条 user 消息）。 */
+export function buildStoryReviewPrompt(input: StandaloneStoryPromptInput): StandalonePromptMessagesBundle {
+  return {
+    messages: [
+      {
+        role: 'user',
+        content: fillStoryPromptTemplate(storyReviewPromptTemplate, buildStoryPromptContextValues(input)).trim(),
+      },
+    ],
+  };
+}
+
+/** 组装改稿请求：上下文 + 改稿规则 + 待改正文 + 审稿意见（一条 user 消息）。 */
+export function buildStoryRevisePrompt(input: StandaloneStoryPromptInput): StandalonePromptMessagesBundle {
+  return {
+    messages: [
+      {
+        role: 'user',
+        content: fillStoryPromptTemplate(storyRevisePromptTemplate, buildStoryPromptContextValues(input)).trim(),
+      },
+    ],
+  };
+}
+
+export type StandaloneReviewReviseInput = StandaloneStoryPromptInput & {
+  /** 审稿 / 改稿 API 都为空时回退到它 */
+  mainApis: ApiConfig[];
+  reviewApis?: ApiConfig[];
+  reviseApis?: ApiConfig[];
+  /** 前一个失败时是否自动试下一个；缺省 true */
+  autoRetry?: boolean;
+};
+
+export type StandaloneReviewReviseOutcome = {
+  /** 改稿后的正文；失败时为 null（调用方据此决定「不动原正文」） */
+  revisedContentText: string | null;
+  /** 审稿问题清单：只用于控制台留档，不给玩家看 */
+  reviewIssues: string | null;
+  /** 失败原因；成功时为 null */
+  warning: string | null;
+  usedReviewApiLabel: string | null;
+  usedReviseApiLabel: string | null;
+  /**
+   * 本次改稿实际用到的模型名（优先服务端回传的名字，拿不到就用配置里的名字）。
+   *
+   * 正文换手给改稿模型之后，楼层标题要跟着换 —— 否则显示的还是「原始正文是谁写的」。
+   * 只有成功改稿才有值；失败时为 undefined，调用方据此不动原模型名。
+   */
+  revisedModel?: string;
+  reviewTrace?: StandaloneAiDebugPassTrace;
+  reviseTrace?: StandaloneAiDebugPassTrace;
+};
+
+/**
+ * 「审稿 → 改稿」独立请求：先审出问题清单，再按清单改一遍正文（只改文字表面）。
+ *
+ * - 与正文链共用同一套上下文取数（口径见 `buildStoryPromptContextValues`）；
+ * - 审稿 / 改稿 API 为空时各自回退主 API；
+ * - 任一步失败都不返回新正文（`revisedContentText: null`），调用方据此不动原正文；
+ * - 两次请求的 trace 都会回传，供「控制台调试」留档；
+ * - 自建取消控制器并登记为当前任务，界面「停止」按钮可中断（与抽奖同一套规矩）。
+ */
+export async function runStandaloneReviewRevise(
+  input: StandaloneReviewReviseInput,
+): Promise<StandaloneReviewReviseOutcome> {
+  if (activeStandaloneTurnController) {
+    throw new Error('已有独立模式生成任务正在进行中');
+  }
+
+  const controller = new AbortController();
+  activeStandaloneTurnController = controller;
+
+  try {
+    return await runStandaloneReviewReviseInner(input, controller.signal);
+  } finally {
+    if (activeStandaloneTurnController === controller) {
+      activeStandaloneTurnController = null;
+    }
+  }
+}
+
+async function runStandaloneReviewReviseInner(
+  input: StandaloneReviewReviseInput,
+  signal: AbortSignal,
+): Promise<StandaloneReviewReviseOutcome> {
+  const reviewCandidates = limitApiCandidates(
+    resolveConfiguredMainApis(input.reviewApis?.length ? input.reviewApis : input.mainApis),
+    input.autoRetry,
+  );
+  if (reviewCandidates.length === 0) {
+    return {
+      revisedContentText: null,
+      reviewIssues: null,
+      warning: '未找到已保存且完整可用的审稿 API 配置',
+      usedReviewApiLabel: null,
+      usedReviseApiLabel: null,
+    };
+  }
+
+  const reviewPrompt = buildStoryReviewPrompt(input);
+  const reviewFailures: string[] = [];
+  let reviewIssues: string | null = null;
+  let reviewTrace: StandaloneAiDebugPassTrace | undefined;
+  let usedReviewApiLabel: string | null = null;
+
+  for (const api of reviewCandidates) {
+    const apiLabel = toApiLabel(api);
+    try {
+      const reply = await requestAssistantReply(api, reviewPrompt, signal);
+      reviewTrace = reply.debugTrace;
+      const reviewText = normalizeLineEndings(reply.text).trim();
+      if (!reviewText) {
+        reviewFailures.push(`${apiLabel}: 审稿未返回内容`);
+        continue;
+      }
+      reviewIssues = reviewText;
+      usedReviewApiLabel = apiLabel;
+      break;
+    } catch (error) {
+      if (signal.aborted) {
+        throw error;
+      }
+      // 失败的请求也要能在「控制台调试」里看到 —— 从异常上把请求快照取回来。
+      reviewTrace = readStandaloneProviderFailureTrace(error) ?? reviewTrace;
+      reviewFailures.push(`${apiLabel}: ${normalizeRemoteApiErrorMessage(error)}`);
+    }
+  }
+
+  if (!reviewIssues) {
+    return {
+      revisedContentText: null,
+      reviewIssues: null,
+      warning: reviewFailures.join(' | ') || '审稿失败',
+      usedReviewApiLabel: null,
+      usedReviseApiLabel: null,
+      reviewTrace,
+    };
+  }
+
+  const reviseCandidates = limitApiCandidates(
+    resolveConfiguredMainApis(input.reviseApis?.length ? input.reviseApis : input.mainApis),
+    input.autoRetry,
+  );
+  if (reviseCandidates.length === 0) {
+    return {
+      revisedContentText: null,
+      reviewIssues,
+      warning: '未找到已保存且完整可用的改稿 API 配置',
+      usedReviewApiLabel,
+      usedReviseApiLabel: null,
+      reviewTrace,
+    };
+  }
+
+  const revisePrompt = buildStoryRevisePrompt({ ...input, reviewIssues });
+  const reviseFailures: string[] = [];
+  let reviseTrace: StandaloneAiDebugPassTrace | undefined;
+
+  for (const api of reviseCandidates) {
+    const apiLabel = toApiLabel(api);
+    try {
+      const reply = await requestAssistantReply(api, revisePrompt, signal);
+      reviseTrace = reply.debugTrace;
+      const revisedText = parseTaggedAssistantReply(normalizeLineEndings(reply.text)).contentText.trim();
+      if (!revisedText) {
+        reviseFailures.push(`${apiLabel}: 改稿未返回正文`);
+        continue;
+      }
+      return {
+        revisedContentText: revisedText,
+        reviewIssues,
+        warning: null,
+        usedReviewApiLabel,
+        usedReviseApiLabel: apiLabel,
+        reviewTrace,
+        reviseTrace,
+        revisedModel: reply.model ?? api.model,
+      };
+    } catch (error) {
+      if (signal.aborted) {
+        throw error;
+      }
+      // 同上：改稿失败也要留痕，控制台才看得到这次请求。
+      reviseTrace = readStandaloneProviderFailureTrace(error) ?? reviseTrace;
+      reviseFailures.push(`${apiLabel}: ${normalizeRemoteApiErrorMessage(error)}`);
+    }
+  }
+
+  return {
+    revisedContentText: null,
+    reviewIssues,
+    warning: reviseFailures.join(' | ') || '改稿失败',
+    usedReviewApiLabel,
+    usedReviseApiLabel: null,
+    reviewTrace,
+    reviseTrace,
+  };
+}
 
 /**
  * 组装抽奖请求：变量快照 + 物品 / 技能规则 + 最近一段剧情上下文 + 抽奖专用提示词。

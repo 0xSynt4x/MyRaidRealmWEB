@@ -646,6 +646,20 @@
                     <i class="ti ti-refresh"></i>
                     {{ t('contentCenter.aiDebug.passVariableUpdateTitle') }}
                   </span>
+                  <span
+                    v-if="message.debug_trace?.review_pass"
+                    :class="['tag-chip', 'compact-tag', 'ai-debug-summary-chip', 'main']"
+                  >
+                    <i class="ti ti-search"></i>
+                    {{ t('contentCenter.aiDebug.passReviewTitle') }}
+                  </span>
+                  <span
+                    v-if="message.debug_trace?.revise_pass"
+                    :class="['tag-chip', 'compact-tag', 'ai-debug-summary-chip', 'main']"
+                  >
+                    <i class="ti ti-wand"></i>
+                    {{ t('contentCenter.aiDebug.passReviseTitle') }}
+                  </span>
                 </div>
               </div>
             </button>
@@ -987,6 +1001,113 @@
                 </div>
               </section>
 
+              <!-- 审稿 / 改稿环节（玩家点「审稿」按钮时产生，不是每个回合都有） -->
+              <section
+                v-for="card in debugExtraPassCards"
+                :key="card.key"
+                class="debug-collapsible-card ai-debug-pass-card"
+                :class="{ expanded: isDebugExtraPassExpanded(card.key) }"
+              >
+                <button type="button" class="debug-collapsible-header" @click="toggleDebugExtraPass(card.key)">
+                  <div class="debug-collapsible-title-row">
+                    <span class="debug-pass-icon main"><i class="ti" :class="card.icon"></i></span>
+                    <span class="debug-collapsible-title">{{ card.title }}</span>
+                    <span v-if="card.trace" :class="['entry-enabled-badge', 'compact-badge', 'enabled']">
+                      {{ t('contentCenter.aiDebug.traceStatusAvailable') }}
+                    </span>
+                    <span v-else :class="['entry-enabled-badge', 'compact-badge', 'disabled']">
+                      {{ t('contentCenter.aiDebug.traceStatusMissing') }}
+                    </span>
+                  </div>
+                  <i
+                    :class="[
+                      'ti',
+                      isDebugExtraPassExpanded(card.key) ? 'ti-chevron-up' : 'ti-chevron-down',
+                      'debug-collapsible-chevron',
+                    ]"
+                  ></i>
+                </button>
+
+                <div v-if="isDebugExtraPassExpanded(card.key)" class="debug-collapsible-body">
+                  <template v-if="card.trace">
+                    <div class="ai-debug-pass-strip">
+                      <span class="tag-chip compact-tag">
+                        {{ t('contentCenter.aiDebug.metaApiLabel') }}: {{ card.trace.api_label }}
+                      </span>
+                      <span class="tag-chip compact-tag">
+                        {{ t('contentCenter.aiDebug.metaApiMode') }}: {{ card.trace.api_mode }}
+                      </span>
+                      <span class="tag-chip compact-tag">
+                        {{ t('contentCenter.aiDebug.metaRequestedAt') }}: {{ card.trace.requested_at }}
+                      </span>
+                      <span class="tag-chip compact-tag">
+                        {{ t('contentCenter.aiDebug.metaTransport') }}:
+                        {{ transportModeLabel(card.trace.transport_mode) }}
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      class="debug-sub-toggle"
+                      @click.stop="toggleDebugMainSub(`${card.key}-requestMessages`)"
+                    >
+                      <i
+                        :class="[
+                          'ti',
+                          isDebugMainSubExpanded(`${card.key}-requestMessages`) ? 'ti-chevron-down' : 'ti-chevron-right',
+                        ]"
+                      ></i>
+                      <span>{{ t('contentCenter.aiDebug.requestMessagesTitle') }}</span>
+                    </button>
+                    <section
+                      v-if="isDebugMainSubExpanded(`${card.key}-requestMessages`)"
+                      class="debug-block-section debug-block-section-reading"
+                    >
+                      <div v-if="card.trace.request_messages.length > 0" class="debug-conversation-list" role="list">
+                        <article
+                          v-for="item in buildReadableDebugRequestMessages(card.trace.request_messages)"
+                          :key="`${card.key}-request-message-${item.index}`"
+                          :class="['debug-conversation-card', item.roleTone]"
+                          role="listitem"
+                        >
+                          <div class="debug-conversation-card-head">
+                            <div class="debug-conversation-topline">
+                              <span :class="['debug-conversation-role', item.roleTone]">{{ item.roleLabel }}</span>
+                              <span class="debug-conversation-index">第 {{ item.index }} 条</span>
+                            </div>
+                          </div>
+                          <p class="debug-reading-copy debug-conversation-content">{{ item.content }}</p>
+                        </article>
+                      </div>
+                      <div v-else class="empty-state compact-empty">{{ t('common.notAvailable') }}</div>
+                    </section>
+
+                    <button
+                      type="button"
+                      class="debug-sub-toggle"
+                      @click.stop="toggleDebugMainSub(`${card.key}-rawResponse`)"
+                    >
+                      <i
+                        :class="[
+                          'ti',
+                          isDebugMainSubExpanded(`${card.key}-rawResponse`) ? 'ti-chevron-down' : 'ti-chevron-right',
+                        ]"
+                      ></i>
+                      <span>{{ t('contentCenter.aiDebug.rawResponseTitle') }}</span>
+                    </button>
+                    <section
+                      v-if="isDebugMainSubExpanded(`${card.key}-rawResponse`)"
+                      class="debug-block-section debug-block-section-reading"
+                    >
+                      <pre class="preset-body-content debug-pre debug-pre-reading">{{
+                        readableDebugPassResponse(card.trace)
+                      }}</pre>
+                    </section>
+                  </template>
+                  <div v-else class="empty-state compact-empty">{{ t('contentCenter.aiDebug.passMissing') }}</div>
+                </div>
+              </section>
+
               <!-- 最终原始消息 -->
               <section class="debug-collapsible-card ai-debug-pass-card" :class="{ expanded: debugFinalRawExpanded }">
                 <button type="button" class="debug-collapsible-header" @click="toggleDebugFinalRaw">
@@ -1105,6 +1226,7 @@ const tavernPresetPromptDraft = ref<TavernPresetPromptDraft | null>(null);
 const selectedDebugMessageId = ref<number | null>(null);
 const debugMainPassExpanded = ref(false);
 const debugVarPassExpanded = ref(false);
+const debugExtraPassExpanded = ref<Record<string, boolean>>({});
 const debugFinalRawExpanded = ref(false);
 const debugMainSubSections = ref<Record<string, boolean>>({});
 const debugVarSubSections = ref<Record<string, boolean>>({});
@@ -1189,6 +1311,25 @@ const mainPassRequestBodyView = computed(() =>
 const variablePassRequestBodyView = computed(() =>
   buildReadableDebugRequestBodyView(selectedPreferredVariableTrace.value?.request_body_text),
 );
+
+/**
+ * 审稿 / 改稿两个环节的卡片数据。
+ * 它们由玩家点「审稿」按钮产生，不是每个回合都有 —— 没记录时卡片显示「无追踪记录」。
+ */
+const debugExtraPassCards = computed(() => [
+  {
+    key: 'review',
+    title: t('contentCenter.aiDebug.passReviewTitle'),
+    icon: 'ti-search',
+    trace: selectedDebugTrace.value?.review_pass,
+  },
+  {
+    key: 'revise',
+    title: t('contentCenter.aiDebug.passReviseTitle'),
+    icon: 'ti-wand',
+    trace: selectedDebugTrace.value?.revise_pass,
+  },
+]);
 
 /**
  * 「失败的请求」列表。
@@ -1617,12 +1758,21 @@ function toggleDebugVarSub(key: string) {
   debugVarSubSections.value[key] = !debugVarSubSections.value[key];
 }
 
+function isDebugExtraPassExpanded(key: string) {
+  return debugExtraPassExpanded.value[key] === true;
+}
+
+function toggleDebugExtraPass(key: string) {
+  debugExtraPassExpanded.value[key] = !debugExtraPassExpanded.value[key];
+}
+
 function resetDebugCollapseState() {
   debugMainPassExpanded.value = false;
   debugVarPassExpanded.value = false;
   debugFinalRawExpanded.value = false;
   debugMainSubSections.value = {};
   debugVarSubSections.value = {};
+  debugExtraPassExpanded.value = {};
 }
 
 function debugFailurePassLabel(pass: StandaloneAiDebugFailurePass) {

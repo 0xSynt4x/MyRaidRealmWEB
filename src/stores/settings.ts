@@ -430,6 +430,10 @@ export interface ApiPoolSettings {
   assistantApiIds: string[];
   /** 抽奖 API 选中项（按尝试顺序）；为空表示回退主 API */
   lotteryApiIds: string[];
+  /** 审稿 API 选中项（按尝试顺序）；为空表示回退主 API */
+  reviewApiIds: string[];
+  /** 改稿 API 选中项（按尝试顺序）；为空表示回退主 API */
+  reviseApiIds: string[];
   /** 前一个失败时是否自动试下一个 */
   autoRetry: boolean;
   /** 是否启用「首字超时」：流式请求超过设定秒数还没出首字就判失败 */
@@ -451,6 +455,24 @@ export function normalizeFirstTokenTimeoutSeconds(value: unknown): number {
   }
   const rounded = Math.round(parsed);
   return Math.min(FIRST_TOKEN_TIMEOUT_MAX_SECONDS, Math.max(FIRST_TOKEN_TIMEOUT_MIN_SECONDS, rounded));
+}
+
+/**
+ * 一次 AI 回复要请求几条正文（≥2 时，多出来的正文在楼层里排队翻页查看）。
+ * 界面与解析共用同一套边界；上限同时是「一次并行发几条请求」的上限。
+ */
+export const BODY_REQUEST_COUNT_MIN = 1;
+export const BODY_REQUEST_COUNT_MAX = 5;
+export const DEFAULT_BODY_REQUEST_COUNT = 1;
+
+/** 次数解析：非法值回落到默认，越界值夹到区间内，保证存进去的永远是可用值 */
+export function normalizeBodyRequestCount(value: unknown): number {
+  const parsed = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(parsed)) {
+    return DEFAULT_BODY_REQUEST_COUNT;
+  }
+  const rounded = Math.round(parsed);
+  return Math.min(BODY_REQUEST_COUNT_MAX, Math.max(BODY_REQUEST_COUNT_MIN, rounded));
 }
 
 /** 主 API 一条都没选中时对外给出的空配置；模块级常量，保证引用稳定 */
@@ -504,6 +526,9 @@ export function resolveStoredApiPoolSettings(stored: Record<string, any> | null 
   let assistantApiIds = normalizeApiIdList(stored?.assistantApiIds, pool);
   // 抽奖 API 不迁移老数据：没配过就是空，运行时自动回退主 API
   const lotteryApiIds = normalizeApiIdList(stored?.lotteryApiIds, pool);
+  // 审稿 / 改稿 API 同理：没配过就是空，运行时自动回退主 API
+  const reviewApiIds = normalizeApiIdList(stored?.reviewApiIds, pool);
+  const reviseApiIds = normalizeApiIdList(stored?.reviseApiIds, pool);
 
   // 池字段不存在 → 说明还是老结构，把老的两份配置搬进来
   if (!hasStoredPool) {
@@ -530,6 +555,8 @@ export function resolveStoredApiPoolSettings(stored: Record<string, any> | null 
     mainApiIds,
     assistantApiIds,
     lotteryApiIds,
+    reviewApiIds,
+    reviseApiIds,
     autoRetry: stored?.apiAutoRetry !== false,
     // 默认关：老存档升级后行为与之前完全一致，想要的人自己去 API 配置页打开
     firstTokenTimeoutEnabled: stored?.apiFirstTokenTimeout === true,
@@ -593,6 +620,13 @@ export const useSettingsStore = defineStore('settings', () => {
 
   const initialApiPoolSettings = resolveStoredApiPoolSettings(stored);
 
+  // 一次 AI 回复要请求几条正文；只在「独立模式主回复」上用，多出来的正文排队翻页查看。
+  const bodyRequestCount = ref<number>(
+    typeof stored.bodyRequestCount === 'undefined'
+      ? DEFAULT_BODY_REQUEST_COUNT
+      : normalizeBodyRequestCount(stored.bodyRequestCount),
+  );
+
   /** 唯一的 API 配置列表：主 API 与辅助 API 都从这里挑 */
   const apiPool = ref<ApiConfig[]>(initialApiPoolSettings.apiPool);
   /** 主 API 选中项（按尝试顺序） */
@@ -601,6 +635,10 @@ export const useSettingsStore = defineStore('settings', () => {
   const assistantApiIds = ref<string[]>(initialApiPoolSettings.assistantApiIds);
   /** 抽奖 API 选中项（按尝试顺序）；为空表示回退主 API */
   const lotteryApiIds = ref<string[]>(initialApiPoolSettings.lotteryApiIds);
+  /** 审稿 API 选中项（按尝试顺序）；为空表示回退主 API */
+  const reviewApiIds = ref<string[]>(initialApiPoolSettings.reviewApiIds);
+  /** 改稿 API 选中项（按尝试顺序）；为空表示回退主 API */
+  const reviseApiIds = ref<string[]>(initialApiPoolSettings.reviseApiIds);
   /** 前一个失败时是否自动试下一个 */
   const apiAutoRetry = ref<boolean>(initialApiPoolSettings.autoRetry);
   /** 是否启用「首字超时」判定 */
@@ -644,6 +682,12 @@ export const useSettingsStore = defineStore('settings', () => {
 
   /** 抽奖 API 候选列表；没单独配置时为空，运行时回退主 API */
   const lotteryApis = computed(() => pickApisFromPool(lotteryApiIds.value));
+
+  /** 审稿 API 候选列表；没单独配置时为空，运行时回退主 API */
+  const reviewApis = computed(() => pickApisFromPool(reviewApiIds.value));
+
+  /** 改稿 API 候选列表；没单独配置时为空，运行时回退主 API */
+  const reviseApis = computed(() => pickApisFromPool(reviseApiIds.value));
 
   /**
    * 主 API 第一条的兼容读法。
@@ -736,6 +780,7 @@ export const useSettingsStore = defineStore('settings', () => {
       onlineModeEnabled: onlineModeEnabled.value,
       worldDifficulty: worldDifficulty.value,
       stageSummaryThreshold: stageSummaryThreshold.value,
+      bodyRequestCount: bodyRequestCount.value,
       backgroundImage: backgroundImage.value,
       standaloneLocalContent: standaloneLocalContent.value,
       snapshotTrim: snapshotTrim.value,
@@ -753,6 +798,8 @@ export const useSettingsStore = defineStore('settings', () => {
       mainApiIds: mainApiIds.value,
       assistantApiIds: assistantApiIds.value,
       lotteryApiIds: lotteryApiIds.value,
+      reviewApiIds: reviewApiIds.value,
+      reviseApiIds: reviseApiIds.value,
       apiAutoRetry: apiAutoRetry.value,
       apiFirstTokenTimeout: apiFirstTokenTimeout.value,
       apiFirstTokenTimeoutSeconds: apiFirstTokenTimeoutSeconds.value,
@@ -770,6 +817,8 @@ export const useSettingsStore = defineStore('settings', () => {
       mainApiIds: mainApiIds.value,
       assistantApiIds: assistantApiIds.value,
       lotteryApiIds: lotteryApiIds.value,
+      reviewApiIds: reviewApiIds.value,
+      reviseApiIds: reviseApiIds.value,
       apiAutoRetry: apiAutoRetry.value,
       apiFirstTokenTimeout: apiFirstTokenTimeout.value,
       apiFirstTokenTimeoutSeconds: apiFirstTokenTimeoutSeconds.value,
@@ -791,6 +840,7 @@ export const useSettingsStore = defineStore('settings', () => {
       onlineModeEnabled,
       worldDifficulty,
       stageSummaryThreshold,
+      bodyRequestCount,
       backgroundImage,
       standaloneLocalContent,
       snapshotTrim,
@@ -804,9 +854,18 @@ export const useSettingsStore = defineStore('settings', () => {
     },
   );
 
-  // 勾选主 API / 辅助 API / 抽奖 API、切换自动重试开关、调首字超时 → 立即落盘（池里的编辑内容仍走显式保存）
+  // 勾选主 API / 辅助 API / 抽奖 API / 审稿 API / 改稿 API、切换自动重试开关、调首字超时 → 立即落盘（池里的编辑内容仍走显式保存）
   watch(
-    [mainApiIds, assistantApiIds, lotteryApiIds, apiAutoRetry, apiFirstTokenTimeout, apiFirstTokenTimeoutSeconds],
+    [
+      mainApiIds,
+      assistantApiIds,
+      lotteryApiIds,
+      reviewApiIds,
+      reviseApiIds,
+      apiAutoRetry,
+      apiFirstTokenTimeout,
+      apiFirstTokenTimeoutSeconds,
+    ],
     () => {
       persistApiSelection();
     },
@@ -865,14 +924,19 @@ export const useSettingsStore = defineStore('settings', () => {
     onlineModeEnabled,
     worldDifficulty,
     stageSummaryThreshold,
+    bodyRequestCount,
     mainApi,
     mainApis,
     assistantApis,
     lotteryApis,
+    reviewApis,
+    reviseApis,
     apiPool,
     mainApiIds,
     assistantApiIds,
     lotteryApiIds,
+    reviewApiIds,
+    reviseApiIds,
     apiAutoRetry,
     apiFirstTokenTimeout,
     apiFirstTokenTimeoutSeconds,

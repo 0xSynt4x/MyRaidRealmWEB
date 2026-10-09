@@ -121,3 +121,11 @@
 `--ui-orn-*`（纹样）、`--ui-noise-opacity` / `--ui-noise-blend`（噪点）、`--ui-vignette-strength`（暗角）。
 浅色主题下这几项会被覆盖为 0 或调低，避免发脏。
 `--ui-banner-*` 控制场景横幅的宽高比、最大高度、圆角、聚焦点与换天气时的淡入淡出时长。
+
+## 消息操作按钮排
+
+`MessageCard.vue` 右上角 `.message-actions` 包含楼层操作：
+- 用户楼层：编辑、重新发送、删除。
+- AI 楼层：编辑、重新生成、审稿改稿（仅最新楼层）、正文翻页（`‹ n/m ›`，多于 1 页时显示）、删除。
+- 抽奖结果楼层：仅保留删除。
+- 翻页按钮（`.btn-page-prev` / `.btn-page-next`）与页码指示（`.body-page-indicator`）与同一排按钮共享紧凑尺寸与微交互规范。
