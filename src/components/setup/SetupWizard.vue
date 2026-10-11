@@ -31,7 +31,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import { useI18n } from '../../i18n';
 import { notify } from '../../utils/notify';
 import { useFullscreen } from '../../composables/useFullscreen';
@@ -53,8 +53,20 @@ const emit = defineEmits<{ complete: [] }>();
 /**
  * 更新日志弹窗：版本变化后首次进首页自动拦一道；
  * 之后玩家想重看，点右下角版本号即可（走 handleOpenChangelog）。
+ *
+ * 🔴 初值必须为 false —— shouldShowChangelog() 要在挂载后才查 localStorage，
+ * 否则首帧 visible=true 时 <ChangelogModal> 同步实例化，
+ * 而 Teleport 的 `defer` 目标 `#modal-container` 此刻还没插进 document，
+ * 会触发一次 mount/unmount 来回切（v-if + Transition），视觉上就是闪一下。
+ * 改 onMounted 后才打开，App 树整体已就绪，Teleport 一次到位不抖。
  */
-const showChangelog = ref(shouldShowChangelog());
+const showChangelog = ref(false);
+
+onMounted(() => {
+  if (shouldShowChangelog()) {
+    showChangelog.value = true;
+  }
+});
 
 const setupStore = useSetupStore();
 const layoutStore = useLayoutStore();

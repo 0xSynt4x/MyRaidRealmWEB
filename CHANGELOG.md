@@ -1215,7 +1215,7 @@
 
 ## 2026-10-11
 
-### — fix: 存档目录与正文改为同一次事务落盘，并加开机自检修历史脏数据
+### `0a6e287` — fix: 存档目录与正文改为同一次事务落盘，并加开机自检修历史脏数据
 
 - **Fixed** 存档「目录」与「正文」分两次写入留下的三类坏状态
   （`src/utils/archive.ts`、`src/utils/standaloneStorage.ts`、`src/utils/standaloneIndexedDb.ts`）：

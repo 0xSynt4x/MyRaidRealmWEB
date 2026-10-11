@@ -99,6 +99,11 @@ const CHANGELOG_SOURCE: ReadonlyArray<{ date: string; items: readonly string[] }
     date: '261010',
     items: ['长剧情关键旧事精准唤醒', 'NPC深层羁绊不随楼层遗忘', '长跑团上下文加载大幅提速'],
   },
+  {
+    date: '261011',
+    items: ['修复存档偶尔打不开', '修复存档保存后不见', '启动自动修复存档'],
+  },
+  { date: '261012', items: ['修复更新日志弹窗闪烁'] },
 ];
 
 /** 第 `index` 条（从 0 起）对应的版本号 */
