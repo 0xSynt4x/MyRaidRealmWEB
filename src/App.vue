@@ -77,6 +77,7 @@ import { useSetupStore } from './stores/setup';
 import { useSettingsStore } from './stores/settings';
 import {
   getStandaloneArchiveRestoredEventName,
+  healStandaloneArchiveIndex,
   pruneStandaloneArchiveDebugTraces,
   type StandaloneArchiveRestoreOutcome,
 } from './utils/archive';
@@ -91,7 +92,13 @@ const setupStore = useSetupStore();
 // 启动时做一次存储维护：老版本的存档会把调试记录一起打包，顺手剔掉。
 // 只跑一次，处理完留标记，之后启动直接跳过。
 // 存档载荷现在放在 IndexedDB 里，读写得等异步完成，这里不阻塞挂载。
-void pruneStandaloneArchiveDebugTraces();
+//
+// 紧接着再对一次存档目录与正文（见 healStandaloneArchiveIndex）—— 排在维护之后，
+// 免得两个异步维护互相踩。它只修真正对不上的地方，正常情况下零写入。
+// 前面那步万一抛错也照样往下走：自检该跑就跑，别被前一步连累。
+void pruneStandaloneArchiveDebugTraces()
+  .catch(() => undefined)
+  .then(() => healStandaloneArchiveIndex());
 
 // 同一次维护里顺手做掉：老版本导入的酒馆预设是整份存盘的，里面带着我们从不读的扩展字段
 // （单份能占近 1 MB）。这里把库里每份裁一遍，也只跑一次。

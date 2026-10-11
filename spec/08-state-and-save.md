@@ -135,6 +135,16 @@ IndexedDB 在磁盘压力下，浏览器**可能整体回收整个站点的数�
 - 存档**载荷**放 IndexedDB，读写是**异步**的（`saveStandaloneArchiveSnapshot` /
   `restoreStandaloneArchiveById` / `deleteStandaloneArchive` / `downloadStandaloneArchiveById`
   都返回 Promise）。**存档索引**小而读得频繁，走内存缓存，`listStandaloneArchives()` 仍是同步的。
+- 🔴 **目录与正文必须一起落盘。** 两样放在同一个存储里，走 `commitStorageBatch()` 一次事务提交 ——
+  要么都成、要么都不成。分两次写会留下两类坏状态：目录指向不存在的正文（列表里点开报错）、
+  正文没有目录（占着空间却看不见）。删除时顺序是**先改目录、再删正文**，中途失败只留下没人引用的正文。
+- **索引走内存缓存、载荷不走**，所以批量提交里「先同步更新缓存、再落盘」的顺序不能反 ——
+  目录是「读出来改一改再写回去」的，读和写之间一旦有 `await`，两次并发提交就会互相覆盖。
+- 落盘失败时内存缓存已被改过：本次会话看到的是新值，下次启动以磁盘为准。失败会抛出（调用方据此报错），
+  并按同样的兜底写一份 localStorage。
+- **开机自检** `healStandaloneArchiveIndex()`（挂载于 `src/App.vue`）：目录与正文对不上时自动修复 ——
+  悬空的目录项移除、孤儿正文**捞回列表而非删除**（IndexedDB 可能被浏览器整体回收，
+  删孤儿有永久丢档的风险，两者代价不对等）。一致时零写入，失败只记日志。
 
 ## 状态所有权
 

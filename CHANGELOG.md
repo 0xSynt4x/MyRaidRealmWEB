@@ -1194,7 +1194,7 @@
 
 ## 2026-10-10
 
-### — fix: 正文链不在场的重要 NPC 也走瘦身，同场景判定放宽到细分场景后缀
+### `f00acdb` — fix: 正文链不在场的重要 NPC 也走瘦身，同场景判定放宽到细分场景后缀
 
 - **Changed** 正文链的 NPC 在场兜底（`runtime/standaloneSnapshotTrim.ts`）：
   - 正文链不再把「重要 NPC」「被关注 NPC」当豁免项 —— 本轮没出场、也不在同一场景的角色，
@@ -1212,3 +1212,45 @@
 - **Added** 玩家更新日志 `261010`：长剧情关键旧事精准唤醒、NPC 深层羁绊不随楼层遗忘、长跑团上下文加载大幅提速。
 - 验证：`typecheck` ✓ ｜ `lint` 0 error（15 个存量 warning）✓ ｜ `build` ✓；
   `test` 本次未复跑（改动前已跑通）。
+
+## 2026-10-11
+
+### — fix: 存档目录与正文改为同一次事务落盘，并加开机自检修历史脏数据
+
+- **Fixed** 存档「目录」与「正文」分两次写入留下的三类坏状态
+  （`src/utils/archive.ts`、`src/utils/standaloneStorage.ts`、`src/utils/standaloneIndexedDb.ts`）：
+  - **目录里有、正文没了** —— 删存档时正文先被删，改目录那一步是「内存立即改、磁盘异步写、不等」；
+    磁盘那一步失败时内存里已经没了、磁盘上还在，下次启动读回磁盘目录，列表里那行又冒出来，
+    玩家一点开就报「未找到对应的本地存档」。列表接口只念目录、不校验正文是否存在，没有任何拦截。
+  - **正文在、目录里没有** —— 保存时目录不等落盘，玩家点完保存立刻关页面，正文落了盘、目录没落；
+    该存档永远不出现在列表里，数据却一直占着存储空间，玩家只会觉得空间莫名变少。
+  - **目录写入乱序** —— 两次改目录是各自独立的事务，旧数组可能后落盘把新数组盖掉，刷新后丢掉刚存的条目。
+  - 现在写入与删除走同一次事务提交（`commitStorageBatch`），要么都成、要么都不成；
+    删除顺序反过来（先从目录去掉、再删正文），中途失败最多留个没人引用的正文，不再留指向空气的目录项。
+  - 批量写中途抛错时显式中止事务：此前事务**不会**因抛错自动回滚，已经排进去的写照样可能落盘，
+    「要么都成、要么都不成」并不成立。
+  - 降级模式（无痕）没有事务可用，仍按顺序执行；但配额满时**照旧抛错**，不吞掉失败
+    （这一步以前走 `writeLargeAsync`，本来就是抛 `StorageQuotaError` 的）。
+- **Added** 开机自检 `healStandaloneArchiveIndex()`（`src/utils/archive.ts`，挂载于 `src/App.vue`）：
+  - 目录里有、正文没有的条目 —— 从列表移除（留着只会让玩家点开报错）；
+  - 正文在、目录里没有的 —— **读出来捞回列表，不删**。IndexedDB 在磁盘压力下可能被浏览器整体回收，
+    万一丢的正好是目录，删孤儿等于把仅存的存档一起毁掉；捞回来最差是多一行，删错是永久丢档。
+  - 排在既有的调试记录清理**之后**执行（免得两个异步维护互相踩），不阻塞挂载，失败只记日志；
+    一致时零写入。
+- **Added** 单测 3 项（`scripts/tests/run-standalone-local-content-tests.ts`）：
+  悬空目录项被移除、孤儿正文被捞回而非删除、一致状态下自检不改写目录。
+- **Fixed** 测试用的 localStorage 替身补上 `length` 与 `key()`（同文件）：
+  此前缺这两个成员，「按前缀列出所有 key」在测试里永远返回空，会把「查不出来」伪装成「没有数据」。
+- 四道检查：`typecheck` ✓ ｜ `test` 126/126 + 35 ✓ ｜ `lint` 0 error（15 个存量 warning）✓ ｜ `build` ✓。
+  另用无头 Chrome 对**真实 IndexedDB** 跑了 9 项探针全部通过 —— 含
+  「批量中途抛错时磁盘一步未落」（原子性回滚）与「按前缀列举能拿到正文、不误含目录 key」。
+
+### — fix: 修复更新日志弹窗闪烁（首次自动弹不再闪烁）
+
+- **Fixed** 更新日志弹窗在首帧的 mount/unmount 来回切（`src/components/setup/SetupWizard.vue`）：
+  原实现 `const showChangelog = ref(shouldShowChangelog())` 在 SetupWizard 同步初始化时就拿到 true，
+  此时 `<ChangelogModal>` 实例化早于 App 模板末尾的 `#modal-container`，`<Teleport defer>` 的目标此刻还未就绪，
+  会触发一次挂载后再卸载 —— 叠上 `<Transition name="changelog-fade">` 的 v-if 切换，
+  视觉上就是闪一下。手动点版本号打开不受影响（那时 `#modal-container` 已就绪，Teleport 一次到位）。
+  改为 `ref(false)` + `onMounted` 里再查 `shouldShowChangelog()`，跳过首帧前那一段未就绪窗口。
+- **Added** 玩家更新日志 `261012`：修复更新日志弹窗闪烁。

@@ -168,25 +168,62 @@ export async function idbSet(key: string, value: unknown): Promise<void> {
   }
 }
 
+/** 一次批量提交里的一步：写入某个 key，或删除某个 key。 */
+export type IdbBatchOperation = { type: 'put'; key: string; value: unknown } | { type: 'delete'; key: string };
+
 /**
- * 批量写，放进同一个事务。
- * 存档索引和载荷要一起落盘时用 —— 写一半失败会留下指向不存在存档的索引项。
+ * 把一批「写入 + 删除」放进同一个事务。
+ *
+ * 存档目录与存档正文必须一起落盘 —— 目录里有一行，正文就得在；正文在，目录里就得有那一行。
+ * 分开写会留下两类坏状态：目录指向不存在的正文（点开报错），或正文没有目录
+ * （白占空间、列表里永远看不见）。走同一个事务就不存在「只落了一半」这个中间状态。
  */
-export async function idbSetMany(entries: Array<{ key: string; value: unknown }>): Promise<void> {
-  if (entries.length === 0) {
+export async function idbApplyBatch(operations: IdbBatchOperation[]): Promise<void> {
+  if (operations.length === 0) {
     return;
   }
 
+  let transaction: IDBTransaction;
   try {
     const db = await getDatabase();
-    const transaction = db.transaction(STORE_NAME, 'readwrite');
-    const store = transaction.objectStore(STORE_NAME);
-    for (const entry of entries) {
-      store.put(entry.value, entry.key);
-    }
-    await promisifyTransaction(transaction);
+    transaction = db.transaction(STORE_NAME, 'readwrite');
   } catch (error) {
     throw normalizeError(error, '批量写入失败');
+  }
+
+  const completion = promisifyTransaction(transaction);
+  let issueError: unknown = null;
+
+  try {
+    const store = transaction.objectStore(STORE_NAME);
+    for (const operation of operations) {
+      if (operation.type === 'put') {
+        store.put(operation.value, operation.key);
+      } else {
+        store.delete(operation.key);
+      }
+    }
+  } catch (error) {
+    // 中途抛错（例如值没法结构化克隆）时，事务**不会**因此自动回滚，
+    // 已经排进去的那几步照样可能落盘 —— 必须显式中止，
+    // 否则「要么都成、要么都不成」这句话就不成立。
+    issueError = error;
+    try {
+      transaction.abort();
+    } catch {
+      // 事务已经结束，无需再中止
+    }
+  }
+
+  try {
+    await completion;
+  } catch (error) {
+    // 中止引发的失败要报真正的原因，而不是笼统的 abort。
+    throw normalizeError(issueError ?? error, '批量写入失败');
+  }
+
+  if (issueError) {
+    throw normalizeError(issueError, '批量写入失败');
   }
 }
 

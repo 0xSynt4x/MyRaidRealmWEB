@@ -25,11 +25,11 @@ import {
 } from './standaloneRuntimeSchemas';
 import { loadStandaloneStatData, persistStandaloneStatData } from './standaloneStatData';
 import {
+  commitStorageBatch,
+  listKeysByPrefixAsync,
   readLargeAsync,
   readStorageSync,
-  removeLargeAsync,
   writeLargeAsync,
-  writeStorageSync,
 } from './standaloneStorage';
 
 const STANDALONE_ARCHIVE_PENDING_RESUME_KEY = 'th1980s:standalone-archive-pending-resume';
@@ -327,12 +327,16 @@ function readStandaloneArchiveIndex(): StandaloneArchiveListItem[] {
   }
 }
 
-function writeStandaloneArchiveIndex(index: StandaloneArchiveListItem[]): void {
-  writeStorageSync(STANDALONE_ARCHIVE_INDEX_STORAGE_KEY, index);
-}
-
-async function writeStandaloneArchivePayload(payload: StandaloneArchiveFile): Promise<void> {
-  await writeLargeAsync(buildStandaloneArchiveStorageKey(payload.archiveId), payload);
+/**
+ * 把一个目录项并进现有目录（同编号 = 覆盖），返回新的目录数组。
+ *
+ * 🔴 这里**只算不写**。落盘必须和存档正文一起提交 —— 分两次写会留下
+ * 「目录里有、正文没了」（列表里点开报错）或「正文在、目录里没有」（占着空间却看不见）的坏状态。
+ */
+function mergeStandaloneArchiveIndexEntry(entry: StandaloneArchiveListItem): StandaloneArchiveListItem[] {
+  const nextIndex = readStandaloneArchiveIndex().filter(item => item.id !== entry.id);
+  nextIndex.push(entry);
+  return nextIndex;
 }
 
 /**
@@ -534,9 +538,16 @@ export function listStandaloneArchives(): StandaloneArchiveListItem[] {
 }
 
 export async function deleteStandaloneArchive(archiveId: string): Promise<void> {
-  await removeLargeAsync(buildStandaloneArchiveStorageKey(archiveId));
   const nextIndex = readStandaloneArchiveIndex().filter(item => item.id !== archiveId);
-  writeStandaloneArchiveIndex(nextIndex);
+
+  // 顺序要紧：先从目录里去掉这一行，再删正文。
+  // 一次事务里这两件事是原子的；降级模式（无痕）没有事务、只能顺序执行，
+  // 那时中途失败最多留下一个没人引用的正文 —— 不报错，而且启动自检会把它捞回列表。
+  // 反过来先删正文，中途失败就会留下指向不存在正文的目录项，玩家一点开就报错。
+  await commitStorageBatch([
+    { action: 'set', key: STANDALONE_ARCHIVE_INDEX_STORAGE_KEY, value: nextIndex },
+    { action: 'remove', key: buildStandaloneArchiveStorageKey(archiveId) },
+  ]);
 }
 
 /**
@@ -575,6 +586,66 @@ export async function pruneStandaloneArchiveDebugTraces(): Promise<void> {
   }
 }
 
+/**
+ * 启动自检：把存档目录和存档正文对一遍，修掉对不上的地方。
+ *
+ * 两类不一致都是历史上「目录与正文分开写」留下的：
+ * - **目录里有、正文没了** —— 列表里那一行点开会报「未找到对应的本地存档」。直接从列表剔掉。
+ * - **正文在、目录里没有** —— 玩家存过、却永远不出现在列表里的存档。**捞回列表，不删。**
+ *
+ * 🔴 为什么孤儿正文是「捞回来」而不是「删掉」：IndexedDB 在磁盘压力下可能被浏览器整体回收，
+ * 万一丢的正好是目录，删孤儿就等于把仅存的存档也一起毁了。捞回来最差是列表里多出一行，
+ * 删错却是永久丢档 —— 两者代价不对等，所以这里选保守的那一边。
+ *
+ * 只有真的存在不一致才写盘，正常情况下零写入。失败只记日志，不影响启动。
+ */
+export async function healStandaloneArchiveIndex(): Promise<void> {
+  try {
+    const index = readStandaloneArchiveIndex();
+    const payloadKeys = new Set(await listKeysByPrefixAsync(STANDALONE_ARCHIVE_STORAGE_KEY_PREFIX));
+    const indexIds = new Set(index.map(item => item.id));
+
+    // 目录里有、正文没了。
+    const danglingIds = index
+      .filter(item => !payloadKeys.has(buildStandaloneArchiveStorageKey(item.id)))
+      .map(item => item.id);
+
+    // 正文在、目录里没有 —— 读出来重建目录项。
+    const orphanIds = [...payloadKeys]
+      .map(key => key.slice(STANDALONE_ARCHIVE_STORAGE_KEY_PREFIX.length))
+      .filter(id => id.length > 0 && !indexIds.has(id));
+
+    const recoveredEntries: StandaloneArchiveListItem[] = [];
+    for (const id of orphanIds) {
+      const payload = await readStandaloneArchivePayload(id);
+      if (payload) {
+        recoveredEntries.push(buildStandaloneArchiveListItem(payload));
+      }
+    }
+
+    if (danglingIds.length === 0 && recoveredEntries.length === 0) {
+      return;
+    }
+
+    const healedIndex = index.filter(item => !danglingIds.includes(item.id)).concat(recoveredEntries);
+
+    await commitStorageBatch([{ action: 'set', key: STANDALONE_ARCHIVE_INDEX_STORAGE_KEY, value: healedIndex }]);
+
+    if (danglingIds.length > 0) {
+      console.warn(`[Archive] 启动自检：${danglingIds.length} 条目录项找不到对应正文，已从列表移除`, danglingIds);
+    }
+
+    if (recoveredEntries.length > 0) {
+      console.warn(
+        `[Archive] 启动自检：${recoveredEntries.length} 份存档正文没有目录项，已捞回列表`,
+        recoveredEntries.map(entry => entry.id),
+      );
+    }
+  } catch (error) {
+    console.warn('[Archive] 启动自检失败（不影响使用）:', error);
+  }
+}
+
 export async function downloadStandaloneArchiveById(archiveId: string): Promise<void> {
   const payload = await readStandaloneArchivePayload(archiveId);
   if (!payload) {
@@ -589,12 +660,15 @@ export async function downloadStandaloneArchiveById(archiveId: string): Promise<
  * 同编号 = 覆盖（自动存档靠这条做到「每轮只留最新一份」），新编号 = 新增一槽。
  */
 async function upsertStandaloneArchive(payload: StandaloneArchiveFile): Promise<StandaloneArchiveListItem> {
-  await writeStandaloneArchivePayload(payload);
-
   const nextEntry = buildStandaloneArchiveListItem(payload);
-  const nextIndex = readStandaloneArchiveIndex().filter(item => item.id !== nextEntry.id);
-  nextIndex.push(nextEntry);
-  writeStandaloneArchiveIndex(nextIndex);
+  const nextIndex = mergeStandaloneArchiveIndexEntry(nextEntry);
+
+  // 正文和目录一次提交：要么都落盘、要么都不落，不存在「只写了一半」。
+  await commitStorageBatch([
+    { action: 'set', key: buildStandaloneArchiveStorageKey(payload.archiveId), value: payload },
+    { action: 'set', key: STANDALONE_ARCHIVE_INDEX_STORAGE_KEY, value: nextIndex },
+  ]);
+
   return nextEntry;
 }
 
@@ -656,11 +730,15 @@ export async function importArchiveFile(file: File): Promise<StandaloneArchiveRe
   if (isStandaloneArchiveFile(parsed)) {
     // 老存档可能带着调试记录，导入时归一化掉，别让它再落盘
     pruneArchivePayloadDebugTraces(parsed);
-    await writeStandaloneArchivePayload(parsed);
     const importedEntry = buildStandaloneArchiveListItem(parsed);
-    const nextIndex = readStandaloneArchiveIndex().filter(item => item.id !== importedEntry.id);
-    nextIndex.push(importedEntry);
-    writeStandaloneArchiveIndex(nextIndex);
+    const nextIndex = mergeStandaloneArchiveIndexEntry(importedEntry);
+
+    // 同保存路径：正文和目录一次提交。
+    await commitStorageBatch([
+      { action: 'set', key: buildStandaloneArchiveStorageKey(parsed.archiveId), value: parsed },
+      { action: 'set', key: STANDALONE_ARCHIVE_INDEX_STORAGE_KEY, value: nextIndex },
+    ]);
+
     return restoreStandaloneArchivePayload(parsed);
   }
 

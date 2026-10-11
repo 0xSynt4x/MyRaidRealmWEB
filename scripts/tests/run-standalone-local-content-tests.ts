@@ -12,6 +12,7 @@ import {
   formatArchiveSummaryForToast,
   clearPendingStandaloneArchiveResume,
   getStandaloneArchiveFeedbackMessageKey,
+  healStandaloneArchiveIndex,
   importArchiveFile,
   listStandaloneArchives,
   loadPendingStandaloneArchiveResume,
@@ -121,6 +122,7 @@ import {
 } from '../../src/utils/standaloneTavernPreset';
 
 const STANDALONE_ARCHIVE_STORAGE_KEY_PREFIX = 'th1980s:standalone-archive:';
+const STANDALONE_ARCHIVE_INDEX_STORAGE_KEY = 'th1980s:standalone-archive-index';
 // 预设记忆是「跟着会话走」的：键 = th1980s:selected-preset:<会话id>。
 // 没有会话时读取路径直接返回 null，所以测这条必须先把会话造出来。
 const STANDALONE_SELECTED_PRESET_STORAGE_KEY_PREFIX = 'th1980s:selected-preset';
@@ -226,6 +228,15 @@ Object.defineProperty(globalThis, 'toastr', {
 function createMemoryStorage() {
   const storage = new Map<string, string>();
   return {
+    // 🔴 必须提供 length / key()：存储层「按前缀列出 key」靠遍历这两个成员
+    // （见 standaloneStorage 的 listKeysByPrefixAsync / collectLocalKeysByPrefix）。
+    // 少了它们，那条路径在测试里会永远返回空，把「查不出来」伪装成「没有数据」。
+    get length() {
+      return storage.size;
+    },
+    key(index: number) {
+      return [...storage.keys()][index] ?? null;
+    },
     getItem(key: string) {
       return storage.has(key) ? storage.get(key)! : null;
     },
@@ -1929,6 +1940,50 @@ async function testImportStandaloneArchiveRejectsOldArchiveVersion(): Promise<vo
 
   await assert.rejects(importArchiveFile(importFile), /当前仅支持导入这套完整快照归档文件，不支持旧版存档文件/);
   assert.equal(listStandaloneArchives().length, 0);
+}
+
+async function testHealStandaloneArchiveIndexRemovesDanglingEntries(): Promise<void> {
+  await seedStandaloneArchiveScenario({ playerName: '自检角色', sendFullPreset: true });
+  const savedEntry = await saveStandaloneArchiveSnapshot();
+  assert.equal(listStandaloneArchives().length, 1);
+
+  // 造出「目录里有、正文没了」：正文被删掉，目录那行还在。
+  localStorage.removeItem(`${STANDALONE_ARCHIVE_STORAGE_KEY_PREFIX}${savedEntry.id}`);
+
+  await healStandaloneArchiveIndex();
+
+  assert.equal(listStandaloneArchives().length, 0, '指向不存在正文的目录项应被移除');
+}
+
+async function testHealStandaloneArchiveIndexRecoversOrphanPayloads(): Promise<void> {
+  await seedStandaloneArchiveScenario({ playerName: '孤儿角色', sendFullPreset: true });
+  const savedEntry = await saveStandaloneArchiveSnapshot();
+  const payload = readStoredArchivePayload(savedEntry.id);
+
+  // 造出「正文在、目录里没有」：目录被清空，正文还留在盘上。
+  localStorage.setItem(STANDALONE_ARCHIVE_INDEX_STORAGE_KEY, JSON.stringify([]));
+  assert.equal(listStandaloneArchives().length, 0);
+
+  await healStandaloneArchiveIndex();
+
+  const healed = listStandaloneArchives();
+  assert.equal(healed.length, 1, '孤儿正文应被捞回列表，而不是删掉');
+  assert.equal(healed[0]?.id, payload.archiveId);
+}
+
+async function testHealStandaloneArchiveIndexLeavesConsistentStateUntouched(): Promise<void> {
+  await seedStandaloneArchiveScenario({ playerName: '正常角色', sendFullPreset: true });
+  await saveStandaloneArchiveSnapshot();
+  const indexBefore = localStorage.getItem(STANDALONE_ARCHIVE_INDEX_STORAGE_KEY);
+
+  await healStandaloneArchiveIndex();
+
+  assert.equal(
+    localStorage.getItem(STANDALONE_ARCHIVE_INDEX_STORAGE_KEY),
+    indexBefore,
+    '目录与正文一致时，自检不应改写目录',
+  );
+  assert.equal(listStandaloneArchives().length, 1);
 }
 
 async function testVariableUpdateFormatPromptBlockAlwaysPresentInFixedMode(): Promise<void> {
@@ -6189,6 +6244,12 @@ async function run(): Promise<void> {
       testImportStandaloneArchiveRequiresApiSetupBeforeResumingOnCleanBrowser,
     ],
     ['import standalone archive rejects old archive version', testImportStandaloneArchiveRejectsOldArchiveVersion],
+    ['archive self check removes dangling index entries', testHealStandaloneArchiveIndexRemovesDanglingEntries],
+    ['archive self check recovers orphan payloads', testHealStandaloneArchiveIndexRecoversOrphanPayloads],
+    [
+      'archive self check leaves consistent state untouched',
+      testHealStandaloneArchiveIndexLeavesConsistentStateUntouched,
+    ],
     ['pending archive resume state round trip', testPendingArchiveResumeStateRoundTrip],
     ['snapshot trim follows chain rules', testStandaloneSnapshotTrimFollowsChainRules],
     ['snapshot trim keeps every npc when nothing matches', testStandaloneSnapshotTrimKeepsEveryNpcWhenNothingMatches],

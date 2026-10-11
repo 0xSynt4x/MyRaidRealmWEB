@@ -33,11 +33,13 @@ import {
   StorageQuotaError,
   StorageUnavailableError,
   closeStandaloneDatabase,
+  idbApplyBatch,
   idbDelete,
   idbGet,
   idbKeys,
   idbSet,
   isIndexedDbSupported,
+  type IdbBatchOperation,
 } from './standaloneIndexedDb';
 
 /**
@@ -421,6 +423,88 @@ function handleWriteFailure(key: string, value: unknown, error: unknown): void {
     console.warn(`[Storage] 已把 ${key} 兜底写入 localStorage（该副本不会被自动读回，仅保证数据不丢）`);
   } else {
     console.error(`[Storage] ${key} 兜底写入 localStorage 同样失败，这次改动未能持久化`);
+  }
+}
+
+/**
+ * 一次提交里的一步：写入某个 key，或删掉某个 key。
+ *
+ * `remove` 只用来删大块数据（存档正文），小数据的删除走 `removeStorageSync`。
+ */
+export type StandaloneStorageBatchOperation =
+  { action: 'set'; key: string; value: unknown } | { action: 'remove'; key: string };
+
+/**
+ * 一次提交多笔改动（写入与删除混在一起），保证**要么都成、要么都不成**。
+ *
+ * 存档的「目录 + 正文」必须一起落盘：目录里有一行，正文就得在；正文在，目录里就得有那一行。
+ * 分开写会留下两类坏状态 ——
+ * 目录指向不存在的正文：列表里点开会报「未找到对应的本地存档」；
+ * 正文没有目录：数据永远占着空间，列表里却看不见。
+ *
+ * 🔴 **内存缓存先同步更新，再落盘。** 顺序不能反，原因有两个：
+ * 1. 同步读（存档列表）必须立刻看到新值，否则玩家删完存档列表还是旧的；
+ * 2. 目录是「读出来改一改再写回去」的，读和写之间**不能有 await**，
+ *    否则两次并发提交会各自基于同一份旧目录计算，后写的把那笔改动整个盖掉。
+ *
+ * 落盘失败时：内存缓存已经改了，而磁盘没落成 —— 这里打日志，并沿用既有的兜底
+ * （把新数据写一份进 localStorage）。⚠️ 那份兜底不会被自动读回，只保证数据还在磁盘上。
+ */
+export async function commitStorageBatch(operations: StandaloneStorageBatchOperation[]): Promise<void> {
+  if (operations.length === 0) {
+    return;
+  }
+
+  // 1. 内存缓存先落到最新值（同步，中间不留 await）。
+  for (const operation of operations) {
+    if (!CACHED_KEY_SET.has(operation.key)) {
+      continue;
+    }
+
+    if (operation.action === 'set') {
+      memoryCache.set(operation.key, operation.value);
+    } else {
+      memoryCache.delete(operation.key);
+    }
+  }
+
+  // 2. 降级模式没有事务可用，只能顺序执行 —— 语义与单笔读写保持一致。
+  if (storageMode !== 'indexeddb') {
+    for (const operation of operations) {
+      if (operation.action === 'set') {
+        // 🔴 写失败必须抛，不能吞：调用方（存档保存）要靠它判断这次到底成没成。
+        // 以前这一步走 writeLargeAsync，配额满时是抛 StorageQuotaError 的。
+        if (!safeLocalSet(operation.key, JSON.stringify(operation.value))) {
+          throw new StorageQuotaError(`写入 ${operation.key} 失败：本地存储空间已满`);
+        }
+      } else {
+        safeLocalRemove(operation.key);
+      }
+    }
+    return;
+  }
+
+  // 3. IndexedDB：写入与删除放进同一个事务，等它真正提交。
+  const idbOperations: IdbBatchOperation[] = operations.map(operation =>
+    operation.action === 'set'
+      ? { type: 'put', key: operation.key, value: operation.value }
+      : { type: 'delete', key: operation.key },
+  );
+
+  try {
+    await idbApplyBatch(idbOperations);
+  } catch (error) {
+    // 只有「写入」需要兜底 —— 删除失败等于什么都没删，磁盘仍是一致的旧状态，
+    // 这时候再去动 localStorage 反而会把兜底副本搞成半套。
+    for (const operation of operations) {
+      if (operation.action === 'set') {
+        handleWriteFailure(operation.key, operation.value, error);
+      } else {
+        console.warn(`[Storage] ${operation.key} 删除失败，磁盘保持原样:`, error);
+      }
+    }
+
+    throw error;
   }
 }
 
