@@ -314,6 +314,15 @@
               />
               <small class="api-switch-hint">{{ t('settings.apiFirstTokenTimeoutSecondsUnit') }}</small>
             </div>
+
+            <div class="api-switch-row">
+              <span class="api-switch-label">{{ t('settings.apiCorsRelay') }}</span>
+              <label class="toggle-switch">
+                <input v-model="apiCorsRelay" type="checkbox" />
+                <span class="toggle-track"></span>
+              </label>
+              <small class="api-switch-hint">{{ t('settings.apiCorsRelayHint') }}</small>
+            </div>
           </div>
         </template>
 
@@ -833,6 +842,7 @@ const {
   apiAutoRetry,
   apiFirstTokenTimeout,
   apiFirstTokenTimeoutSeconds,
+  apiCorsRelay,
   locale,
   standaloneLocalContent,
 } = storeToRefs(settingsStore);

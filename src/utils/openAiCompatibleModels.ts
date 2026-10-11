@@ -1,8 +1,14 @@
 import { normalizeStandaloneOpenAiModelsApiUrl, normalizeStandaloneOpenAiApiUrl } from '../stores/settings';
+import { buildCorsRelayUrl, isLocalOrPrivateApiUrl, isSuspectedBrowserCorsFailure } from '../../runtime/corsRelay';
 
 type ModelApiInput = {
   apiurl: string;
   key?: string;
+};
+
+type ModelFetchOptions = {
+  /** 直连被跨域拦掉时是否改走本站同域中转；缺省 false */
+  corsRelayEnabled?: boolean;
 };
 
 function extractModelIds(data: any): string[] {
@@ -34,11 +40,27 @@ async function fetchModelsViaSillyTavernBackend(api: ModelApiInput): Promise<str
   return extractModelIds(await response.json());
 }
 
-async function fetchModelsDirectly(api: ModelApiInput): Promise<string[]> {
+async function fetchModelsDirectly(api: ModelApiInput, options?: ModelFetchOptions): Promise<string[]> {
   const headers = api.key ? { Authorization: `Bearer ${api.key}` } : undefined;
-  const response = await fetch(normalizeStandaloneOpenAiModelsApiUrl(api.apiurl), {
-    headers,
-  });
+  const modelsUrl = normalizeStandaloneOpenAiModelsApiUrl(api.apiurl);
+
+  const sendRequest = (url: string) => fetch(url, { headers });
+
+  let response: Response;
+  try {
+    response = await sendRequest(modelsUrl);
+  } catch (directError) {
+    // 与发正文那一路同一套判据：只有「直连根本没发出去」才改走中转，HTTP 4xx/5xx 不重试。
+    if (
+      !options?.corsRelayEnabled ||
+      isLocalOrPrivateApiUrl(api.apiurl) ||
+      !isSuspectedBrowserCorsFailure(directError)
+    ) {
+      throw directError;
+    }
+    const relayUrl = buildCorsRelayUrl(modelsUrl, globalThis.location?.origin);
+    response = await sendRequest(relayUrl);
+  }
 
   if (!response.ok) {
     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -47,7 +69,10 @@ async function fetchModelsDirectly(api: ModelApiInput): Promise<string[]> {
   return extractModelIds(await response.json());
 }
 
-export async function fetchOpenAiCompatibleModelIds(api: ModelApiInput): Promise<string[]> {
+export async function fetchOpenAiCompatibleModelIds(
+  api: ModelApiInput,
+  options?: ModelFetchOptions,
+): Promise<string[]> {
   try {
     const backendModels = await fetchModelsViaSillyTavernBackend(api);
     if (backendModels) {
@@ -57,5 +82,5 @@ export async function fetchOpenAiCompatibleModelIds(api: ModelApiInput): Promise
     // Fall back to direct browser fetch for standalone/local preview usage.
   }
 
-  return fetchModelsDirectly(api);
+  return fetchModelsDirectly(api, options);
 }

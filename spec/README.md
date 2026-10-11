@@ -13,7 +13,7 @@
 ## 1. 项目定位
 
 `1980s-NW`（对外名 `MyRaidRealm`）是一个**纯浏览器端的通用模拟经营 / 叙事模拟平台**（题材不限：现实 / 历史 / 修仙 / 奇幻 / 科幻 / 动漫…）。
-构建产物是 `dist/` **整个目录**：`index.html` 里 JS / CSS 全部内联，但图片、音频与预设包是同级的 `dist/assets/` 与 `dist/preset-package/`。**分发只有整目录部署到线上一条路**，不存在「下载单个 HTML 到本地玩」的通道。无后端、无框架依赖注入。
+构建产物是 `dist/` **整个目录**：`index.html` 里 JS / CSS 全部内联，但图片、音频与预设包是同级的 `dist/assets/` 与 `dist/preset-package/`。**分发只有整目录部署到线上一条路**，不存在「下载单个 HTML 到本地玩」的通道。应用逻辑本身无后端、无框架依赖注入；项目根的 `functions/` 是唯一的服务端代码（Cloudflare Pages Functions，只做同域跨域中转，见 `02-build-and-deploy.md`）。
 
 **本项目是自包含的独立网页应用。** 全部能力都在本仓的网页源码、运行时与 standalone 资产里实现，不依赖任何外部工具或外部运行时。
 
@@ -75,9 +75,10 @@ src/
 ├─ i18n/index.ts          国际化（zh-CN 默认 / en）
 └─ static/                原样拷到产物根的静态文件（404.html / favicon.ico / apple-touch-icon.png）
 
-runtime/          独立运行时：Provider、回合、状态、提示词宏
+runtime/          独立运行时：Provider、回合、状态、提示词宏、跨域中转判据
 schema/           变量与数据结构 Schema（schema.ts / schema.json）
 preset-package/   预设包入口，挂到 window.__TH1980S_PRESETS__
+functions/        Cloudflare Pages Functions（唯一服务端代码：同域跨域中转）
 scripts/tests/    测试脚本
 scripts/i18n/     语言文件校验与补丁工具
 spec/             本目录：项目细则（随仓库走）

@@ -180,6 +180,7 @@ export async function archiveStandaloneStageSummary(input?: {
       signal: controller.signal,
       logPrefix: '[StageSummary]',
       temperature: 0.3,
+      corsRelayEnabled: settingsStore.apiCorsRelay,
     });
 
     const nextStageSummary = reply.text.trim();

@@ -440,6 +440,13 @@ export interface ApiPoolSettings {
   firstTokenTimeoutEnabled: boolean;
   /** 首字超时的秒数 */
   firstTokenTimeoutSeconds: number;
+  /**
+   * 直连被浏览器跨域（CORS）拦掉时，是否自动改走本站同域中转重试一次。
+   *
+   * 默认开：直连永远是第一发，只有直连根本没发出去（fetch 直接抛网络错）才改走中转，
+   * 所以对能直连的接口没有任何影响；关掉后永不经过本站服务器。
+   */
+  corsRelayEnabled: boolean;
 }
 
 /** 首字超时秒数的可填区间，界面与解析共用同一套边界 */
@@ -561,6 +568,8 @@ export function resolveStoredApiPoolSettings(stored: Record<string, any> | null 
     // 默认关：老存档升级后行为与之前完全一致，想要的人自己去 API 配置页打开
     firstTokenTimeoutEnabled: stored?.apiFirstTokenTimeout === true,
     firstTokenTimeoutSeconds: normalizeFirstTokenTimeoutSeconds(stored?.apiFirstTokenTimeoutSeconds),
+    // 默认开：对能直连的接口毫无影响（直连永远是第一发），只在被跨域拦死时救场
+    corsRelayEnabled: stored?.apiCorsRelay !== false,
   };
 }
 
@@ -645,6 +654,8 @@ export const useSettingsStore = defineStore('settings', () => {
   const apiFirstTokenTimeout = ref<boolean>(initialApiPoolSettings.firstTokenTimeoutEnabled);
   /** 首字超时的秒数 */
   const apiFirstTokenTimeoutSeconds = ref<number>(initialApiPoolSettings.firstTokenTimeoutSeconds);
+  /** 直连被跨域拦掉时是否改走本站同域中转 */
+  const apiCorsRelay = ref<boolean>(initialApiPoolSettings.corsRelayEnabled);
 
   const pickApisFromPool = (ids: string[]): ApiConfig[] => {
     const byId = new Map(apiPool.value.map(api => [api.id, api]));
@@ -803,6 +814,7 @@ export const useSettingsStore = defineStore('settings', () => {
       apiAutoRetry: apiAutoRetry.value,
       apiFirstTokenTimeout: apiFirstTokenTimeout.value,
       apiFirstTokenTimeoutSeconds: apiFirstTokenTimeoutSeconds.value,
+      apiCorsRelay: apiCorsRelay.value,
       // 老字段清掉，避免下次启动又走一遍迁移
       mainApi: undefined,
       assistantApis: undefined,
@@ -822,6 +834,7 @@ export const useSettingsStore = defineStore('settings', () => {
       apiAutoRetry: apiAutoRetry.value,
       apiFirstTokenTimeout: apiFirstTokenTimeout.value,
       apiFirstTokenTimeoutSeconds: apiFirstTokenTimeoutSeconds.value,
+      apiCorsRelay: apiCorsRelay.value,
     });
   };
 
@@ -865,6 +878,7 @@ export const useSettingsStore = defineStore('settings', () => {
       apiAutoRetry,
       apiFirstTokenTimeout,
       apiFirstTokenTimeoutSeconds,
+      apiCorsRelay,
     ],
     () => {
       persistApiSelection();
@@ -940,6 +954,7 @@ export const useSettingsStore = defineStore('settings', () => {
     apiAutoRetry,
     apiFirstTokenTimeout,
     apiFirstTokenTimeoutSeconds,
+    apiCorsRelay,
     backgroundImage,
     standaloneLocalContent,
     snapshotTrim,

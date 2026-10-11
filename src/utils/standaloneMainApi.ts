@@ -31,6 +31,8 @@ export async function requestStandaloneMainApiText(input: {
   api: ApiConfig;
   prompt: StandaloneMainApiPrompt;
   requestId: string;
+  /** 直连被跨域拦掉时是否改走本站同域中转；缺省 false */
+  corsRelayEnabled?: boolean;
 }): Promise<string> {
   const configuredApi = assertStandaloneMainApiConfigured(input.api);
 
@@ -50,6 +52,7 @@ export async function requestStandaloneMainApiText(input: {
       prompt: input.prompt,
       signal: controller.signal,
       logPrefix: '[StandaloneMainApi]',
+      corsRelayEnabled: input.corsRelayEnabled,
     });
     return reply.text;
   } catch (error) {

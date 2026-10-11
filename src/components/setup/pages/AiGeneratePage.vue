@@ -1089,6 +1089,7 @@ ${t('setup.aiGenerate.prompt.outputInstruction')}`;
       api: settingsStore.mainApi,
       requestId: currentGenerationId,
       prompt: buildStandaloneAiGeneratePrompt(moduleKey, prompt),
+      corsRelayEnabled: settingsStore.apiCorsRelay,
     });
 
     if (moduleState.generationId !== currentGenerationId || moduleState.stopRequested) {

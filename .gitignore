@@ -18,6 +18,9 @@ dist/
 # 本地临时工作目录（排查脚本、截图、探测产物）
 Temp/
 
+# Wrangler / Pages Functions 本地编译缓存（wrangler pages dev 会生成）
+.wrangler/
+
 # 本地工具目录（gh CLI 等，家目录只读时放这里）
 .tools/
 

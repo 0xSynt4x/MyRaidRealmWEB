@@ -2933,6 +2933,228 @@ async function testOpenAiCompatibleModelsFallbackToDirectFetch(): Promise<void> 
   }
 }
 
+async function testStandaloneProviderCoreRetriesViaRelayWhenDirectFetchRejected(): Promise<void> {
+  const originalFetch = globalThis.fetch;
+  const capturedUrls: string[] = [];
+
+  globalThis.fetch = (async (input: string | URL | Request) => {
+    capturedUrls.push(String(input));
+    // 第一发直连：复刻浏览器被跨域拦掉时的表现 —— fetch 直接 reject，一个字都没拿到。
+    if (capturedUrls.length === 1) {
+      throw new TypeError('Failed to fetch');
+    }
+    return createMockFetchResponse({
+      jsonData: { choices: [{ message: { content: '经中转拿到的正文' } }] },
+    });
+  }) as typeof fetch;
+
+  try {
+    const reply = await requestStandaloneProviderTextCore({
+      api: {
+        apiurl: 'https://no-cors.example.com/v1',
+        key: 'relay-key',
+        model: 'relay-model',
+        source: 'openai_compatible',
+      },
+      prompt: {
+        messages: [{ role: 'user', content: '请输出正文' }],
+      },
+      signal: new AbortController().signal,
+      logPrefix: '[StandaloneProviderCoreRelayTest]',
+      corsRelayEnabled: true,
+    });
+
+    assert.equal(reply.text, '经中转拿到的正文');
+    assert.equal(capturedUrls.length, 2, '直连失败后应当只补发一次中转');
+    assert.equal(capturedUrls[0], 'https://no-cors.example.com/v1/chat/completions');
+    assert.ok(
+      capturedUrls[1].includes(
+        `/api/relay?target=${encodeURIComponent('https://no-cors.example.com/v1/chat/completions')}`,
+      ),
+      `中转地址应带上原地址：${capturedUrls[1]}`,
+    );
+    assert.equal(reply.debugTrace.via_relay, true);
+    assert.equal(reply.debugTrace.api_url, capturedUrls[1]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+}
+
+async function testStandaloneProviderCoreSkipsRelayWhenDisabled(): Promise<void> {
+  const originalFetch = globalThis.fetch;
+  let fetchCount = 0;
+
+  globalThis.fetch = (async () => {
+    fetchCount += 1;
+    throw new TypeError('Failed to fetch');
+  }) as typeof fetch;
+
+  try {
+    await assert.rejects(
+      () =>
+        requestStandaloneProviderTextCore({
+          api: {
+            apiurl: 'https://no-cors.example.com/v1',
+            key: 'relay-key',
+            model: 'relay-model',
+            source: 'openai_compatible',
+          },
+          prompt: {
+            messages: [{ role: 'user', content: '请输出正文' }],
+          },
+          signal: new AbortController().signal,
+          logPrefix: '[StandaloneProviderCoreRelayOffTest]',
+        }),
+      (error: unknown) => (error instanceof Error ? error.message : String(error)) === 'Failed to fetch',
+    );
+
+    // 开关没开时行为必须与加中转之前完全一致：只发一次，原样抛错。
+    assert.equal(fetchCount, 1);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+}
+
+async function testStandaloneProviderCoreSkipsRelayOnHttpError(): Promise<void> {
+  const originalFetch = globalThis.fetch;
+  let fetchCount = 0;
+
+  globalThis.fetch = (async () => {
+    fetchCount += 1;
+    // 上游确实收到了请求（密钥错 / 模型名错），不该重发 —— 重发既没用也可能重复计费。
+    return createMockFetchResponse({ ok: false, status: 401, statusText: 'Unauthorized', textData: 'invalid key' });
+  }) as typeof fetch;
+
+  try {
+    await assert.rejects(
+      () =>
+        requestStandaloneProviderTextCore({
+          api: {
+            apiurl: 'https://no-cors.example.com/v1',
+            key: 'bad-key',
+            model: 'relay-model',
+            source: 'openai_compatible',
+          },
+          prompt: {
+            messages: [{ role: 'user', content: '请输出正文' }],
+          },
+          signal: new AbortController().signal,
+          logPrefix: '[StandaloneProviderCoreRelayHttpErrorTest]',
+          corsRelayEnabled: true,
+        }),
+      (error: unknown) => (error instanceof Error ? error.message : '').startsWith('HTTP 401'),
+    );
+
+    assert.equal(fetchCount, 1, 'HTTP 错误说明请求已发出，不应改走中转重发');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+}
+
+async function testStandaloneProviderCoreSkipsRelayForLocalApiUrl(): Promise<void> {
+  const originalFetch = globalThis.fetch;
+  let fetchCount = 0;
+
+  globalThis.fetch = (async () => {
+    fetchCount += 1;
+    throw new TypeError('Failed to fetch');
+  }) as typeof fetch;
+
+  try {
+    await assert.rejects(
+      () =>
+        requestStandaloneProviderTextCore({
+          api: {
+            apiurl: 'http://127.0.0.1:8188/v1',
+            key: 'local-key',
+            model: 'local-model',
+            source: 'openai_compatible',
+          },
+          prompt: {
+            messages: [{ role: 'user', content: '请输出正文' }],
+          },
+          signal: new AbortController().signal,
+          logPrefix: '[StandaloneProviderCoreRelayLocalTest]',
+          corsRelayEnabled: true,
+        }),
+      (error: unknown) => (error instanceof Error ? error.message : String(error)) === 'Failed to fetch',
+    );
+
+    // 本机地址云端中转也到不了，白试一次只是拖慢报错。
+    assert.equal(fetchCount, 1);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+}
+
+async function testStandaloneProviderCoreSkipsRelayOnPlayerAbort(): Promise<void> {
+  const originalFetch = globalThis.fetch;
+  let fetchCount = 0;
+
+  globalThis.fetch = (async () => {
+    fetchCount += 1;
+    throw new TypeError('Failed to fetch');
+  }) as typeof fetch;
+
+  const controller = new AbortController();
+  controller.abort();
+
+  try {
+    await assert.rejects(() =>
+      requestStandaloneProviderTextCore({
+        api: {
+          apiurl: 'https://no-cors.example.com/v1',
+          key: 'relay-key',
+          model: 'relay-model',
+          source: 'openai_compatible',
+        },
+        prompt: {
+          messages: [{ role: 'user', content: '请输出正文' }],
+        },
+        signal: controller.signal,
+        logPrefix: '[StandaloneProviderCoreRelayAbortTest]',
+        corsRelayEnabled: true,
+      }),
+    );
+
+    // 玩家自己掐的不算跨域失败，不能顺手改成中转又发一次。
+    assert.equal(fetchCount, 1);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+}
+
+async function testOpenAiCompatibleModelsRetriesViaRelayWhenDirectFetchRejected(): Promise<void> {
+  const originalFetch = globalThis.fetch;
+  const originalSillyTavern = (globalThis as any).SillyTavern;
+  const capturedUrls: string[] = [];
+
+  delete (globalThis as any).SillyTavern;
+
+  globalThis.fetch = (async (input: string | URL | Request) => {
+    capturedUrls.push(String(input));
+    if (capturedUrls.length === 1) {
+      throw new TypeError('Failed to fetch');
+    }
+    return createMockFetchResponse({ jsonData: { data: [{ id: 'relayed-model' }] } });
+  }) as typeof fetch;
+
+  try {
+    const models = await fetchOpenAiCompatibleModelIds(
+      { apiurl: 'https://no-cors.example.com/v1', key: 'relay-key' },
+      { corsRelayEnabled: true },
+    );
+
+    assert.deepEqual(models, ['relayed-model']);
+    assert.equal(capturedUrls.length, 2);
+    assert.equal(capturedUrls[0], 'https://no-cors.example.com/v1/models');
+    assert.ok(capturedUrls[1].includes('/api/relay?target='));
+  } finally {
+    globalThis.fetch = originalFetch;
+    (globalThis as any).SillyTavern = originalSillyTavern;
+  }
+}
+
 function testNormalizeApiConfigForcesOpenAiCompatibleMode(): void {
   const config = normalizeApiConfig({
     apiurl: 'https://example.com/v1',
@@ -6096,6 +6318,14 @@ async function run(): Promise<void> {
     ['standalone main api openai request contract', testStandaloneMainApiOpenAiRequestContract],
     ['standalone provider core streaming request contract', testStandaloneProviderCoreStreamingRequestContract],
     ['standalone provider core fails on first token timeout', testStandaloneProviderCoreFailsOnFirstTokenTimeout],
+    [
+      'standalone provider core retries via relay when direct fetch rejected',
+      testStandaloneProviderCoreRetriesViaRelayWhenDirectFetchRejected,
+    ],
+    ['standalone provider core skips relay when disabled', testStandaloneProviderCoreSkipsRelayWhenDisabled],
+    ['standalone provider core skips relay on http error', testStandaloneProviderCoreSkipsRelayOnHttpError],
+    ['standalone provider core skips relay for local api url', testStandaloneProviderCoreSkipsRelayForLocalApiUrl],
+    ['standalone provider core skips relay on player abort', testStandaloneProviderCoreSkipsRelayOnPlayerAbort],
     ['standalone provider core keeps waiting after first token', testStandaloneProviderCoreKeepsWaitingAfterFirstToken],
     ['standalone provider core supports api without key', testStandaloneProviderCoreSupportsApiWithoutKey],
     [
@@ -6109,6 +6339,10 @@ async function run(): Promise<void> {
       testOpenAiCompatibleModelsUseSillyTavernBackendWhenAvailable,
     ],
     ['openai compatible models fallback to direct fetch', testOpenAiCompatibleModelsFallbackToDirectFetch],
+    [
+      'openai compatible models retries via relay when direct fetch rejected',
+      testOpenAiCompatibleModelsRetriesViaRelayWhenDirectFetchRejected,
+    ],
     ['normalize api config forces openai compatible mode', testNormalizeApiConfigForcesOpenAiCompatibleMode],
     ['standalone main api abort contract', testStandaloneMainApiAbortContract],
     ['standalone local turn abort contract', testStandaloneLocalTurnAbortContract],

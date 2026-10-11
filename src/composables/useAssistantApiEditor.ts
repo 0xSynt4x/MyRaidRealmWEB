@@ -1,6 +1,6 @@
 import { computed, type Ref } from 'vue';
 import { tCurrent } from '../i18n';
-import { normalizeStandaloneOpenAiApiUrl, type ApiConfig } from '../stores/settings';
+import { normalizeStandaloneOpenAiApiUrl, useSettingsStore, type ApiConfig } from '../stores/settings';
 import { fetchOpenAiCompatibleModelIds } from '../utils/openAiCompatibleModels';
 import { normalizeRemoteApiErrorMessage } from '../utils/remoteApiError';
 
@@ -34,6 +34,7 @@ function createEmptyApi(): ApiConfig {
 
 export function useAssistantApiEditor(customApis: Ref<ApiConfig[]>) {
   const apis = customApis;
+  const settingsStore = useSettingsStore();
 
   function normalizeApiUrlInPlace(index: number) {
     const target = apis.value[index];
@@ -150,7 +151,9 @@ export function useAssistantApiEditor(customApis: Ref<ApiConfig[]>) {
     normalizeApiUrlInPlace(index);
 
     try {
-      const models = await fetchOpenAiCompatibleModelIds(target);
+      const models = await fetchOpenAiCompatibleModelIds(target, {
+        corsRelayEnabled: settingsStore.apiCorsRelay,
+      });
 
       if (models.length === 0) {
         throw new Error(tCurrent('assistantApi.fetch.noModelsFound'));

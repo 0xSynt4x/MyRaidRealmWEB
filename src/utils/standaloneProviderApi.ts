@@ -32,6 +32,8 @@ type RequestStandaloneProviderTextInput = {
   temperature?: number;
   /** 首字超时（毫秒）：流式请求超过这个时间没出首字就判失败；缺省或非正数 = 不启用 */
   firstTokenTimeoutMs?: number;
+  /** 是否允许直连被跨域拦掉时改走本站同域中转；缺省 = 不允许 */
+  corsRelayEnabled?: boolean;
 };
 
 export function hasCompleteStandaloneApiConfig(api: ApiConfig): boolean {
@@ -59,6 +61,7 @@ export async function requestStandaloneProviderText(
     onPartialText: input.onPartialText,
     temperature: input.temperature,
     firstTokenTimeoutMs: input.firstTokenTimeoutMs,
+    corsRelayEnabled: input.corsRelayEnabled,
   });
 
   return {

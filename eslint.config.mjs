@@ -30,6 +30,12 @@ export default tseslint.config(
       // 同上：server/ 是尚未完成的联机服务子项目（.gitignore 里忽略、仅本地保留），
       // 它的 .wrangler/tmp 构建缓存会被 no-unused-vars / no-empty 误报成错误。
       'server/**',
+      // 同上：_mrjh_ref/ 是外部项目参考目录（拷来对照参考、不进版本控制），
+      // 里面的代码风格与本仓 ESLint 配置不对齐，整个目录应当排除。
+      '_mrjh_ref/**',
+      // 同上：.wrangler/ 是 wrangler pages dev / functions build 的本地编译缓存
+      // （.gitignore 里已忽略），里面的打包产物会被 no-empty / no-redeclare 误报成错误。
+      '.wrangler/**',
     ],
   },
 
@@ -126,6 +132,40 @@ export default tseslint.config(
       'vue/attributes-order': 'warn',
       'vue/require-default-prop': 'off',
       'vue/no-v-html': 'off',
+    },
+  },
+
+  {
+    // Cloudflare Pages Functions（随 Pages 一起部署的同域中转端点）。
+    // 它跑在 Workers 运行时里，不是浏览器也不是 Node：Request/Response/ReadableStream
+    // 这些是宿主全局；项目没有装 @cloudflare/workers-types（避免为一个文件引依赖），
+    // 所以这里显式列全局，否则会被 no-undef 误报成错误。
+    files: ['functions/**/*.{ts,js}'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      globals: {
+        Request: 'readonly',
+        Response: 'readonly',
+        Headers: 'readonly',
+        URL: 'readonly',
+        URLSearchParams: 'readonly',
+        fetch: 'readonly',
+        crypto: 'readonly',
+        console: 'readonly',
+        ReadableStream: 'readonly',
+        WritableStream: 'readonly',
+        TransformStream: 'readonly',
+        TextDecoder: 'readonly',
+        TextEncoder: 'readonly',
+        AbortController: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        globalThis: 'readonly',
+      },
+    },
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
     },
   },
 

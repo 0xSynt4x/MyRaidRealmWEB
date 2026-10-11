@@ -1254,3 +1254,55 @@
   视觉上就是闪一下。手动点版本号打开不受影响（那时 `#modal-container` 已就绪，Teleport 一次到位）。
   改为 `ref(false)` + `onMounted` 里再查 `shouldShowChangelog()`，跳过首帧前那一段未就绪窗口。
 - **Added** 玩家更新日志 `261012`：修复更新日志弹窗闪烁。
+
+### `16f6949` — docs: 回填弹窗闪烁 commit 的短哈希到 CHANGELOG
+
+- **Changed** 回填上一条提交 `ad1348d` 的短哈希 —— 纯文档改动，按约定并入本次提交，不单独开回填提交。
+
+## 2026-10-12
+
+### — feat: 新增网页版跨域自动中转，解决无 CORS 的第三方接口连不上
+
+> 短哈希待回填（按约定并入下一次提交）。
+
+- **Added** 同域跨域中转端点（`functions/api/relay.ts`，项目根新建 `functions/`，随 Cloudflare Pages 一起部署）：
+  - 背景：部分第三方 AI 接口不返回跨域响应头，网页版直连会被浏览器拦成 `Failed to fetch`。
+    实测 NVIDIA `integrate.api.nvidia.com` 的预检与实际请求**都不带任何 `access-control-*` 头**，
+    玩家填了地址也连不上 —— 这不是配置问题，改地址也没用。
+  - 形态 `/api/relay?target=<上游完整地址>`：上游地址放 query 而不是拼进路径，
+    否则上游自带的 query（如 `?api-version=...`）会和本端点的路径互相污染、也让路径白名单校验失准。
+  - 四道防滥用约束：① 上游路径白名单（只放行 `/chat/completions`、`/models`、`/embeddings`、
+    `/images/generations` 等 AI 接口尾巴，不是通用代理）② 挡内网 / 回环 / 保留地址
+    （含 `0x7f.1`、`2130706433` 这类非点分十进制写法）③ 只许 http:80 / https:443，拒 3xx 跳转
+    （Workers 不支持 `redirect: 'error'`，改用 `redirect: 'manual'` 显式判）④ 禁指向自家域名与 CF 内部域。
+  - 鉴权头只透传 `Authorization` / `api-key` / `x-api-key` / `x-goog-api-key`；请求体上限 2 MB。
+  - 🔴 **80 秒提前开 SSE 管道**（`EARLY_STREAM_DEADLINE_MS`）：CF 边缘对「源站多久没给出响应头」
+    有 100 秒硬限制，超时玩家只会看到 524 错误页、看不到任何真实原因。流式请求 80 秒还没拿到
+    响应头就先返回 200 + `text/event-stream` 打开管道，再在管道里续传；这条续传任务必须显式交给
+    `waitUntil` 托管 —— Workers 不会为「事件处理器已返回」的异步任务续命，不托管会在上游刚连上时被回收，
+    管道以空流关闭，玩家依旧看不到内容。
+- **Added** 前端「直连失败才走中转」兜底（`runtime/corsRelay.ts` 判据 + `runtime/standaloneProviderCore.ts`、
+  `src/utils/openAiCompatibleModels.ts` 两处接线）：
+  - 🔴 判据刻意很窄 —— **只有 `fetch` 直接 reject**（请求根本没拿到响应）才改走中转重试**一次**。
+    HTTP 4xx/5xx 说明上游确实收到了请求（密钥错、模型名错），重发既没用也可能重复计费，
+    绝不会出现「同一句话生成两遍、白花两遍钱」。
+  - 玩家主动取消（AbortError）不重试；本机 / 局域网地址不重试（中继在云端，看不见玩家自己的机器，
+    白试一次只是拖慢报错）。
+  - 拉模型列表那条路（`/models`）同样接入。
+- **Added** 设置开关「接口跨域自动中转」（默认开，localStorage 键 `apiCorsRelay`），
+  两处 API 配置界面同排同样式，中英双语文案；AI 调试留档与调试面板新增「走了同域中转」标记
+  （`via_relay`，类型与 zod schema 均为可选，老数据缺这个键要能正常读进来）。
+- **Added** 单测 6 项（`scripts/tests/run-standalone-local-content-tests.ts`）：
+  直连被拒后经中转拿到正文且只补发一次、开关关掉时行为与改动前完全一致、HTTP 错误不重发、
+  本机地址不重发、玩家取消不重发、拉模型列表同样能走中转。
+- **Changed** 规范文档：`spec/02-build-and-deploy.md` 新增 Pages Functions 小节
+  （`functions/` 必须在项目根、不能放进 `dist/`；不在 `tsconfig.json` 的 include 里；
+  🔴 **Docker + nginx 这条通道没有中转**，镜像里只有静态产物、也没有对应反向代理）；
+  `spec/01-architecture.md` 与 `spec/README.md` 同步模块与目录说明。
+- **Changed** `eslint.config.mjs` 为 `functions/**` 单独加一段 globals（worker 全局：
+  `Request` / `Response` / `ReadableStream` / `TransformStream` / `crypto` 等），
+  `.gitignore` 新增 `.wrangler/`（wrangler 本地编译缓存）。
+- 本地验收：`typecheck` ✓ ｜ `test` 132/132 + 35 ✓ ｜ `lint` 0 error（15 个存量 warning）✓ ｜ `build` ✓。
+  另起 `wrangler pages dev` 实测：四道防护逐条命中（缺 target / 内网地址 / 自家域名 / 非 443 端口 /
+  非白名单路径 / `0x7f.1` / `2130706433` 全部拒绝），合法域名放行并**真打 NVIDIA** ——
+  模型列表 200 拿回 80+ 条，非流式与流式 `chat/completions` 都拿到正常回复。

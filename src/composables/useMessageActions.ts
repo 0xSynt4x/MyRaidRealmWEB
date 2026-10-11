@@ -208,6 +208,7 @@ export function useMessageActions() {
         autoRetry: settingsStore.apiAutoRetry,
         // 关掉开关就传 0，运行时不启用看门狗，行为与之前一致
         firstTokenTimeoutSeconds: settingsStore.apiFirstTokenTimeout ? settingsStore.apiFirstTokenTimeoutSeconds : 0,
+        corsRelayEnabled: settingsStore.apiCorsRelay,
         statData: turnStartStatData,
         // 让运行时在「正文回来」与「应用补丁」两个时点都能读到最新的当前数据：
         // 辅助 API 的输入基底 S 与最终的应用基底都从这里取，生成期间的前端改动因此不会丢。
@@ -563,6 +564,7 @@ export function useMessageActions() {
         mainApis: settingsStore.mainApis,
         assistantApis: settingsStore.assistantApis,
         autoRetry: settingsStore.apiAutoRetry,
+        corsRelayEnabled: settingsStore.apiCorsRelay,
         statData: replayBaseStatData,
         // 应用目标 = S：补丁打在 S 上（不是「现在的当前数据」），避免与后续回合的改动重复累加。
         readLiveStatData: () => replayBaseStatData,
@@ -683,6 +685,7 @@ export function useMessageActions() {
         reviewApis: settingsStore.reviewApis,
         reviseApis: settingsStore.reviseApis,
         autoRetry: settingsStore.apiAutoRetry,
+        corsRelayEnabled: settingsStore.apiCorsRelay,
       });
 
       // 审稿 / 改稿的请求与返回一并并进这条消息的调试记录 —— 控制台按 pass 展示。
@@ -885,6 +888,7 @@ export function useMessageActions() {
         mainApis: settingsStore.mainApis,
         autoRetry: settingsStore.apiAutoRetry,
         firstTokenTimeoutSeconds: settingsStore.apiFirstTokenTimeout ? settingsStore.apiFirstTokenTimeoutSeconds : 0,
+        corsRelayEnabled: settingsStore.apiCorsRelay,
         statData: params.statData,
         messages: messagesStore.messages,
         qualities: params.qualities,

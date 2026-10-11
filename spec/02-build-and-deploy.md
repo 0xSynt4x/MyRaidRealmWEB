@@ -88,6 +88,26 @@ dist/
 - 🔴 **分发只有「整目录部署到线上」这一条路**，没有「下载单个 HTML 到本地玩」的通道。
   `dist/index.html` 引用了同级 `assets/`（30 个文件）与 `preset-package/`，脱离它们打不开完整游戏。
 
+### Pages Functions（同域跨域中转）
+
+项目根的 `functions/` 目录随 Pages 项目一起部署，提供 `functions/api/relay.ts` —— 一个同域跨域中转端点。
+
+- 用途：部分第三方 AI 接口不返回跨域响应头，网页版直连会被浏览器拦成 `Failed to fetch`。
+  前端在**直连一个字都没收到**时，改打 `自己域名/api/relay?target=<上游完整地址>` 重试一次
+  （开关「接口跨域自动中转」，默认开，存在 localStorage 键 `apiCorsRelay`）。
+  判据与地址构造在 `runtime/corsRelay.ts`，接线点在 `runtime/standaloneProviderCore.ts` 与
+  `src/utils/openAiCompatibleModels.ts`（拉模型列表那条路）。
+- 🔴 **`functions/` 必须在项目根，不能放进 `dist/`。** `wrangler pages deploy dist` 只吃一个目录参数，
+  Functions 目录是按**当前工作目录**（不是 `dist`）解析的，官方文档也明确「不要放进静态根」。
+- 🔴 **`functions/` 不在 `tsconfig.json` 的 include 里**，`pnpm typecheck` 查不到它；
+  `pnpm lint` 会查（见 `eslint.config.mjs` 里 `functions/**` 那段）。改它之后要单独留意。
+- 🔴 **Docker + nginx 这条通道没有中转。** 镜像里只有 `dist/` 静态产物，不带 `functions/`，
+  `nginx.conf` 也没有对应的反向代理。走容器部署时，无 CORS 的第三方接口在网页端依然连不上，
+  开关打开也不会生效（请求会直连失败并原样报错）。
+- 免费版 Pages Functions 额度是 **10 万请求/天**。只有真正走中转的请求才计入
+  （`_routes.json` 由 wrangler 按实际 Function 路径自动生成，静态素材不进 Function），
+  正常使用远低于额度。
+
 ## 容器化运行与 e2e 验证
 
 除 Cloudflare Pages 外，仓内还带一套容器化方案，用于**本地起完整环境并跑端到端测试**。

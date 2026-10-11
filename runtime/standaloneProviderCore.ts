@@ -2,6 +2,7 @@ import {
   normalizeOpenAiCompatibleApiUrl,
   normalizeOpenAiCompatibleChatCompletionsApiUrl,
 } from './openAiCompatibleApiUrl';
+import { buildCorsRelayUrl, isLocalOrPrivateApiUrl, isSuspectedBrowserCorsFailure } from './corsRelay';
 
 type RecordLike = Record<string, unknown>;
 
@@ -36,6 +37,11 @@ export type StandaloneProviderReplyDebugTrace = {
   api_url: string;
   /** HTTP 状态码；连响应都没拿到（网络 / CORS / 超时）时为 null。 */
   http_status?: number | null;
+  /**
+   * 这次请求是不是改走了同域中转（直连被浏览器跨域拦掉后的兜底）。
+   * 🔴 必须可选 —— 老数据里没有这个键，缺了要能正常读进来。
+   */
+  via_relay?: boolean;
 };
 
 export type StandaloneProviderReply = {
@@ -60,6 +66,13 @@ export type RequestStandaloneProviderTextCoreInput = {
    * 缺省或非正数 = 不启用，行为与之前完全一致。
    */
   firstTokenTimeoutMs?: number;
+  /**
+   * 是否允许「直连被跨域拦掉时改走本站同域中转」。缺省 = 不允许（行为与之前完全一致）。
+   *
+   * 开关打开也只影响「直连一个字都没收到」的情况：直连先发，
+   * 只有 `fetch` 直接抛网络错才用同域中转重试一次；HTTP 4xx/5xx 不重试。
+   */
+  corsRelayEnabled?: boolean;
 };
 
 /**
@@ -399,11 +412,16 @@ export async function requestStandaloneProviderTextCore(
     request_messages: messages,
     request_body_text: requestBodyText,
     api_url: normalizedApiUrl,
+    via_relay: false,
   };
   /** HTTP 非 2xx 时已经拼好的 trace，在 catch 里原样复用，避免被兜底逻辑覆盖。 */
   let httpFailureTrace: StandaloneProviderReplyDebugTrace | null = null;
   /** 非流式路径读到的响应原文；解析失败时用它当「服务端回了什么」。 */
   let nonStreamingRawText: string | null = null;
+  /** 实际请求的地址：改走同域中转时换成中转地址，留档里要能看到「打到哪」。 */
+  let requestUrl = normalizedApiUrl;
+  /** 本次是否改走了同域中转，写进调试留档。 */
+  let viaRelay = false;
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -443,12 +461,40 @@ export async function requestStandaloneProviderTextCore(
       }, firstTokenTimeoutMs);
     }
 
-    const response = await fetch(normalizedApiUrl, {
-      method: 'POST',
-      headers,
-      body: requestBodyText,
-      signal: requestController.signal,
-    });
+    const sendRequest = (url: string) =>
+      fetch(url, {
+        method: 'POST',
+        headers,
+        body: requestBodyText,
+        signal: requestController.signal,
+      });
+
+    let response: Response;
+    try {
+      response = await sendRequest(requestUrl);
+    } catch (directError) {
+      /**
+       * 直连失败才考虑同域中转。
+       *
+       * 🔴 只有「fetch 直接 reject」才重试 —— 那意味着请求根本没拿到响应，
+       * 上游最多只是白跑一次。一旦已经拿到响应（哪怕是非 2xx），下面都不会走到这里，
+       * 绝不会出现「同一句话生成两遍、白花两遍钱」。
+       */
+      if (
+        !input.corsRelayEnabled ||
+        requestController.signal.aborted ||
+        isLocalOrPrivateApiUrl(normalizedApiUrl) ||
+        !isSuspectedBrowserCorsFailure(directError)
+      ) {
+        throw directError;
+      }
+
+      const relayUrl = buildCorsRelayUrl(normalizedApiUrl, globalThis.location?.origin);
+      // 先记下来再发：中转这一发自己再失败时，留档里也要能看出「已经试过中转」。
+      requestUrl = relayUrl;
+      viaRelay = true;
+      response = await sendRequest(relayUrl);
+    }
 
     if (!response.ok) {
       const details = await readErrorResponseText(response, input.logPrefix);
@@ -461,6 +507,8 @@ export async function requestStandaloneProviderTextCore(
         extracted_text: '',
         error_message: httpErrorMessage,
         http_status: response.status,
+        api_url: requestUrl,
+        via_relay: viaRelay,
       };
       throw new Error(httpErrorMessage);
     }
@@ -486,7 +534,8 @@ export async function requestStandaloneProviderTextCore(
           raw_response_text: '',
           extracted_text: streamingResult.text,
           error_message: null,
-          api_url: normalizedApiUrl,
+          api_url: requestUrl,
+          via_relay: viaRelay,
         },
       };
     }
@@ -509,7 +558,8 @@ export async function requestStandaloneProviderTextCore(
         raw_response_text: rawResponseText,
         extracted_text: extractedText,
         error_message: null,
-        api_url: normalizedApiUrl,
+        api_url: requestUrl,
+        via_relay: viaRelay,
       },
     };
   } catch (error) {
@@ -522,6 +572,8 @@ export async function requestStandaloneProviderTextCore(
         extracted_text: '',
         error_message: timeoutCode,
         http_status: null,
+        api_url: requestUrl,
+        via_relay: viaRelay,
       });
     }
 
@@ -543,6 +595,8 @@ export async function requestStandaloneProviderTextCore(
       extracted_text: '',
       error_message: error instanceof Error ? error.message : String(error),
       http_status: null,
+      api_url: requestUrl,
+      via_relay: viaRelay,
     });
   } finally {
     stopFirstTokenWatch();

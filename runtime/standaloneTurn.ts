@@ -80,6 +80,8 @@ export type StandaloneLocalTurnInput = {
   autoRetry?: boolean;
   /** 正文流式请求的首字超时秒数；0 或未给 = 不启用（行为与之前一致） */
   firstTokenTimeoutSeconds?: number;
+  /** 直连被跨域拦掉时是否改走本站同域中转；缺省 false */
+  corsRelayEnabled?: boolean;
   statData: StandaloneStatData;
   /**
    * 读「当前的游戏数据」。正文回来时调一次 → 辅助 API 的输入快照 S；
@@ -133,6 +135,10 @@ export async function runStandaloneVariableUpdatePass(input: {
   assistantApis?: ApiConfig[];
   /** 前一个失败时是否自动试下一个；缺省 true */
   autoRetry?: boolean;
+  /** 正文流式请求的首字超时秒数；0 或未给 = 不启用（行为与之前一致） */
+  firstTokenTimeoutSeconds?: number;
+  /** 直连被跨域拦掉时是否改走本站同域中转；缺省 false */
+  corsRelayEnabled?: boolean;
   statData: StandaloneStatData;
   /**
    * 应用补丁时读「应用基底」。手动刷新时传 `() => 本条回复的输入基底 S`，
@@ -181,6 +187,8 @@ export async function runStandaloneVariableUpdatePass(input: {
         mainApis: input.mainApis,
         assistantApis: input.assistantApis,
         autoRetry: input.autoRetry,
+        firstTokenTimeoutSeconds: input.firstTokenTimeoutSeconds,
+        corsRelayEnabled: input.corsRelayEnabled,
         statData: input.statData,
         messages: input.messages,
         latestUserMessage: input.latestUserMessage,
@@ -1016,6 +1024,7 @@ async function requestAssistantReply(
   signal: AbortSignal,
   onPartialText?: (text: string) => void,
   firstTokenTimeoutSeconds?: number,
+  corsRelayEnabled?: boolean,
 ): Promise<StandaloneProviderReply> {
   return requestStandaloneProviderText({
     api,
@@ -1027,6 +1036,7 @@ async function requestAssistantReply(
       typeof firstTokenTimeoutSeconds === 'number' && firstTokenTimeoutSeconds > 0
         ? firstTokenTimeoutSeconds * 1000
         : undefined,
+    corsRelayEnabled,
   });
 }
 
@@ -1168,7 +1178,14 @@ async function requestVariableUpdateSecondPass(
     const attempt = index + 1;
 
     try {
-      const secondPassReply = await requestAssistantReply(api, secondPassPrompt, signal);
+      const secondPassReply = await requestAssistantReply(
+        api,
+        secondPassPrompt,
+        signal,
+        undefined,
+        input.firstTokenTimeoutSeconds,
+        input.corsRelayEnabled,
+      );
       const normalizedSecondPassReply = normalizeLineEndings(secondPassReply.text);
       const updateBlock = extractUpdateVariableBlock(normalizedSecondPassReply);
 
@@ -1255,6 +1272,7 @@ async function requestSilentBodyVariant(
   prompt: StandalonePromptBundle | StandalonePromptMessagesBundle,
   autoRetry: boolean | undefined,
   parentController: AbortController,
+  corsRelayEnabled?: boolean,
 ): Promise<MessageBodyPage | null> {
   const variantController = new AbortController();
   activeParallelVariantControllers.add(variantController);
@@ -1277,6 +1295,7 @@ async function requestSilentBodyVariant(
           variantController.signal,
           undefined,
           0,
+          corsRelayEnabled,
         );
         const rawReply = normalizeLineEndings(reply.text);
         const sanitizedReply = normalizeLineEndings(stripUpdateVariableBlocks(rawReply));
@@ -1334,7 +1353,13 @@ export async function runStandaloneLocalTurn(input: StandaloneLocalTurnInput): P
       const variantPromises: Promise<MessageBodyPage | null>[] = [];
       for (let i = 0; i < extraCount; i += 1) {
         variantPromises.push(
-          requestSilentBodyVariant(candidateMainApis, prompt, input.autoRetry, controller),
+          requestSilentBodyVariant(
+            candidateMainApis,
+            prompt,
+            input.autoRetry,
+            controller,
+            input.corsRelayEnabled,
+          ),
         );
       }
       collectAdditionalPages = Promise.all(variantPromises).then(results =>
@@ -1357,6 +1382,7 @@ export async function runStandaloneLocalTurn(input: StandaloneLocalTurnInput): P
           controller.signal,
           input.onMainReplyPartialText,
           input.firstTokenTimeoutSeconds,
+          input.corsRelayEnabled,
         );
         lastMainTrace = mainReply.debugTrace;
         const rawReply = normalizeLineEndings(mainReply.text);
@@ -1544,6 +1570,8 @@ export type StandaloneLotteryTurnInput = {
   mainApis: ApiConfig[];
   autoRetry?: boolean;
   firstTokenTimeoutSeconds?: number;
+  /** 直连被跨域拦掉时是否改走本站同域中转；缺省 false */
+  corsRelayEnabled?: boolean;
   statData: StandaloneStatData;
   messages: MessageRecord[];
   /** 前端算好的本次每次抽奖品质，顺序对应第 1..N 次 */
@@ -1589,6 +1617,8 @@ export type StandaloneStoryPromptInput = {
   stageSummary?: string;
   /** 归档水位线：message_id 小于等于它的回合已被上面那段覆盖 */
   archivedUntilMessageId?: number;
+  /** 直连被跨域拦掉时是否改走本站同域中转；缺省 false */
+  corsRelayEnabled?: boolean;
 };
 
 /**
@@ -1763,7 +1793,7 @@ async function runStandaloneReviewReviseInner(
   for (const api of reviewCandidates) {
     const apiLabel = toApiLabel(api);
     try {
-      const reply = await requestAssistantReply(api, reviewPrompt, signal);
+      const reply = await requestAssistantReply(api, reviewPrompt, signal, undefined, 0, input.corsRelayEnabled);
       reviewTrace = reply.debugTrace;
       const reviewText = normalizeLineEndings(reply.text).trim();
       if (!reviewText) {
@@ -1816,7 +1846,7 @@ async function runStandaloneReviewReviseInner(
   for (const api of reviseCandidates) {
     const apiLabel = toApiLabel(api);
     try {
-      const reply = await requestAssistantReply(api, revisePrompt, signal);
+      const reply = await requestAssistantReply(api, revisePrompt, signal, undefined, 0, input.corsRelayEnabled);
       reviseTrace = reply.debugTrace;
       const revisedText = parseTaggedAssistantReply(normalizeLineEndings(reply.text)).contentText.trim();
       if (!revisedText) {
@@ -1948,6 +1978,7 @@ export async function runStandaloneLotteryTurn(
           controller.signal,
           input.onPartialText,
           input.firstTokenTimeoutSeconds,
+          input.corsRelayEnabled,
         );
         const rawReply = normalizeLineEndings(reply.text);
         // 每次候选 API 尝试都从「发送抽奖那一刻」的同一份快照重算，不在上一次尝试的结果上累积。

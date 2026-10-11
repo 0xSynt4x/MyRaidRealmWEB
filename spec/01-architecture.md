@@ -55,6 +55,7 @@ createApp(App) → createPinia() → messagesStore.setupEventListeners() → mou
 | ----------------------------------- | ------------------------------------------------------------------------------------------- |
 | `runtime/index.ts`                  | 统一出口，re-export 其余模块                                                                |
 | `runtime/openAiCompatibleApiUrl.ts` | API 地址规范化：补 `/chat/completions`、`/models` 后缀，识别 Google Gemini 端点             |
+| `runtime/corsRelay.ts`              | 跨域中转的判据与地址构造：识别「疑似浏览器跨域失败」、挡本机/局域网地址、拼中转地址         |
 | `runtime/standalonePromptUtils.ts`  | **提示词宏替换**（唯一实现，见 `05-prompt-pipeline.md`）                                    |
 | `runtime/standaloneProviderCore.ts` | Provider 请求核心：API 配置校验、消息组装、流式接收、首字超时看门狗、调试追踪               |
 | `runtime/standaloneState.ts`        | 当前 `stat_data` 的读写与 seed（经 `utils/standaloneStorage.ts` 落盘）                      |

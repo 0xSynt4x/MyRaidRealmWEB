@@ -27,6 +27,11 @@ export interface StandaloneAiDebugPassTrace {
    * 🔴 同上，老数据没有这个键。
    */
   http_status?: number | null;
+  /**
+   * 这一发是不是直连被浏览器跨域拦掉后、改走本站同域中转发出的。
+   * 🔴 同上，老数据没有这个键。
+   */
+  via_relay?: boolean;
 }
 
 export interface StandaloneAssistantDebugTrace {

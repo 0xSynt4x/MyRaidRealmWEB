@@ -938,6 +938,9 @@ const messages: Record<Locale, Record<string, string>> = {
     'settings.apiFirstTokenTimeoutHint': '打开后，模型超过设定秒数还没输出第一个字，就判为失败。',
     'settings.apiFirstTokenTimeoutSeconds': '超时秒数',
     'settings.apiFirstTokenTimeoutSecondsUnit': '秒',
+    'settings.apiCorsRelay': '接口跨域自动中转',
+    'settings.apiCorsRelayHint':
+      '接口不允许浏览器直连（跨域）时，自动经本站同域中转重试一次；直连永远是第一发，只有连不上才会走中转。关掉后请求永不经过本站服务器。',
     'settings.snapshotTrim.title': '上下文裁剪',
     'settings.snapshotTrim.trimNpc': '只发在场 NPC',
     'settings.mainApiRequired': '请先配置主 API',
@@ -1103,6 +1106,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'contentCenter.aiDebug.failureClearConfirmMessage': '将删除全部失败记录，确定吗？',
     'contentCenter.aiDebug.failureAttemptLabel': '第 {index}/{total} 次尝试',
     'contentCenter.aiDebug.metaApiUrl': '请求地址',
+    'contentCenter.aiDebug.metaViaRelay': '走了同域中转',
     'contentCenter.aiDebug.passMainShort': '正文生成',
     'contentCenter.aiDebug.passVariableUpdateShort': '变量更新',
 
@@ -2980,6 +2984,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'contentCenter.aiDebug.failureClearConfirmMessage': 'This deletes all failure records. Continue?',
     'contentCenter.aiDebug.failureAttemptLabel': 'Attempt {index}/{total}',
     'contentCenter.aiDebug.metaApiUrl': 'Request URL',
+    'contentCenter.aiDebug.metaViaRelay': 'Via same-origin relay',
     'contentCenter.aiDebug.passMainShort': 'Main reply',
     'contentCenter.aiDebug.passVariableUpdateShort': 'Variable update',
 
@@ -3039,6 +3044,9 @@ const messages: Record<Locale, Record<string, string>> = {
       'When on, the model is treated as failed if it produces nothing within the set number of seconds.',
     'settings.apiFirstTokenTimeoutSeconds': 'Timeout',
     'settings.apiFirstTokenTimeoutSecondsUnit': 's',
+    'settings.apiCorsRelay': 'Auto relay blocked CORS',
+    'settings.apiCorsRelayHint':
+      'When an endpoint blocks direct browser access (CORS), retry once through this site\u2019s same-origin relay; direct is always tried first and only a failed direct call is relayed. When off, requests never pass through this site\u2019s server.',
     'settings.snapshotTrim.title': 'Context trimming',
     'settings.snapshotTrim.trimNpc': 'Send present NPCs only',
     'settings.mainApiRequired': 'Configure the main API first',

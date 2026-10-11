@@ -461,6 +461,9 @@
                     {{ t('contentCenter.aiDebug.metaTransport') }}:
                     {{ transportModeLabel(failure.trace.transport_mode) }}
                   </span>
+                  <span v-if="failure.trace.via_relay" class="tag-chip compact-tag">
+                    {{ t('contentCenter.aiDebug.metaViaRelay') }}
+                  </span>
                 </div>
 
                 <button type="button" class="debug-sub-toggle" @click.stop="toggleDebugFailureSub('requestMessages')">
@@ -707,6 +710,9 @@
                         {{ t('contentCenter.aiDebug.metaTransport') }}:
                         {{ transportModeLabel(selectedDebugTrace.main_pass.transport_mode) }}
                       </span>
+                      <span v-if="selectedDebugTrace.main_pass.via_relay" class="tag-chip compact-tag">
+                        {{ t('contentCenter.aiDebug.metaViaRelay') }}
+                      </span>
                     </div>
 
                     <button type="button" class="debug-sub-toggle" @click.stop="toggleDebugMainSub('requestMessages')">
@@ -863,6 +869,9 @@
                       <span class="tag-chip compact-tag">
                         {{ t('contentCenter.aiDebug.metaTransport') }}:
                         {{ transportModeLabel(selectedPreferredVariableTrace.transport_mode) }}
+                      </span>
+                      <span v-if="selectedPreferredVariableTrace.via_relay" class="tag-chip compact-tag">
+                        {{ t('contentCenter.aiDebug.metaViaRelay') }}
                       </span>
                     </div>
 
@@ -1043,6 +1052,9 @@
                       <span class="tag-chip compact-tag">
                         {{ t('contentCenter.aiDebug.metaTransport') }}:
                         {{ transportModeLabel(card.trace.transport_mode) }}
+                      </span>
+                      <span v-if="card.trace.via_relay" class="tag-chip compact-tag">
+                        {{ t('contentCenter.aiDebug.metaViaRelay') }}
                       </span>
                     </div>
 
