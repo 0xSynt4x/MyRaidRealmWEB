@@ -1245,7 +1245,7 @@
   另用无头 Chrome 对**真实 IndexedDB** 跑了 9 项探针全部通过 —— 含
   「批量中途抛错时磁盘一步未落」（原子性回滚）与「按前缀列举能拿到正文、不误含目录 key」。
 
-### — fix: 修复更新日志弹窗闪烁（首次自动弹不再闪烁）
+### `ad1348d` — fix: 修复更新日志弹窗闪烁（首次自动弹不再闪烁）
 
 - **Fixed** 更新日志弹窗在首帧的 mount/unmount 来回切（`src/components/setup/SetupWizard.vue`）：
   原实现 `const showChangelog = ref(shouldShowChangelog())` 在 SetupWizard 同步初始化时就拿到 true，
