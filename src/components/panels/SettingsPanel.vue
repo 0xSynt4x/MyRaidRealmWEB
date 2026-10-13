@@ -648,6 +648,44 @@
 
         <div class="api-role-block">
           <div class="api-role-head">
+            <span>{{ t('settings.mapApiRoleLabel') }}</span>
+            <small>{{ t('settings.mapApiRoleHint') }}</small>
+          </div>
+          <div class="api-role-list">
+            <div
+              v-for="api in mapApiOrderedPool"
+              :key="api.id"
+              :class="['api-role-row', { active: mapApiIds.includes(api.id) }]"
+            >
+              <button class="api-role-toggle" @click="toggleMapApiSelection(api.id)">
+                <span class="api-role-check"><i class="ti ti-check"></i></span>
+                <span>{{ apiPoolLabel(api, apiPool.indexOf(api)) }}</span>
+              </button>
+              <template v-if="mapApiIds.includes(api.id)">
+                <span class="api-role-order">
+                  {{ t('settings.apiOrderBadge', { index: mapApiIds.indexOf(api.id) + 1 }) }}
+                </span>
+                <button
+                  class="inline-icon-btn ui-icon-btn"
+                  :disabled="mapApiIds.indexOf(api.id) === 0"
+                  @click="moveMapApiSelection(mapApiIds.indexOf(api.id), -1)"
+                >
+                  <i class="ti ti-arrow-up"></i>
+                </button>
+                <button
+                  class="inline-icon-btn ui-icon-btn"
+                  :disabled="mapApiIds.indexOf(api.id) === mapApiIds.length - 1"
+                  @click="moveMapApiSelection(mapApiIds.indexOf(api.id), 1)"
+                >
+                  <i class="ti ti-arrow-down"></i>
+                </button>
+              </template>
+            </div>
+          </div>
+        </div>
+
+        <div class="api-role-block">
+          <div class="api-role-head">
             <span>{{ t('settings.reviewApiRoleLabel') }}</span>
             <small>{{ t('settings.reviewApiRoleHint') }}</small>
           </div>
@@ -1304,6 +1342,7 @@ const {
   mainApiIds,
   assistantApiIds,
   lotteryApiIds,
+  mapApiIds,
   reviewApiIds,
   reviseApiIds,
   apiAutoRetry,
@@ -1877,6 +1916,7 @@ function removeApiAndDetach(index: number) {
   mainApiIds.value = mainApiIds.value.filter(id => id !== removedId);
   assistantApiIds.value = assistantApiIds.value.filter(id => id !== removedId);
   lotteryApiIds.value = lotteryApiIds.value.filter(id => id !== removedId);
+  mapApiIds.value = mapApiIds.value.filter(id => id !== removedId);
   reviewApiIds.value = reviewApiIds.value.filter(id => id !== removedId);
   reviseApiIds.value = reviseApiIds.value.filter(id => id !== removedId);
 }
@@ -1899,8 +1939,13 @@ function toggleLotteryApiSelection(id: string) {
     : [...lotteryApiIds.value, id];
 }
 
-function toggleReviewApiSelection(id: string) {
-  reviewApiIds.value = reviewApiIds.value.includes(id)
+function toggleMapApiSelection(id: string) {
+  mapApiIds.value = mapApiIds.value.includes(id)
+    ? mapApiIds.value.filter(item => item !== id)
+    : [...mapApiIds.value, id];
+}
+
+function toggleReviewApiSelection(id: string) {  reviewApiIds.value = reviewApiIds.value.includes(id)
     ? reviewApiIds.value.filter(item => item !== id)
     : [...reviewApiIds.value, id];
 }
@@ -1921,6 +1966,7 @@ function orderApisBySelection<T extends { id: string }>(pool: T[], ids: string[]
 const mainApiOrderedPool = computed(() => orderApisBySelection(apiPool.value, mainApiIds.value));
 const assistantApiOrderedPool = computed(() => orderApisBySelection(apiPool.value, assistantApiIds.value));
 const lotteryApiOrderedPool = computed(() => orderApisBySelection(apiPool.value, lotteryApiIds.value));
+const mapApiOrderedPool = computed(() => orderApisBySelection(apiPool.value, mapApiIds.value));
 const reviewApiOrderedPool = computed(() => orderApisBySelection(apiPool.value, reviewApiIds.value));
 const reviseApiOrderedPool = computed(() => orderApisBySelection(apiPool.value, reviseApiIds.value));
 
@@ -1956,6 +2002,13 @@ function moveLotteryApiSelection(index: number, offset: number) {
   const next = moveSelectedId(lotteryApiIds.value, index, offset);
   if (next) {
     lotteryApiIds.value = next;
+  }
+}
+
+function moveMapApiSelection(index: number, offset: number) {
+  const next = moveSelectedId(mapApiIds.value, index, offset);
+  if (next) {
+    mapApiIds.value = next;
   }
 }
 

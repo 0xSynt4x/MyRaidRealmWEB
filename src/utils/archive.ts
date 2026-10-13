@@ -9,6 +9,7 @@ import { useSettingsStore } from '../stores/settings';
 import { useSetupStore } from '../stores/setup';
 import { useStatDataStore } from '../stores/statData';
 import { useLotteryStore } from '../stores/lottery';
+import { useMapStore } from '../stores/map';
 import {
   commitStandaloneRuntimeStateFromStores,
   ensureStandaloneRuntimeBaselineFromStores,
@@ -484,6 +485,8 @@ function applyStandaloneArchivePayloadToStores(payload: StandaloneArchiveFile): 
   statDataStore.refreshData('archive_restore');
   // 抽奖进度存在会话里，会话刚被换掉，重新读一遍
   useLotteryStore().initFromSession();
+  // 地图地点树同样存在会话里，一起重新读
+  useMapStore().initFromSession();
 }
 
 function buildStandaloneArchiveRestoreOutcome(archiveId: string): StandaloneArchiveRestoreOutcome {

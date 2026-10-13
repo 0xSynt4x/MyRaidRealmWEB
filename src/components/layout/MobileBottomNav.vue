@@ -40,6 +40,7 @@ const navItems = computed<NavItem[]>(() => [
   { id: 'characters', label: t('nav.characters'), icon: 'ti ti-users' },
   { id: 'shop', label: t('nav.shop'), icon: 'ti ti-building-store' },
   { id: 'lottery', label: t('nav.lottery'), icon: 'ti ti-gift' },
+  { id: 'map', label: t('nav.map'), icon: 'ti ti-map-pin' },
   { id: 'dicegame', label: t('nav.dicegame'), icon: 'ti ti-dice' },
   { id: 'settings', label: t('nav.settings'), icon: 'ti ti-settings' },
   { id: 'donate', label: t('nav.donate'), icon: 'ti ti-heart' },

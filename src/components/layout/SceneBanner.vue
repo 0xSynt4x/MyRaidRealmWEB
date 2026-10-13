@@ -76,10 +76,16 @@
 
       <!-- 底部：地点名 + 时间 / 天气 -->
       <div class="banner-txt">
-        <div class="banner-place">
+        <button
+          class="banner-place"
+          type="button"
+          :title="t('map.openHint')"
+          @click="handleOpenMap"
+        >
           <i class="ti ti-map-pin"></i>
           <span class="banner-place-txt">{{ 当前地点 }}</span>
-        </div>
+          <i class="ti ti-chevron-right banner-place-arrow"></i>
+        </button>
         <div class="banner-sub">
           <i class="ti ti-clock"></i>
           <span>{{ 当前时间 }}</span>
@@ -97,6 +103,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useFullscreen } from '../../composables/useFullscreen';
 import { useMessageActions } from '../../composables/useMessageActions';
 import { useI18n } from '../../i18n';
+import { useLayoutStore } from '../../stores/layout';
 import { useMessagesStore } from '../../stores/messages';
 import { useNotificationStore } from '../../stores/notification';
 import { useSetupStore } from '../../stores/setup';
@@ -218,6 +225,7 @@ const emit = defineEmits<{
 
 const store = useStatDataStore();
 const { data } = storeToRefs(store);
+const layoutStore = useLayoutStore();
 const messagesStore = useMessagesStore();
 const notificationStore = useNotificationStore();
 const setupStore = useSetupStore();
@@ -229,6 +237,11 @@ const 纪元名称 = computed(() => data.value.世界?.时间系统?.纪元名�
 const 当前时间 = computed(() => data.value.世界?.时间系统?.当前时间 || '--');
 const 当前天气 = computed(() => data.value.世界?.时间系统?.当前天气 || t('header.defaultWeather'));
 const 当前地点 = computed(() => data.value.世界?.空间定位?.当前位置 || '--');
+
+// 点地点名直接开地图面板 —— 地图页自己会定位到玩家当前所在地点
+function handleOpenMap() {
+  layoutStore.toggleOverlayPanel('map');
+}
 const 主货币名称 = computed(() => data.value.玩家?.货币资源?.主货币?.名称 || t('header.defaultCurrencyName'));
 const 主货币数量 = computed(() => Math.floor(data.value.玩家?.货币资源?.主货币?.数量 || 0));
 
@@ -660,17 +673,40 @@ async function handleRefreshApi() {
   align-items: center;
   gap: var(--ui-space-2);
   min-width: 0;
+  max-width: 100%;
+  padding: 2px 6px 2px 0;
   font-family: var(--font-mono);
   font-size: calc(var(--ui-fs-meta) * var(--ui-font-scale));
   color: var(--ui-on-scrim);
   opacity: 0.62;
   text-shadow: 0 1px 10px rgba(var(--ui-scrim-rgb), 0.6);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: opacity var(--motion-fast), color var(--motion-fast);
+}
+
+.banner-place:hover {
+  opacity: 0.95;
+  color: var(--ui-on-scrim-accent);
 }
 
 .banner-place i {
   flex: 0 0 auto;
   font-size: calc(var(--ui-fs-label) * var(--ui-font-scale));
   color: var(--ui-on-scrim-accent);
+}
+
+.banner-place-arrow {
+  flex: 0 0 auto;
+  opacity: 0;
+  font-size: calc(11px * var(--ui-font-scale)) !important;
+  transition: opacity var(--motion-fast), transform var(--motion-fast);
+}
+
+.banner-place:hover .banner-place-arrow {
+  opacity: 1;
+  transform: translateX(2px);
 }
 
 .banner-place-txt {

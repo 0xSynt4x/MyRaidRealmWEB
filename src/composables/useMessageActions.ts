@@ -18,12 +18,14 @@ import { FRONTEND_AUTHORITATIVE_FIELD_PATHS } from '../utils/frontendAuthoritati
 import {
   runStandaloneLocalTurn,
   runStandaloneLotteryTurn,
+  runStandaloneMapTurn,
   runStandaloneReviewRevise,
   runStandaloneVariableUpdatePass,
   type StandaloneVariableUpdatePhaseOutcome,
 } from '../utils/standaloneLocalTurn';
 import { useSettingsStore } from '../stores/settings';
 import { useLotteryStore } from '../stores/lottery';
+import { useMapStore } from '../stores/map';
 import { useStatDataActions } from '../stores/statDataActions';
 
 /**
@@ -59,6 +61,7 @@ export function useMessageActions() {
   const settingsStore = useSettingsStore();
   const setupStore = useSetupStore();
   const lotteryStore = useLotteryStore();
+  const mapStore = useMapStore();
   const statDataActions = useStatDataActions();
   const STANDALONE_GENERATION_EVENT = 'th1980s:standalone-generation-state';
 
@@ -301,6 +304,9 @@ export function useMessageActions() {
 
       // 这一轮彻底收尾了，看看该不该提醒玩家归档阶段总结
       notifyStageSummaryArchiveDueIfNeeded(reason);
+
+      // 正文轮次记账：攒够地图页设的间隔就后台刷一次地点树（默认关）
+      maybeAutoUpdateMapAfterTurn(reason);
 
       return true;
     } catch (error) {
@@ -942,6 +948,108 @@ export function useMessageActions() {
   }
 
   /**
+   * 跑一次地图地点维护请求，并把结果落进地图 store。
+   *
+   * 与剧情完全解耦：不写任何游戏变量，只替换那棵地点树。
+   * `silent` 为真时是「每 n 轮正文」触发的后台更新 —— 不弹提示、不占聊天流，
+   * 失败只在控制台与地图页上留痕；为假时是玩家在地图页手动点的「回忆解析」。
+   */
+  async function runStandaloneMapUpdate(options: { silent: boolean; reason: string }): Promise<boolean> {
+    // 后台更新遇到正忙直接跳过，等下一轮；手动点击则明确提示一次
+    if (messagesStore.isStandaloneGenerationLocked) {
+      if (!options.silent) {
+        notificationStore.info(
+          settingsStore.locale === 'en'
+            ? 'Please wait for the current reply to finish before refreshing the map.'
+            : '请先等待当前回复结束，再刷新地图。',
+        );
+      }
+      return false;
+    }
+
+    emitStandaloneGenerationState(true, 'standalone_map');
+    mapStore.setUpdating(true);
+    mapStore.setError('');
+
+    try {
+      const outcome = await runStandaloneMapTurn({
+        mapApis: settingsStore.mapApis,
+        mainApis: settingsStore.mainApis,
+        autoRetry: settingsStore.apiAutoRetry,
+        firstTokenTimeoutSeconds: settingsStore.apiFirstTokenTimeout ? settingsStore.apiFirstTokenTimeoutSeconds : 0,
+        corsRelayEnabled: settingsStore.apiCorsRelay,
+        statData: Schema.parse(loadStandaloneStatData()),
+        messages: messagesStore.messages,
+        worldDifficulty: settingsStore.worldDifficulty,
+        existingNodes: mapStore.nodes,
+        snapshotTrim: settingsStore.snapshotTrim,
+        // 流式文本只喂给地图页的解析日志，不进聊天流
+        onPartialText: partialText => mapStore.setRawReply(partialText),
+      });
+
+      mapStore.applyNodes(outcome.nodes, outcome.rawReply);
+      console.info(
+        `[MessageActions] 地图更新完成 reason=${options.reason} 地点数=${outcome.nodes.length} 接口=${outcome.usedApiLabel}`,
+      );
+      return true;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const aborted = errorMessage === 'standalone_map_aborted';
+
+      mapStore.setError(errorMessage);
+
+      if (!aborted && !options.silent) {
+        notificationStore.error(
+          settingsStore.locale === 'en' ? `Map update failed: ${errorMessage}` : `地图更新失败：${errorMessage}`,
+        );
+      }
+      if (!aborted && options.silent) {
+        console.warn('[MessageActions] 地图自动更新失败（不影响剧情）:', errorMessage);
+      }
+      return false;
+    } finally {
+      mapStore.setUpdating(false);
+      emitStandaloneGenerationState(false, 'standalone_map');
+    }
+  }
+
+  /** 玩家在地图页手动点「回忆解析」 */
+  async function sendStandaloneMapUpdate(): Promise<boolean> {
+    return runStandaloneMapUpdate({ silent: false, reason: 'standalone_map_manual' });
+  }
+
+  /**
+   * 每写完一轮正文记一笔；攒够设定间隔就后台跑一次地图更新。
+   *
+   * 开关与间隔都放在地图页上（默认关、间隔 5）。关着时只记数不触发，
+   * 这样玩家中途打开开关不用从头等 n 轮。
+   */
+  function maybeAutoUpdateMapAfterTurn(reason: string) {
+    try {
+      const turns = mapStore.countBodyTurn();
+
+      if (!settingsStore.mapAutoUpdateEnabled) {
+        return;
+      }
+
+      const interval = Math.max(1, Math.floor(settingsStore.mapUpdateInterval));
+      if (turns < interval) {
+        return;
+      }
+
+      // 先归零再发请求：失败也不该把计数越攒越多，下一轮重新开始算
+      mapStore.applyState({
+        地点: mapStore.nodes,
+        更新时间: mapStore.updatedAt,
+        正文计数: 0,
+      });
+      void runStandaloneMapUpdate({ silent: true, reason: `${reason}:map_auto` });
+    } catch (error) {
+      console.warn('[MessageActions] 地图自动更新检查失败（不影响剧情）:', error);
+    }
+  }
+
+  /**
    * 删除指定楼层及之后的所有楼层
    *
    * @param message_id 起始楼层号
@@ -1314,6 +1422,7 @@ export function useMessageActions() {
     refreshLatestAssistantStoryReview,
     sendStandaloneUserMessage,
     sendStandaloneLotteryDraw,
+    sendStandaloneMapUpdate,
     startEdit,
     cancelEdit,
     checkAndFillUserInput,

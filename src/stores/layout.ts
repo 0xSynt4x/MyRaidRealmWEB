@@ -17,6 +17,7 @@ export type TabType =
   | 'settings'
   | 'shop'
   | 'lottery'
+  | 'map'
   | 'dicegame'
   | 'donate';
 

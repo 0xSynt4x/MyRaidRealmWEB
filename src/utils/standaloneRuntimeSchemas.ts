@@ -101,6 +101,35 @@ export const StandaloneRuntimeLotteryStateSchema = z
   })
   .prefault({});
 
+/**
+ * 地图地点树：完全由前端维护的会话级数据，不进 stat_data（主模型与变量更新模型都看不到）。
+ *
+ * 每个节点只有四个字段：名称 / 层级 / 父级 / 描述。坐标、尺寸、建筑摆放、道路走向
+ * 全部由前端在渲染时算出来，所以这里不存任何空间字段 —— 模型改了布局也不用重新生成。
+ *
+ * 字段全部带默认值：老存档没有 `map_state` 时解析出空树，界面显示「暂无地点数据」。
+ */
+export const StandaloneRuntimeMapNodeSchema = z.object({
+  /** 地点名称，全局唯一 */
+  名称: z.string().default(''),
+  /** 层级：世界 / 区域 / 城市 / 街区 / 建筑 / 房间 */
+  层级: z.string().default(''),
+  /** 上一层地点的名称；根节点为空字符串 */
+  父级: z.string().default(''),
+  描述: z.string().default(''),
+});
+
+export const StandaloneRuntimeMapStateSchema = z
+  .object({
+    /** 地点树节点列表（扁平结构，靠「父级」串成树） */
+    地点: z.array(StandaloneRuntimeMapNodeSchema).default([]),
+    /** 上一次成功更新的时间；空串表示从没更新过 */
+    更新时间: z.string().default(''),
+    /** 距离上次地图更新之后又写了几条正文；用来判断「够没够 n 轮」 */
+    正文计数: z.coerce.number().int().nonnegative().default(0),
+  })
+  .prefault({});
+
 export const StandaloneRuntimeSessionSchema = z
   .object({
     id: z.string().min(1),
@@ -127,6 +156,10 @@ export const StandaloneRuntimeSessionSchema = z
      * 抽奖进度：不进 stat_data，只由前端维护；跟着会话存，读档时一起回来。
      */
     lottery_state: StandaloneRuntimeLotteryStateSchema,
+    /**
+     * 地图地点树：不进 stat_data，只由前端维护；跟着会话存，读档时一起回来。
+     */
+    map_state: StandaloneRuntimeMapStateSchema,
   })
   .transform(session => ({
     ...session,
@@ -233,6 +266,8 @@ export const StandaloneRuntimeMessagesSchema = z.object({
 
 export type StandaloneRuntimeSession = z.infer<typeof StandaloneRuntimeSessionSchema>;
 export type StandaloneRuntimeLotteryState = z.infer<typeof StandaloneRuntimeLotteryStateSchema>;
+export type StandaloneRuntimeMapNode = z.infer<typeof StandaloneRuntimeMapNodeSchema>;
+export type StandaloneRuntimeMapState = z.infer<typeof StandaloneRuntimeMapStateSchema>;
 export type StandaloneRuntimeMessageRole = z.infer<typeof StandaloneRuntimeMessageRoleSchema>;
 export type StandaloneRuntimeMessageBodyPage = z.infer<typeof StandaloneRuntimeMessageBodyPageSchema>;
 export type StandaloneRuntimeMessageRecord = z.infer<typeof StandaloneRuntimeMessageRecordSchema>;

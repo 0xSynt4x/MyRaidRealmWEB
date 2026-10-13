@@ -110,12 +110,17 @@ const LotteryPanel = defineAsyncComponent({
   timeout: 10000,
 });
 
+const MapPanel = defineAsyncComponent({
+  loader: () => import('../panels/MapPanel.vue'),
+  delay: 200,
+  timeout: 10000,
+});
+
 const DiceGamePanel = defineAsyncComponent({
   loader: () => import('../panels/DiceGamePanel.vue'),
   delay: 200,
   timeout: 10000,
 });
-
 const DonatePanel = defineAsyncComponent({
   loader: () => import('../panels/DonatePanel.vue'),
   delay: 200,
@@ -143,6 +148,7 @@ const panelTitles: Record<TabType, string> = {
   settings: 'nav.settings',
   shop: 'nav.shop',
   lottery: 'nav.lottery',
+  map: 'nav.map',
   dicegame: 'nav.dicegame',
   donate: 'nav.donate',
 };
@@ -164,6 +170,7 @@ const currentPanelComponent = computed<Component>(() => {
     settings: SettingsPanel,
     shop: ShopPanel,
     lottery: LotteryPanel,
+    map: MapPanel,
     dicegame: DiceGamePanel,
     donate: DonatePanel,
   };

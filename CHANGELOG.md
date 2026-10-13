@@ -1306,3 +1306,30 @@
   另起 `wrangler pages dev` 实测：四道防护逐条命中（缺 target / 内网地址 / 自家域名 / 非 443 端口 /
   非白名单路径 / `0x7f.1` / `2130706433` 全部拒绝），合法域名放行并**真打 NVIDIA** ——
   模型列表 200 拿回 80+ 条，非流式与流式 `chat/completions` 都拿到正常回复。
+
+## 2026-10-13
+
+### — feat: 网页版地图上线，地点树由模型生成、布局与路网由前端演算
+
+- **Added** 地图功能（网页版首个「地点树」可视化界面）：侧边栏 / 底部导航「地图」入口、
+  顶部横幅地点名可点开、覆盖面板新增地图页签（懒加载，不拖慢首屏）。
+  - 生成链：正文回合结束记账后按间隔触发一次「回忆解析」，候选 API 逐个重试；
+    模型只输出「谁属于谁」的地点树 JSON，前端负责全部摆位与渲染。
+  - 提示词契约两份（`src/assets/standalone-local-content/map-location-rules.txt`、`map-request-prompt.txt`），
+    刻意不进本地内容清单，由地图链路单独读取。
+  - 数据清洗：层级关键词兜底、重名节点合并、悬空节点挂靠、跨级下推、多根裁一。
+- **Added** 六档中性层级（世界 / 区域 / 城市 / 街区 / 建筑 / 房间），每档独立网格尺寸；
+  盒子之间跑重叠松弛解算，任何子节点数下两两不压、不出界
+  （实测 5 档层级 × 13 种子节点数共 65 组：零重叠 / 零出界 / 两次渲染结果完全一致）。
+- **Added** 三种路网互不穿建筑：房间层无路、聚落层走行 / 列之间空隙中线、其余走绕建筑 A* 寻路；
+  另给每栋建筑画接入小径。逐段采样兜底，宁可断一截也不让路压到房子上。
+- **Changed** 玩家所在地没有下级时不再留空网格 —— 视角自动退到上一层、把它自己高亮画出来；
+  并在角落给一句「这个地方下面还没有细分的去处」。点地图上的方块等同于面包屑：有下级就切入。
+- **Fixed** 侧边栏 / 底部导航「地图」图标不显示：项目用的是 Tabler 内联图标子集
+  （`src/assets/tabler/tabler-inline.css` 仅 188 个），地图链路引了 9 个不在子集里的图标名
+  （`ti-map-2` / `ti-map-off` / `ti-clock-hour-4` / `ti-list-tree` / `ti-login-2` /
+  `ti-building-community` / `ti-road` / `ti-home` / `ti-door`），CSS 无对应字形渲染成空白。
+  全部换成子集内语义近似的现有图标（`ti-map-pin` / `ti-help-circle` / `ti-clock` / `ti-list` /
+  `ti-external-link` / `ti-world` / `ti-tower` / `ti-building` / `ti-stack` /
+  `ti-building-bank` / `ti-door-enter`）。
+- 本地验收：`typecheck` ✓ ｜ `lint` 0 error ✓ ｜ `build` ✓ ｜ 布局探针 65 组全绿。

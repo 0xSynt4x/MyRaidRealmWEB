@@ -42,9 +42,12 @@ import { normalizeLineEndingsTrimmed as normalizeLineEndings } from '../src/util
 import {
   lotteryItemSkillRulesTemplate,
   lotteryRequestPromptTemplate,
+  mapLocationRulesTemplate,
+  mapRequestPromptTemplate,
   storyReviewPromptTemplate,
   storyRevisePromptTemplate,
 } from '../src/assets/standalone-local-content';
+import { parseMapDataBlock, type MapNode } from '../src/utils/mapLocationTree';
 import { renderStandaloneLocalContentTemplate } from '../src/utils/standaloneLocalContentEjs';
 import {
   applyVariableUpdatePatch,
@@ -2064,6 +2067,185 @@ export async function runStandaloneLotteryTurn(
     }
 
     throw new Error(failures.length > 1 ? failures.join(' | ') : lastErrorMessage || '抽奖 API 调用失败');
+  } finally {
+    if (activeStandaloneTurnController === controller) {
+      activeStandaloneTurnController = null;
+    }
+  }
+}
+
+// ===== 地图独立请求 =====
+
+export type StandaloneMapTurnInput = {
+  /** 地图 API 候选；为空时回退主 API */
+  mapApis?: ApiConfig[];
+  mainApis: ApiConfig[];
+  autoRetry?: boolean;
+  firstTokenTimeoutSeconds?: number;
+  corsRelayEnabled?: boolean;
+  statData: StandaloneStatData;
+  messages: MessageRecord[];
+  worldDifficulty: WorldDifficulty;
+  /** 当前已有的地点列表；地图模型据此做增量维护 */
+  existingNodes: MapNode[];
+  snapshotTrim?: StandaloneSnapshotTrimSettings;
+  onPartialText?: (text: string) => void;
+};
+
+export type StandaloneMapTurnOutcome = {
+  /** 模型返回的完整地点列表（含未改动的旧节点），已清洗过 */
+  nodes: MapNode[];
+  /** 模型原始回复，仅用于「回忆解析」日志展示 */
+  rawReply: string;
+  usedApiLabel: string;
+};
+
+/** 把已有地点列表拼成一段给模型看的上下文。空树时明确说「从零建立」。 */
+function buildMapExistingNodesBlock(nodes: MapNode[]): string {
+  if (nodes.length === 0) {
+    return '当前已有地点树：空（还没有任何地点，需要从零建立）';
+  }
+
+  return [
+    `当前已有地点树（共 ${nodes.length} 个地点，请在此基础上增量维护）：`,
+    '<地图数据>',
+    JSON.stringify(nodes, null, 2),
+    '</地图数据>',
+  ].join('\n');
+}
+
+function buildMapTurnPrompt(input: StandaloneMapTurnInput): StandalonePromptMessagesBundle {
+  const snapshotForSend = buildStandaloneSnapshotForChain({
+    statData: input.statData,
+    settings: input.snapshotTrim ?? DEFAULT_STANDALONE_SNAPSHOT_TRIM_SETTINGS,
+    chain: 'main',
+  });
+
+  const rendered = renderStandaloneLocalContentTemplate({
+    template: mapRequestPromptTemplate,
+    renderContext: {
+      statData: input.statData,
+      messages: input.messages,
+      latestUserMessage: null,
+      worldDifficulty: input.worldDifficulty,
+      snapshotStatData: snapshotForSend.snapshot,
+      compactSnapshot: snapshotForSend.compact,
+      extraVars: {
+        map: { existingCount: input.existingNodes.length },
+      },
+    },
+    sourceName: 'map-request-prompt',
+  });
+
+  const messages: StandaloneProviderChatMessage[] = [
+    {
+      role: 'user',
+      content: buildStandaloneCurrentStatDataBlock(snapshotForSend.snapshot, {
+        compact: snapshotForSend.compact,
+      }),
+    },
+    // 地点结构契约紧跟快照：先给「当前局势」，再给「六档层级与字段定义」。
+    // 地图请求不带 variable-update-rules —— 它不写剧情变量，这份是它的字段契约来源。
+    {
+      role: 'user',
+      content: mapLocationRulesTemplate.trim(),
+    },
+  ];
+
+  // 最近一段剧情：地点来自剧情，模型必须看到「玩家去过哪、提到了哪些地名」，
+  // 否则只能凭变量快照里的一个当前位置硬编。口径与抽奖链完全一致。
+  messages.push(...resolveStandaloneRecentHistoryMessages({ messages: input.messages }));
+
+  // 已有地点树放在请求之前：先给基准，再给「在此基础上怎么改」。
+  messages.push({ role: 'user', content: buildMapExistingNodesBlock(input.existingNodes) });
+
+  messages.push({ role: 'user', content: rendered.content.trim() });
+
+  return { messages };
+}
+
+/**
+ * 地图独立请求：一次请求返回完整的地点层级树。
+ *
+ * - 与主链共用同一个「正在生成」控制器，因此地图更新期间无法发起剧情回合；
+ * - 不返回变量补丁：地图数据不进 stat_data，由调用方写进会话级字段；
+ * - 候选 API 逐个尝试：没有 `<地图数据>`、JSON 不合法、数组为空，都换下一个。
+ */
+export async function runStandaloneMapTurn(
+  input: StandaloneMapTurnInput,
+): Promise<StandaloneMapTurnOutcome> {
+  const mapCandidates = input.mapApis?.length ? input.mapApis : input.mainApis;
+  const candidateApis = limitApiCandidates(resolveConfiguredMainApis(mapCandidates), input.autoRetry);
+
+  if (candidateApis.length === 0) {
+    throw new Error('未找到已保存且完整可用的地图 API 配置');
+  }
+
+  if (activeStandaloneTurnController) {
+    throw new Error('已有独立模式生成任务正在进行中');
+  }
+
+  const controller = new AbortController();
+  activeStandaloneTurnController = controller;
+
+  try {
+    const prompt = buildMapTurnPrompt(input);
+    const failures: string[] = [];
+    let lastErrorMessage = '';
+
+    for (let index = 0; index < candidateApis.length; index += 1) {
+      const api = candidateApis[index]!;
+      const apiLabel = toApiLabel(api);
+
+      try {
+        const reply = await requestAssistantReply(
+          api,
+          prompt,
+          controller.signal,
+          input.onPartialText,
+          input.firstTokenTimeoutSeconds,
+          input.corsRelayEnabled,
+        );
+        const rawReply = normalizeLineEndings(reply.text);
+        const parsed = parseMapDataBlock(rawReply);
+
+        if (parsed.errorMessage) {
+          failures.push(`${apiLabel}: ${parsed.errorMessage}`);
+          appendStandaloneAiDebugFailure({
+            pass: 'map_pass',
+            attempt: index + 1,
+            totalAttempts: candidateApis.length,
+            trace: reply.debugTrace,
+          });
+          continue;
+        }
+
+        return {
+          nodes: parsed.nodes,
+          rawReply,
+          usedApiLabel: apiLabel,
+        };
+      } catch (error) {
+        if (controller.signal.aborted) {
+          throw new Error('standalone_map_aborted');
+        }
+
+        const message = normalizeRemoteApiErrorMessage(error);
+        lastErrorMessage = message;
+        failures.push(`${apiLabel}: ${message}`);
+
+        appendStandaloneAiDebugFailure({
+          pass: 'map_pass',
+          attempt: index + 1,
+          totalAttempts: candidateApis.length,
+          trace:
+            readStandaloneProviderFailureTrace(error) ??
+            createFallbackFailureTrace({ api_label: apiLabel, api_mode: api.source }),
+        });
+      }
+    }
+
+    throw new Error(failures.length > 1 ? failures.join(' | ') : lastErrorMessage || '地图 API 调用失败');
   } finally {
     if (activeStandaloneTurnController === controller) {
       activeStandaloneTurnController = null;

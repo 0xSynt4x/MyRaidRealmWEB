@@ -40,7 +40,11 @@ export const STANDALONE_FAILURE_MESSAGE_CONTENT_LIMIT = 8000;
 export const STANDALONE_FAILURE_TRUNCATION_MARK = '\n…（已截断）';
 
 /** 失败发生在哪一遍请求上。 */
-export type StandaloneAiDebugFailurePass = 'main_pass' | 'variable_update_pass' | 'lottery_pass';
+export type StandaloneAiDebugFailurePass =
+  | 'main_pass'
+  | 'variable_update_pass'
+  | 'lottery_pass'
+  | 'map_pass';
 
 export type StandaloneAiDebugFailureRecord = {
   id: string;
@@ -140,7 +144,8 @@ function isFailureRecord(value: unknown): value is StandaloneAiDebugFailureRecor
     typeof candidate.occurred_at === 'string' &&
     (candidate.pass === 'main_pass' ||
       candidate.pass === 'variable_update_pass' ||
-      candidate.pass === 'lottery_pass') &&
+      candidate.pass === 'lottery_pass' ||
+      candidate.pass === 'map_pass') &&
     typeof candidate.attempt === 'number' &&
     typeof candidate.total_attempts === 'number' &&
     typeof candidate.trace === 'object' &&

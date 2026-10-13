@@ -434,6 +434,8 @@ export interface ApiPoolSettings {
   reviewApiIds: string[];
   /** 改稿 API 选中项（按尝试顺序）；为空表示回退主 API */
   reviseApiIds: string[];
+  /** 地图 API 选中项（按尝试顺序）；为空表示回退主 API */
+  mapApiIds: string[];
   /** 前一个失败时是否自动试下一个 */
   autoRetry: boolean;
   /** 是否启用「首字超时」：流式请求超过设定秒数还没出首字就判失败 */
@@ -480,6 +482,24 @@ export function normalizeBodyRequestCount(value: unknown): number {
   }
   const rounded = Math.round(parsed);
   return Math.min(BODY_REQUEST_COUNT_MAX, Math.max(BODY_REQUEST_COUNT_MIN, rounded));
+}
+
+/**
+ * 地图自动更新：每多少条正文之后自动跑一次地图维护请求。
+ * 界面与解析共用同一套边界；上限避免玩家填出「几千轮才更新一次」这种等于关掉的值。
+ */
+export const MAP_UPDATE_INTERVAL_MIN = 1;
+export const MAP_UPDATE_INTERVAL_MAX = 50;
+export const DEFAULT_MAP_UPDATE_INTERVAL = 5;
+
+/** 间隔解析：非法值回落到默认，越界值夹到区间内，保证存进去的永远是可用值 */
+export function normalizeMapUpdateInterval(value: unknown): number {
+  const parsed = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(parsed)) {
+    return DEFAULT_MAP_UPDATE_INTERVAL;
+  }
+  const rounded = Math.round(parsed);
+  return Math.min(MAP_UPDATE_INTERVAL_MAX, Math.max(MAP_UPDATE_INTERVAL_MIN, rounded));
 }
 
 /** 主 API 一条都没选中时对外给出的空配置；模块级常量，保证引用稳定 */
@@ -536,6 +556,8 @@ export function resolveStoredApiPoolSettings(stored: Record<string, any> | null 
   // 审稿 / 改稿 API 同理：没配过就是空，运行时自动回退主 API
   const reviewApiIds = normalizeApiIdList(stored?.reviewApiIds, pool);
   const reviseApiIds = normalizeApiIdList(stored?.reviseApiIds, pool);
+  // 地图 API 同理：没配过就是空，运行时自动回退主 API
+  const mapApiIds = normalizeApiIdList(stored?.mapApiIds, pool);
 
   // 池字段不存在 → 说明还是老结构，把老的两份配置搬进来
   if (!hasStoredPool) {
@@ -564,6 +586,7 @@ export function resolveStoredApiPoolSettings(stored: Record<string, any> | null 
     lotteryApiIds,
     reviewApiIds,
     reviseApiIds,
+    mapApiIds,
     autoRetry: stored?.apiAutoRetry !== false,
     // 默认关：老存档升级后行为与之前完全一致，想要的人自己去 API 配置页打开
     firstTokenTimeoutEnabled: stored?.apiFirstTokenTimeout === true,
@@ -648,6 +671,8 @@ export const useSettingsStore = defineStore('settings', () => {
   const reviewApiIds = ref<string[]>(initialApiPoolSettings.reviewApiIds);
   /** 改稿 API 选中项（按尝试顺序）；为空表示回退主 API */
   const reviseApiIds = ref<string[]>(initialApiPoolSettings.reviseApiIds);
+  /** 地图 API 选中项（按尝试顺序）；为空表示回退主 API */
+  const mapApiIds = ref<string[]>(initialApiPoolSettings.mapApiIds);
   /** 前一个失败时是否自动试下一个 */
   const apiAutoRetry = ref<boolean>(initialApiPoolSettings.autoRetry);
   /** 是否启用「首字超时」判定 */
@@ -699,6 +724,9 @@ export const useSettingsStore = defineStore('settings', () => {
 
   /** 改稿 API 候选列表；没单独配置时为空，运行时回退主 API */
   const reviseApis = computed(() => pickApisFromPool(reviseApiIds.value));
+
+  /** 地图 API 候选列表；没单独配置时为空，运行时回退主 API */
+  const mapApis = computed(() => pickApisFromPool(mapApiIds.value));
 
   /**
    * 主 API 第一条的兼容读法。
@@ -757,6 +785,18 @@ export const useSettingsStore = defineStore('settings', () => {
     normalizeStandaloneSnapshotTrimSettings(stored.snapshotTrim),
   );
 
+  /**
+   * 地图自动更新开关；默认关。
+   * 开关与间隔的界面都放在地图页里（不进设置面板），但值本身是玩家设置，跟着设置一起落盘。
+   */
+  const mapAutoUpdateEnabled = ref<boolean>(stored.mapAutoUpdateEnabled === true);
+  /** 每多少条正文之后自动更新一次地图；默认 5 */
+  const mapUpdateInterval = ref<number>(
+    typeof stored.mapUpdateInterval === 'undefined'
+      ? DEFAULT_MAP_UPDATE_INTERVAL
+      : normalizeMapUpdateInterval(stored.mapUpdateInterval),
+  );
+
   const saveStoragePatch = (patch: Record<string, unknown>) => {
     try {
       const current = loadFromStorage();
@@ -795,6 +835,8 @@ export const useSettingsStore = defineStore('settings', () => {
       backgroundImage: backgroundImage.value,
       standaloneLocalContent: standaloneLocalContent.value,
       snapshotTrim: snapshotTrim.value,
+      mapAutoUpdateEnabled: mapAutoUpdateEnabled.value,
+      mapUpdateInterval: mapUpdateInterval.value,
       imageGeneration: imageGeneration.value,
       comfyUi: comfyUi.value,
       novelAi: novelAi.value,
@@ -811,6 +853,7 @@ export const useSettingsStore = defineStore('settings', () => {
       lotteryApiIds: lotteryApiIds.value,
       reviewApiIds: reviewApiIds.value,
       reviseApiIds: reviseApiIds.value,
+      mapApiIds: mapApiIds.value,
       apiAutoRetry: apiAutoRetry.value,
       apiFirstTokenTimeout: apiFirstTokenTimeout.value,
       apiFirstTokenTimeoutSeconds: apiFirstTokenTimeoutSeconds.value,
@@ -831,6 +874,7 @@ export const useSettingsStore = defineStore('settings', () => {
       lotteryApiIds: lotteryApiIds.value,
       reviewApiIds: reviewApiIds.value,
       reviseApiIds: reviseApiIds.value,
+      mapApiIds: mapApiIds.value,
       apiAutoRetry: apiAutoRetry.value,
       apiFirstTokenTimeout: apiFirstTokenTimeout.value,
       apiFirstTokenTimeoutSeconds: apiFirstTokenTimeoutSeconds.value,
@@ -857,6 +901,8 @@ export const useSettingsStore = defineStore('settings', () => {
       backgroundImage,
       standaloneLocalContent,
       snapshotTrim,
+      mapAutoUpdateEnabled,
+      mapUpdateInterval,
       imageGeneration,
       comfyUi,
       novelAi,
@@ -875,6 +921,7 @@ export const useSettingsStore = defineStore('settings', () => {
       lotteryApiIds,
       reviewApiIds,
       reviseApiIds,
+      mapApiIds,
       apiAutoRetry,
       apiFirstTokenTimeout,
       apiFirstTokenTimeoutSeconds,
@@ -945,12 +992,14 @@ export const useSettingsStore = defineStore('settings', () => {
     lotteryApis,
     reviewApis,
     reviseApis,
+    mapApis,
     apiPool,
     mainApiIds,
     assistantApiIds,
     lotteryApiIds,
     reviewApiIds,
     reviseApiIds,
+    mapApiIds,
     apiAutoRetry,
     apiFirstTokenTimeout,
     apiFirstTokenTimeoutSeconds,
@@ -958,6 +1007,8 @@ export const useSettingsStore = defineStore('settings', () => {
     backgroundImage,
     standaloneLocalContent,
     snapshotTrim,
+    mapAutoUpdateEnabled,
+    mapUpdateInterval,
     imageGeneration,
     comfyUi,
     novelAi,
