@@ -377,7 +377,9 @@ export const useDiceGameStore = defineStore('dice-game', () => {
       availableDiceCount.value = unheldCount;
     }
 
+    // 直接接着掷下一把，省掉「继续掷骰 → 再点掷骰」的中间步骤
     turnPhase.value = TurnPhase.Rolling;
+    playerRoll();
   }
 
   /** 玩家存分结束回合 */

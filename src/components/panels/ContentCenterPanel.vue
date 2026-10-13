@@ -660,7 +660,7 @@
                     v-if="message.debug_trace?.revise_pass"
                     :class="['tag-chip', 'compact-tag', 'ai-debug-summary-chip', 'main']"
                   >
-                    <i class="ti ti-wand"></i>
+                    <i class="ti ti-feather"></i>
                     {{ t('contentCenter.aiDebug.passReviseTitle') }}
                   </span>
                 </div>
@@ -1338,7 +1338,7 @@ const debugExtraPassCards = computed(() => [
   {
     key: 'revise',
     title: t('contentCenter.aiDebug.passReviseTitle'),
-    icon: 'ti-wand',
+    icon: 'ti-feather',
     trace: selectedDebugTrace.value?.revise_pass,
   },
 ]);

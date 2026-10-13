@@ -1261,9 +1261,7 @@
 
 ## 2026-10-12
 
-### — feat: 新增网页版跨域自动中转，解决无 CORS 的第三方接口连不上
-
-> 短哈希待回填（按约定并入下一次提交）。
+### `ef47e64` — feat: 新增网页版跨域自动中转，解决无 CORS 的第三方接口连不上
 
 - **Added** 同域跨域中转端点（`functions/api/relay.ts`，项目根新建 `functions/`，随 Cloudflare Pages 一起部署）：
   - 背景：部分第三方 AI 接口不返回跨域响应头，网页版直连会被浏览器拦成 `Failed to fetch`。
@@ -1333,3 +1331,32 @@
   `ti-external-link` / `ti-world` / `ti-tower` / `ti-building` / `ti-stack` /
   `ti-building-bank` / `ti-door-enter`）。
 - 本地验收：`typecheck` ✓ ｜ `lint` 0 error ✓ ｜ `build` ✓ ｜ 布局探针 65 组全绿。
+
+### `f1b7bec` — docs: 回填地图提交的短哈希到 CHANGELOG
+
+- **Changed** 回填上一条提交 `2a64664`（网页版地图）的短哈希 —— 纯文档改动，只改 `CHANGELOG.md` 一行。
+
+## 2026-10-14
+
+### — feat: 地图入口「回忆解析」改名「刷新地图」；骰子继续掷免二次点击；文档精简重排
+
+> 短哈希待回填（按约定并入下一次提交）。
+
+- **Changed** 地图页的刷新入口由「回忆解析」改名「刷新地图」（`src/i18n/index.ts` 的 `map.refresh`）：
+  原词读起来像「从记忆里解析出什么」，玩家看不出点下去会发生什么；改成动作直白。
+  同面板的 `map.autoUpdateOff`（「只能手动刷新地图」）与 `map.emptyHint`（「点上面的『刷新地图』」）
+  一并统一叫法，免得一个面板里出现两套名字。**只动文案，链路 / 参数 / 行为一律未动。**
+- **Changed** 骰子小游戏「继续掷骰」不再需要再点一次「掷骰」：`src/stores/diceGame.ts` 的
+  `playerContinue()` 在把回合阶段切到 `TurnPhase.Rolling` 之后直接调 `playerRoll()`，
+  省掉「继续掷骰 → 再点掷骰」的中间步骤（原实现切完阶段就停下，等玩家再点一次）。
+- **Changed** 审稿改稿流水线的图标由 `ti-wand` 换成 `ti-feather`（`src/components/common/MessageCard.vue`
+  与 `src/components/panels/ContentCenterPanel.vue` 共 3 处）。两个字形都在 Tabler 内联图标子集里
+  （`src/assets/tabler/tabler-inline.css` 有对应字形），不会渲染成空白。
+- **Changed** `README.md` / `README.en.md` 精简重排：功能特性与文档导航改竖排、技术栈并成一行、
+  目录结构补 `functions/`、新增「部署」小节，删掉过时表格与重复说明（两文件合计 -293 行 / +75 行）。
+- 玩家视角更新日志（`src/utils/changelog.ts`）本次不新增条目 —— 属措辞统一与内部调整，不单开一条。
+- 本地验收：`typecheck` ✓ ｜ `test` 132/132 + 35 ✓ ｜ `lint` 0 error（15 个存量 warning）✓ ｜ `build` ✓。
+  产物内实测（`dist/index.html`，3155026 字节 / sha256 `2552525c…`）：「刷新地图」4 处；
+  「回忆解析」只剩 1 处，是组件模板里的开发注释（「顶部：地点规模 + 自动更新开关 / 间隔 + 回忆解析」），
+  打包时被保留但不渲染，玩家看不到。加载态那句「解析中…」是另一个键（`map.refreshing`），未动。
+- 说明：本次提交一并带上工作区里前一夜未提交的两笔改动（骰子继续掷、审稿图标）与 README 精简。

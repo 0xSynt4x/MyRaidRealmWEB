@@ -68,7 +68,7 @@
           :disabled="actionsDisabled"
           @click="handleReviewStory"
         >
-          <i class="ti ti-wand"></i>
+          <i class="ti ti-feather"></i>
         </button>
 
         <!-- AI楼层：正文翻页（多于 1 页时显示；抽奖结果楼层不提供） -->
