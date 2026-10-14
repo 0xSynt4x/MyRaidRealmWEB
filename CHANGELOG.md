@@ -1359,9 +1359,43 @@
   打包时被保留但不渲染，玩家看不到。加载态那句「解析中…」是另一个键（`map.refreshing`），未动。
 - 说明：本次提交一并带上工作区里前一夜未提交的两笔改动（骰子继续掷、审稿图标）与 README 精简。
 
-### — docs: 回填本次提交的短哈希到 CHANGELOG
+### `35c4778` — docs: 回填本次提交的短哈希到 CHANGELOG
 
 > 短哈希待回填（按约定并入下一次提交）。
 
 - **Changed** 回填上一条提交 `a8e812d` 的短哈希（推送脚本漏了这一步，事后按约定补记）。
+  纯文档改动，`dist/` 产物未变，**不重新部署**。
+
+## 2026-09-28
+
+### — feat: AI 请求结束提示音（默认开启）
+
+- **Added** 新增提示音资源 `src/assets/audio/notification-done.wav`（68.4 KB，拷自本机 Win `ding.wav`），
+  webpack 5 `asset/resource` 处理后落到 `dist/assets/audio/notification-done.<hash>.wav`、按需懒加载、不进 HTML。
+- **Added** `useMessageActions.ts` 模块级 `<audio>` 单例 + 暴露 `playNotificationSoundStandalone()`；
+  闭包 `playNotificationSound()` 委托给模块级入口；`preload="auto"`、音量 0.5、多并发 `currentTime=0` 重头。
+- **Added** 资源声守卫：进入函数先 `if (typeof Audio === 'undefined') return;`，让 node / 旧 webview /
+  SSR 直接静默；`play()` 拒绝（autoplay）走 `.catch` 静默吞。**提示音是锦上添花，绝不拖累主链路。**
+- **Changed** `useMessageActions.ts` 所有 AI 请求收尾的 `finally` 分支：先判 `settingsStore.featureSoundEnabled`
+  再 `playNotificationSound()`，**无论成功还是失败都响**。
+- **Changed** `SettingsPanel.vue` 「功能设置 / 正文自动滚动」**正下方**新增开关（与自动滚动同款样式：
+  `<div class="setting-row">` + `row-label` + `toggle-switch` + `input checkbox` + `toggle-track`），**默认开**。
+- **Changed** 旧 UI 整体迁移：把之前误放在「API 配置」Tab 的同条开关从 `SettingsPage.vue` 删干净
+  （模板行 + setup 解构一并删除），i18n key `settings.featureSoundEnabled` 在 zh 块保留、en 块也补
+  同样一条（`Notification sound after AI response`），`pnpm check:i18n` 重跑后中英 1435 / 1435 平账。
+- **Changed** `scripts/tests/run-standalone-local-content-tests.cjs` 加 `?url` 资源 query 剥壳（与已有
+  `?raw` 同款范式）+ 注册 `require.extensions['.wav']` 返回空字符串，让测试链路能 `import x from '...wav?url'`。
+- 本地验收：`typecheck` ✓ ｜ `lint` 0 error ✓ ｜ `test` 通过 132 / 共 132 ✓ ｜ `build` ✓。
+  产物实测：`dist/assets/audio/notification-done.6e53781d.wav 68.4 KiB [emitted]` 落盘，
+  `dist/index.html` 内 0 个 `notification-done` 字符串（音频不内联、按需懒加载）。
+- 风险点回放：① 上一轮试过把 i18n key 一起删掉，build 仍过、运行时 `t('settings.featureSoundEnabled')`
+  会回退成 key 字面量 —— i18n 缺席是运行时问题，**webpack / tsc / eslint / 测试都查不出**，靠人眼兜底。
+  ② 第一次写 `new Audio()` 没守卫 `Audio` 本身是否存在，node 24 下挂掉 6 个 `useMessageActions` 行为测试，
+  教训是「改完跑一遍 test 再信 build 绿」。
+
+### — docs: 回填上一条提交的短哈希到 CHANGELOG
+
+> 短哈希待回填（按约定并入下一次提交）。
+
+- **Changed** 回填 `35c4778` 那条遗留占位（推送脚本漏了短哈希），按惯例并入本次提交一起回填。
   纯文档改动，`dist/` 产物未变，**不重新部署**。

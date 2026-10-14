@@ -280,6 +280,15 @@
           </label>
         </div>
 
+        <!-- AI 请求结束提示音 -->
+        <div class="setting-row">
+          <span class="row-label">{{ t('settings.featureSoundEnabled') }}</span>
+          <label class="toggle-switch">
+            <input v-model="featureSoundEnabled" type="checkbox" />
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+
         <!-- 在线模式 -->
         <div class="setting-row">
           <span class="row-label">
@@ -1336,6 +1345,7 @@ const {
   contentFontSize,
   lineHeight,
   autoScroll,
+  featureSoundEnabled,
   actionOptionBehavior,
   onlineModeEnabled,
   apiPool,

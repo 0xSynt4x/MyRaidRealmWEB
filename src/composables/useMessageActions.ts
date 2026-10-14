@@ -27,6 +27,44 @@ import { useSettingsStore } from '../stores/settings';
 import { useLotteryStore } from '../stores/lottery';
 import { useMapStore } from '../stores/map';
 import { useStatDataActions } from '../stores/statDataActions';
+import notificationDoneUrl from '../assets/audio/notification-done.wav?url';
+
+/**
+ * 模块级 `<audio>` 单例。`playNotificationSound` 用它播提示音；
+ * 不挂到任何组件上——composable 没模板，不能照搬首页那种 `<audio ref="...">`。
+ * 用户可以「换主题 / 切场景」之间反复触发「AI 请求结束」回调，
+ * 多个并发请求会撞一起，所以只留一个实例，currentTime 归 0 重头放即可。
+ */
+let notificationAudio: HTMLAudioElement | null = null;
+
+/**
+ * 模块级暴露的兜底入口：任何想「AI 请求结束后播一声」的地方都能直接调，
+ * 不必拿到 `useMessageActions` 实例。范式跟函数内一致，autoplay 被拒就静默。
+ *
+ * 守卫 `Audio` 是否存在：SSR / node 测试 / 旧 webview 这类没构造器
+ * 的环境下，`new Audio` 是同步 `ReferenceError`，直接 return，提示音是
+ * 锦上添花不能让它拖累主链路。autoplay 拒绝、文件解码失败等异步问题
+ * 走 `.catch` 静默吞。
+ */
+export function playNotificationSoundStandalone(): void {
+  if (typeof Audio === 'undefined') {
+    return;
+  }
+  if (!notificationAudio) {
+    notificationAudio = new Audio(notificationDoneUrl);
+    notificationAudio.preload = 'auto';
+    notificationAudio.volume = 0.5;
+  }
+  const audio = notificationAudio;
+  try {
+    audio.currentTime = 0;
+  } catch {
+    /* 见上 */
+  }
+  void audio.play().catch(() => {
+    /* 见上 */
+  });
+}
 
 /**
  * 一次抽奖的入参。品质清单、扣费与保底进度都由前端算好再传进来 ——
@@ -328,6 +366,11 @@ export function useMessageActions() {
       // 确保发送按钮一定能恢复闲置态。消息的 variable_update_status 由各分支单独处理。
       emitStandaloneGenerationState(false, reason);
       messagesStore.setStandaloneAssistantGenerationBusy(false);
+
+      // 功能设置：AI 请求结束后提醒声音（无论成功还是失败）
+      if (settingsStore.featureSoundEnabled) {
+        playNotificationSound();
+      }
     }
   }
 
@@ -1413,6 +1456,24 @@ export function useMessageActions() {
     messagesStore.stopEditing();
   }
 
+  /**
+   * 播放 AI 请求结束提示音。
+   *
+   * 范式照抄首页背景音乐（`HomePage.vue`）：外置音频文件走 `?url` 导入，
+   * webpack 把它落到 `dist/assets/audio/notification-done.<hash>.wav`，不进 HTML。
+   *
+   * 因为这是 composable（不是组件），没法挂 `<audio>` 模板，所以走模块级
+   * singleton：第一次被调用时懒建一个 `<audio>` 元素、`preload="auto"`
+   * 提前把元数据加载好。逻辑委托给模块顶部那个独立函数，避开两份实现漂移。
+   *
+   * 浏览器自动播放策略：站点未与用户交互前直接 `.play()` 会被拒。被拒就静默吞
+   * —— 提示音只是锦上添花，不能因为它卡住主流程。状态切回闲置的那条 `finally`
+   * 才是主链路。
+   */
+  function playNotificationSound(): void {
+    playNotificationSoundStandalone();
+  }
+
   return {
     deleteFromHere,
     editMessage,
@@ -1426,5 +1487,6 @@ export function useMessageActions() {
     startEdit,
     cancelEdit,
     checkAndFillUserInput,
+    playNotificationSound,
   };
 }

@@ -110,6 +110,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'settings.tab.features': '功能设置',
     'settings.tab.api': 'API 配置',
     'settings.tab.declaration': '声明',
+    'settings.featureSoundEnabled': 'AI 请求结束后提醒声音',
     'settings.card.appearance': '外观',
     'settings.theme': '主题',
     'settings.theme.light': '默认主题',
@@ -741,9 +742,10 @@ const messages: Record<Locale, Record<string, string>> = {
     'map.level.房间': '房间',
 
     'donate.title': '投喂作者',
-    'donate.text': '如果你喜欢这张卡，请支持一下~',
+    'donate.text': '如果玩得开心，请支持一下~',
     'donate.qrAlt': '赞赏二维码',
     'donate.kofiLink': '或通过 Ko-fi 支持',
+    'donate.kofiPromise': '每一份支持，都只会用在新的世界上。',
 
     'changelog.title': '更新日志',
     'changelog.close': '关闭',
@@ -1643,6 +1645,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'settings.tab.features': 'Features',
     'settings.tab.api': 'API',
     'settings.tab.declaration': 'Declaration',
+    'settings.featureSoundEnabled': 'Notification sound after AI response',
     'settings.card.appearance': 'Appearance',
     'settings.theme': 'Theme',
     'settings.theme.light': 'Default theme',
@@ -2279,9 +2282,10 @@ const messages: Record<Locale, Record<string, string>> = {
     'map.level.房间': 'Room',
 
     'donate.title': 'Support the author',
-    'donate.text': 'If you like this card, consider showing some support~',
+    'donate.text': 'If you enjoy it, consider showing some support~',
     'donate.qrAlt': 'Donation QR code',
     'donate.kofiLink': 'or support via Ko-fi',
+    'donate.kofiPromise': 'Every bit of support goes into new worlds — nowhere else.',
 
     'changelog.title': 'Changelog',
     'changelog.close': 'Close',
