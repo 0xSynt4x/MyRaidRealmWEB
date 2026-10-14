@@ -1395,3 +1395,26 @@
 
 - **Changed** 回填 `c8f8b53` 之前那条 `35c4778` 的遗留占位（推送脚本漏了短哈希），按惯例并入本次提交一起回填。
   纯文档改动，`dist/` 产物未变，**不重新部署**。
+
+## 2026-10-16
+
+### `XXXXXXX` — docs(lottery): 抽奖请求提示词 · 物品栏备注从「来源」改为「用途」
+
+- **Changed** `src/assets/standalone-local-content/lottery-request-prompt.txt` 第 42 行 `JSONPatch`
+  示例对象中，物品栏新增项的「备注」字段从 `抽奖获得`（来源记账）改为 `物品用途`（描述该物品
+  在剧情/设定中能干什么），将模型对物品栏元数据的关注点由来源切到用途。
+- **Chore** `src/stores/lottery.ts` 末尾去掉一个 trailing newline。
+
+### `XXXXXXX` — feat(donate): 捐赠面板竖排重排 + Ko-fi 外链 + 承诺语块
+
+- **Changed** `src/components/panels/DonatePanel.vue` 重排为竖排：感谢语 → 圆形 QR 码 → Ko-fi 外链。
+- **Added** 承诺语块（i18n key `donate.kofiPromise` 已在 `c8f8b53` 入库，这次只读），强调支持去向。
+- **Changed** 爱心图标的渐变背景改为主题色变量，跟随主题切换；QR 码锁死 220px 白底不跟主题
+  （黑模块+透明底换深色主题会扫不出来）。
+- **Added** Ko-fi 外链：`https://ko-fi.com/myraid_realms_sim`。
+
+### `XXXXXXX` — fix(settings): 补 featureSoundEnabled 的 store 字段与持久化
+
+- **Added** `src/stores/settings.ts` 新增 `featureSoundEnabled` 字段（默认 `true`），在两个持久化
+  路径（全量保存与「API 选择保存」）均落盘，导出给 UI 解构使用。配套 UI、触发点、i18n、音频
+  资源均在 `c8f8b53` 入库，本次只是把字段的家搬到 store 里，避免 UI 解构到 `undefined`。
