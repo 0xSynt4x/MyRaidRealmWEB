@@ -1398,7 +1398,7 @@
 
 ## 2026-10-16
 
-### `XXXXXXX` — docs(lottery): 抽奖请求提示词 · 物品栏备注从「来源」改为「用途」
+### `13869d0` — docs(lottery): 抽奖请求提示词 · 物品栏备注从「来源」改为「用途」
 
 - **Changed** `src/assets/standalone-local-content/lottery-request-prompt.txt` 第 42 行 `JSONPatch`
   示例对象中，物品栏新增项的「备注」字段从 `抽奖获得`（来源记账）改为 `物品用途`（描述该物品
