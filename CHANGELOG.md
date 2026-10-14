@@ -1361,14 +1361,12 @@
 
 ### `35c4778` — docs: 回填本次提交的短哈希到 CHANGELOG
 
-> 短哈希待回填（按约定并入下一次提交）。
-
 - **Changed** 回填上一条提交 `a8e812d` 的短哈希（推送脚本漏了这一步，事后按约定补记）。
   纯文档改动，`dist/` 产物未变，**不重新部署**。
 
 ## 2026-09-28
 
-### — feat: AI 请求结束提示音（默认开启）
+### `c8f8b53` — feat: AI 请求结束提示音（默认开启）
 
 - **Added** 新增提示音资源 `src/assets/audio/notification-done.wav`（68.4 KB，拷自本机 Win `ding.wav`），
   webpack 5 `asset/resource` 处理后落到 `dist/assets/audio/notification-done.<hash>.wav`、按需懒加载、不进 HTML。
@@ -1393,9 +1391,7 @@
   ② 第一次写 `new Audio()` 没守卫 `Audio` 本身是否存在，node 24 下挂掉 6 个 `useMessageActions` 行为测试，
   教训是「改完跑一遍 test 再信 build 绿」。
 
-### — docs: 回填上一条提交的短哈希到 CHANGELOG
+### `c8f8b53` — docs: 回填上一条提交的短哈希到 CHANGELOG
 
-> 短哈希待回填（按约定并入下一次提交）。
-
-- **Changed** 回填 `35c4778` 那条遗留占位（推送脚本漏了短哈希），按惯例并入本次提交一起回填。
+- **Changed** 回填 `c8f8b53` 之前那条 `35c4778` 的遗留占位（推送脚本漏了短哈希），按惯例并入本次提交一起回填。
   纯文档改动，`dist/` 产物未变，**不重新部署**。
