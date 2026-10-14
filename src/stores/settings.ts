@@ -650,6 +650,9 @@ export const useSettingsStore = defineStore('settings', () => {
       : normalizeStageSummaryThreshold(stored.stageSummaryThreshold),
   );
 
+  // 功能设置：AI 请求结束后提醒声音
+  const featureSoundEnabled = ref<boolean>(stored.featureSoundEnabled !== false);
+
   const initialApiPoolSettings = resolveStoredApiPoolSettings(stored);
 
   // 一次 AI 回复要请求几条正文；只在「独立模式主回复」上用，多出来的正文排队翻页查看。
@@ -840,6 +843,7 @@ export const useSettingsStore = defineStore('settings', () => {
       imageGeneration: imageGeneration.value,
       comfyUi: comfyUi.value,
       novelAi: novelAi.value,
+      featureSoundEnabled: featureSoundEnabled.value,
     });
   };
 
@@ -866,7 +870,7 @@ export const useSettingsStore = defineStore('settings', () => {
     });
   };
 
-  /** 只保存「谁当主 API / 谁当辅助 API / 谁当抽奖 API / 要不要自动重试 / 首字超时」，不动池里正在编辑的内容 */
+  /** 只保存「谁当主 API / 谁当辅助 API / 谁当抽奖 API / 要不要自动重试 / 首字超时 / 功能设置声音」不动池里正在编辑的内容 */
   const persistApiSelection = () => {
     return saveStoragePatch({
       mainApiIds: mainApiIds.value,
@@ -879,6 +883,7 @@ export const useSettingsStore = defineStore('settings', () => {
       apiFirstTokenTimeout: apiFirstTokenTimeout.value,
       apiFirstTokenTimeoutSeconds: apiFirstTokenTimeoutSeconds.value,
       apiCorsRelay: apiCorsRelay.value,
+      featureSoundEnabled: featureSoundEnabled.value,
     });
   };
 
@@ -1012,6 +1017,7 @@ export const useSettingsStore = defineStore('settings', () => {
     imageGeneration,
     comfyUi,
     novelAi,
+    featureSoundEnabled,
     persistApiPool,
     persistApiSelection,
   };
