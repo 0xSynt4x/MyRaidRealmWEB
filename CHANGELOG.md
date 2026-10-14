@@ -1413,7 +1413,7 @@
   （黑模块+透明底换深色主题会扫不出来）。
 - **Added** Ko-fi 外链：`https://ko-fi.com/myraid_realms_sim`。
 
-### `XXXXXXX` — fix(settings): 补 featureSoundEnabled 的 store 字段与持久化
+### `afc5c4a` — fix(settings): 补 featureSoundEnabled 的 store 字段与持久化
 
 - **Added** `src/stores/settings.ts` 新增 `featureSoundEnabled` 字段（默认 `true`），在两个持久化
   路径（全量保存与「API 选择保存」）均落盘，导出给 UI 解构使用。配套 UI、触发点、i18n、音频
