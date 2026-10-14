@@ -1405,7 +1405,7 @@
   在剧情/设定中能干什么），将模型对物品栏元数据的关注点由来源切到用途。
 - **Chore** `src/stores/lottery.ts` 末尾去掉一个 trailing newline。
 
-### `XXXXXXX` — feat(donate): 捐赠面板竖排重排 + Ko-fi 外链 + 承诺语块
+### `7d74576` — feat(donate): 捐赠面板竖排重排 + Ko-fi 外链 + 承诺语块
 
 - **Changed** `src/components/panels/DonatePanel.vue` 重排为竖排：感谢语 → 圆形 QR 码 → Ko-fi 外链。
 - **Added** 承诺语块（i18n key `donate.kofiPromise` 已在 `c8f8b53` 入库，这次只读），强调支持去向。
