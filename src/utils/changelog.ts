@@ -105,6 +105,10 @@ const CHANGELOG_SOURCE: ReadonlyArray<{ date: string; items: readonly string[] }
   },
   { date: '261012', items: ['修复更新日志弹窗闪烁', '接口跨域自动中转上线'] },
   { date: '261013', items: ['地图功能上线', '修复地图图标不显示'] },
+  {
+    date: '261016',
+    items: ['捐赠面板重新排版', '捐赠新增 Ko-fi 入口', '抽奖物品描述更贴近用途'],
+  },
 ];
 
 /** 第 `index` 条（从 0 起）对应的版本号 */
