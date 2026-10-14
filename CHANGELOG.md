@@ -1418,3 +1418,10 @@
 - **Added** `src/stores/settings.ts` 新增 `featureSoundEnabled` 字段（默认 `true`），在两个持久化
   路径（全量保存与「API 选择保存」）均落盘，导出给 UI 解构使用。配套 UI、触发点、i18n、音频
   资源均在 `c8f8b53` 入库，本次只是把字段的家搬到 store 里，避免 UI 解构到 `undefined`。
+
+### `a8755e4` — docs(changelog): 玩家更新日志追加 261016 三条
+
+- **Added** `src/utils/changelog.ts` 的 `CHANGELOG_SOURCE` 末尾追加日期 `261016` 一条：
+  捐赠面板重新排版、捐赠新增 Ko-fi 入口、抽奖物品描述更贴近用途。
+  配套仓库 `CHANGELOG.md` 的三连击提交（`13869d0` 抽奖 / `7d74576` 捐赠 / `afc5c4a` settings
+  补漏）一起，让玩家打开首页时能看到这些变化。
