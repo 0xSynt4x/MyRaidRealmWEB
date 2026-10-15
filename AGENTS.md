@@ -166,6 +166,10 @@
 
 - 🔴 **长期记忆** —— `.workbuddy-ai/memory/MEMORY.md`（约 6KB，只留结论与约定）。
   **开工前先读它**，能省掉大量重新摸索的功夫。
+- 🔴 **代码知识图谱（CGC）** —— `.workbuddy-ai/memory/cgc.md`。本机装了 CodeGraphContext，
+  已经把本仓解析成图库：问「谁调用了这个函数 / 改这里会波及哪些地方 / 这块结构怎么回事 / 哪里最复杂」
+  **先读它**，用图查比 grep 靠得住；CLI 的库锁处理、结果判读的三个坑也都在里面。
+  技能 `cgc-codegraph` 是全本机版细节。
 - **每日工作日志** —— `.workbuddy-ai/memory/YYYY-MM-DD.md`，共 23 篇，单篇 15–95KB。
   只在需要回溯「某天为什么这么改」时按日期打开，**不要通读**。
 - **自动化任务备份** —— `.workbuddy-ai/memory/automations/`。
