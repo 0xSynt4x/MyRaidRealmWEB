@@ -1422,6 +1422,22 @@
 ### `a8755e4` — docs(changelog): 玩家更新日志追加 261016 三条
 
 - **Added** `src/utils/changelog.ts` 的 `CHANGELOG_SOURCE` 末尾追加日期 `261016` 一条：
-  捐赠面板重新排版、捐赠新增 Ko-fi 入口、抽奖物品描述更贴近用途。
-  配套仓库 `CHANGELOG.md` 的三连击提交（`13869d0` 抽奖 / `7d74576` 捐赠 / `afc5c4a` settings
-  补漏）一起，让玩家打开首页时能看到这些变化。
+  **增加 AI 请求完成后提示音**（功能本体在 `c8f8b53` 入库，`afc5c4a` 补的
+  `settings.featureSoundEnabled` 字段），让玩家打开首页时能看到这条变化。
+
+### — feat(ui): 变量刷新入口从标题栏搬到消息卡片
+
+> 短哈希待回填（按约定并入下一次提交）。
+
+- **Removed** `src/components/layout/SceneBanner.vue` 三点菜单里的「刷新变量」项，连带它自己的
+  防连点状态、处理函数与 `useMessageActions` 引入一并删掉；菜单只剩「回到首页 / 全屏」两项。
+- **Changed** `src/components/common/MessageCard.vue` 的变量更新按钮由「仅失败时显示重试」
+  扩成「失败=重试 / 成功=刷新变量」，两种状态都只作用于**最新一条 AI 回复**
+  （历史楼层不显示：重跑以「该楼层之前的快照」为基点，会对旧楼层把存档重写、倒回后续进度）。
+- **Changed** `src/i18n/index.ts` 删掉标题栏按钮专用的 3 个文案键（中英各 3 条，删按钮后已无引用），
+  新增消息卡片用的「刷新变量 / Refresh variables」，中英仍各 1433 条平账。
+- **Changed** `src/utils/changelog.ts` 与本文件：`261016` 玩家日志由三条收敛成一条
+  「增加 AI 请求完成后提示音」（发布后按口径确认：原三条本来就不该留）。
+  上一轮线上产物已是「一条」、仓库 HEAD 还停在「三条」，本次提交把仓库对齐线上。
+- **Added** 玩家更新日志 `261016` 追加「变量更新入口移到回复卡片」，这次入口搬迁玩家看得见。
+- 四道检查：`typecheck` ✓ ｜ `test` 132/132 ✓ ｜ `lint` 0 error（15 个存量 warning）✓ ｜ `build` ✓。

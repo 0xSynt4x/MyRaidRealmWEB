@@ -161,13 +161,13 @@
               {{ variableUpdateStatusInfo.label }}
             </span>
             <button
-              v-if="showVariableUpdateRetry && !isLotteryResult"
+              v-if="variableUpdateActionLabel && !isLotteryResult"
               class="variable-update-retry"
-              :title="t('messageCard.variableUpdateRetry')"
+              :title="variableUpdateActionLabel"
               :disabled="actionsDisabled"
               @click.stop.prevent="handleRetryVariableUpdate"
             >
-              <i class="ti ti-refresh"></i>{{ t('messageCard.variableUpdateRetry') }}
+              <i class="ti ti-refresh"></i>{{ variableUpdateActionLabel }}
             </button>
             <span v-if="message.is_streaming" class="inline-stream-indicator">{{ t('messageCard.streaming') }}</span>
             <span v-else-if="message.is_partial" class="inline-stream-indicator inline-stream-indicator--partial">{{
@@ -425,7 +425,7 @@ const showVariableUpdateSection = computed(() => {
   return Boolean(updateFormatted.value || variableUpdateStatusInfo.value || props.message.variable_update_warning);
 });
 
-// 重试入口只挂在「最新一条 AI 回复」上。
+// 重跑入口只挂在「最新一条 AI 回复」上。
 // 重跑是以「这条回复之前的快照」为基线重新算一遍的：对历史楼层重跑，收尾会把存档按那层重写，
 // 后面楼层已经演进的进度会被倒回去。所以非最新楼层即使失败也不给这个按钮。
 const isLatestAssistantMessage = computed(() => {
@@ -434,9 +434,14 @@ const isLatestAssistantMessage = computed(() => {
   return latestAssistant?.message_id === props.message.message_id;
 });
 
-const showVariableUpdateRetry = computed(
-  () => props.message.variable_update_status === 'failed' && isLatestAssistantMessage.value,
-);
+// 失败给「重试」、成功给「刷新变量」：两种状态干的是同一件事（重跑这条回复的变量更新），共用这个按钮位。
+// 更新中不给入口（正跑着没得点），已跳过也不给（这回合本就不该更新）。
+const variableUpdateActionLabel = computed(() => {
+  if (!isLatestAssistantMessage.value) return '';
+  if (props.message.variable_update_status === 'failed') return t('messageCard.variableUpdateRetry');
+  if (props.message.variable_update_status === 'success') return t('messageCard.variableUpdateRefresh');
+  return '';
+});
 
 function handleRetryVariableUpdate() {
   void actions.refreshLatestAssistantVariableUpdate('message_card_retry_variable_update');
@@ -716,7 +721,7 @@ function handleEditInput() {
   color: var(--tag-status-neutral-text);
 }
 
-/* 变量更新失败后的重试入口：跟出图槽那排按钮同一套观感（描边胶囊 + 悬停转主色） */
+/* 变量更新入口（失败=重试 / 成功=刷新变量）：跟出图槽那排按钮同一套观感（描边胶囊 + 悬停转主色） */
 .variable-update-retry {
   display: inline-flex;
   align-items: center;

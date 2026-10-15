@@ -38,17 +38,6 @@
             <Transition name="banner-menu">
               <div v-if="isMenuOpen" class="banner-menu" role="menu" :aria-label="t('header.topActionMenu')">
                 <button
-                  class="banner-menu-item"
-                  role="menuitem"
-                  :disabled="isRefreshing"
-                  :aria-label="isRefreshing ? t('header.refreshing') : t('header.refreshVariables')"
-                  :data-tip="isRefreshing ? t('header.refreshing') : t('header.refreshVariables')"
-                  @click="runMenuAction(handleRefreshApi)"
-                >
-                  <i class="ti ti-wand" :class="{ 'ti-spin': isRefreshing }"></i>
-                </button>
-
-                <button
                   class="banner-menu-item is-danger"
                   role="menuitem"
                   :disabled="isResetting"
@@ -101,7 +90,6 @@
 import { storeToRefs } from 'pinia';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useFullscreen } from '../../composables/useFullscreen';
-import { useMessageActions } from '../../composables/useMessageActions';
 import { useI18n } from '../../i18n';
 import { useLayoutStore } from '../../stores/layout';
 import { useMessagesStore } from '../../stores/messages';
@@ -229,7 +217,6 @@ const layoutStore = useLayoutStore();
 const messagesStore = useMessagesStore();
 const notificationStore = useNotificationStore();
 const setupStore = useSetupStore();
-const messageActions = useMessageActions();
 const { t } = useI18n();
 const { isFullscreen, toggleFullscreen } = useFullscreen();
 
@@ -279,8 +266,7 @@ watch(
 // 夜色压暗：先看时间（19 点~次日 6 点），时间文本里没有钟点才看天气词带不带「夜 / 月明 / 星空」
 const 是夜里 = computed(() => isNight(当前时间.value, 当前天气.value));
 
-// —— 三点菜单（原顶栏下拉，三项：刷新变量 / 回到首页 / 全屏）——
-const isRefreshing = ref(false);
+// —— 三点菜单（原顶栏下拉，两项：回到首页 / 全屏）——
 const isResetting = ref(false);
 const menuWrapRef = ref<HTMLElement | null>(null);
 const isMenuOpen = ref(false);
@@ -355,23 +341,6 @@ async function handleResetGame() {
     );
   } finally {
     isResetting.value = false;
-  }
-}
-
-// 手动重跑最近一条 AI 回复的变量更新
-async function handleRefreshApi() {
-  if (isRefreshing.value) return;
-
-  isRefreshing.value = true;
-  try {
-    await messageActions.refreshLatestAssistantVariableUpdate('scene_banner_manual_variable_refresh');
-  } catch (error) {
-    console.error('[SceneBanner] 刷新失败:', error);
-    notificationStore.error(
-      t('header.refreshFailed', { error: error instanceof Error ? error.message : String(error) }),
-    );
-  } finally {
-    isRefreshing.value = false;
   }
 }
 </script>

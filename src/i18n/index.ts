@@ -40,9 +40,6 @@ const messages: Record<Locale, Record<string, string>> = {
 
     'header.moreActions': '更多操作',
     'header.topActionMenu': '顶部操作菜单',
-    'header.refreshing': '正在刷新...',
-    'header.refreshVariables': '刷新变量',
-    'header.refreshFailed': '刷新失败：{error}',
     'header.exitFullscreen': '退出全屏',
     'header.enterFullscreen': '全屏显示',
     'header.defaultEraName': '通用纪元',
@@ -461,6 +458,7 @@ const messages: Record<Locale, Record<string, string>> = {
     // 只是「原因」这个标签本身，实际内容由组件单独渲染 —— 不要在这里写 {reason} 占位符。
     'messageCard.variableUpdateReason': '原因：',
     'messageCard.variableUpdateRetry': '重试',
+    'messageCard.variableUpdateRefresh': '刷新变量',
     'messageCard.reviewStory': '审稿改稿',
     'messageCard.prevPage': '上一页',
     'messageCard.nextPage': '下一页',
@@ -1571,9 +1569,6 @@ const messages: Record<Locale, Record<string, string>> = {
 
     'header.moreActions': 'More actions',
     'header.topActionMenu': 'Top action menu',
-    'header.refreshing': 'Refreshing...',
-    'header.refreshVariables': 'Refresh variables',
-    'header.refreshFailed': 'Refresh failed: {error}',
     'header.exitFullscreen': 'Exit fullscreen',
     'header.enterFullscreen': 'Enter fullscreen',
     'header.defaultEraName': 'Common Era',
@@ -3143,6 +3138,7 @@ const messages: Record<Locale, Record<string, string>> = {
     // Label only; the reason text is rendered separately by the component.
     'messageCard.variableUpdateReason': 'Reason:',
     'messageCard.variableUpdateRetry': 'Retry',
+    'messageCard.variableUpdateRefresh': 'Refresh variables',
     'messageCard.reviewStory': 'Review & revise',
     'apiErrors.browserFetchBlocked':
       'The browser cannot reach this endpoint directly. Check the URL, CORS settings, or your network proxy.',
