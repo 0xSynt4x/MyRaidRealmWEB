@@ -8,7 +8,7 @@
         <div class="banner-scrim"></div>
       </div>
 
-      <!-- 顶部信息行：局名 + 货币 + 三点菜单（原顶栏内容并入此处） -->
+      <!-- 顶部信息行：纪元 + 货币 + 全屏 / 回到首页（原顶栏内容并入此处） -->
       <div class="banner-top">
         <div class="banner-era">
           <span class="era-dot"></span>
@@ -22,44 +22,27 @@
             <b>{{ 主货币数量 }}</b>
           </span>
 
-          <div ref="menuWrapRef" class="banner-menu-wrap">
-            <button
-              class="banner-ibtn"
-              :class="{ 'is-open': isMenuOpen }"
-              :title="t('header.moreActions')"
-              aria-haspopup="menu"
-              :aria-expanded="isMenuOpen"
-              @click="toggleMenu"
-            >
-              <i class="ti ti-dots"></i>
-            </button>
+          <!-- 两个图标按钮直接外露（原来是「···」下拉里的两项），最右是回到首页 -->
+          <button
+            class="banner-ibtn"
+            type="button"
+            :title="isFullscreen ? t('header.exitFullscreen') : t('header.enterFullscreen')"
+            :aria-label="isFullscreen ? t('header.exitFullscreen') : t('header.enterFullscreen')"
+            @click="toggleFullscreen"
+          >
+            <i :class="isFullscreen ? 'ti ti-arrows-minimize' : 'ti ti-arrows-maximize'"></i>
+          </button>
 
-            <!-- 下拉：菜单项不写文字，解释走悬停气泡（data-tip → ::after） -->
-            <Transition name="banner-menu">
-              <div v-if="isMenuOpen" class="banner-menu" role="menu" :aria-label="t('header.topActionMenu')">
-                <button
-                  class="banner-menu-item is-danger"
-                  role="menuitem"
-                  :disabled="isResetting"
-                  :aria-label="isResetting ? t('header.resettingGame') : t('header.resetGame')"
-                  :data-tip="isResetting ? t('header.resettingGame') : t('header.resetGame')"
-                  @click="runMenuAction(handleResetGame)"
-                >
-                  <i :class="isResetting ? 'ti ti-loader-2 ti-spin' : 'ti ti-rotate'"></i>
-                </button>
-
-                <button
-                  class="banner-menu-item"
-                  role="menuitem"
-                  :aria-label="isFullscreen ? t('header.exitFullscreen') : t('header.enterFullscreen')"
-                  :data-tip="isFullscreen ? t('header.exitFullscreen') : t('header.enterFullscreen')"
-                  @click="runMenuAction(toggleFullscreen)"
-                >
-                  <i :class="isFullscreen ? 'ti ti-arrows-minimize' : 'ti ti-arrows-maximize'"></i>
-                </button>
-              </div>
-            </Transition>
-          </div>
+          <button
+            class="banner-ibtn"
+            type="button"
+            :disabled="isResetting"
+            :title="isResetting ? t('header.resettingGame') : t('header.resetGame')"
+            :aria-label="isResetting ? t('header.resettingGame') : t('header.resetGame')"
+            @click="handleResetGame"
+          >
+            <i :class="isResetting ? 'ti ti-loader-2 ti-spin' : 'ti ti-home'"></i>
+          </button>
         </div>
       </div>
 
@@ -88,7 +71,7 @@
 
 <script setup lang="ts">
 import { storeToRefs } from 'pinia';
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useFullscreen } from '../../composables/useFullscreen';
 import { useI18n } from '../../i18n';
 import { useLayoutStore } from '../../stores/layout';
@@ -266,47 +249,9 @@ watch(
 // 夜色压暗：先看时间（19 点~次日 6 点），时间文本里没有钟点才看天气词带不带「夜 / 月明 / 星空」
 const 是夜里 = computed(() => isNight(当前时间.value, 当前天气.value));
 
-// —— 三点菜单（原顶栏下拉，两项：回到首页 / 全屏）——
+// —— 回到首页 ——
+// 点击会清掉本局运行状态（存档不受影响），所以照旧先弹一次确认，确认了才动手。
 const isResetting = ref(false);
-const menuWrapRef = ref<HTMLElement | null>(null);
-const isMenuOpen = ref(false);
-
-function toggleMenu() {
-  isMenuOpen.value = !isMenuOpen.value;
-}
-
-function closeMenu() {
-  isMenuOpen.value = false;
-}
-
-function handleMenuClickOutside(event: MouseEvent) {
-  const root = menuWrapRef.value;
-  if (!root) return;
-  if (!root.contains(event.target as Node)) {
-    closeMenu();
-  }
-}
-
-function handleMenuKeydown(event: KeyboardEvent) {
-  if (event.key === 'Escape') {
-    closeMenu();
-  }
-}
-
-function runMenuAction(action: () => void) {
-  closeMenu();
-  action();
-}
-
-onMounted(() => {
-  document.addEventListener('mousedown', handleMenuClickOutside);
-  document.addEventListener('keydown', handleMenuKeydown);
-});
-
-onBeforeUnmount(() => {
-  document.removeEventListener('mousedown', handleMenuClickOutside);
-  document.removeEventListener('keydown', handleMenuKeydown);
-});
 
 async function handleResetGame() {
   if (isResetting.value) {
@@ -347,7 +292,7 @@ async function handleResetGame() {
 
 <style scoped>
 /* ===== SceneBanner · 场景横幅 =====
-   原顶栏（局名 / 时间·地点·天气 / 货币 / 三点菜单）全部并入此处，顶栏本身只隐藏不删。
+   原顶栏（局名 / 时间·地点·天气 / 货币 / 全屏 / 回到首页）全部并入此处，顶栏本身只隐藏不删。
    高度由 --ui-banner-ar 算，不写死像素；颜色字号一律走令牌。 */
 
 /* 外层只负责限宽居中，和正文列同宽同内边距，左右边缘跟消息卡片对齐 */
@@ -360,7 +305,7 @@ async function handleResetGame() {
 }
 
 .banner {
-  /* 横幅上的控件尺寸：三点按钮和它下面那列菜单共用，改一处两边一起变 */
+  /* 横幅上的控件尺寸：右上那两枚图标按钮共用，改一处两个一起变 */
   --banner-ctl: 30px;
   position: relative;
   /* ⚠️ width: 100% 不能省 —— 只有 aspect-ratio + max-height 时，
@@ -429,7 +374,7 @@ async function handleResetGame() {
 }
 
 /* —— 顶部信息行 ——
-   z-index 要比 .banner-txt 高，否则下拉菜单会被底部那行字盖住 */
+   z-index 要比 .banner-txt 高，压在图上的一行别被底部那行字盖住 */
 .banner-top {
   position: absolute;
   left: var(--ui-space-5);
@@ -525,107 +470,15 @@ async function handleResetGame() {
   color: var(--ui-on-scrim-accent);
 }
 
-/* 菜单开着时按钮不熄灯，让人知道菜单是它开的 */
-.banner-ibtn.is-open {
-  background: rgba(var(--ui-scrim-rgb), 0.5);
-  color: var(--ui-on-scrim-accent);
-}
-
-/* —— 三点菜单下拉 ——
-   列宽 / 圆角 / 右边缘全跟「···」按钮对齐，它就成了按钮的延长，
-   而不是贴在旁边的一块。原来每项 32px 再套 4px 内边距 = 40px，比按钮胖一圈。 */
-.banner-menu-wrap {
-  position: relative;
-}
-
-.banner-menu {
-  position: absolute;
-  right: 0;
-  top: calc(100% + var(--ui-space-2));
-  z-index: 6;
-  width: var(--banner-ctl);
-  padding: var(--ui-space-1) 0;
-  display: flex;
-  flex-direction: column;
-  border-radius: var(--ui-radius-sm);
-  background: rgba(var(--ui-scrim-rgb), 0.44);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  box-shadow: var(--shadow-lg);
-  transform-origin: top right;
-}
-
-/* 下拉动画：展开从按钮下缘落下来，收起原路收回 */
-.banner-menu-enter-active,
-.banner-menu-leave-active {
-  transition:
-    opacity var(--transition-fast),
-    transform var(--transition-fast);
-}
-
-.banner-menu-enter-from,
-.banner-menu-leave-to {
-  opacity: 0;
-  transform: translateY(-6px) scale(0.96);
-}
-
-.banner-menu-item {
-  position: relative;
-  width: var(--banner-ctl);
-  height: var(--banner-ctl);
-  border-radius: var(--ui-radius-sm);
-  display: grid;
-  place-items: center;
-  font-size: calc(var(--ui-fs-body) * var(--ui-font-scale));
-  color: var(--ui-on-scrim);
-  transition:
-    background var(--transition-fast),
-    color var(--transition-fast);
-}
-
-.banner-menu-item:hover:not(:disabled) {
-  background: rgba(var(--ui-on-scrim-accent-rgb), 0.16);
-  color: var(--ui-on-scrim-accent);
-}
-
-/* 会清档的那个：悬停走危险色，跟其它三项分开 */
-.banner-menu-item.is-danger:hover:not(:disabled) {
-  background: rgba(var(--ui-on-scrim-danger-rgb), 0.2);
-  color: var(--ui-on-scrim-danger);
-}
-
-.banner-menu-item:disabled {
+/* 回到首页处理中：按钮灭灯，别让人连点 */
+.banner-ibtn:disabled {
   opacity: 0.5;
   cursor: default;
 }
 
-/* 悬停解释气泡：从菜单左侧弹出来。
-   ⚠️ 菜单容器不能加 overflow:hidden —— 会把气泡一起裁掉，圆角改由菜单项自己兜。 */
-.banner-menu-item::after {
-  content: attr(data-tip);
-  position: absolute;
-  right: calc(100% + var(--ui-space-2));
-  top: 50%;
-  transform: translateY(-50%) translateX(4px);
-  padding: var(--ui-space-1) var(--ui-space-2);
-  border-radius: var(--ui-radius-sm);
-  font-size: calc(var(--ui-fs-label) * var(--ui-font-scale));
-  line-height: 1;
-  white-space: nowrap;
-  color: var(--ui-text);
-  background: var(--glass-bg);
-  border: 1px solid var(--card-border);
-  box-shadow: var(--shadow-md);
-  opacity: 0;
-  pointer-events: none;
-  transition:
-    opacity var(--transition-fast),
-    transform var(--transition-fast);
-}
-
-.banner-menu-item:hover::after {
-  opacity: 1;
-  transform: translateY(-50%);
+.banner-ibtn:disabled:hover {
+  background: rgba(var(--ui-scrim-rgb), 0.26);
+  color: var(--ui-on-scrim);
 }
 
 /* —— 底部：地点名 + 时间 / 天气 —— */

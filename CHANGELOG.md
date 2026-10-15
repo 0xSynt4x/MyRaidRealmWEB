@@ -1425,9 +1425,7 @@
   **增加 AI 请求完成后提示音**（功能本体在 `c8f8b53` 入库，`afc5c4a` 补的
   `settings.featureSoundEnabled` 字段），让玩家打开首页时能看到这条变化。
 
-### — feat(ui): 变量刷新入口从标题栏搬到消息卡片
-
-> 短哈希待回填（按约定并入下一次提交）。
+### `9e049c3` — feat(ui): 变量刷新入口从标题栏搬到消息卡片
 
 - **Removed** `src/components/layout/SceneBanner.vue` 三点菜单里的「刷新变量」项，连带它自己的
   防连点状态、处理函数与 `useMessageActions` 引入一并删掉；菜单只剩「回到首页 / 全屏」两项。
@@ -1440,4 +1438,26 @@
   「增加 AI 请求完成后提示音」（发布后按口径确认：原三条本来就不该留）。
   上一轮线上产物已是「一条」、仓库 HEAD 还停在「三条」，本次提交把仓库对齐线上。
 - **Added** 玩家更新日志 `261016` 追加「变量更新入口移到回复卡片」，这次入口搬迁玩家看得见。
+- 四道检查：`typecheck` ✓ ｜ `test` 132/132 ✓ ｜ `lint` 0 error（15 个存量 warning）✓ ｜ `build` ✓。
+
+### — feat(ui): 场景横幅三点菜单改为全屏 / 回到首页两枚图标按钮
+
+> 短哈希待回填（按约定并入下一次提交）。
+
+- **Changed** `src/components/layout/SceneBanner.vue` 右上角「···」下拉整块删除（模板 `banner-menu-wrap` /
+  `Transition`、脚本里的开合状态与外部点击 / Esc 监听、`.banner-menu*` 样式与 `data-tip` 悬停气泡全删），
+  改为 **货币 → 全屏 → 回到首页** 三件并排，最右是回到首页；货币显示一个字未动。两枚按钮复用下拉按钮
+  原有的 `.banner-ibtn` 类，原 `.banner-ibtn.is-open` 换成 `.banner-ibtn:disabled`（灭灯 + 悬停不变色，防连点）。
+  解释气泡失去挂载点，改由按钮原生 `:title` 承担。
+- **Changed** 行为不变：房子仍先弹确认，确认后才清本局运行状态（`clearLocalGameState`），存档不受影响，
+  首页「继续游戏」照常回档。
+- **Removed** `src/i18n/index.ts` 的 `header.moreActions` / `header.topActionMenu` 中英各两条（只服务旧下拉，
+  删后全项目无引用），中英词条数 1433 → 1431 平账。
+- **Changed** `src/assets/tabler/tabler-inline.css`：内联 Tabler 子集原本没有 `ti-home`，重跑
+  `Temp/iconlab/build-tabler.py`（脚本新增 `EXTRA_ICONS = {"home"}`）后 188 → 189 个图标，子集字体
+  27004 → 27096 字节；提交前跑 `prettier --write` 收口格式，diff 由 794 行噪声收敛为 5 insertions /
+  2 deletions。
+- **Changed** `spec/03-ui-system.md` 的图标数量 188 → 189。
+- **Added** 玩家更新日志 `261016` 追加「回到首页与全屏移到横幅右上角」。
+- **Changed** 顺手回填上一条 `9e049c3` 的短哈希占位。
 - 四道检查：`typecheck` ✓ ｜ `test` 132/132 ✓ ｜ `lint` 0 error（15 个存量 warning）✓ ｜ `build` ✓。

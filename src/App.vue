@@ -23,7 +23,7 @@
           <LeftSidebar />
         </template>
         <template #center>
-          <!-- 回到首页：顶栏隐藏后，入口在场景横幅的三点菜单里，事件从这里传上来 -->
+          <!-- 回到首页：顶栏隐藏后，入口是场景横幅右上角的房子按钮，事件从这里传上来 -->
           <CenterContent @reset-game="handleResetGame" />
         </template>
         <template #right>

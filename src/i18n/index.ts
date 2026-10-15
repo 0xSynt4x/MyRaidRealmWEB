@@ -38,8 +38,6 @@ const messages: Record<Locale, Record<string, string>> = {
     'nav.donate': '赞赏',
     'nav.mobileAriaLabel': '移动端底部导航',
 
-    'header.moreActions': '更多操作',
-    'header.topActionMenu': '顶部操作菜单',
     'header.exitFullscreen': '退出全屏',
     'header.enterFullscreen': '全屏显示',
     'header.defaultEraName': '通用纪元',
@@ -1567,8 +1565,6 @@ const messages: Record<Locale, Record<string, string>> = {
     'nav.donate': 'Support',
     'nav.mobileAriaLabel': 'Mobile bottom navigation',
 
-    'header.moreActions': 'More actions',
-    'header.topActionMenu': 'Top action menu',
     'header.exitFullscreen': 'Exit fullscreen',
     'header.enterFullscreen': 'Enter fullscreen',
     'header.defaultEraName': 'Common Era',

@@ -92,7 +92,7 @@
 🔴 **全项目统一 Tabler Icons 3.47.0**，内联子集在 `src/assets/tabler/tabler-inline.css`。
 
 - 该文件是**自动生成的，请勿手改**；生成脚本是 `Temp/iconlab/build-tabler.py`（本地工具，不进仓库）。
-- 字体以 base64 data URI 内联，**产物不依赖外网**。当前保留项目实际用到的 188 个图标。
+- 字体以 base64 data URI 内联，**产物不依赖外网**。当前保留项目实际用到的 189 个图标。
 - 使用图标时**基类 `.ti` 不能省**（它负责 `font-family: 'tabler-icons'` 与对齐）。
 - 新增图标要重跑生成脚本，不要手写 `@font-face`。
 
