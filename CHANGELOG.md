@@ -1491,9 +1491,7 @@
 - **说明** 这段内容 2026-10-15 18:40 那次会话就已写好、一直留在工作区，本次按寒哥要求并入同一天的
   提交一起入库。纯文档，`dist/` 产物未变。
 
-### — docs(changelog): 补齐 5 笔漏记条目并订正一处重复哈希
-
-> 短哈希待回填（按约定并入下一次提交）。
+### `e1de29d` — docs(changelog): 补齐 5 笔漏记条目并订正一处重复哈希
 
 - **Fixed** `CHANGELOG.md` 条目数此前比提交数少 4（110 / 114）。补齐 `58c88b3` / `f327fe4` /
   `a62a6c2` / `daecd68` / `a0c0031` 五笔漏记的提交条目；其中 `c8f8b53` 那条原本重复登记
@@ -1501,3 +1499,27 @@
 - **Added** 一并补记 `e881705`（AGENTS.md 图谱入口）的条目。
 - **Changed** 补齐后「条目数 = 提交数 + 1」重新成立（改前 117 / 116，本次提交后 117 / 117）。
 - 纯文档改动，`dist/` 产物未变，**不重新部署**。
+
+### — feat(narrative): 正文思维链支持 `reasoning` / `think` / `thinking` 标签别名
+
+> 短哈希待回填（按约定并入下一次提交）。
+
+- **Added** `src/utils/taggedReply.ts` 新增 `THINK_BLOCK_TAG_NAMES`（`analysis_block` / `reasoning` /
+  `think` / `thinking`）与 `buildThinkBlockRegex()`：思维链不再只认 `<analysis_block>`，
+  模型写 `<reasoning>` / `<think>` / `<thinking>` 时同样按同一个思维链块处理。
+- **Changed** 四处识别口径一次对齐：正文剥离（`NON_BODY_BLOCK_REGEXES`）、裸正文兜底
+  （`resolveContentText`）、完整回复提取（`parseTaggedAssistantReply`）、流式提取与截断
+  （`parseStreamingTaggedAssistantReply` / `STREAMING_BLOCK_TAGS`）。别名块命中多个时按清单顺序
+  用空行拼接，与既有「多块拼接」口径一致。
+- **Fixed** 正则标签名后加 `\b`：此前 `<think>` 会把 `<thinking>` 的开标签也当成自己
+  （`think` + `ing>` 同样能凑出匹配），两个标签同现时互相串味。测试覆盖该场景。
+- **Changed** `scripts/tests/run-standalone-local-content-tests.ts` 新增
+  `testTaggedReplySupportsThinkTagAliases`：三个别名 × 完整回复 / 裸正文补齐 / 流式截断 / 流式提取
+  四种场景，外加 `<think>` 与 `<thinking>` 同现互不串味。
+- **说明** 不加 `<analysis>` 别名：变量更新链路本身有 `<Analysis>` 段
+  （`src/assets/standalone-local-content/variable-update-format.txt:36` 要求「所有推理都放进这一个
+  `<Analysis>` 块」），而解析大小写不敏感，加了会把变量更新的分析段吞进正文思维链。
+- **说明** 提示词文本一个字未动：`runtime/standaloneTurn.ts:379` 的协议块与
+  `src/诸界穿越预设.json:565` 仍写 `<analysis_block>`，本次只放宽**识别**、不改**要求**。
+- **说明** 纯内部解析改动，界面上没有新增可见元素，**不补** `src/utils/changelog.ts`。
+- 四道检查：`typecheck` ✓ ｜ `test` 133/133 ✓ ｜ `lint` 0 error（14 个存量 warning）✓ ｜ `build` ✓。

@@ -19,11 +19,23 @@ const CONTENT_TEXT_REGEX = /<contenttext\b[^>]*>([\s\S]*?)<\/contenttext>/i;
 const ACTION_OPTIONS_REGEX = /<action_options\b[^>]*>([\s\S]*?)<\/action_options>/i;
 
 /**
+ * 思维链块的标签别名：模型不一定写 `<analysis_block>`，常见的还有
+ * `<reasoning>` / `<think>` / `<thinking>`，都按同一个思维链块处理。
+ * 标签名后面带 `\b` —— `<think>` 不能把 `<thinking>` 当成自己（`think` + `ing>` 也能凑出开标签），
+ * 两个标签同时出现时要各归各的。
+ */
+const THINK_BLOCK_TAG_NAMES: readonly string[] = ['analysis_block', 'reasoning', 'think', 'thinking'];
+
+function buildThinkBlockRegex(tagName: string): RegExp {
+  return new RegExp(`<${tagName}\\b[^>]*>([\\s\\S]*?)</${tagName}>`, 'gi');
+}
+
+/**
  * 正文之外的标签块。补齐正文时要把它们整块剥掉，剩下的才是正文。
  * 顺序无关紧要 —— 每个正则各自从完整文本里找自己的块。
  */
 const NON_BODY_BLOCK_REGEXES: readonly RegExp[] = [
-  /<analysis_block>[\s\S]*?<\/analysis_block>/gi,
+  ...THINK_BLOCK_TAG_NAMES.map(buildThinkBlockRegex),
   /<summary>[\s\S]*?<\/summary>/gi,
   /<UpdateVariable>[\s\S]*?<\/UpdateVariable>/gi,
   /<action_options\b[^>]*>[\s\S]*?<\/action_options>/gi,
@@ -38,7 +50,12 @@ const NON_BODY_BLOCK_REGEXES: readonly RegExp[] = [
 const BODY_WRAPPER_TAG_REGEX = /<\/?(?:texttoimage|contenttext)\b[^>]*>/gi;
 
 /** 流式输出时这些块可能只吐了一半，没闭合就得从开标签处截断 */
-const STREAMING_BLOCK_TAGS: readonly string[] = ['analysis_block', 'summary', 'UpdateVariable', 'action_options'];
+const STREAMING_BLOCK_TAGS: readonly string[] = [
+  ...THINK_BLOCK_TAG_NAMES,
+  'summary',
+  'UpdateVariable',
+  'action_options',
+];
 
 function stripNonBodyBlocks(text: string): string {
   let working = text;
@@ -144,8 +161,15 @@ export function parseUpdateVariableDetails(updateContent: string | null): Tagged
 export function parseTaggedAssistantReply(rawContent: string): ParsedTaggedAssistantReply {
   let working = rawContent;
 
-  const thinkingTags = extractTagContents(working, /<analysis_block>([\s\S]*?)<\/analysis_block>/gi);
-  working = thinkingTags.cleaned;
+  // 思维链可能用了别名标签，逐个剥；命中多个时按上面清单的顺序拼起来（同一条回复通常只用一个）。
+  const thinkContents: string[] = [];
+  for (const tagName of THINK_BLOCK_TAG_NAMES) {
+    const extracted = extractTagContents(working, buildThinkBlockRegex(tagName));
+    if (extracted.content) {
+      thinkContents.push(extracted.content);
+    }
+    working = extracted.cleaned;
+  }
 
   const summaryTags = extractTagContents(working, /<summary>([\s\S]*?)<\/summary>/gi);
   working = summaryTags.cleaned;
@@ -156,7 +180,7 @@ export function parseTaggedAssistantReply(rawContent: string): ParsedTaggedAssis
   return {
     rawContent,
     contentText: resolveContentText(rawContent),
-    thinkContent: thinkingTags.content,
+    thinkContent: thinkContents.length > 0 ? thinkContents.join('\n\n') : null,
     summaryContent: summaryTags.content,
     updateContent: updateTags.content,
     updateAnalysis,
@@ -366,13 +390,27 @@ export function extractStreamingTaggedSection(message: string, tagName: string):
   return contents.length > 0 ? contents.join('\n\n') : null;
 }
 
+/** 流式版的思维链提取：思维链标签有别名，逐个找再拼起来（与完整回复同一口径） */
+function extractStreamingThinkContent(message: string): string | null {
+  const contents: string[] = [];
+
+  for (const tagName of THINK_BLOCK_TAG_NAMES) {
+    const section = extractStreamingTaggedSection(message, tagName);
+    if (section) {
+      contents.push(section);
+    }
+  }
+
+  return contents.length > 0 ? contents.join('\n\n') : null;
+}
+
 export function parseStreamingTaggedAssistantReply(message: string): ParsedTaggedAssistantReply {
   const parsedComplete = parseTaggedAssistantReply(message);
 
   return {
     ...parsedComplete,
     contentText: resolveStreamingContentText(message),
-    thinkContent: extractStreamingTaggedSection(message, 'analysis_block'),
+    thinkContent: extractStreamingThinkContent(message),
     summaryContent: extractStreamingTaggedSection(message, 'summary'),
     updateContent: extractStreamingTaggedSection(message, 'UpdateVariable'),
     ...parseUpdateVariableDetails(extractStreamingTaggedSection(message, 'UpdateVariable')),

@@ -6195,6 +6195,39 @@ function testStreamingTaggedReplyRescuesMissingContentTextWrapper(): void {
   assert.equal(parseStreamingTaggedAssistantReply(doneContent).contentText, '正文。');
 }
 
+/**
+ * 思维链标签别名：模型不写 `<analysis_block>` 而写
+ * `<reasoning>` / `<think>` / `<thinking>` 时，同样要认成思维链、且不能漏进正文。
+ */
+function testTaggedReplySupportsThinkTagAliases(): void {
+  for (const tag of ['reasoning', 'think', 'thinking']) {
+    // ① 完整回复：别名块进思维链，正文里不残留
+    const raw = `<contenttext>正文。</contenttext>\n<${tag}>思考内容</${tag}>\n<summary>总结</summary>`;
+    const parsed = parseTaggedAssistantReply(raw);
+    assert.equal(parsed.contentText, '正文。', `${tag}: 正文`);
+    assert.equal(parsed.thinkContent, '思考内容', `${tag}: 思维链`);
+    assert.equal(parsed.summaryContent, '总结', `${tag}: 小总结`);
+
+    // ② 漏写正文包裹：别名块要能当正文边界被剥掉
+    const bare = `<${tag}>思考内容</${tag}>\n正文。\n<summary>总结</summary>`;
+    assert.equal(parseTaggedAssistantReply(bare).contentText, '正文。', `${tag}: 裸正文补齐`);
+
+    // ③ 流式：别名块只吐了一半，不能闪进正文预览
+    const partial = `<${tag}>思考中\n正文。`;
+    assert.equal(parseStreamingTaggedAssistantReply(partial).contentText, '', `${tag}: 流式截断`);
+
+    // ④ 流式：别名块已闭合，思维链要能取到
+    const closed = `<${tag}>思考内容</${tag}>\n正文。`;
+    assert.equal(parseStreamingTaggedAssistantReply(closed).thinkContent, '思考内容', `${tag}: 流式思维链`);
+  }
+
+  // ⑤ `<think>` 与 `<thinking>` 同现时互不串味（少了 \b 会把 </thinking> 当成 </think>）
+  const mixed = '<think>短思考</think>\n<thinking>长思考</thinking>\n正文。';
+  const mixedParsed = parseTaggedAssistantReply(mixed);
+  assert.equal(mixedParsed.contentText, '正文。');
+  assert.equal(mixedParsed.thinkContent, '短思考\n\n长思考');
+}
+
 async function run(): Promise<void> {
   const tests = [
     ['passes through plain text', testPassesThroughPlainText],
@@ -6502,6 +6535,7 @@ async function run(): Promise<void> {
       'streaming tagged reply rescues missing contenttext wrapper',
       testStreamingTaggedReplyRescuesMissingContentTextWrapper,
     ],
+    ['tagged reply supports think tag aliases', testTaggedReplySupportsThinkTagAliases],
     ['variable update format hides survival rules by mode', testVariableUpdateFormatHidesSurvivalRulesByMode],
     [
       'lottery item skill rules stay in sync with variable update rules',
