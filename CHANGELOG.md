@@ -1391,10 +1391,11 @@
   ② 第一次写 `new Audio()` 没守卫 `Audio` 本身是否存在，node 24 下挂掉 6 个 `useMessageActions` 行为测试，
   教训是「改完跑一遍 test 再信 build 绿」。
 
-### `c8f8b53` — docs: 回填上一条提交的短哈希到 CHANGELOG
+### `58c88b3` — docs: 回填上一条提交的短哈希到 CHANGELOG
 
 - **Changed** 回填 `c8f8b53` 之前那条 `35c4778` 的遗留占位（推送脚本漏了短哈希），按惯例并入本次提交一起回填。
   纯文档改动，`dist/` 产物未变，**不重新部署**。
+- **说明** 本条短哈希原误标为 `c8f8b53`（当时自己那条哈希还无从得知），2026-10-15 事后按提交顺序订正。
 
 ## 2026-10-16
 
@@ -1405,6 +1406,11 @@
   在剧情/设定中能干什么），将模型对物品栏元数据的关注点由来源切到用途。
 - **Chore** `src/stores/lottery.ts` 末尾去掉一个 trailing newline。
 
+### `f327fe4` — docs: 回填 13869d0 短哈希到 CHANGELOG
+
+- **Changed** 把上一条 `### \`XXXXXXX\` — docs(lottery): 抽奖请求提示词 · 物品栏备注从「来源」改为「用途」`的占位符换成真实短哈希`13869d0`。纯文档改动，`dist/` 产物未变。
+- **说明** 事后补记条目（2026-10-15 核对「条目数 = 提交数」时发现缺条目，按提交信息与 diff 回填）。
+
 ### `7d74576` — feat(donate): 捐赠面板竖排重排 + Ko-fi 外链 + 承诺语块
 
 - **Changed** `src/components/panels/DonatePanel.vue` 重排为竖排：感谢语 → 圆形 QR 码 → Ko-fi 外链。
@@ -1413,17 +1419,34 @@
   （黑模块+透明底换深色主题会扫不出来）。
 - **Added** Ko-fi 外链：`https://ko-fi.com/myraid_realms_sim`。
 
+### `a62a6c2` — docs: 回填 7d74576 短哈希到 CHANGELOG
+
+- **Changed** 把上一条 `### \`XXXXXXX\` — feat(donate): 捐赠面板竖排重排 + Ko-fi 外链 + 承诺语块`的占位符换成真实短哈希`7d74576`。纯文档改动，`dist/` 产物未变。
+- **说明** 事后补记条目（同 `f327fe4` 的核对来源）。
+
 ### `afc5c4a` — fix(settings): 补 featureSoundEnabled 的 store 字段与持久化
 
 - **Added** `src/stores/settings.ts` 新增 `featureSoundEnabled` 字段（默认 `true`），在两个持久化
   路径（全量保存与「API 选择保存」）均落盘，导出给 UI 解构使用。配套 UI、触发点、i18n、音频
   资源均在 `c8f8b53` 入库，本次只是把字段的家搬到 store 里，避免 UI 解构到 `undefined`。
 
+### `daecd68` — docs: 回填 afc5c4a 短哈希到 CHANGELOG
+
+- **Changed** 把上一条 `### \`XXXXXXX\` — fix(settings): 补 featureSoundEnabled 的 store 字段与持久化`的占位符换成真实短哈希`afc5c4a`。纯文档改动，`dist/` 产物未变。
+- **说明** 事后补记条目（同 `f327fe4` 的核对来源）。
+
 ### `a8755e4` — docs(changelog): 玩家更新日志追加 261016 三条
 
 - **Added** `src/utils/changelog.ts` 的 `CHANGELOG_SOURCE` 末尾追加日期 `261016` 一条：
   **增加 AI 请求完成后提示音**（功能本体在 `c8f8b53` 入库，`afc5c4a` 补的
   `settings.featureSoundEnabled` 字段），让玩家打开首页时能看到这条变化。
+
+### `a0c0031` — docs: 回填 a8755e4 短哈希到 CHANGELOG
+
+- **Added** 补记 `### \`a8755e4\` — docs(changelog): 玩家更新日志追加 261016 三条`一条：`src/utils/changelog.ts`的`CHANGELOG_SOURCE`末尾追加日期`261016`，内容是
+「捐赠面板重新排版 / 捐赠新增 Ko-fi 入口 / 抽奖物品描述更贴近用途」，
+与 `13869d0`/`7d74576`/`afc5c4a` 三笔一起让玩家在首页更新日志里看到这些变化。
+- **说明** 事后补记条目（同 `f327fe4` 的核对来源）。
 
 ### `9e049c3` — feat(ui): 变量刷新入口从标题栏搬到消息卡片
 
@@ -1440,9 +1463,7 @@
 - **Added** 玩家更新日志 `261016` 追加「变量更新入口移到回复卡片」，这次入口搬迁玩家看得见。
 - 四道检查：`typecheck` ✓ ｜ `test` 132/132 ✓ ｜ `lint` 0 error（15 个存量 warning）✓ ｜ `build` ✓。
 
-### — feat(ui): 场景横幅三点菜单改为全屏 / 回到首页两枚图标按钮
-
-> 短哈希待回填（按约定并入下一次提交）。
+### `f30dc85` — feat(ui): 场景横幅三点菜单改为全屏 / 回到首页两枚图标按钮
 
 - **Changed** `src/components/layout/SceneBanner.vue` 右上角「···」下拉整块删除（模板 `banner-menu-wrap` /
   `Transition`、脚本里的开合状态与外部点击 / Esc 监听、`.banner-menu*` 样式与 `data-tip` 悬停气泡全删），
@@ -1461,3 +1482,22 @@
 - **Added** 玩家更新日志 `261016` 追加「回到首页与全屏移到横幅右上角」。
 - **Changed** 顺手回填上一条 `9e049c3` 的短哈希占位。
 - 四道检查：`typecheck` ✓ ｜ `test` 132/132 ✓ ｜ `lint` 0 error（15 个存量 warning）✓ ｜ `build` ✓。
+
+### `e881705` — docs: 补记代码知识图谱入口到 AGENTS.md
+
+- **Added** `AGENTS.md` 的「项目记忆在哪」段新增一条 🔴 指针，指向 `.workbuddy-ai/memory/cgc.md`
+  （本仓代码知识图谱的用法与踩坑）：问「谁调用了这个函数 / 改这里会波及哪些地方 / 这块结构怎么回事 /
+  哪里最复杂」时先读它，用图查比 grep 靠得住。
+- **说明** 这段内容 2026-10-15 18:40 那次会话就已写好、一直留在工作区，本次按寒哥要求并入同一天的
+  提交一起入库。纯文档，`dist/` 产物未变。
+
+### — docs(changelog): 补齐 5 笔漏记条目并订正一处重复哈希
+
+> 短哈希待回填（按约定并入下一次提交）。
+
+- **Fixed** `CHANGELOG.md` 条目数此前比提交数少 4（110 / 114）。补齐 `58c88b3` / `f327fe4` /
+  `a62a6c2` / `daecd68` / `a0c0031` 五笔漏记的提交条目；其中 `c8f8b53` 那条原本重复登记
+  （把「回填 `35c4778`」的提交误标成 `c8f8b53`），按提交顺序订正为 `58c88b3`。
+- **Added** 一并补记 `e881705`（AGENTS.md 图谱入口）的条目。
+- **Changed** 补齐后「条目数 = 提交数 + 1」重新成立（改前 117 / 116，本次提交后 117 / 117）。
+- 纯文档改动，`dist/` 产物未变，**不重新部署**。
