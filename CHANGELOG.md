@@ -1523,3 +1523,24 @@
   `src/诸界穿越预设.json:565` 仍写 `<analysis_block>`，本次只放宽**识别**、不改**要求**。
 - **说明** 纯内部解析改动，界面上没有新增可见元素，**不补** `src/utils/changelog.ts`。
 - 四道检查：`typecheck` ✓ ｜ `test` 133/133 ✓ ｜ `lint` 0 error（14 个存量 warning）✓ ｜ `build` ✓。
+
+### — fix(ai-generate): AI 夹带说明文字不再被拒，直接抠出 JSON
+
+> 短哈希待回填（按约定并入下一次提交）。
+
+- **Fixed** `src/components/setup/pages/AiGeneratePage.vue` 去掉 AI 生成前的格式哨兵：此前只要模型回答
+  不是「纯 JSON」或「单个 ```json 代码块」就直接整份拒绝报「返回格式不符合要求」，而抠 JSON 的逻辑
+  本来就在下一行，顺序反了导致模型一说客套话就必挂。现在顺序反过来：先抠，抠出来什么算什么。
+- **Changed** `extractJsonFromResponse` 抠取逻辑改为括号配对：整段能 `JSON.parse` 且是对象时原样返回
+  （纯 JSON 场景零裁剪）；否则从第一个 `{` 按括号配对往下扫，深度归零处收刀，扫描时跳过字符串内部
+  的 `{}` 与转义。原来的「首个 `{` 到末个 `}`」只要在前言或后话里出现 `}` 就会把说明文字一起吞进去，
+  配对版不受此影响（同 `src/utils/variableUpdateRescue.ts` 里已有的思路）。
+- **Removed** `src/components/setup/pages/AiGeneratePage.vue` 的 `getFriendlyValidationHints` 里
+  `/返回格式不符合要求/` 提示分支，`src/i18n/index.ts` 的中英 `setup.aiGenerate.hint.responseFormat`
+  两条文案（该错误不再产生，留着是死代码，中英词条数 1431 → 1429 平账）。
+- **说明** 影响范围仅 AI 开局生成三个页面（世界 / 玩家 / 人物档案）的格式校验环节，生成链路本身、
+  字段边界校验、提示词文本均未改动。若模型真的一个字 JSON 都没吐，仍由 `JSON.parse` 报「不是合法 JSON」
+  兜底，提示方向与原先一致，但不再被当成拒绝理由。
+- **Added** 玩家更新日志 `261016` 追加「AI 生成页允许先说再交 JSON」，玩家点了生成后不再因模型客套话
+  而卡住，属于可感知变化。
+- 四道检查：`typecheck` ✓ ｜ `test` 133/133 ✓ ｜ `lint` 0 error（15 个存量 warning）✓ ｜ `build` ✓。

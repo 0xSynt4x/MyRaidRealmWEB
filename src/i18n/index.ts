@@ -1448,8 +1448,6 @@ const messages: Record<Locale, Record<string, string>> = {
     'setup.aiGenerate.prompt.outputInstruction': '请严格按照当前页面边界输出 JSON 片段。',
     'setup.aiGenerate.hint.jsonPunctuation':
       '这通常是 JSON 标点格式有误，比如多了尾逗号、少了括号、用了中文引号或单引号，或者在 JSON 前后夹带了解释文字。',
-    'setup.aiGenerate.hint.responseFormat':
-      'AI 这次像“先说了一段话再交表”，但这里必须直接交纯 JSON，不能在前后加标题、解释、总结或客套话。',
     'setup.aiGenerate.hint.objectStructure':
       '这类问题通常是结构层级写错了：本来该是“一个盒子里再放内容”，结果直接写成了列表或一句话。',
     'setup.aiGenerate.hint.outOfScope':
@@ -2745,8 +2743,6 @@ const messages: Record<Locale, Record<string, string>> = {
       'Strictly output a JSON fragment that stays within the boundaries of the current page.',
     'setup.aiGenerate.hint.jsonPunctuation':
       'This is usually a JSON punctuation issue, such as a trailing comma, missing bracket, Chinese quotes or single quotes, or extra explanation text around the JSON.',
-    'setup.aiGenerate.hint.responseFormat':
-      'This time the AI acted like it spoke first and only then turned in the form, but this page must receive pure JSON directly, with no title, explanation, summary, or filler text around it.',
     'setup.aiGenerate.hint.objectStructure':
       'This usually means the structure level is wrong: something that should be a box containing fields was written as a list or a plain sentence instead.',
     'setup.aiGenerate.hint.outOfScope':

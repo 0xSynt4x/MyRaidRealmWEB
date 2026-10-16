@@ -107,7 +107,12 @@ const CHANGELOG_SOURCE: ReadonlyArray<{ date: string; items: readonly string[] }
   { date: '261013', items: ['地图功能上线', '修复地图图标不显示'] },
   {
     date: '261016',
-    items: ['增加 AI 请求完成后提示音', '变量更新入口移到回复卡片', '回到首页与全屏移到横幅右上角'],
+    items: [
+      '增加 AI 请求完成后提示音',
+      '变量更新入口移到回复卡片',
+      '回到首页与全屏移到横幅右上角',
+      'AI 生成页允许先说再交 JSON',
+    ],
   },
 ];
 

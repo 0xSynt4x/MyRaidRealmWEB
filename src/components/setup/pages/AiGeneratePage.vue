@@ -1096,7 +1096,6 @@ ${t('setup.aiGenerate.prompt.outputInstruction')}`;
       return;
     }
 
-    ensureResponseOnlyContainsJson(result, moduleKey);
     const jsonContent = extractJsonFromResponse(result);
     if (!jsonContent.trim()) {
       moduleState.error = t('setup.aiGenerate.message.moduleReturnedEmpty', { title: getModuleTitle(moduleKey) });
@@ -1160,50 +1159,71 @@ function buildStandaloneAiGeneratePrompt(moduleKey: AiGenerateModuleKey, userPro
   };
 }
 
-function extractJsonFromResponse(response: string): string {
-  const jsonMatch = response.match(/```(?:json|jsonc)?\s*([\s\S]*?)```/);
-  if (jsonMatch) {
-    let content = jsonMatch[1].trim();
-    content = content.replace(/^\s*\/\/.*$/gm, '').trim();
-    const firstBraceIndex = content.indexOf('{');
-    if (firstBraceIndex > 0) {
-      content = content.substring(firstBraceIndex);
+/** 按括号配对（跳过字符串内部）截取第一个完整 JSON 对象，配对不上时返回空串。 */
+function sliceFirstJsonObject(text: string): string {
+  const start = text.indexOf('{');
+  if (start === -1) {
+    return '';
+  }
+
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+
+  for (let index = start; index < text.length; index += 1) {
+    const char = text[index];
+
+    if (escaped) {
+      escaped = false;
+      continue;
     }
-    return content;
+
+    if (char === '\\') {
+      escaped = true;
+      continue;
+    }
+
+    if (char === '"') {
+      inString = !inString;
+      continue;
+    }
+
+    if (inString) {
+      continue;
+    }
+
+    if (char === '{') {
+      depth += 1;
+      continue;
+    }
+
+    if (char === '}') {
+      depth -= 1;
+      if (depth === 0) {
+        return text.slice(start, index + 1);
+      }
+    }
   }
 
-  const firstBraceIndex = response.indexOf('{');
-  const lastBraceIndex = response.lastIndexOf('}');
-  if (firstBraceIndex !== -1 && lastBraceIndex !== -1 && lastBraceIndex > firstBraceIndex) {
-    return response.substring(firstBraceIndex, lastBraceIndex + 1).trim();
-  }
-
-  return response.trim();
+  return '';
 }
 
-function ensureResponseOnlyContainsJson(response: string, moduleKey: AiGenerateModuleKey) {
+/** 剔除说明文字，只留 JSON；整段能直接解析时原样返回，不做任何裁剪。 */
+function extractJsonFromResponse(response: string): string {
   const trimmed = response.trim();
-  if (!trimmed) {
-    return;
+  const codeBlockMatch = trimmed.match(/```(?:json|jsonc)?\s*([\s\S]*?)```/);
+  const source = (codeBlockMatch ? codeBlockMatch[1] : trimmed).replace(/^\s*\/\/.*$/gm, '').trim();
+
+  try {
+    const parsed = JSON.parse(source);
+    if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+      return source;
+    }
+  } catch {
+    // 整段不是纯 JSON（多半是前后夹带了说明文字），继续往下抠。
   }
 
-  if (/^```json\s*[\s\S]*?\s*```$/i.test(trimmed)) {
-    return;
-  }
-
-  if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
-    return;
-  }
-
-  if (trimmed.includes('```')) {
-    throw new Error(
-      `${getModuleTitle(moduleKey)}页面返回格式不符合要求：必须只输出一个 JSON 代码块，代码块前后不能再写解释文字。`,
-    );
-  }
-
-  throw new Error(
-    `${getModuleTitle(moduleKey)}页面返回格式不符合要求：必须只返回 JSON，不能夹带标题、说明、总结或其他正文。`,
-  );
+  return sliceFirstJsonObject(source) || source;
 }
 
 function translateJsonParseError(moduleKey: AiGenerateModuleKey, error: unknown): string {
@@ -1799,10 +1819,6 @@ function getFriendlyValidationHints(errorText: string): string[] {
     )
   ) {
     hints.push(t('setup.aiGenerate.hint.jsonPunctuation'));
-  }
-
-  if (/返回格式不符合要求/.test(message)) {
-    hints.push(t('setup.aiGenerate.hint.responseFormat'));
   }
 
   if (/页面结果必须是 JSON 对象|必须是对象/.test(message)) {
