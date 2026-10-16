@@ -805,12 +805,20 @@ export function useMessageActions() {
     }
 
     try {
+      // 显式带上「发送那一刻」的实时状态，不走 append 的兜底（兜底会倒序翻楼层取最后一条快照）。
+      // 🔴 否则当末层恰好是玩家层时（删掉末尾 AI 层后的常见状态），兜底抓到的是那条玩家层
+      //    自己上一次发送时的快照 —— 停在其后的商城购买/签到等前端写入全都不在快照里。
+      //    这份快照同时是「回退到此层」的依据，于是后续任何回滚都会把存档拉回购买之前，
+      //    表现为「买完东西发送后改动没了」。
+      // 重新发送（:1431）与抽奖（:896）本来就走实时值，这里只是让普通发送与它们对齐。
+      const userSnapshot = Schema.parse(loadStandaloneStatData());
       const userMessage = messagesStore.appendStandaloneMessage({
         role: 'user',
         raw_content: normalizedText,
         content_text: normalizedText,
         formatted: formatMessageContentForDisplay(normalizedText, 'user', -1),
         action_options: [],
+        stat_data_snapshot: userSnapshot,
       });
 
       return generateStandaloneAssistantReply(userMessage.message_id, reason);

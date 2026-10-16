@@ -1544,3 +1544,21 @@
 - **Added** 玩家更新日志 `261016` 追加「AI 生成页允许先说再交 JSON」，玩家点了生成后不再因模型客套话
   而卡住，属于可感知变化。
 - 四道检查：`typecheck` ✓ ｜ `test` 133/133 ✓ ｜ `lint` 0 error（15 个存量 warning）✓ ｜ `build` ✓。
+
+### — fix(send): 玩家层快照停在上一次发送时刻，买东西后发送不再回档
+
+> 短哈希待回填（按约定并入下一次提交）。
+
+- **Fixed** `src/composables/useMessageActions.ts` `sendStandaloneUserMessage()` 追加用户楼层时，从「不传
+  快照、走 `appendStandaloneMessage` 的兜底逻辑」改为显式传 `Schema.parse(loadStandaloneStatData())`
+  —— 也就是「点发送那一刻」的实时存档值。
+  根因：兜底逻辑是倒序翻楼层取最后一条带快照的记录。当末层恰好是玩家层时（删掉末尾 AI 层后的常见
+  状态），它抓到的是那条玩家层自己上一次发送时的快照，停在其后的商城购买 / 签到 / 兑换等前端写入
+  全都不在快照里。而这份快照正是「回退到此层」的依据，于是后续任何回退都会把存档拉回购买之前，
+  表现为「买完东西、发送后发现改动没了」。
+- **说明** 只改普通发送这一条路径。重新发送（`resend`）与抽奖（`dispatchStandaloneLotteryTurn`）
+  本来就直接抓实时值，这次是让三个入口口径统一。签到日期 / 积分数量 / 商城刷新那三个前端权威字段
+  的收尾对账逻辑一行未动 —— 它们本来就工作在实时值上，与本次改动不冲突。
+- **Added** 玩家更新日志 `261016` 追加「买完东西发送不再回档」，属玩家可感知变化。
+- 四道检查：`typecheck` ✓ ｜ `test` 133/133 ✓ ｜ `lint` 0 error ✓ ｜ `build` ✓
+  （`dist/` 根目录的 Everyone「拒绝删除」ACE 已清理，否则 `webpack clean` 会 EPERM 失败）。

@@ -112,6 +112,7 @@ const CHANGELOG_SOURCE: ReadonlyArray<{ date: string; items: readonly string[] }
       '变量更新入口移到回复卡片',
       '回到首页与全屏移到横幅右上角',
       'AI 生成页允许先说再交 JSON',
+      '买完东西发送不再回档',
     ],
   },
 ];
