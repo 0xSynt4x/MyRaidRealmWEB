@@ -1545,9 +1545,7 @@
   而卡住，属于可感知变化。
 - 四道检查：`typecheck` ✓ ｜ `test` 133/133 ✓ ｜ `lint` 0 error（15 个存量 warning）✓ ｜ `build` ✓。
 
-### — fix(send): 玩家层快照停在上一次发送时刻，买东西后发送不再回档
-
-> 短哈希待回填（按约定并入下一次提交）。
+### `1865b94` — fix(send): 玩家层快照停在上一次发送时刻，买东西后发送不再回档
 
 - **Fixed** `src/composables/useMessageActions.ts` `sendStandaloneUserMessage()` 追加用户楼层时，从「不传
   快照、走 `appendStandaloneMessage` 的兜底逻辑」改为显式传 `Schema.parse(loadStandaloneStatData())`
