@@ -1560,3 +1560,7 @@
 - **Added** 玩家更新日志 `261016` 追加「买完东西发送不再回档」，属玩家可感知变化。
 - 四道检查：`typecheck` ✓ ｜ `test` 133/133 ✓ ｜ `lint` 0 error ✓ ｜ `build` ✓
   （`dist/` 根目录的 Everyone「拒绝删除」ACE 已清理，否则 `webpack clean` 会 EPERM 失败）。
+
+### `386c1a2` — docs: 回填 1865b94 短哈希到 CHANGELOG
+
+- **Changed** 把上一条 `### \`XXXXXXX\` — fix(send): 玩家层快照停在上一次发送时刻，买东西后发送不再回档` 的占位符换成真实短哈希 `1865b94`。纯文档改动，`dist/` 产物未变。
