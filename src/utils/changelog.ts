@@ -87,10 +87,8 @@ const CHANGELOG_SOURCE: ReadonlyArray<{ date: string; items: readonly string[] }
     date: '261005',
     items: ['抽奖不再推进剧情', '抽奖失败可重来', '抽奖可单独配 API', '回滚时积分一起退回'],
   },
-  {
-    date: '261006',
-    items: ['抽奖物品贴合当前场景'],
-  },
+  { date: '261006', items: ['抽奖物品贴合当前场景'] },
+  { date: '261007', items: ['骰子游戏加目标档位与道具', '世界书可导入酒馆世界书'] },
   {
     date: '261009',
     items: ['正文支持多候选页翻页', '新增审稿与改稿功能', '输入框支持快捷手势', '场景横幅排版微调'],
@@ -113,8 +111,6 @@ const CHANGELOG_SOURCE: ReadonlyArray<{ date: string; items: readonly string[] }
       '回到首页与全屏移到横幅右上角',
       'AI 生成页允许先说再交 JSON',
       '买完东西发送不再回档',
-      '骰子游戏加目标档位与道具',
-      '世界书可导入酒馆世界书',
     ],
   },
 ];
