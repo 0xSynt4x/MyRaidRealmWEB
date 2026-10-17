@@ -1718,3 +1718,9 @@
 - 四道检查：`typecheck` 0 错误 ｜ `test` 133/133 + 留档 35 项 ｜ `lint` 0 error（15 个存量 warning）｜
   `build` 成功（`dist/preset-package/index.js` 857,595 字节）。产物 sha256 与上一轮
   `a9b9c106…` 不同 → 需重新部署。
+
+### `XXXXXXX` — docs: 收尾条目
+
+> 短哈希待回填（按约定并入下一次提交）。
+
+- **Changed** 登记本提交，使「条目数 = 提交数」的核对继续保持相等。纯文档改动，`dist/` 产物未变。
