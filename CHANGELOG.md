@@ -1598,8 +1598,56 @@
 
 - **Changed** 同上，登记本提交。纯文档改动，`dist/` 产物未变。
 
-### `XXXXXXX` — docs: 收尾条目（登记 d866668 之后的收尾提交）
+### `8e824dd` — docs: 收尾条目（登记 d866668 之后的收尾提交）
 
 > 短哈希待回填（按约定并入下一次提交）。
 
 - **Changed** 同上，登记本提交。纯文档改动，`dist/` 产物未变。
+
+### `XXXXXXX` — feat(farkle): 目标档位、道具店与 Farkle 账本上线
+
+> 短哈希待回填（按约定并入下一次提交）。
+
+- **Added** `src/game/farkle/types.ts` 新增骰子游戏第三套经济系统：目标档位 `TARGET_TIERS`
+  （4000 / 8000 / 12000 / 16000 / 20000 五档，数值用户拍板）、每档押注上限比例 `TIER_BET_RATIOS`
+  （1/10 → 1/2，目标越高可押越多）、道具目录 `FARKLE_ITEMS`（2 永久 + 3 临时）与三类效果
+  「保底符 / 重掷骰 / 指定骰」。
+- **Added** `src/stores/farkle.ts`（新文件）：Farkle 币与道具账本。与主货币、积分三家隔离 ——
+  不进 `stat_data`（AI 看不到也改不到），只由前端维护，跟着会话存、读档一起回来
+  （`src/utils/standaloneRuntimeSchemas.ts` 新增 `StandaloneRuntimeFarkleStateSchema`，
+  `src/utils/standaloneRuntime.ts` 新增读写入口）。
+- **Changed** 骰子概率模型从「一个全局偏置」改为「全局偏置 × 单颗自身偏置叠乘归一化」
+  （`src/game/farkle/engine.ts` `rollSingleDie(diceType, globalDice)`）：幸运骰子只抬 5 面、
+  祝福骰子只抬 1 面，两种同时存在时效果相乘而非相加。`Die` 新增 `diceType` 字段，
+  每颗骰子独立掷。
+- **Changed** `src/components/game/DiceGameSetup.vue` 新增「目标与道具」区（档位卡 + 可折叠道具店，
+  永久/临时分类切换），玩家 6 颗骰子改为可点击的槽位，开局前能按库存手动替换骰子类型；
+  押注区从三个手动输入框改为只读展示 —— 金额由「所选档位 + 所选 NPC 的关系上限」自动决定。
+- **Changed** 对局内三条道具链路：`DiceGameBoard.vue` 新增道具条与「指定骰」瞄准态
+  （未保留骰子虚线描边、点击即变 1）；`DiceDisplay.vue` 新增瞄准点击分支与幸运/祝福配色；
+  `DiceGameResult.vue` 结算页新增热骰倍率与 Farkle 币两行。
+- **Changed** 结算规则：胜利/平局返还额乘「热骰累乘倍率」（每触发一次热骰 ×1.1，整局累乘）；
+  超出目标分的部分按 10 分 = 1 币折算进 Farkle 账本，用于购买道具。
+- **Added** 玩家更新日志 `261016` 追加「骰子游戏加目标档位与道具」，属玩家可感知变化。
+- 四道检查：`typecheck` ✓ ｜ `test` 133/133 ✓ ｜ `lint` 0 error（15 个存量 warning）✓ ｜ `build` ✓
+  （先清掉 `dist/` 上残留的 Everyone「拒绝删除」ACE，否则 `webpack clean` 报 `EPERM ... unlink dist/preset-package/index.js`）。
+
+### `XXXXXXX` — feat(worldbook): 设置面板可导入酒馆世界书，首页设置面板隐藏世界书 tab
+
+> 短哈希待回填（按约定并入下一次提交）。
+
+- **Added** `src/utils/standaloneWorldbookImport.ts`（新文件）：解析酒馆（SillyTavern）世界书导出
+  JSON（顶层 `entries` 为 uid 字典）。本项目世界书没有关键词触发，`key` / `keysecondary` /
+  `constant` / `probability` 一律丢弃，只保留标题（`comment`）与正文（`content`）；作者停用的条目
+  （`disable=true`）跳过不导。
+- **Added** `src/components/panels/SettingsPanel.vue` 与 `src/components/setup/pages/SettingsPage.vue`
+  的世界书区新增「导入酒馆世界书」按钮，选中文件后解析并入可编辑条目列表，就地反馈
+  导入条数 / 跳过条数 / 失败原因。
+- **Fixed** 首页（开局向导那一层）弹出的设置面板此前会露出世界书 tab，而世界书跟着存档走、
+  开局阶段还没有存档，露出来只会让人误以为它能跨局共用。`src/App.vue` 给首页那层
+  `OverlayPanel` 传 `is-wizard-overlay`，`OverlayPanel.vue` 再向下传 `hideWorldbookTab`；
+  游戏内弹出的面板不传，世界书 tab 与导入按钮照常在那一侧。
+- **Fixed** `src/components/panels/SettingsPanel.vue` 一处被并成一行的 `toggleReviewApiSelection`
+  函数体恢复为正常缩进（纯格式，无行为变化）。
+- **Added** 玩家更新日志 `261016` 追加「世界书可导入酒馆世界书」，属玩家可感知变化。
+- 四道检查：`typecheck` ✓ ｜ `test` 133/133 ✓ ｜ `lint` 0 error（15 个存量 warning）✓ ｜ `build` ✓。

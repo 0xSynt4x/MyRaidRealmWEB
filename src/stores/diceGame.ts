@@ -13,11 +13,20 @@ import {
 } from '../game/farkle/engine';
 import {
   BetType,
+  DICE_TYPE_INFO,
   DiceType,
+  FARKLE_ITEMS,
+  FARKLE_COIN_PER_SCORE,
+  FarkleItemEffect,
+  FarkleItemKind,
   GAME_CONSTANTS,
   GamePhase,
+  HOT_DICE_REWARD_MULTIPLIER,
   PlayerType,
+  TARGET_TIERS,
+  TIER_BET_RATIOS,
   TurnPhase,
+  getFarkleItemDef,
   type BetConfig,
   type BetItem,
   type Die,
@@ -25,13 +34,22 @@ import {
   type GameResult,
   type NpcConfig,
   type PlayerState,
+  type TargetTier,
 } from '../game/farkle/types';
 import { useStatDataStore } from './statData';
 import { useStatDataActions } from './statDataActions';
+import { useFarkleStore } from './farkle';
+
+/** 永久骰子道具 id → 骰子类型（反查「某类型还剩多少份额」用） */
+const PERMANENT_ITEM_BY_DICE: Partial<Record<DiceType, string>> = {
+  [DiceType.Lucky]: 'lucky_dice',
+  [DiceType.Blessed]: 'blessed_dice',
+};
 
 export const useDiceGameStore = defineStore('dice-game', () => {
   const statDataStore = useStatDataStore();
   const statDataActions = useStatDataActions();
+  const farkleStore = useFarkleStore();
 
   // ===== 游戏可见性 =====
   const visible = ref(false);
@@ -44,6 +62,18 @@ export const useDiceGameStore = defineStore('dice-game', () => {
 
   // ===== 选择的NPC =====
   const selectedNpc = ref<NpcConfig | null>(null);
+
+  // ===== 目标档位 =====
+  const targetTier = ref<TargetTier>(TARGET_TIERS[0]);
+
+  /** 本局目标分数：由选定档位决定 */
+  const targetScore = computed(() => targetTier.value);
+
+  // ===== 本局已使用的临时道具（每局限一次，整局内用完即灰） =====
+  const usedConsumables = ref<string[]>([]);
+
+  /** 本局触发的热骰次数（结算返还按此累乘） */
+  const hotDiceCount = ref(0);
 
   // ===== 赌注配置 =====
   const betConfig = ref<BetConfig>({ bets: [] });
@@ -116,6 +146,11 @@ export const useDiceGameStore = defineStore('dice-game', () => {
 
   // ===== 游戏结果 =====
   const gameResult = ref<GameResult | null>(null);
+
+  // ===== 结算明细（结算页展示） =====
+  const coinsEarned = ref(0);
+  /** 热骰累乘倍率（展示用，如 1.331） */
+  const hotDiceMultiplier = ref(1);
 
   // ===== 是否有赌注（用于退出逻辑判断） =====
   const hasBets = computed(() => betConfig.value.bets.length > 0);
@@ -192,6 +227,10 @@ export const useDiceGameStore = defineStore('dice-game', () => {
     gameLog.value = [];
     npcActionText.value = '';
     gameResult.value = null;
+    usedConsumables.value = [];
+    hotDiceCount.value = 0;
+    coinsEarned.value = 0;
+    hotDiceMultiplier.value = 1;
     resetDieIdCounter();
   }
 
@@ -218,7 +257,8 @@ export const useDiceGameStore = defineStore('dice-game', () => {
     const isReduced = npcConfig.favor < GAME_CONSTANTS.REDUCED_BET_FAVOR_THRESHOLD;
     const currencyAmount = playerCurrency.value.amount;
 
-    const maxCurrency = Math.floor(currencyAmount * GAME_CONSTANTS.BET.MAX_CURRENCY_RATIO);
+    // 目标分数越高，允许押的主货币比例越大（4000 档 1/10 → 20000 档 1/2）
+    const maxCurrency = Math.floor(currencyAmount * TIER_BET_RATIOS[targetTier.value]);
     const maxFavor = Math.min(GAME_CONSTANTS.BET.MAX_FAVOR, npcConfig.favor - GAME_CONSTANTS.BET.FAVOR_FLOOR);
     const maxTrust = Math.min(GAME_CONSTANTS.BET.MAX_TRUST, npcConfig.trust - GAME_CONSTANTS.BET.TRUST_FLOOR);
 
@@ -238,14 +278,193 @@ export const useDiceGameStore = defineStore('dice-game', () => {
     };
   }
 
-  /** 开始游戏 - 先扣除赌注再进入 */
+  /** 选择目标档位 */
+  function setTargetTier(tier: TargetTier) {
+    targetTier.value = tier;
+  }
+
+  /** 玩家本局 6 颗骰子的类型（含永久道具替换结果，开局前可手动调整） */
+  const playerDiceTypes = ref<DiceType[]>(Array.from({ length: GAME_CONSTANTS.DICE_COUNT }, () => DiceType.Normal));
+
+  /**
+   * 本局全局骰子：NPC 按信任度分配的那类骰子（也就是「全局概率」的载体）。
+   * 玩家每颗骰子的最终概率 = 全局偏置 × 该颗自身偏置（叠乘归一化）。
+   */
+  const globalPlayerDice = ref<DiceType>(DiceType.Normal);
+
+  /**
+   * 按永久道具库存自动铺满 6 颗骰子：
+   * 买了 n 件永久骰子就把前 n 颗换成那款，其余保持普通。
+   * 留在开局前由玩家手动替换用。
+   */
+  function autoFillPlayerDice() {
+    const next: DiceType[] = Array.from({ length: GAME_CONSTANTS.DICE_COUNT }, () => DiceType.Normal);
+    for (const itemId of farkleStore.permanentItems) {
+      const def = getFarkleItemDef(itemId);
+      if (!def || def.kind !== FarkleItemKind.Permanent || !def.diceType) continue;
+      const empty = next.findIndex(t => t === DiceType.Normal);
+      if (empty !== -1) next[empty] = def.diceType;
+    }
+    playerDiceTypes.value = next;
+  }
+
+  /**
+   * 开局前手动替换某颗骰子类型。
+   * 特殊骰子只能按「已购买的件数」装备：库存 - 已装备 = 剩余可用份额，
+   * 把某个槽位从特殊骰子改回普通骰子会释放份额（stock 与它无关，只看永久道具购买数）。
+   * @param index 骰子序号（0-5）
+   * @param diceType 目标类型
+   * @returns 是否替换成功
+   */
+  function replacePlayerDice(index: number, diceType: DiceType): boolean {
+    if (index < 0 || index >= GAME_CONSTANTS.DICE_COUNT) return false;
+
+    const next = [...playerDiceTypes.value];
+    const current = next[index];
+    if (current === diceType) return true;
+
+    if (diceType !== DiceType.Normal) {
+      // 目标类型的剩余份额 = 库存 - 已装备数（把本来就是这个类型的槽位换成本类型不占新份额）
+      const stock = itemStock(PERMANENT_ITEM_BY_DICE[diceType] ?? '');
+      const equipped = playerDiceTypes.value.filter(t => t === diceType).length;
+      if (stock - equipped <= 0) return false;
+    }
+
+    next[index] = diceType;
+    playerDiceTypes.value = next;
+    return true;
+  }
+
+  /** 当前生效的永久骰子道具：把骰子类型覆盖成更好的那一款 */
+  const permanentDice = computed<DiceType | null>(() => {
+    let best: DiceType | null = null;
+    let bestScore = -Infinity;
+
+    for (const itemId of farkleStore.permanentItems) {
+      const def = getFarkleItemDef(itemId);
+      if (!def || def.kind !== FarkleItemKind.Permanent || !def.diceType) continue;
+      const info = DICE_TYPE_INFO[def.diceType];
+      const score = Math.max(info.bias1, info.bias5);
+      if (score > bestScore) {
+        bestScore = score;
+        best = def.diceType;
+      }
+    }
+
+    return best;
+  });
+
+  /** 商店道具列表（界面直接用） */
+  const itemCatalog = computed(() => FARKLE_ITEMS);
+
+  /** 玩家币余额（界面直接用） */
+  const coins = computed(() => farkleStore.coins);
+
+  /** 已拥有的永久道具 id 列表 */
+  const permanentItems = computed(() => farkleStore.permanentItems);
+
+  /** 一件道具当前库存：临时道具看消耗计数，永久道具看购买件数 */
+  function itemStock(itemId: string): number {
+    const consumable = farkleStore.consumableItems[itemId] ?? 0;
+    if (consumable > 0) return consumable;
+    return farkleStore.permanentItems.filter(id => id === itemId).length;
+  }
+
+  /** 买道具：永久/临时分别走账本；成功返回 true */
+  function buyItem(itemId: string): boolean {
+    const def = getFarkleItemDef(itemId);
+    if (!def) return false;
+
+    const ok =
+      def.kind === FarkleItemKind.Permanent
+        ? farkleStore.buyPermanent(itemId, def.price)
+        : farkleStore.buyConsumable(itemId, def.price);
+
+    if (ok) {
+      addLog(`购买了「${def.name}」`);
+    }
+    return ok;
+  }
+
+  /** 一件临时道具现在能不能用（有库存、本局没消耗过、当前是对局中选择阶段） */
+  function canUseConsumable(itemId: string): boolean {
+    if (gamePhase.value !== GamePhase.Playing) return false;
+    if (currentTurn.value !== PlayerType.Human) return false;
+    if (usedConsumables.value.includes(itemId)) return false;
+    if (!farkleStore.hasStock(itemId)) return false;
+    // 换骰需要指定骰子，只在选择阶段开放；其余同理
+    return turnPhase.value === TurnPhase.Selecting || turnPhase.value === TurnPhase.Farkled;
+  }
+
+  /** 使用临时道具：扣库存 + 记本局已用 */
+  function useConsumable(itemId: string): boolean {
+    if (!canUseConsumable(itemId)) return false;
+    if (!farkleStore.consumeItem(itemId)) return false;
+
+    usedConsumables.value = [...usedConsumables.value, itemId];
+    const def = getFarkleItemDef(itemId);
+    if (def) addLog(`使用了道具「${def.name}」`);
+
+    if (def?.effect === FarkleItemEffect.RerollAll) {
+      rerollUnheld();
+    }
+    return true;
+  }
+
+  /** 指定骰：把一颗未保留骰子的点数直接改成 1（每局限一次） */
+  function forceSingleDie(dieId: number): boolean {
+    const forceId = FARKLE_ITEMS.find(item => item.effect === FarkleItemEffect.ForceOne)?.id;
+    if (!forceId) return false;
+    if (!canUseConsumable(forceId)) return false;
+
+    const die = dice.value.find(d => d.id === dieId);
+    if (!die || die.held) return false;
+
+    if (!farkleStore.consumeItem(forceId)) return false;
+    usedConsumables.value = [...usedConsumables.value, forceId];
+
+    die.value = 1;
+    die.justRolled = false;
+
+    dice.value = markScoringDice(dice.value);
+    turnPhase.value = TurnPhase.Selecting;
+    addLog('使用了道具「指定骰」');
+    return true;
+  }
+
+  /** 重掷骰：当前未保留骰子整组重掷一次（每颗按自身类型掷） */
+  function rerollUnheld() {
+    const unheldCount = dice.value.filter(d => !d.held).length;
+    if (unheldCount === 0) return;
+
+    const held = dice.value.filter(d => d.held);
+    const types = dice.value.filter(d => !d.held).map(d => d.diceType ?? DiceType.Normal);
+    const fresh = rollDice(unheldCount, types, globalPlayerDice.value);
+    dice.value = [...held, ...fresh];
+
+    const unheldValues = fresh.map(d => d.value);
+    if (isFarkle(unheldValues)) {
+      turnPhase.value = TurnPhase.Farkled;
+    } else {
+      dice.value = markScoringDice(dice.value);
+      for (const d of dice.value) {
+        if (!d.held) d.justRolled = false;
+      }
+      turnPhase.value = TurnPhase.Selecting;
+    }
+  }
+
+  /** 开局：先把永久骰子铺进 6 颗骰子，再开始对局 */
   async function startGame() {
     if (!selectedNpc.value) return;
 
     // 立即扣除赌注
     await deductBets();
 
+    autoFillPlayerDice();
+
     const assignment = getDiceAssignment(selectedNpc.value.trust);
+    globalPlayerDice.value = assignment.playerDice;
 
     player.value = {
       type: PlayerType.Human,
@@ -269,8 +488,12 @@ export const useDiceGameStore = defineStore('dice-game', () => {
     dice.value = [];
     availableDiceCount.value = GAME_CONSTANTS.DICE_COUNT;
     gameLog.value = [];
+    usedConsumables.value = [];
+    hotDiceCount.value = 0;
+    coinsEarned.value = 0;
+    hotDiceMultiplier.value = 1;
 
-    addLog('游戏开始！你先手');
+    addLog(`游戏开始！目标 ${targetScore.value} 分，你先手`);
   }
 
   /** 扣除赌注 - 在游戏开始时立即执行 */
@@ -312,9 +535,15 @@ export const useDiceGameStore = defineStore('dice-game', () => {
 
     turnPhase.value = TurnPhase.Animating;
 
-    // 保留已选中的骰子，掷出剩余的
+    // 保留已选中的骰子，掷出剩余的（每颗按自身类型掷）
     const heldDice = dice.value.filter(d => d.held);
-    const newDice = rollDice(availableDiceCount.value, player.value.diceType);
+    // 类型跟着骰子本身走：先扣掉已留住骰子占用的类型，剩下的才发给新骰子
+    const remainingTypes = [...playerDiceTypes.value];
+    for (const d of heldDice) {
+      const idx = remainingTypes.indexOf(d.diceType ?? DiceType.Normal);
+      if (idx !== -1) remainingTypes.splice(idx, 1);
+    }
+    const newDice = rollDice(availableDiceCount.value, remainingTypes, globalPlayerDice.value);
 
     dice.value = [...heldDice, ...newDice];
 
@@ -323,12 +552,22 @@ export const useDiceGameStore = defineStore('dice-game', () => {
       const unheldValues = dice.value.filter(d => !d.held).map(d => d.value);
 
       if (isFarkle(unheldValues)) {
+        // 保底符：本回合 Farkle 时不清零本回合累积分，也不结束回合
+        if (usedConsumables.value.includes(FARKLE_ITEMS.find(i => i.effect === FarkleItemEffect.BankGuard)!.id)) {
+          turnPhase.value = TurnPhase.Selecting;
+          addLog('🛡️ 保底符生效！Farkle 被挡下，本回合累积分保留');
+          return;
+        }
         turnPhase.value = TurnPhase.Farkled;
         addLog(`Farkle！没有得分骰子，本回合 ${turnScore.value} 分全部清零`, 0);
         turnScore.value = 0;
       } else {
         // 标记得分骰子
         dice.value = markScoringDice(dice.value);
+        // 新掷出的骰子先自动全选：玩家看到的就是「这一把能拿多少分」
+        for (const d of dice.value) {
+          if (!d.held) d.justRolled = false;
+        }
         turnPhase.value = TurnPhase.Selecting;
       }
     }, GAME_CONSTANTS.ROLL_ANIMATION_DURATION);
@@ -372,7 +611,9 @@ export const useDiceGameStore = defineStore('dice-game', () => {
       // 热骰！重置所有骰子
       dice.value = [];
       availableDiceCount.value = GAME_CONSTANTS.DICE_COUNT;
-      addLog(`🔥 热骰！所有骰子都得分，+${score}分，重掷全部6颗`);
+      hotDiceCount.value += 1;
+      hotDiceMultiplier.value = Math.pow(HOT_DICE_REWARD_MULTIPLIER, hotDiceCount.value);
+      addLog(`🔥 热骰！所有骰子都得分，+${score}分，重掷全部6颗（结算奖励 ×${hotDiceMultiplier.value.toFixed(3)}）`);
     } else {
       availableDiceCount.value = unheldCount;
     }
@@ -414,7 +655,7 @@ export const useDiceGameStore = defineStore('dice-game', () => {
     const playerScore = justPlayed === PlayerType.Human ? player.value.totalScore : npc.value.totalScore;
 
     // 检查是否触发最后一回合
-    if (!isLastRound.value && playerScore >= GAME_CONSTANTS.TARGET_SCORE) {
+    if (!isLastRound.value && playerScore >= targetScore.value) {
       isLastRound.value = true;
       lastRoundTrigger.value = justPlayed;
       addLog(`${justPlayed === PlayerType.Human ? '你' : npc.value.name}达到目标分数！对方还有最后一回合`);
@@ -547,6 +788,10 @@ export const useDiceGameStore = defineStore('dice-game', () => {
     const playerWins = player.value.totalScore > npc.value.totalScore;
     const isDraw = player.value.totalScore === npc.value.totalScore;
 
+    // 热骰累乘倍率：玩家每触发一次热骰，结算返还 ×1.1，整局累乘
+    const multiplier = Math.pow(HOT_DICE_REWARD_MULTIPLIER, hotDiceCount.value);
+    hotDiceMultiplier.value = multiplier;
+
     // 计算返还金额：
     // 胜利 → 返还 2×赌注（净赚1倍）
     // 平局 → 返还 1×赌注（退还）
@@ -556,7 +801,8 @@ export const useDiceGameStore = defineStore('dice-game', () => {
     let trustChange = 0;
 
     for (const bet of betConfig.value.bets) {
-      const returnAmount = playerWins ? bet.amount * 2 : isDraw ? bet.amount : 0;
+      // 热骰倍率乘在返还上：只按玩家自己的热骰次数累乘
+      const returnAmount = Math.floor((playerWins ? bet.amount * 2 : isDraw ? bet.amount : 0) * multiplier);
       switch (bet.type) {
         case BetType.Currency:
           currencyChange = returnAmount;
@@ -568,6 +814,14 @@ export const useDiceGameStore = defineStore('dice-game', () => {
           trustChange = returnAmount;
           break;
       }
+    }
+
+    // 超出目标分数的部分折算成 Farkle 币（10 分 = 1 币），进独立账本
+    const overshoot = Math.max(0, player.value.totalScore - targetScore.value);
+    const earnedCoins = Math.floor(overshoot / FARKLE_COIN_PER_SCORE);
+    coinsEarned.value = earnedCoins;
+    if (earnedCoins > 0) {
+      farkleStore.addCoins(earnedCoins);
     }
 
     gameResult.value = {
@@ -653,6 +907,10 @@ export const useDiceGameStore = defineStore('dice-game', () => {
     gameLog.value = [];
     npcActionText.value = '';
     gameResult.value = null;
+    usedConsumables.value = [];
+    hotDiceCount.value = 0;
+    coinsEarned.value = 0;
+    hotDiceMultiplier.value = 1;
     resetDieIdCounter();
 
     selectedNpc.value = savedNpc;
@@ -702,6 +960,22 @@ export const useDiceGameStore = defineStore('dice-game', () => {
     diceAssignment,
     availableNpcs,
     playerCurrency,
+    // Farkle 币与道具
+    targetTier,
+    targetScore,
+    permanentDice,
+    playerDiceTypes,
+    globalPlayerDice,
+    autoFillPlayerDice,
+    replacePlayerDice,
+    itemCatalog,
+    coins,
+    permanentItems,
+    itemStock,
+    usedConsumables,
+    hotDiceCount,
+    hotDiceMultiplier,
+    coinsEarned,
     // 方法
     openGame,
     closeGame,
@@ -709,6 +983,7 @@ export const useDiceGameStore = defineStore('dice-game', () => {
     resetToSetup,
     selectNpc,
     setBets,
+    setTargetTier,
     canNpcGamble,
     getBetLimits,
     startGame,
@@ -719,5 +994,9 @@ export const useDiceGameStore = defineStore('dice-game', () => {
     playerBank,
     endFarkledTurn,
     playAgain,
+    buyItem,
+    useConsumable,
+    canUseConsumable,
+    forceSingleDie,
   };
 });

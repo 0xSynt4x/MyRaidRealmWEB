@@ -9,6 +9,89 @@
       <p class="header-subtitle">FARKLE</p>
     </div>
 
+    <!-- 目标与道具 -->
+    <div class="setup-section">
+      <div class="section-title">
+        <i class="ti ti-target-arrow section-icon"></i>
+        <span>{{ t('dice.setup.tierTitle') }}</span>
+        <span class="coin-badge">
+          <i class="ti ti-coin"></i>
+          {{ coins }}
+        </span>
+      </div>
+
+      <div class="tier-list">
+        <button
+          v-for="tierOption in tierOptions"
+          :key="tierOption.score"
+          :class="['tier-card', { selected: targetTier === tierOption.score }]"
+          @click="store.setTargetTier(tierOption.score)"
+        >
+          <span class="tier-score">{{ tierOption.score.toLocaleString() }}</span>
+          <span class="tier-bet">{{ t('dice.setup.tierBetRatio', { ratio: tierOption.ratioText }) }}</span>
+        </button>
+      </div>
+
+      <div class="item-shop-toggle">
+        <button class="shop-btn" @click="showShop = !showShop">
+          <i class="ti ti-backpack"></i>
+          <span>{{ t('dice.setup.itemShop') }}</span>
+          <span v-if="stockBadge" class="shop-badge">{{ stockBadge }}</span>
+          <i :class="['toggle-icon ti', showShop ? 'ti-chevron-up' : 'ti-chevron-down']"></i>
+        </button>
+      </div>
+
+      <Transition name="collapse">
+        <div v-if="showShop" class="item-shop">
+          <p class="shop-hint">
+            <i class="ti ti-info-circle"></i>
+            <span>{{ t('dice.setup.shopHint', { per: coinPerScore }) }}</span>
+          </p>
+
+          <!-- 永久 / 临时 分类切换 -->
+          <div class="shop-tabs">
+            <button :class="['shop-tab', { active: shopTab === 'permanent' }]" @click="shopTab = 'permanent'">
+              <i class="ti ti-diamond"></i>
+              <span>{{ t('dice.setup.itemPermanent') }}</span>
+            </button>
+            <button :class="['shop-tab', { active: shopTab === 'consumable' }]" @click="shopTab = 'consumable'">
+              <i class="ti ti-potion"></i>
+              <span>{{ t('dice.setup.itemConsumable') }}</span>
+            </button>
+          </div>
+
+          <!-- 道具卡网格 -->
+          <div class="shop-grid">
+            <div
+              v-for="item in visibleItems"
+              :key="item.id"
+              :class="['item-card', `rarity-${itemRarity(item)}`, { owned: itemStock(item.id) > 0 }]"
+              :style="itemDiceColor(item)"
+            >
+              <div class="item-card-icon" :class="itemIconClass(item)">
+                <i class="ti ti-dice"></i>
+                <span v-if="itemStock(item.id) > 0" class="item-owned-flag">
+                  <i class="ti ti-check"></i>
+                </span>
+              </div>
+              <span class="item-card-name">{{ item.name }}</span>
+              <span v-if="itemStock(item.id) > 0" class="item-card-stock"> ×{{ itemStock(item.id) }} </span>
+              <p class="item-card-desc">{{ t(`dice.itemDesc${descKeyOf(item)}`) }}</p>
+              <div class="item-card-foot">
+                <span class="item-card-price">
+                  <i class="ti ti-coin"></i>
+                  {{ item.price }}
+                </span>
+                <button class="buy-btn" :disabled="coins < item.price" @click="handleBuy(item.id)">
+                  {{ t('dice.setup.buy') }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </div>
+
     <!-- 第一步: 选择对手 -->
     <div class="setup-section">
       <div class="section-title">
@@ -66,11 +149,19 @@
         <div class="dice-intel-grid">
           <div class="dice-party">
             <span class="party-label">{{ t('dice.setup.yourDice') }}</span>
-            <div class="dice-type-display" :style="{ '--dice-color': playerDiceInfo.color }">
-              <span class="dice-emoji">{{ playerDiceInfo.emoji }}</span>
-              <span class="dice-name">{{ playerDiceInfo.name }}</span>
+            <div class="dice-slots">
+              <button
+                v-for="(die, index) in playerDiceSlots"
+                :key="index"
+                :class="['dice-slot', { 'is-lucky': die.type === DiceType.Lucky, 'is-blessed': die.type === DiceType.Blessed }]"
+                :style="diceSlotColor(die.type)"
+                @click="openSwapPanel(index)"
+              >
+                <i class="ti ti-dice"></i>
+                <span class="slot-name">{{ die.info.name }}</span>
+              </button>
             </div>
-            <p class="dice-desc">{{ playerDiceInfo.description }}</p>
+            <p class="dice-desc">{{ playerDiceSummary }}</p>
           </div>
 
           <div class="vs-divider">
@@ -87,6 +178,37 @@
           </div>
         </div>
 
+        <!-- 开局前手动替换骰子 -->
+        <Transition name="slide-fade">
+          <div v-if="swapIndex !== -1" class="dice-swap-panel">
+            <div class="swap-header">
+              <i class="ti ti-swap"></i>
+              <span>{{ t('dice.setup.swapTitle', { index: swapIndex + 1 }) }}</span>
+              <button class="swap-close" @click="swapIndex = -1">
+                <i class="ti ti-x"></i>
+              </button>
+            </div>
+            <div class="swap-options">
+              <button
+                v-for="opt in swapOptions"
+                :key="opt.type"
+                :class="['swap-option', { 'is-lucky': opt.type === DiceType.Lucky, 'is-blessed': opt.type === DiceType.Blessed }]"
+                :style="diceSlotColor(opt.type)"
+                :disabled="opt.disabled"
+                @click="applySwap(opt.type)"
+              >
+                <i class="ti ti-dice"></i>
+                <span class="swap-option-name">{{ opt.name }}</span>
+                <span class="swap-option-desc">{{ opt.description }}</span>
+                <span v-if="opt.stock > 0" class="swap-option-stock">{{
+                  t('dice.setup.itemStock', { count: opt.stock })
+                }}</span>
+              </button>
+            </div>
+            <p v-if="swapHint" class="swap-hint">{{ swapHint }}</p>
+          </div>
+        </Transition>
+
         <div class="trust-hint">
           <i class="ti ti-info-circle"></i>
           <span>{{ t('dice.setup.trustHint', { trust: selectedNpc.trust, description: trustDescription }) }}</span>
@@ -102,78 +224,29 @@
           <span>{{ t('dice.setup.placeBets') }}</span>
         </div>
 
-        <!-- 货币赌注 -->
-        <div class="bet-row">
-          <div class="bet-label">
-            <i class="ti ti-coins"></i>
-            <span>{{ playerCurrency.name }}</span>
+        <!-- 押注内容：由上方选择自动决定，只读展示 -->
+        <div class="bet-summary bet-fixed">
+          <div class="bet-fixed-row">
+            <span class="bet-fixed-label">
+              <i class="ti ti-coins"></i>
+              {{ playerCurrency.name }}
+            </span>
+            <span class="bet-fixed-value">{{ autoBets.currency }}</span>
           </div>
-          <div class="bet-control">
-            <button class="adj-btn" :disabled="bets.currency === 0" @click="adjustBet('currency', -10)">
-              <i class="ti ti-minus"></i>
-            </button>
-            <input
-              v-model.number="bets.currency"
-              type="number"
-              :min="0"
-              :max="betLimits.currency.max"
-              class="bet-input"
-            />
-            <button
-              class="adj-btn"
-              :disabled="bets.currency >= betLimits.currency.max"
-              @click="adjustBet('currency', 10)"
-            >
-              <i class="ti ti-plus"></i>
-            </button>
+          <div class="bet-fixed-row">
+            <span class="bet-fixed-label">
+              <i class="ti ti-heart"></i>
+              {{ t('dice.setup.favor') }}
+            </span>
+            <span class="bet-fixed-value">{{ t('dice.setup.betFavor', { amount: autoBets.favor }) }}</span>
           </div>
-          <span class="bet-range">0 ~ {{ betLimits.currency.max }}</span>
-        </div>
-
-        <!-- 好感度赌注 -->
-        <div class="bet-row">
-          <div class="bet-label">
-            <i class="ti ti-heart"></i>
-            <span>{{ t('dice.setup.favor') }}</span>
+          <div class="bet-fixed-row">
+            <span class="bet-fixed-label">
+              <i class="ti ti-heart-handshake"></i>
+              {{ t('dice.setup.trust') }}
+            </span>
+            <span class="bet-fixed-value">{{ t('dice.setup.betTrust', { amount: autoBets.trust }) }}</span>
           </div>
-          <div class="bet-control">
-            <button class="adj-btn" :disabled="bets.favor === 0" @click="adjustBet('favor', -1)">
-              <i class="ti ti-minus"></i>
-            </button>
-            <input v-model.number="bets.favor" type="number" :min="0" :max="betLimits.favor.max" class="bet-input" />
-            <button class="adj-btn" :disabled="bets.favor >= betLimits.favor.max" @click="adjustBet('favor', 1)">
-              <i class="ti ti-plus"></i>
-            </button>
-          </div>
-          <span class="bet-range">0 ~ {{ betLimits.favor.max }}</span>
-        </div>
-
-        <!-- 信任度赌注 -->
-        <div class="bet-row">
-          <div class="bet-label">
-            <i class="ti ti-heart-handshake"></i>
-            <span>{{ t('dice.setup.trust') }}</span>
-          </div>
-          <div class="bet-control">
-            <button class="adj-btn" :disabled="bets.trust === 0" @click="adjustBet('trust', -1)">
-              <i class="ti ti-minus"></i>
-            </button>
-            <input v-model.number="bets.trust" type="number" :min="0" :max="betLimits.trust.max" class="bet-input" />
-            <button class="adj-btn" :disabled="bets.trust >= betLimits.trust.max" @click="adjustBet('trust', 1)">
-              <i class="ti ti-plus"></i>
-            </button>
-          </div>
-          <span class="bet-range">0 ~ {{ betLimits.trust.max }}</span>
-        </div>
-
-        <div v-if="hasBets" class="bet-summary">
-          <i class="ti ti-scale"></i>
-          <span
-            >{{ t('dice.setup.betSummary') }}
-            <template v-if="bets.currency > 0"> {{ bets.currency }} {{ playerCurrency.name }}</template>
-            <template v-if="bets.favor > 0"> {{ t('dice.setup.betFavor', { amount: bets.favor }) }}</template>
-            <template v-if="bets.trust > 0"> {{ t('dice.setup.betTrust', { amount: bets.trust }) }}</template>
-          </span>
         </div>
       </div>
     </Transition>
@@ -203,7 +276,7 @@
               <i class="ti ti-target rule-icon"></i>
               <div>
                 <strong>{{ t('dice.setup.rule.targetTitle') }}</strong>
-                <span>{{ t('dice.setup.rule.targetDesc', { score: GAME_CONSTANTS.TARGET_SCORE }) }}</span>
+                <span>{{ t('dice.setup.rule.targetDesc', { score: targetScore }) }}</span>
               </div>
             </div>
             <div class="rule-item">
@@ -250,8 +323,17 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue';
-import { BetType, DICE_TYPE_INFO, DiceType, GAME_CONSTANTS, type NpcConfig } from '../../game/farkle/types';
+import { computed, ref } from 'vue';
+import {
+  BetType,
+  DICE_TYPE_INFO,
+  DiceType,
+  FARKLE_COIN_PER_SCORE,
+  FarkleItemKind,
+  TARGET_TIERS,
+  TIER_BET_RATIOS,
+  type NpcConfig,
+} from '../../game/farkle/types';
 import { useI18n } from '../../i18n';
 import { useDiceGameStore } from '../../stores/diceGame';
 import { useNotificationStore } from '../../stores/notification';
@@ -267,31 +349,171 @@ const availableNpcs = computed(() => store.availableNpcs);
 const selectedNpc = computed(() => store.selectedNpc);
 const diceAssignment = computed(() => store.diceAssignment);
 const playerCurrency = computed(() => store.playerCurrency);
+const coins = computed(() => store.coins);
+const targetTier = computed(() => store.targetTier);
+const targetScore = computed(() => store.targetScore);
+const itemCatalog = computed(() => store.itemCatalog);
+const coinPerScore = FARKLE_COIN_PER_SCORE;
 
-const bets = reactive({ currency: 0, favor: 0, trust: 0 });
+const showShop = ref(false);
+const shopTab = ref<'permanent' | 'consumable'>('permanent');
 
+// 当前分类下可见的道具卡
+const visibleItems = computed(() =>
+  itemCatalog.value.filter(item =>
+    shopTab.value === 'permanent' ? item.kind === FarkleItemKind.Permanent : item.kind === FarkleItemKind.Consumable,
+  ),
+);
+
+// 道具档次：只看种类，不看价格 ——
+// 临时道具 = 普通（绿），永久道具 = 精良（金）
+function itemRarity(item: { kind: FarkleItemKind }) {
+  return item.kind === FarkleItemKind.Consumable ? 'common' : 'rare';
+}
+
+// 永久骰子道具：商店里用什么颜色，进游戏丢的就是什么颜色的骰子。
+// 直接取骰子类型自己的颜色（幸运绿 / 祝福蓝），写进 --dice-color 供整卡描边与图标使用。
+function itemDiceColor(item: { kind: FarkleItemKind; diceType?: DiceType }): Record<string, string> {
+  if (item.kind !== FarkleItemKind.Permanent || !item.diceType) return {};
+  const info = DICE_TYPE_INFO[item.diceType];
+  return {
+    '--dice-color': info.color,
+    '--dice-color-soft': `${info.color}59`,
+    '--dice-color-glow': `${info.color}26`,
+  };
+}
+
+function itemIconClass(item: { diceType?: DiceType }) {
+  if (item.diceType === DiceType.Lucky) return 'icon-lucky';
+  if (item.diceType === DiceType.Blessed) return 'icon-blessed';
+  return '';
+}
+
+// 骰子槽位配色：与商店同一套颜色（幸运绿 / 祝福蓝），普通骰子走默认灰
+function diceSlotColor(type: DiceType): Record<string, string> {
+  const info = DICE_TYPE_INFO[type];
+  if (info.color === DICE_TYPE_INFO[DiceType.Normal].color) return {};
+  return {
+    '--dice-color': info.color,
+    '--dice-color-soft': `${info.color}59`,
+  };
+}
+
+// 首字母大写拼出 i18n key 后缀（luckyDice → LuckyDice）
+function descKeyOf(item: { descKey: string }) {
+  return item.descKey.charAt(0).toUpperCase() + item.descKey.slice(1);
+}
+
+// 档位选项：分数 + 押注上限比例（1/N 形式展示）
+const tierOptions = computed(() =>
+  TARGET_TIERS.map(score => {
+    const ratio = TIER_BET_RATIOS[score];
+    return { score, ratioText: `1/${Math.round(1 / ratio)}` };
+  }),
+);
+
+// 已持有永久道具时在商店按钮上显示数量角标
+const stockBadge = computed(() => store.permanentItems.length);
+
+function itemStock(itemId: string) {
+  return store.itemStock(itemId);
+}
+
+function handleBuy(itemId: string) {
+  const ok = store.buyItem(itemId);
+  if (!ok) {
+    notificationStore.warning(t('dice.setup.buyFail'));
+  }
+}
+
+// 押注内容由「目标档位 + 选中的 NPC」自动决定，不可手动输入：
+// 货币 = 余额 × 该档押注上限比例（并 clamp 到 NPC 关系上限），好感固定 5、信任固定 3。
 const betLimits = computed(() => {
   if (!selectedNpc.value) return { currency: { min: 0, max: 0 }, favor: { min: 0, max: 0 }, trust: { min: 0, max: 0 } };
   return store.getBetLimits(selectedNpc.value);
 });
 
-// 监听赌注变化，自动 clamp 到合法范围（防止用户直接输入超限值）
-watch(bets, () => {
-  for (const key of ['currency', 'favor', 'trust'] as const) {
-    const val = bets[key];
-    const max = betLimits.value[key].max;
-    // 处理 NaN（用户清空输入框）、负数、超限值
-    bets[key] = Number.isFinite(val) ? Math.max(0, Math.min(max, Math.floor(val))) : 0;
-  }
+const FIXED_FAVOR_BET = 5;
+const FIXED_TRUST_BET = 3;
+
+const autoBets = computed(() => {
+  const limits = betLimits.value;
+  return {
+    currency: limits.currency.max,
+    favor: Math.min(FIXED_FAVOR_BET, limits.favor.max),
+    trust: Math.min(FIXED_TRUST_BET, limits.trust.max),
+  };
 });
 
-const hasBets = computed(() => bets.currency > 0 || bets.favor > 0 || bets.trust > 0);
 const canStart = computed(() => !!selectedNpc.value);
 
-const playerDiceInfo = computed(() => {
-  if (!diceAssignment.value) return DICE_TYPE_INFO[DiceType.Normal];
-  return DICE_TYPE_INFO[diceAssignment.value.playerDice];
+// 6 颗骰子的当前类型 + 元数据（开局前可手动替换）
+const playerDiceSlots = computed(() => store.playerDiceTypes.map(type => ({ type, info: DICE_TYPE_INFO[type] })));
+
+// 当前 6 颗骰子的构成摘要：普通骰子 ×4、幸运骰子 ×2
+const playerDiceSummary = computed(() => {
+  const counts = new Map<DiceType, number>();
+  for (const type of store.playerDiceTypes) {
+    counts.set(type, (counts.get(type) ?? 0) + 1);
+  }
+  return Array.from(counts.entries())
+    .map(([type, count]) => `${DICE_TYPE_INFO[type].name} ×${count}`)
+    .join('、');
 });
+
+// 手动替换面板状态
+const swapIndex = ref(-1);
+
+function openSwapPanel(index: number) {
+  swapIndex.value = index;
+}
+
+// 每种特殊骰子已装备几颗（含本局买的），用来判断还能不能换
+const equippedCount = computed(() => {
+  const counts: Partial<Record<DiceType, number>> = {};
+  for (const type of store.playerDiceTypes) {
+    counts[type] = (counts[type] ?? 0) + 1;
+  }
+  return counts;
+});
+
+// 可替换的选项：普通骰子随时可用，特殊骰子需要「库存 - 已装备」还有余量
+const swapOptions = computed(() => {
+  const options: Array<{ type: DiceType; name: string; description: string; stock: number; disabled: boolean }> = [];
+  const base: DiceType[] = [DiceType.Normal, DiceType.Lucky, DiceType.Blessed];
+
+  for (const type of base) {
+    const item = itemCatalog.value.find(i => i.diceType === type);
+    const stock = item ? itemStock(item.id) : 0;
+    const equipped = equippedCount.value[type] ?? 0;
+    // 特殊骰子：手里买了 3 件，最多换 3 颗；把已装备的槽位改成普通骰子会释放份额
+    const disabled = type === DiceType.Normal ? false : stock - equipped <= 0;
+    options.push({
+      type,
+      name: DICE_TYPE_INFO[type].name,
+      description: DICE_TYPE_INFO[type].description,
+      stock,
+      disabled,
+    });
+  }
+  return options;
+});
+
+// 换完后的提示：已装备 / 可装备总数（按特殊骰子库存上限算）
+const swapHint = computed(() => {
+  const equipped = store.playerDiceTypes.filter(t => t !== DiceType.Normal).length;
+  const total = swapOptions.value.filter(o => o.type !== DiceType.Normal).reduce((sum, o) => sum + o.stock, 0);
+  return t('dice.setup.swapHint', { count: equipped, total });
+});
+
+function applySwap(diceType: DiceType) {
+  if (swapIndex.value === -1) return;
+  const ok = store.replacePlayerDice(swapIndex.value, diceType);
+  if (!ok) {
+    notificationStore.warning(t('dice.setup.swapNoStock', { name: DICE_TYPE_INFO[diceType].name }));
+  }
+  swapIndex.value = -1;
+}
 
 const npcDiceInfo = computed(() => {
   if (!diceAssignment.value) return DICE_TYPE_INFO[DiceType.Normal];
@@ -345,24 +567,15 @@ function handleSelectNpc(npcItem: NpcConfig) {
   const check = canGamble(npcItem);
   if (!check.canGamble) return;
   store.selectNpc(npcItem);
-  bets.currency = 0;
-  bets.favor = 0;
-  bets.trust = 0;
-}
-
-function adjustBet(type: 'currency' | 'favor' | 'trust', delta: number) {
-  const newVal = bets[type] + delta;
-  const limits = betLimits.value[type];
-  bets[type] = Math.max(0, Math.min(limits.max, newVal));
 }
 
 async function handleStart() {
   if (!canStart.value) return;
 
   const betItems = [];
-  if (bets.currency > 0) betItems.push({ type: BetType.Currency as const, amount: bets.currency });
-  if (bets.favor > 0) betItems.push({ type: BetType.Favor as const, amount: bets.favor });
-  if (bets.trust > 0) betItems.push({ type: BetType.Trust as const, amount: bets.trust });
+  if (autoBets.value.currency > 0) betItems.push({ type: BetType.Currency as const, amount: autoBets.value.currency });
+  if (autoBets.value.favor > 0) betItems.push({ type: BetType.Favor as const, amount: autoBets.value.favor });
+  if (autoBets.value.trust > 0) betItems.push({ type: BetType.Trust as const, amount: autoBets.value.trust });
 
   store.setBets(betItems);
 
@@ -581,6 +794,347 @@ async function handleStart() {
   font-size: var(--text-lg);
 }
 
+/* ===== 档位选择 ===== */
+.coin-badge {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border-radius: var(--ui-radius-sm);
+  background: rgba(var(--accent-warning-rgb), 0.15);
+  color: var(--accent-warning);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  font-family: var(--font-mono);
+}
+
+.tier-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tier-card {
+  flex: 1;
+  min-width: 90px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 6px;
+  border: 1px solid var(--card-border);
+  border-radius: var(--ui-radius-sm);
+  background: var(--bg-primary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.tier-card:hover {
+  border-color: rgba(var(--accent-primary-rgb), 0.4);
+}
+
+.tier-card.selected {
+  border-color: var(--accent-primary);
+  background: rgba(var(--accent-primary-rgb), 0.08);
+}
+
+.tier-score {
+  font-size: var(--text-base);
+  font-weight: 700;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+}
+
+.tier-card.selected .tier-score {
+  color: var(--accent-primary);
+}
+
+.tier-bet {
+  font-size: calc(var(--text-xs) - 1px);
+  color: var(--text-tertiary);
+}
+
+/* ===== 道具店（分类 + 卡面网格） ===== */
+.item-shop-toggle {
+  margin-top: 10px;
+  border-top: 1px solid var(--card-border);
+  padding-top: 8px;
+}
+
+.shop-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border: 1px solid var(--card-border);
+  border-radius: var(--ui-radius-sm);
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.shop-btn:hover {
+  border-color: rgba(var(--accent-primary-rgb), 0.4);
+  color: var(--accent-primary);
+}
+
+.shop-btn .toggle-icon {
+  margin-left: auto;
+}
+
+.shop-badge {
+  margin-left: auto;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--accent-success);
+  color: white;
+  font-size: calc(var(--text-xs) - 2px);
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.item-shop {
+  padding-top: 8px;
+}
+
+.shop-hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 8px;
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+.shop-hint i {
+  flex-shrink: 0;
+  color: var(--accent-primary);
+}
+
+/* 分类页签 */
+.shop-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  margin-bottom: 8px;
+  background: var(--bg-primary);
+  border: 1px solid var(--card-border);
+  border-radius: var(--ui-radius-sm);
+}
+
+.shop-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 5px 8px;
+  border: none;
+  border-radius: calc(var(--ui-radius-sm) - 2px);
+  background: transparent;
+  color: var(--text-tertiary);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.shop-tab:hover {
+  color: var(--text-secondary);
+}
+
+.shop-tab.active {
+  background: var(--gradient-primary);
+  color: white;
+}
+
+/* 卡面网格 */
+.shop-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.item-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 8px;
+  border: 1px solid var(--card-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--bg-primary);
+  transition: all var(--transition-normal);
+}
+
+.item-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+/* 已持有：只做「已持有」角标提示，不降透明度、不挡购买（道具可叠加买多个） */
+.item-card.owned {
+  border-color: rgba(var(--accent-success-rgb), 0.5);
+}
+
+.item-card.owned .item-card-icon::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--ui-radius-sm);
+  border: 2px solid var(--accent-success);
+}
+
+/* 档次描边（只看种类，不看价格） */
+.item-card.rarity-common {
+  border-color: rgba(var(--accent-success-rgb), 0.35);
+  background: linear-gradient(160deg, rgba(var(--accent-success-rgb), 0.06), var(--bg-primary) 60%);
+}
+
+.item-card.rarity-rare {
+  border-color: rgba(var(--accent-primary-rgb), 0.4);
+  background: linear-gradient(160deg, rgba(var(--accent-primary-rgb), 0.08), var(--bg-primary) 60%);
+}
+
+/* 卡面骰子图标 */
+.item-card-icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--ui-radius-sm);
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--text-secondary);
+  font-size: calc(var(--text-xl) + 4px);
+}
+
+.item-card.rarity-common .item-card-icon {
+  color: var(--accent-success);
+}
+
+/* 永久骰子：图标与描边都用骰子类型自己的颜色（幸运绿 / 祝福蓝） */
+.item-card:has(.icon-lucky) {
+  border-color: var(--dice-color-soft);
+  background: linear-gradient(160deg, var(--dice-color-glow), var(--bg-primary) 60%);
+}
+.item-card:has(.icon-blessed) {
+  border-color: var(--dice-color-soft);
+  background: linear-gradient(160deg, var(--dice-color-glow), var(--bg-primary) 60%);
+}
+
+.item-card .icon-lucky {
+  color: var(--dice-color);
+  text-shadow: 0 0 10px var(--dice-color-glow);
+}
+.item-card .icon-blessed {
+  color: var(--dice-color);
+  text-shadow: 0 0 10px var(--dice-color-glow);
+}
+
+.item-owned-flag {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent-success);
+  color: white;
+  font-size: calc(var(--text-xs) - 2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.item-card-name {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.item-card-stock {
+  font-size: calc(var(--text-xs) - 2px);
+  font-weight: 600;
+  color: var(--accent-success);
+  font-family: var(--font-mono);
+}
+
+.item-card-desc {
+  margin: 0;
+  font-size: var(--text-xs);
+  line-height: 1.4;
+  color: var(--text-tertiary);
+  text-align: center;
+  flex: 1;
+}
+
+.item-card-foot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding-top: 4px;
+  border-top: 1px solid var(--card-border);
+}
+
+.item-card-price {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--accent-warning);
+  font-family: var(--font-mono);
+}
+
+.buy-btn {
+  margin-left: auto;
+  padding: 3px 10px;
+  border: none;
+  border-radius: var(--ui-radius-sm);
+  background: var(--gradient-primary);
+  color: white;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.buy-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(var(--accent-primary-rgb), 0.3);
+}
+
+.buy-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.dice-buff-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  padding: 1px 8px;
+  border-radius: var(--ui-radius-sm);
+  background: rgba(var(--accent-primary-rgb), 0.12);
+  color: var(--accent-primary);
+  font-size: calc(var(--text-xs) - 2px);
+  font-weight: 600;
+}
+
 /* ===== NPC 列表 ===== */
 .npc-list {
   display: flex;
@@ -781,6 +1335,144 @@ async function handleStart() {
   font-weight: 600;
   color: var(--dice-color, var(--text-primary));
 }
+
+/* 玩家 6 颗骰子槽位（开局前可点击替换） */
+.dice-slots {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+
+.dice-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 2px;
+  border-radius: var(--ui-radius-sm);
+  border: 1px solid var(--card-border);
+  background: var(--bg-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.dice-slot:hover {
+  border-color: var(--accent-primary);
+  transform: translateY(-1px);
+}
+.dice-slot i {
+  font-size: var(--text-lg);
+  color: #9ca3af;
+}
+.dice-slot .slot-name {
+  font-size: calc(var(--text-xs) - 2px);
+  color: var(--text-tertiary);
+}
+.dice-slot.is-lucky {
+  border-color: var(--dice-color-soft);
+}
+.dice-slot.is-lucky i {
+  color: var(--dice-color);
+}
+.dice-slot.is-blessed {
+  border-color: var(--dice-color-soft);
+}
+.dice-slot.is-blessed i {
+  color: var(--dice-color);
+}
+
+/* 开局前手动替换面板 */
+.dice-swap-panel {
+  margin-top: 8px;
+  padding: 8px;
+  background: var(--bg-primary);
+  border: 1px solid var(--card-border);
+  border-radius: var(--ui-radius-sm);
+}
+
+.swap-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+.swap-header i:first-child {
+  color: var(--accent-primary);
+}
+.swap-close {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: var(--ui-radius-sm);
+}
+.swap-close:hover {
+  color: var(--accent-danger);
+  background: rgba(var(--accent-danger-rgb), 0.1);
+}
+
+.swap-options {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.swap-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 4px;
+  border-radius: var(--ui-radius-sm);
+  border: 1px solid var(--card-border);
+  background: var(--bg-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+}
+.swap-option:hover:not(:disabled) {
+  border-color: var(--accent-primary);
+}
+.swap-option:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.swap-option i {
+  font-size: var(--text-lg);
+  color: #9ca3af;
+}
+.swap-option.is-lucky i {
+  color: var(--dice-color);
+}
+.swap-option.is-blessed i {
+  color: var(--dice-color);
+}
+.swap-option-name {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.swap-option-desc {
+  font-size: calc(var(--text-xs) - 2px);
+  color: var(--text-tertiary);
+  line-height: 1.2;
+}
+.swap-option-stock {
+  font-size: calc(var(--text-xs) - 2px);
+  color: var(--accent-primary);
+}
+
+.swap-hint {
+  margin: 6px 0 0;
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  text-align: center;
+}
+
 .dice-desc {
   font-size: calc(var(--text-xs) - 1px);
   color: var(--text-tertiary);
@@ -820,110 +1512,43 @@ async function handleStart() {
 }
 
 /* ===== 赌注 ===== */
-.bet-row {
+/* 押注金额由档位与 NPC 自动决定，只读展示（无输入框） */
+.bet-fixed {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 0;
-  border-bottom: 1px solid var(--card-border);
-}
-
-.bet-row:last-of-type {
-  border-bottom: none;
-}
-
-.bet-label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: var(--text-sm);
-  font-weight: 500;
-  color: var(--text-secondary);
-  min-width: 80px;
-}
-
-.bet-label i {
-  font-size: var(--text-base);
-  color: var(--accent-primary);
-}
-
-.bet-control {
-  display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 4px;
-  flex: 1;
-}
-
-.adj-btn {
-  width: 28px;
-  height: 28px;
-  border: 1px solid var(--card-border);
-  border-radius: var(--ui-radius-sm);
-  background: var(--bg-primary);
-  color: var(--text-secondary);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(var(--text-xs) - 1px);
-  transition: all var(--transition-fast);
-}
-
-.adj-btn:hover:not(:disabled) {
-  border-color: var(--accent-primary);
-  color: var(--accent-primary);
-}
-.adj-btn:disabled {
-  opacity: 0.3;
-}
-
-.bet-input {
-  width: 60px;
-  text-align: center;
-  padding: 4px;
-  border: 1px solid var(--card-border);
-  border-radius: var(--ui-radius-sm);
-  background: var(--card-bg-strong);
-  font-size: var(--text-base);
-  font-weight: 600;
-  color: var(--text-primary);
-  font-family: var(--font-mono);
-  appearance: textfield;
-  -moz-appearance: textfield;
-}
-
-.bet-input:focus {
-  outline: none;
-  border-color: var(--accent-primary);
-}
-.bet-input::-webkit-inner-spin-button,
-.bet-input::-webkit-outer-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-
-.bet-range {
-  font-size: calc(var(--text-xs) - 1px);
-  color: var(--text-tertiary);
-  white-space: nowrap;
-}
-
-.bet-summary {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 8px;
-  padding: 8px 10px;
+  padding: 10px 12px;
   background: rgba(var(--accent-success-rgb), 0.06);
   border: 1px solid rgba(var(--accent-success-rgb), 0.15);
   border-radius: var(--ui-radius-sm);
-  font-size: var(--text-sm);
-  font-weight: 500;
-  color: var(--accent-success);
 }
 
-.bet-summary i {
-  font-size: var(--text-lg);
+.bet-fixed-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.bet-fixed-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.bet-fixed-label i {
+  font-size: var(--text-base);
+  color: var(--accent-primary);
+}
+
+.bet-fixed-value {
+  font-size: var(--text-base);
+  font-weight: 700;
+  color: var(--accent-success);
+  font-family: var(--font-mono);
 }
 
 /* ===== 开始按钮 ===== */
@@ -1004,13 +1629,6 @@ async function handleStart() {
   }
   .vs-divider {
     padding: 4px 0;
-  }
-  .bet-row {
-    flex-wrap: wrap;
-  }
-  .bet-range {
-    width: 100%;
-    text-align: right;
   }
 }
 </style>

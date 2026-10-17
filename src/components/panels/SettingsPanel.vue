@@ -13,7 +13,11 @@
       <button :class="{ active: currentTab === 'api' }" @click="currentTab = 'api'">
         {{ t('settings.tab.api') }}
       </button>
-      <button :class="{ active: currentTab === 'worldbook' }" @click="currentTab = 'worldbook'">
+      <button
+        v-if="!props.hideWorldbookTab"
+        :class="{ active: currentTab === 'worldbook' }"
+        @click="currentTab = 'worldbook'"
+      >
         {{ t('settings.tab.worldbookManager') }}
       </button>
       <button :class="{ active: currentTab === 'archive' }" @click="currentTab = 'archive'">
@@ -464,7 +468,11 @@
                 <button class="inline-icon-btn ui-icon-btn" :disabled="index === 0" @click="moveApiUp(index)">
                   <i class="ti ti-arrow-up"></i>
                 </button>
-                <button class="inline-icon-btn ui-icon-btn" :disabled="index === apiPool.length - 1" @click="moveApiDown(index)">
+                <button
+                  class="inline-icon-btn ui-icon-btn"
+                  :disabled="index === apiPool.length - 1"
+                  @click="moveApiDown(index)"
+                >
                   <i class="ti ti-arrow-down"></i>
                 </button>
                 <button class="inline-icon-btn ui-icon-btn" @click="duplicateApiAndPersist(index)">
@@ -512,7 +520,11 @@
                     :placeholder="t('settings.modelPlaceholder')"
                     class="model-select"
                   />
-                  <button class="inline-icon-btn ui-icon-btn" :disabled="isLoadingById[api.id]" @click="fetchModels(index, api.id)">
+                  <button
+                    class="inline-icon-btn ui-icon-btn"
+                    :disabled="isLoadingById[api.id]"
+                    @click="fetchModels(index, api.id)"
+                  >
                     <i :class="['ti', isLoadingById[api.id] ? 'ti-loader-2 ti-spin' : 'ti-download']"></i>
                   </button>
                 </div>
@@ -812,7 +824,7 @@
       </div>
     </div>
 
-    <div v-show="currentTab === 'worldbook'" class="api-dashboard">
+    <div v-if="!props.hideWorldbookTab" v-show="currentTab === 'worldbook'" class="api-dashboard">
       <section class="panel-section settings-management-panel">
         <div class="worldbook-workspace-shell compact-worldbook-shell">
           <article class="worldbook-entry-list-card worldbook-compact-card">
@@ -821,11 +833,29 @@
                 <span class="summary-label">{{ t('contentCenter.worldbook.editableSectionTitle') }}</span>
                 <h5>{{ t('contentCenter.worldbook.editableSectionSubtitle') }}</h5>
               </div>
-              <button class="primary-btn compact-action-btn" type="button" @click="addEditableEntry">
-                <i class="ti ti-plus"></i>
-                {{ t('contentCenter.worldbook.addEntry') }}
-              </button>
+              <div class="button-group-wrap preset-import-actions">
+                <button class="primary-btn compact-action-btn" type="button" @click="addEditableEntry">
+                  <i class="ti ti-plus"></i>
+                  {{ t('contentCenter.worldbook.addEntry') }}
+                </button>
+                <button class="ghost-btn compact-action-btn" type="button" @click="triggerTavernWorldbookImport">
+                  <i class="ti ti-file-import"></i>
+                  {{ t('contentCenter.worldbook.importTavernButton') }}
+                </button>
+              </div>
             </div>
+
+            <input
+              ref="tavernWorldbookImportInputRef"
+              class="file-input-hidden"
+              type="file"
+              accept=".json,application/json"
+              @change="handleTavernWorldbookFileChange"
+            />
+
+            <p v-if="tavernWorldbookImportStatus" class="preset-import-status">
+              {{ tavernWorldbookImportStatus }}
+            </p>
 
             <p class="workspace-help-text workspace-help-text--compact">
               {{
@@ -1328,11 +1358,28 @@ import { useSetupStore } from '../../stores/setup';
 import DeclarationModal from './DeclarationModal.vue';
 import ImageGenerationSettingsCard from './ImageGenerationSettingsCard.vue';
 import { useStandaloneArchiveManager } from '../../composables/useStandaloneArchiveManager';
+import { parseStandaloneTavernWorldbookDocument } from '../../utils/standaloneWorldbookImport';
 import { STAGE_SUMMARY_THRESHOLD_OPTIONS } from '../../utils/stageSummaryThreshold';
 
 const currentTab = ref<'ui' | 'features' | 'textToImage' | 'api' | 'worldbook' | 'archive'>('ui');
 const showDeclaration = ref(false);
 const { t } = useI18n();
+
+// 世界书 tab 的显示开关。
+// 首页（开局向导那一层）点「游戏设置」弹出来的面板要把世界书 tab 藏掉 ——
+// 世界书跟着存档走，开局阶段还没有存档，露出来只会让人误以为它能跨局共用。
+// 进游戏后从左侧栏 / 底部导航弹出的面板不传这个开关，世界书 tab 照常显示，
+// 上一轮加的「导入酒馆世界书」按钮也在那一侧。
+// ⚠️ 必须是「整包赋值」：写成 `const hideWorldbookTab = withDefaults(...).hideWorldbookTab`
+// 编译器不展开那种写法，withDefaults 会原样进产物并直接抛错，整个面板白屏。
+const props = withDefaults(
+  defineProps<{
+    hideWorldbookTab?: boolean;
+  }>(),
+  {
+    hideWorldbookTab: false,
+  },
+);
 
 const settingsStore = useSettingsStore();
 const setupStore = useSetupStore();
@@ -1432,6 +1479,8 @@ const expandedSystemAssetId = ref<string | null>(null);
 const selectedEditableEntryIndex = ref(0);
 const editableEntryKeyMap = new WeakMap<LocalContentEntryConfig, string>();
 let editableEntryKeySeed = 0;
+const tavernWorldbookImportInputRef = ref<HTMLInputElement | null>(null);
+const tavernWorldbookImportStatus = ref('');
 
 const survivalModeFromStatData = computed<SurvivalMode>(() => {
   const mode = data.value.设置?.生存系统模式;
@@ -1733,6 +1782,49 @@ function addEditableEntry() {
   selectedEditableEntryIndex.value = entries.length - 1;
 }
 
+function triggerTavernWorldbookImport() {
+  tavernWorldbookImportInputRef.value?.click();
+}
+
+async function handleTavernWorldbookFileChange(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  if (!file) {
+    return;
+  }
+
+  try {
+    const rawText = await file.text();
+    const result = parseStandaloneTavernWorldbookDocument(rawText);
+    if (result.entries.length === 0) {
+      tavernWorldbookImportStatus.value = t('contentCenter.worldbook.importTavernNoEntries');
+      return;
+    }
+
+    const entries = ensureEditableEntries();
+    if (!entries) {
+      tavernWorldbookImportStatus.value = t('contentCenter.worldbook.importTavernNoEntries');
+      return;
+    }
+
+    entries.push(...result.entries);
+    tavernWorldbookImportStatus.value = t('contentCenter.worldbook.importTavernSuccess', {
+      count: result.entries.length,
+    });
+    if (result.disabledCount > 0) {
+      tavernWorldbookImportStatus.value += t('contentCenter.worldbook.importTavernSkipped', {
+        skipped: result.disabledCount,
+      });
+    }
+  } catch (error) {
+    tavernWorldbookImportStatus.value = t('contentCenter.worldbook.importTavernFailed', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  } finally {
+    input.value = '';
+  }
+}
+
 function deleteEditableEntry(index: number) {
   const entries = ensureEditableEntries();
   if (!entries || !entries[index]) {
@@ -1955,7 +2047,8 @@ function toggleMapApiSelection(id: string) {
     : [...mapApiIds.value, id];
 }
 
-function toggleReviewApiSelection(id: string) {  reviewApiIds.value = reviewApiIds.value.includes(id)
+function toggleReviewApiSelection(id: string) {
+  reviewApiIds.value = reviewApiIds.value.includes(id)
     ? reviewApiIds.value.filter(item => item !== id)
     : [...reviewApiIds.value, id];
 }

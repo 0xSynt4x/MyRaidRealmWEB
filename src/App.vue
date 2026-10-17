@@ -12,7 +12,8 @@
     <template v-if="showWizard">
       <div class="wizard-container">
         <SetupWizard @complete="handleWizardComplete" />
-        <OverlayPanel />
+        <!-- 首页这一层弹出的设置面板不带世界书 tab（世界书跟着存档走，开局阶段没有） -->
+        <OverlayPanel is-wizard-overlay />
       </div>
     </template>
 

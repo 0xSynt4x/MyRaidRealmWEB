@@ -15,19 +15,24 @@ import {
 let dieIdCounter = 0;
 
 /**
- * 根据骰子类型掷出一颗骰子
- * 特殊骰子会调整1和5的出现概率
+ * 掷出一颗骰子
+ * 概率 = 全局偏置（NPC 按信任度分配的那类骰子）× 该颗自身偏置（永久道具替换），
+ * 两者叠乘后除以基准 1/6 归一化；只带其中一种偏置时效果与该偏置本身等同。
  */
-export function rollSingleDie(diceType: DiceType = DiceType.Normal): DieValue {
-  const bias = DICE_TYPE_INFO[diceType].bias;
-  const rand = Math.random();
+export function rollSingleDie(
+  diceType: DiceType = DiceType.Normal,
+  globalDice: DiceType = DiceType.Normal,
+): DieValue {
+  const info = DICE_TYPE_INFO[diceType];
+  const global = DICE_TYPE_INFO[globalDice];
+  const base = 1 / 6;
 
-  // 1和5的基础概率各为 1/6 ≈ 0.1667
-  const prob1 = 1 / 6 + bias;
-  const prob5 = 1 / 6 + bias;
+  const prob1 = ((base + global.bias1) * (base + info.bias1)) / base;
+  const prob5 = ((base + global.bias5) * (base + info.bias5)) / base;
   // 其余点数(2,3,4,6)均分剩余概率
-  const probOther = (1 - prob1 - prob5) / 4;
+  const probOther = Math.max(0, (1 - prob1 - prob5) / 4);
 
+  const rand = Math.random();
   if (rand < prob1) return 1;
   if (rand < prob1 + probOther) return 2;
   if (rand < prob1 + probOther * 2) return 3;
@@ -38,11 +43,20 @@ export function rollSingleDie(diceType: DiceType = DiceType.Normal): DieValue {
 
 /**
  * 掷出指定数量的骰子
+ * @param count 数量
+ * @param diceTypes 每颗骰子自身的类型（长度不足时用 Normal 兜底；传单个类型则整组同一类型）
+ * @param globalDice 本局全局骰子类型（玩家来自 NPC 分配，NPC 自身即该类型）
  */
-export function rollDice(count: number, diceType: DiceType = DiceType.Normal): Die[] {
-  return Array.from({ length: count }, () => ({
+export function rollDice(
+  count: number,
+  diceTypes: DiceType[] | DiceType = DiceType.Normal,
+  globalDice: DiceType = DiceType.Normal,
+): Die[] {
+  const types = Array.isArray(diceTypes) ? diceTypes : Array.from({ length: count }, () => diceTypes);
+  return Array.from({ length: count }, (_, i) => ({
     id: ++dieIdCounter,
-    value: rollSingleDie(diceType),
+    value: rollSingleDie(types[i] ?? DiceType.Normal, globalDice),
+    diceType: types[i] ?? DiceType.Normal,
     held: false,
     scoring: false,
     justRolled: true,
@@ -282,10 +296,11 @@ export function isHotDice(dice: Die[]): boolean {
 }
 
 /**
- * 获取骰子类型的概率偏移
+ * 获取骰子类型的概率偏移（取 1 面与 5 面偏移的较大值）
  */
 export function getDiceBias(diceType: DiceType): number {
-  return DICE_TYPE_INFO[diceType].bias;
+  const info = DICE_TYPE_INFO[diceType];
+  return Math.max(info.bias1, info.bias5);
 }
 
 /**

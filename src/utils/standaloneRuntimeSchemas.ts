@@ -130,6 +130,23 @@ export const StandaloneRuntimeMapStateSchema = z
   })
   .prefault({});
 
+/**
+ * Farkle 骰子游戏账本：Farkle 币余额与已购道具（永久 + 临时库存）。
+ *
+ * 与主货币、积分系统的积分完全隔离：不进 stat_data（AI 看不到也改不到），
+ * 只由前端维护，跟着会话存、读档一起回来。
+ */
+export const StandaloneRuntimeFarkleStateSchema = z
+  .object({
+    /** Farkle 币余额 */
+    币: z.coerce.number().int().nonnegative().default(0),
+    /** 已购买的永久道具 id（始终生效） */
+    永久道具: z.array(z.string()).default([]),
+    /** 临时道具库存：id → 剩余数量 */
+    临时道具: z.record(z.string(), z.coerce.number().int().nonnegative()).default({}),
+  })
+  .prefault({});
+
 export const StandaloneRuntimeSessionSchema = z
   .object({
     id: z.string().min(1),
@@ -160,6 +177,10 @@ export const StandaloneRuntimeSessionSchema = z
      * 地图地点树：不进 stat_data，只由前端维护；跟着会话存，读档时一起回来。
      */
     map_state: StandaloneRuntimeMapStateSchema,
+    /**
+     * Farkle 骰子游戏账本：不进 stat_data，只由前端维护；跟着会话存，读档时一起回来。
+     */
+    farkle_state: StandaloneRuntimeFarkleStateSchema,
   })
   .transform(session => ({
     ...session,
@@ -268,6 +289,7 @@ export type StandaloneRuntimeSession = z.infer<typeof StandaloneRuntimeSessionSc
 export type StandaloneRuntimeLotteryState = z.infer<typeof StandaloneRuntimeLotteryStateSchema>;
 export type StandaloneRuntimeMapNode = z.infer<typeof StandaloneRuntimeMapNodeSchema>;
 export type StandaloneRuntimeMapState = z.infer<typeof StandaloneRuntimeMapStateSchema>;
+export type StandaloneRuntimeFarkleState = z.infer<typeof StandaloneRuntimeFarkleStateSchema>;
 export type StandaloneRuntimeMessageRole = z.infer<typeof StandaloneRuntimeMessageRoleSchema>;
 export type StandaloneRuntimeMessageBodyPage = z.infer<typeof StandaloneRuntimeMessageBodyPageSchema>;
 export type StandaloneRuntimeMessageRecord = z.infer<typeof StandaloneRuntimeMessageRecordSchema>;

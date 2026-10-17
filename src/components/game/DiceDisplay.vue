@@ -12,10 +12,13 @@
             selected: !die.held && die.scoring && !die.justRolled,
             'not-scoring': !die.scoring && !die.held,
             rolling: isAnimating,
+            'die-lucky': die.diceType === 'lucky',
+            'die-blessed': die.diceType === 'blessed',
+            targetable: !die.held && !!props.targeting,
           },
         ]"
-        :disabled="!canSelect || die.held || !die.scoring"
-        @click="$emit('toggle', die.id)"
+        :disabled="isDisabled(die)"
+        @click="handleDieClick(die)"
       >
         <span class="die-face"><i class="ti" :class="dieFaces[die.value]"></i></span>
         <span v-if="die.held" class="die-badge held-badge">
@@ -50,13 +53,31 @@ const props = defineProps<{
   dice: Die[];
   canSelect: boolean;
   isAnimating: boolean;
+  /** 是否处于「指定骰」道具的瞄准状态（点了骰子不改选中，而是直接把点数改成 1） */
+  targeting?: boolean;
 }>();
 
-defineEmits<{
+const emit = defineEmits<{
   toggle: [dieId: number];
+  target: [dieId: number];
 }>();
 
 const { t } = useI18n();
+
+/** 瞄准状态下只有未保留骰子可点（已保留的不能改） */
+function isDisabled(die: Die): boolean {
+  if (props.targeting) return die.held || props.isAnimating;
+  return !props.canSelect || die.held || !die.scoring;
+}
+
+/** 点击骰子：瞄准状态走「指定」，否则走「选中/取消」 */
+function handleDieClick(die: Die) {
+  if (props.targeting) {
+    if (!die.held) emit('target', die.id);
+    return;
+  }
+  emit('toggle', die.id);
+}
 
 const dieFaces: Record<DieValue, string> = {
   1: 'ti-dice-1',
@@ -167,11 +188,53 @@ const comboDetail = computed(() => {
   cursor: default;
 }
 
+/* 幸运骰子 - 微绿 */
+.die.die-lucky {
+  border-color: rgba(34, 197, 94, 0.55);
+  background: rgba(34, 197, 94, 0.08);
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.15);
+}
+.die.die-lucky .die-face {
+  color: #22c55e;
+}
+
+/* 祝福骰子 - 微蓝（浅一档，与商店同色） */
+.die.die-blessed {
+  border-color: rgba(96, 165, 250, 0.55);
+  background: rgba(96, 165, 250, 0.08);
+  box-shadow: 0 0 8px rgba(96, 165, 250, 0.15);
+}
+.die.die-blessed .die-face {
+  color: #60a5fa;
+}
+
+/* 已保留的特殊骰子仍保留类型色调，但降低亮度 */
+.die.held.die-lucky {
+  border-color: rgba(34, 197, 94, 0.35);
+  background: rgba(34, 197, 94, 0.04);
+}
+.die.held.die-blessed {
+  border-color: rgba(96, 165, 250, 0.35);
+  background: rgba(96, 165, 250, 0.04);
+}
+
 /* 得分骰子 - 可选 */
 .die.scoring {
   border-color: rgba(var(--accent-success-rgb), 0.5);
   background: rgba(var(--accent-success-rgb), 0.06);
   animation: pulse-score 1.5s ease-in-out infinite;
+}
+
+/* 特殊骰子被选中时，保留类型色调 + 选中高亮 */
+.die.selected.die-lucky {
+  border-color: #22c55e;
+  background: rgba(34, 197, 94, 0.18);
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.35);
+}
+.die.selected.die-blessed {
+  border-color: #60a5fa;
+  background: rgba(96, 165, 250, 0.18);
+  box-shadow: 0 0 12px rgba(96, 165, 250, 0.35);
 }
 
 /* 已选中 */
@@ -192,6 +255,17 @@ const comboDetail = computed(() => {
 /* 不得分 */
 .die.not-scoring {
   opacity: 0.4;
+}
+
+/* 「指定骰」瞄准态：未保留骰子全部可点，虚线描边提示 */
+.die.targetable {
+  border-style: dashed;
+  border-color: rgba(var(--accent-warning-rgb), 0.7);
+  box-shadow: 0 0 10px rgba(var(--accent-warning-rgb), 0.25);
+  animation: pulse-score 1.2s ease-in-out infinite;
+}
+.die.targetable .die-face {
+  color: var(--accent-warning);
 }
 
 /* 掷骰动画 */

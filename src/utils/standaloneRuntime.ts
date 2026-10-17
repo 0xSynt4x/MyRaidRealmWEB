@@ -2,10 +2,12 @@ import type { LocalContentEntryConfig, PresetConfig } from '../presets/types';
 import type { StandaloneLocalContentSettings } from '../stores/settings';
 import { createStandaloneRuntimeWorldbookContext } from './standaloneLocalContent';
 import {
+  StandaloneRuntimeFarkleStateSchema,
   StandaloneRuntimeLotteryStateSchema,
   StandaloneRuntimeMapStateSchema,
   StandaloneRuntimeMessagesSchema,
   StandaloneRuntimeSessionSchema,
+  type StandaloneRuntimeFarkleState,
   type StandaloneRuntimeLotteryState,
   type StandaloneRuntimeMapState,
   type StandaloneRuntimeMessages,
@@ -369,6 +371,31 @@ export function persistStandaloneMapState(state: StandaloneRuntimeMapState): Sta
   persistStandaloneRuntimeSession(nextSession);
 
   return nextSession.map_state;
+}
+
+/** Farkle 账本（币 + 道具库存）：完全由前端维护，跟着会话存、读档一起回来 */
+export function resolveStandaloneFarkleState(): StandaloneRuntimeFarkleState {
+  const session = loadStandaloneRuntimeSession();
+
+  return StandaloneRuntimeFarkleStateSchema.parse(session?.farkle_state ?? {});
+}
+
+export function persistStandaloneFarkleState(state: StandaloneRuntimeFarkleState): StandaloneRuntimeFarkleState {
+  const session = loadStandaloneRuntimeSession();
+
+  if (!session) {
+    throw new Error('当前没有可写入的会话，无法保存 Farkle 账本');
+  }
+
+  const nextSession = StandaloneRuntimeSessionSchema.parse({
+    ...session,
+    farkle_state: StandaloneRuntimeFarkleStateSchema.parse(state),
+    updatedAt: new Date().toISOString(),
+  });
+
+  persistStandaloneRuntimeSession(nextSession);
+
+  return nextSession.farkle_state;
 }
 
 export function loadStandaloneRuntimeMessages(): StandaloneRuntimeMessages | null {

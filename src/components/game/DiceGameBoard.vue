@@ -13,7 +13,7 @@
       <div class="score-center">
         <div class="target-info">
           <span class="target-label">{{ t('dice.board.target') }}</span>
-          <span class="target-value">{{ GAME_CONSTANTS.TARGET_SCORE }}</span>
+          <span class="target-value">{{ targetScore }}</span>
         </div>
         <div class="round-info">
           <span>{{ t('dice.board.round', { turn: turnNumber }) }}</span>
@@ -21,6 +21,10 @@
         <div v-if="isLastRound" class="last-round-badge">
           <i class="ti ti-alert-triangle"></i>
           <span>{{ t('dice.board.lastRound') }}</span>
+        </div>
+        <div v-if="hotDiceMultiplier > 1" class="hot-badge">
+          <i class="ti ti-flame"></i>
+          <span>{{ t('dice.board.hotDiceMultiplier', { value: hotDiceMultiplier.toFixed(3) }) }}</span>
         </div>
         <!-- 帮助按钮 -->
         <button
@@ -66,9 +70,21 @@
       <span>{{ contextHint }}</span>
     </div>
 
+    <!-- 「指定骰」瞄准提示 -->
+    <div v-if="isTargeting" class="context-hint hint-target">
+      <span>{{ t('dice.board.targetHint') }}</span>
+    </div>
+
     <!-- 骰子区域 -->
     <div class="dice-section">
-      <DiceDisplay :dice="dice" :can-select="canSelectDice" :is-animating="isAnimating" @toggle="handleToggle" />
+      <DiceDisplay
+        :dice="dice"
+        :can-select="canSelectDice"
+        :is-animating="isAnimating"
+        :targeting="isTargeting"
+        @toggle="handleToggle"
+        @target="handleTarget"
+      />
     </div>
 
     <!-- NPC 状态提示 -->
@@ -76,6 +92,37 @@
       <div class="npc-thinking">
         <i class="ti ti-brain"></i>
         <span>{{ npcActionText }}</span>
+      </div>
+    </div>
+
+    <!-- 本局道具 -->
+    <div v-if="usableItems.length > 0" class="item-bar">
+      <span class="item-bar-title">
+        <i class="ti ti-backpack"></i>
+        {{ t('dice.board.items') }}
+      </span>
+      <div class="item-bar-list">
+        <template v-for="item in usableItems" :key="item.id">
+          <button
+            v-if="!item.usedThisRound"
+            class="item-chip"
+            :class="{ targeting: item.id === 'swap_die' && isTargeting }"
+            :disabled="!item.usable"
+            :title="t(item.descKey)"
+            @click="handleUseItem(item)"
+          >
+            <i class="ti ti-potion"></i>
+            <span>{{ item.name }}</span>
+            <span class="item-chip-tag">{{
+              item.id === 'swap_die' && isTargeting ? t('dice.board.cancelTarget') : t('dice.board.useItem')
+            }}</span>
+          </button>
+          <span v-else class="item-chip used" :title="t(item.descKey)">
+            <i class="ti ti-potion"></i>
+            <span>{{ item.name }}</span>
+            <span class="item-chip-tag">{{ t('dice.board.usedItem') }}</span>
+          </span>
+        </template>
       </div>
     </div>
 
@@ -143,7 +190,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue';
-import { GAME_CONSTANTS, TurnPhase } from '../../game/farkle/types';
+import { FarkleItemKind, TurnPhase } from '../../game/farkle/types';
 import { useI18n } from '../../i18n';
 import { useDiceGameStore } from '../../stores/diceGame';
 import DiceDisplay from './DiceDisplay.vue';
@@ -163,11 +210,53 @@ const isLastRound = computed(() => store.isLastRound);
 const isNpcTurn = computed(() => store.isNpcTurn);
 const npcActionText = computed(() => store.npcActionText);
 const contextHint = computed(() => store.contextHint);
+const targetScore = computed(() => store.targetScore);
+const hotDiceMultiplier = computed(() => store.hotDiceMultiplier);
+
+// 本局可用的临时道具（有库存且在人类回合）
+const usableItems = computed(() =>
+  store.itemCatalog
+    .filter(item => item.kind === FarkleItemKind.Consumable)
+    .map(item => ({
+      id: item.id,
+      name: item.name,
+      descKey: item.descKey,
+      usedThisRound: store.usedConsumables.includes(item.id),
+      usable: store.canUseConsumable(item.id),
+    }))
+    .filter(item => store.itemStock(item.id) > 0),
+);
 
 const isFarkled = computed(() => store.turnPhase === TurnPhase.Farkled);
 const isAnimating = computed(() => store.turnPhase === TurnPhase.Animating);
 const canRoll = computed(() => store.turnPhase === TurnPhase.Rolling);
 const canSelectDice = computed(() => store.turnPhase === TurnPhase.Selecting && !isNpcTurn.value);
+
+// 「指定骰」道具瞄准态：点了道具按钮后进入，骰子变为可点选目标
+const FORCE_ONE_ID = 'swap_die';
+const forceOneStock = computed(() => store.itemStock(FORCE_ONE_ID));
+const isTargeting = ref(false);
+
+watch([canSelectDice, forceOneStock], () => {
+  // 离开选择阶段或用完了，自动退出瞄准态
+  if (!canSelectDice.value || forceOneStock.value <= 0) isTargeting.value = false;
+});
+
+function handleUseItem(item: { id: string }) {
+  // 指定骰不立即生效，先进入瞄准态让玩家挑一颗骰子
+  if (item.id === FORCE_ONE_ID) {
+    if (!store.canUseConsumable(item.id)) return;
+    isTargeting.value = !isTargeting.value;
+    return;
+  }
+  store.useConsumable(item.id);
+}
+
+function handleTarget(dieId: number) {
+  if (store.forceSingleDie(dieId)) {
+    isTargeting.value = false;
+  }
+}
 
 const hasNewSelection = computed(() => {
   return store.dice.some(d => !d.held && d.scoring && !d.justRolled);
@@ -211,6 +300,87 @@ function handleToggle(dieId: number) {
   overflow-y: auto;
 }
 
+/* ===== 目标区附加徽标 ===== */
+.hot-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  padding: 2px 8px;
+  border-radius: var(--ui-radius-sm);
+  background: rgba(var(--accent-warning-rgb), 0.15);
+  color: var(--accent-warning);
+  font-size: calc(var(--text-xs) - 2px);
+  font-weight: 700;
+  font-family: var(--font-mono);
+}
+
+/* ===== 本局道具 ===== */
+.item-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--card-bg-strong);
+  border: 1px solid var(--card-border);
+  border-radius: var(--ui-radius-sm);
+}
+
+.item-bar-title {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.item-bar-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.item-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border: 1px solid rgba(var(--accent-success-rgb), 0.4);
+  border-radius: var(--ui-radius-sm);
+  background: rgba(var(--accent-success-rgb), 0.08);
+  color: var(--accent-success);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.item-chip:hover:not(:disabled) {
+  background: rgba(var(--accent-success-rgb), 0.18);
+  transform: translateY(-1px);
+}
+
+.item-chip:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.item-chip.used {
+  opacity: 0.45;
+  border-style: dashed;
+  cursor: default;
+}
+
+.item-chip-tag {
+  padding: 0 4px;
+  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.08);
+  font-size: calc(var(--text-xs) - 2px);
+  font-weight: 700;
+}
+
 /* ===== 上下文提示栏 ===== */
 .context-hint {
   display: flex;
@@ -247,6 +417,20 @@ function handleToggle(dieId: number) {
   background: var(--bg-primary);
   color: var(--text-secondary);
   border: 1px solid var(--card-border);
+}
+
+/* 「指定骰」瞄准提示 */
+.context-hint.hint-target {
+  background: rgba(var(--accent-warning-rgb), 0.08);
+  color: var(--accent-warning);
+  border: 1px solid rgba(var(--accent-warning-rgb), 0.2);
+  font-weight: 600;
+}
+
+.item-chip.targeting {
+  border-color: var(--accent-warning);
+  background: rgba(var(--accent-warning-rgb), 0.12);
+  color: var(--accent-warning);
 }
 
 /* ===== 帮助按钮 ===== */

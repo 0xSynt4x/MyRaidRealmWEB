@@ -10,6 +10,7 @@ import { useSetupStore } from '../stores/setup';
 import { useStatDataStore } from '../stores/statData';
 import { useLotteryStore } from '../stores/lottery';
 import { useMapStore } from '../stores/map';
+import { useFarkleStore } from '../stores/farkle';
 import {
   commitStandaloneRuntimeStateFromStores,
   ensureStandaloneRuntimeBaselineFromStores,
@@ -487,6 +488,8 @@ function applyStandaloneArchivePayloadToStores(payload: StandaloneArchiveFile): 
   useLotteryStore().initFromSession();
   // 地图地点树同样存在会话里，一起重新读
   useMapStore().initFromSession();
+  // Farkle 账本同样存在会话里，一起重新读
+  useFarkleStore().initFromSession();
 }
 
 function buildStandaloneArchiveRestoreOutcome(archiveId: string): StandaloneArchiveRestoreOutcome {

@@ -20,7 +20,11 @@
           <KeepAlive>
             <Suspense>
               <!-- 主要内容 -->
-              <component :is="currentPanelComponent" :key="overlayPanel" />
+              <component
+                :is="currentPanelComponent"
+                :key="overlayPanel"
+                v-bind="overlayPanel === 'settings' ? { hideWorldbookTab: isWizardOverlay } : {}"
+              />
               <!-- Loading 状态 -->
               <template #fallback>
                 <div class="loading-state">
@@ -39,13 +43,27 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineAsyncComponent, type Component } from 'vue';
+import { computed, defineAsyncComponent, withDefaults, defineProps, type Component } from 'vue';
 import { useI18n } from '../../i18n';
 import { useLayoutStore, type TabType } from '../../stores/layout';
 
 const layoutStore = useLayoutStore();
 const overlayPanel = computed(() => layoutStore.overlayPanel);
 const { t } = useI18n();
+
+// 是否挂在「开局向导那一层」。
+// 首页的「游戏设置」走的是这一层（App.vue 把 OverlayPanel 摆在 wizard-container 里），
+// 进游戏后那一层（MainLayout）不传 ⇒ 首页弹出的设置面板不带世界书 tab，
+// 游戏内弹出的照旧带。两个设置从此分离，互不影响。
+const props = withDefaults(
+  defineProps<{
+    isWizardOverlay?: boolean;
+  }>(),
+  {
+    isWizardOverlay: false,
+  },
+);
+const isWizardOverlay = computed(() => props.isWizardOverlay);
 
 // 异步加载面板组件以优化性能，添加错误处理
 const PlayerProfile = defineAsyncComponent({

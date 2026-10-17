@@ -110,11 +110,7 @@
                     >
                       <i class="ti ti-arrow-down"></i>
                     </button>
-                    <button
-                      class="icon-btn"
-                      :title="t('settings.duplicateApi')"
-                      @click="duplicateApiAndPersist(index)"
-                    >
+                    <button class="icon-btn" :title="t('settings.duplicateApi')" @click="duplicateApiAndPersist(index)">
                       <i class="ti ti-copy"></i>
                     </button>
                     <button
@@ -159,11 +155,7 @@
 
                     <div class="config-row model-row">
                       <label><i class="ti ti-cpu"></i> {{ t('settings.model') }}</label>
-                      <select
-                        v-if="api.availableModels.length > 0"
-                        v-model="api.model"
-                        class="model-select ui-control"
-                      >
+                      <select v-if="api.availableModels.length > 0" v-model="api.model" class="model-select ui-control">
                         <option value="" disabled>{{ t('settings.selectModel') }}</option>
                         <option v-for="model in api.availableModels" :key="model" :value="model">{{ model }}</option>
                       </select>
@@ -335,11 +327,29 @@
                     <span class="summary-label">{{ t('contentCenter.worldbook.editableSectionTitle') }}</span>
                     <h5>{{ t('contentCenter.worldbook.editableSectionSubtitle') }}</h5>
                   </div>
-                  <button class="primary-btn compact-action-btn" type="button" @click="addEditableEntry">
-                    <i class="ti ti-plus"></i>
-                    {{ t('contentCenter.worldbook.addEntry') }}
-                  </button>
+                  <div class="button-group-wrap preset-import-actions">
+                    <button class="primary-btn compact-action-btn" type="button" @click="addEditableEntry">
+                      <i class="ti ti-plus"></i>
+                      {{ t('contentCenter.worldbook.addEntry') }}
+                    </button>
+                    <button class="ghost-btn compact-action-btn" type="button" @click="triggerTavernWorldbookImport">
+                      <i class="ti ti-file-import"></i>
+                      {{ t('contentCenter.worldbook.importTavernButton') }}
+                    </button>
+                  </div>
                 </div>
+
+                <input
+                  ref="tavernWorldbookImportInputRef"
+                  class="file-input-hidden"
+                  type="file"
+                  accept=".json,application/json"
+                  @change="handleTavernWorldbookFileChange"
+                />
+
+                <p v-if="tavernWorldbookImportStatus" class="preset-import-status">
+                  {{ tavernWorldbookImportStatus }}
+                </p>
 
                 <p class="workspace-help-text workspace-help-text--compact">
                   {{
@@ -804,6 +814,7 @@ import { useMessageActions } from '../../../composables/useMessageActions';
 import { useI18n } from '../../../i18n';
 import type { LocalContentEntryConfig } from '../../../presets/types';
 import { notify } from '../../../utils/notify';
+import { parseStandaloneTavernWorldbookDocument } from '../../../utils/standaloneWorldbookImport';
 import {
   useSettingsStore,
   normalizeFirstTokenTimeoutSeconds,
@@ -874,6 +885,8 @@ const expandedSystemAssetId = ref<string | null>(null);
 const selectedEditableEntryIndex = ref(0);
 const editableEntryKeyMap = new WeakMap<LocalContentEntryConfig, string>();
 let editableEntryKeySeed = 0;
+const tavernWorldbookImportInputRef = ref<HTMLInputElement | null>(null);
+const tavernWorldbookImportStatus = ref('');
 
 const {
   isArchiving,
@@ -1273,6 +1286,49 @@ function addEditableEntry() {
     enabled: true,
   });
   selectedEditableEntryIndex.value = entries.length - 1;
+}
+
+function triggerTavernWorldbookImport() {
+  tavernWorldbookImportInputRef.value?.click();
+}
+
+async function handleTavernWorldbookFileChange(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  if (!file) {
+    return;
+  }
+
+  try {
+    const rawText = await file.text();
+    const result = parseStandaloneTavernWorldbookDocument(rawText);
+    if (result.entries.length === 0) {
+      tavernWorldbookImportStatus.value = t('contentCenter.worldbook.importTavernNoEntries');
+      return;
+    }
+
+    const entries = ensureEditableEntries();
+    if (!entries) {
+      tavernWorldbookImportStatus.value = t('contentCenter.worldbook.importTavernNoEntries');
+      return;
+    }
+
+    entries.push(...result.entries);
+    tavernWorldbookImportStatus.value = t('contentCenter.worldbook.importTavernSuccess', {
+      count: result.entries.length,
+    });
+    if (result.disabledCount > 0) {
+      tavernWorldbookImportStatus.value += t('contentCenter.worldbook.importTavernSkipped', {
+        skipped: result.disabledCount,
+      });
+    }
+  } catch (error) {
+    tavernWorldbookImportStatus.value = t('contentCenter.worldbook.importTavernFailed', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  } finally {
+    input.value = '';
+  }
 }
 
 function deleteEditableEntry(index: number) {

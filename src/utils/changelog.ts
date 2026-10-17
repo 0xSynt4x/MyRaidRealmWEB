@@ -113,6 +113,8 @@ const CHANGELOG_SOURCE: ReadonlyArray<{ date: string; items: readonly string[] }
       '回到首页与全屏移到横幅右上角',
       'AI 生成页允许先说再交 JSON',
       '买完东西发送不再回档',
+      '骰子游戏加目标档位与道具',
+      '世界书可导入酒馆世界书',
     ],
   },
 ];

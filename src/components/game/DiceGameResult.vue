@@ -60,6 +60,22 @@
           {{ result.trustChange > 0 ? '+' : '' }}{{ result.trustChange }}
         </span>
       </div>
+
+      <div v-if="hotDiceMultiplier > 1" class="settle-row">
+        <div class="settle-label">
+          <i class="ti ti-flame"></i>
+          <span>{{ t('dice.result.hotDiceMultiplier', { count: hotDiceCount, value: hotDiceMultiplier.toFixed(3) }) }}</span>
+        </div>
+        <span class="settle-value hot">×{{ hotDiceMultiplier.toFixed(3) }}</span>
+      </div>
+
+      <div v-if="coinsEarned > 0" class="settle-row">
+        <div class="settle-label">
+          <i class="ti ti-coin"></i>
+          <span>{{ t('dice.result.coinsEarned', { amount: coinsEarned }) }}</span>
+        </div>
+        <span class="settle-value hot">+{{ coinsEarned }}</span>
+      </div>
     </div>
 
     <div v-else class="no-bet-hint">
@@ -99,6 +115,9 @@ function handleQuit() {
 
 const result = computed(() => store.gameResult!);
 const currencyName = computed(() => store.playerCurrency.name);
+const hotDiceCount = computed(() => store.hotDiceCount);
+const hotDiceMultiplier = computed(() => store.hotDiceMultiplier);
+const coinsEarned = computed(() => store.coinsEarned);
 
 const isPlayerWin = computed(() => result.value.winner === PlayerType.Human && !isDraw.value);
 const isDraw = computed(() => result.value.playerScore === result.value.npcScore);
@@ -325,6 +344,10 @@ const resultIcon = computed(() => {
 }
 .settle-value.negative {
   color: var(--accent-danger);
+}
+
+.settle-value.hot {
+  color: var(--accent-warning);
 }
 
 .no-bet-hint {
