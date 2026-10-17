@@ -1899,8 +1899,19 @@
 
 - **Changed** 登记本提交，使「条目数 = 提交数」的核对继续保持相等。纯文档改动，`dist/` 产物未变。
 
-### `XXXXXXX` — docs: 收尾条目（登记 08c6c03 自身）
+### `45bf3b6` — docs: 回填 08c6c03 短哈希并补收尾条目
+
+- **Changed** 回填 `08c6c03` 的短哈希，并登记本提交自身，使「条目数 = 提交数」的核对继续保持相等。
+  纯文档改动，`dist/` 产物未变。
+
+### `XXXXXXX` — docs: AGENTS.md 分层，细则迁入 spec/memory/
 
 > 短哈希待回填（按约定并入下一次提交）。
 
-- **Changed** 登记本提交，使「条目数 = 提交数」的核对继续保持相等。纯文档改动，`dist/` 产物未变。
+- **Changed** `AGENTS.md` 从 13.8KB 压到 2.3KB，只保留红线与速查；
+  原来整块的协作方式、代码与架构、界面样式、测试验证等细则全部迁出。
+- **Added** `spec/memory/` 四份细则 + 一份索引：`collaboration.md`（协作与输出口径）、
+  `code-and-search.md`（搜索 / 代码 / 工具 / 子 Agent / 临时文件）、`ui-rules.md`（界面五条铁律）、
+  `verify-and-release.md`（验证 / 提交纪律 / changelog）、`README.md`（按场景查表）。
+- **Changed** `spec/README.md` 索引表补 M1–M4 小节，仓库结构补 `spec/memory/` 一行。
+- 纯文档改动，`dist/` 产物未变；`typecheck` / `test`（133 项 + 35 项）/ `lint`（0 error）/ `build` 均通过。

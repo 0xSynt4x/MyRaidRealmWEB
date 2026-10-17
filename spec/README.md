@@ -53,6 +53,17 @@ dist/index.html 单文件产物
 | 10  | CI、验收与发布流程                             | [`10-workflow-and-verification.md`](./10-workflow-and-verification.md) | `.github/workflows/`、`scripts/`                                |
 | 11  | 已知坑与待修                                   | [`11-known-issues.md`](./11-known-issues.md)                           | 全局                                                            |
 
+### 干活细则（`memory/`）
+
+`AGENTS.md` 每轮自动加载，只放红线与速查；下面几份是它的展开，**碰对应场景再读**，见 [`memory/README.md`](./memory/README.md)。
+
+| #   | 主题                                                     | 细则文档                                                         |
+| --- | -------------------------------------------------------- | ---------------------------------------------------------------- |
+| M1  | 协作方式、提示词确认、自主执行、输出口径                 | [`memory/collaboration.md`](./memory/collaboration.md)           |
+| M2  | 项目上下文、搜索阅读、代码架构、工具、子 Agent、临时文件 | [`memory/code-and-search.md`](./memory/code-and-search.md)       |
+| M3  | 界面与样式铁律                                           | [`memory/ui-rules.md`](./memory/ui-rules.md)                     |
+| M4  | 验证、提交纪律、changelog、发布                          | [`memory/verify-and-release.md`](./memory/verify-and-release.md) |
+
 ## 4. 仓库结构
 
 ```text
@@ -82,6 +93,7 @@ functions/        Cloudflare Pages Functions（唯一服务端代码：同域跨
 scripts/tests/    测试脚本
 scripts/i18n/     语言文件校验与补丁工具
 spec/             本目录：项目细则（随仓库走）
+spec/memory/      干活细则：AGENTS.md 的展开版（随仓库走）
 docs/             计划、进度、快照、设计稿（本地保留，不进仓库）
 assets-design/    设计稿与原始预设 JSON（本地保留，不进仓库）
 Temp/             本机临时排查脚本与截图（不进仓库，ESLint 已显式忽略）
