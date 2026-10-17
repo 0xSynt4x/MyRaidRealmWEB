@@ -1904,7 +1904,7 @@
 - **Changed** 回填 `08c6c03` 的短哈希，并登记本提交自身，使「条目数 = 提交数」的核对继续保持相等。
   纯文档改动，`dist/` 产物未变。
 
-### `XXXXXXX` — docs: AGENTS.md 分层，细则迁入 spec/memory/
+### `b74fb7d` — docs: AGENTS.md 分层，细则迁入 spec/memory/
 
 > 短哈希待回填（按约定并入下一次提交）。
 
