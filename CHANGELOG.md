@@ -1604,7 +1604,7 @@
 
 - **Changed** 同上，登记本提交。纯文档改动，`dist/` 产物未变。
 
-### `XXXXXXX` — feat(farkle): 目标档位、道具店与 Farkle 账本上线
+### `a3e2b1e` — feat(farkle): 目标档位、道具店与 Farkle 账本上线
 
 > 短哈希待回填（按约定并入下一次提交）。
 
@@ -1632,7 +1632,7 @@
 - 四道检查：`typecheck` ✓ ｜ `test` 133/133 ✓ ｜ `lint` 0 error（15 个存量 warning）✓ ｜ `build` ✓
   （先清掉 `dist/` 上残留的 Everyone「拒绝删除」ACE，否则 `webpack clean` 报 `EPERM ... unlink dist/preset-package/index.js`）。
 
-### `XXXXXXX` — feat(worldbook): 设置面板可导入酒馆世界书，首页设置面板隐藏世界书 tab
+### `a3e2b1e` — feat(worldbook): 设置面板可导入酒馆世界书，首页设置面板隐藏世界书 tab
 
 > 短哈希待回填（按约定并入下一次提交）。
 
