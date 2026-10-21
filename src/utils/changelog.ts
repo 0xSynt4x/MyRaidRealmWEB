@@ -116,6 +116,10 @@ const CHANGELOG_SOURCE: ReadonlyArray<{ date: string; items: readonly string[] }
     date: '261017',
     items: ['骰子游戏加目标档位与道具', '世界书可导入酒馆世界书'],
   },
+  {
+    date: '261020',
+    items: ['首页极光、光束、雾气实时渲染', '开场与进入游戏的转场重做'],
+  },
 ];
 
 /** 第 `index` 条（从 0 起）对应的版本号 */

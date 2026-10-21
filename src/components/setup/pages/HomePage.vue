@@ -1,7 +1,13 @@
 <template>
   <div ref="pageRef" class="home-page" :class="{ 'is-leaving': isLeaving }">
     <!-- 动态封面背景：写实概念图打底 + 分层动效（详见 useCoverBackground） -->
-    <div ref="stageRef" class="bg-cover" :style="{ '--glow': glowVar }" aria-hidden="true">
+    <div
+      ref="stageRef"
+      class="bg-cover"
+      :class="{ 'is-gpu': gpuActive }"
+      :style="{ '--glow': glowVar }"
+      aria-hidden="true"
+    >
       <!-- 世界层：底图 + 两层漂移极光 + 与底图锁定的发光层 -->
       <div class="bg-world">
         <img class="bg-plate" :src="plateSrc" alt="" @load="syncLayout" />
@@ -12,16 +18,82 @@
         <div class="bg-core-glow-fast"></div>
       </div>
 
-      <!-- 独立视差层：碎石 / 余烬 / 雾带 -->
+      <!--
+        WebGPU 动效层。
+        它只是「盖在底图上的一层」：底图与压暗、暗角、雾带仍由 CSS 负责，
+        这里接管的是极光、核心放射光与浮尘三样需要逐帧重算的东西。
+        没有 WebGPU 时整层保持隐藏，上面那套 CSS + Canvas2D 原样生效。
+      -->
+      <Shader
+        v-if="!motionReduced && !gpuFailed"
+        class="bg-gpu"
+        :class="{ 'is-active': gpuActive }"
+        :disable-telemetry="true"
+        @ready="handleGpuReady"
+        @unavailable="handleGpuUnavailable"
+      >
+        <!--
+          转场遮罩：把下面三层氛围当成一个整体，用径向擦除控制露出多少。
+          progress 0 = 全露出，1 = 全擦掉（组件自己的语义）。
+          圆心跟着传送门走，所以入场是「从门里往外打开」、过场是「朝门里收回去」。
+        -->
+        <IrisWipe :progress="wipeProgress" :center="{ x: coreUvX, y: coreUvY }" :feather="0.45">
+          <Aurora
+            :color-a="'#7b3ff2'"
+            :color-b="'#2ef0a8'"
+            :color-c="'#28c8e8'"
+            :balance="{ type: 'auto-animate', mode: 'ping-pong', outputMin: 30, outputMax: 62, speed: 0.07, easing: 'sine' }"
+            :intensity="{ type: 'auto-animate', mode: 'ping-pong', outputMin: 50, outputMax: 84, speed: 0.1, easing: 'sine' }"
+            :curtain-count="4"
+            :speed="6"
+            :waviness="64"
+            :ray-density="26"
+            :height="132"
+            :center="{ x: 0.5, y: 0 }"
+            blend-mode="screen"
+          />
+          <Godrays
+            :center="{ x: coreUvX, y: coreUvY }"
+            :density="0.22"
+            :intensity="{ type: 'auto-animate', mode: 'ping-pong', outputMin: 0.34, outputMax: 0.72, speed: 0.16, easing: 'sine' }"
+            :spotty="{ type: 'auto-animate', mode: 'ping-pong', outputMin: 0.5, outputMax: 0.92, speed: 0.1, easing: 'sine' }"
+            :speed="0.5"
+            ray-color="#ffc978"
+            blend-mode="screen"
+          />
+          <!--
+            GPU 雾：替换原 CSS 三层横向漂移雾带。
+            蓝青冷调，贴着传送门区域更浓（seed 固定保证每次刷新形态一致），
+            随光标轻推、缓慢翻涌。WebGPU 离线时整层隐藏，底下那套 CSS 雾带原样生效。
+          -->
+          <Fog
+            :color-a="'#cfe2f2'"
+            :color-b="'#8fb6cf'"
+            :seed="42"
+            :speed="0.6"
+            :turbulence="1.4"
+            :detail="22"
+            :blending="0.5"
+            :mouse-influence="0.25"
+            :opacity="0.3"
+            blend-mode="screen"
+          />
+        </IrisWipe>
+      </Shader>
+
+      <!-- 独立视差层：碎石 / 余烬 -->
       <canvas ref="debrisRef" class="bg-fx"></canvas>
       <canvas ref="emberRef" class="bg-fx bg-fx-ember"></canvas>
 
+      <!-- 降级雾带：仅在不走 WebGPU 时显示，WebGPU 在线时被上面的 Fog 组件替代 -->
       <div class="bg-mist m1"></div>
       <div class="bg-mist m2"></div>
       <div class="bg-mist m3"></div>
 
       <!-- 顶层氛围：闪电 / 颗粒 / 暗角 / 上下压暗 -->
       <div ref="flashRef" class="bg-flash"></div>
+      <!-- 核心刺眼光源：盖住光束从一点发射的像素不和谐感 -->
+      <div class="bg-core-point"></div>
       <div class="bg-grain"></div>
       <div class="bg-vignette"></div>
       <div class="bg-scrim-top"></div>
@@ -112,14 +184,13 @@
     />
 
     <!-- 当前版本号：常驻右下角，点击可翻出更新日志 -->
-    <button type="button" class="version-tag" @click="emit('openChangelog')">
-      v{{ appVersion }}
-    </button>
+    <button type="button" class="version-tag" @click="emit('openChangelog')">v{{ appVersion }}</button>
   </div>
 </template>
 
 <script setup lang="ts">
 import { nextTick, onMounted, onUnmounted, ref } from 'vue';
+import { Aurora, Fog, Godrays, IrisWipe, Shader } from 'shaders/vue';
 import { notify } from '../../../utils/notify';
 import { useI18n } from '../../../i18n';
 import { useFullscreen } from '../../../composables/useFullscreen';
@@ -133,6 +204,7 @@ import {
   type StandaloneArchiveListItem,
 } from '../../../utils/archive';
 import { getCurrentVersion } from '../../../utils/changelog';
+import { hasWebGpuApi, isGpuKnownBroken, markGpuBroken } from '../../../utils/shaderSupport';
 import SnapshotPickerDialog from './components/SnapshotPickerDialog.vue';
 
 const emit = defineEmits<{
@@ -149,8 +221,75 @@ const { t } = useI18n();
 const appVersion = getCurrentVersion();
 
 // 封面动态背景（写实底图 + 分层动效）
-const { stageRef, debrisRef, emberRef, flashRef, plateSrc, auroraA, auroraB, glowVar, syncLayout } =
-  useCoverBackground();
+const {
+  stageRef,
+  debrisRef,
+  emberRef,
+  flashRef,
+  plateSrc,
+  auroraA,
+  auroraB,
+  glowVar,
+  syncLayout,
+  gpuActive,
+  motionReduced,
+  coreUvX,
+  coreUvY,
+} = useCoverBackground();
+
+/**
+ * WebGPU 图层能不能用。
+ *
+ * 先看浏览器有没有 navigator.gpu；再看这个进程里之前是不是已经失败过 ——
+ * 失败记录放在 utils/shaderSupport 里（进程级），页面来回切时不重复撞一次同样的墙。
+ * 一旦失败就钉死，别让 <Shader> 在后续挂载里反复重试。
+ */
+const gpuFailed = ref(!hasWebGpuApi() || isGpuKnownBroken());
+
+/**
+ * 过场总时长（毫秒）。跟 CSS 里 cover-leave 的 1.4s 是同一个数，改一处必须改另一处。
+ * 入场擦除也用这个数，两边手感才一致。
+ */
+const LEAVE_DURATION_MS = 1400;
+
+/**
+ * 转场擦除进度，语义照抄 IrisWipe：0 = 完全露出，1 = 完全擦掉。
+ * 初值 1 意味着「一开始什么都没有」，等 WebGPU 就绪再往 0 补 —— 这就是入场。
+ */
+const wipeProgress = ref(1);
+let wipeRaf = 0;
+
+/** 把擦除进度缓动到目标值。进场用缓出（快起慢收），退场用 smoothstep（两头慢、中间快） */
+function tweenWipe(to: number, duration: number, ease: 'out' | 'inout' = 'out') {
+  window.cancelAnimationFrame(wipeRaf);
+  const from = wipeProgress.value;
+  if (duration <= 0 || from === to) {
+    wipeProgress.value = to;
+    return;
+  }
+  const startedAt = performance.now();
+  const step = (now: number) => {
+    const t = Math.min(1, (now - startedAt) / duration);
+    const eased = ease === 'out' ? 1 - Math.pow(1 - t, 3) : t * t * (3 - 2 * t);
+    wipeProgress.value = from + (to - from) * eased;
+    if (t < 1) wipeRaf = window.requestAnimationFrame(step);
+  };
+  wipeRaf = window.requestAnimationFrame(step);
+}
+
+function handleGpuReady() {
+  gpuActive.value = true;
+  // 就绪那一刻才让图层显形，再从传送门往外擦开
+  if (!isLeaving.value) tweenWipe(0, LEAVE_DURATION_MS);
+}
+
+function handleGpuUnavailable() {
+  gpuActive.value = false;
+  gpuFailed.value = true;
+  markGpuBroken();
+  window.cancelAnimationFrame(wipeRaf);
+  wipeProgress.value = 1;
+}
 
 /** 音乐偏好的本地存储键。默认关、50% 音量 */
 const BGM_STORAGE_KEY = 'th1980s:bgm-preference';
@@ -399,13 +538,17 @@ function syncLeaveOrigin() {
 // 开始游戏：先把过场类挂上去、动画跑起来，再通知切页。
 // 🔴 通知必须等一个 tick —— 同步通知会让父组件在同一批更新里卸载本组件，
 //    过场类还没生效就被丢弃，动画整个被跳过。
-// 切页机制会读元素上的 animation-duration（= cover-leave 的 1.4s）自己等动画走完，
-// 所以这里也不能再延时 —— 那会白等一个动画时长，屏幕全空。
+// 时长不用自己等：Vue 的 <Transition> 在离场时会读元素的 animation-duration，
+// 取它和过渡时长的最大值来等（这里是 cover-leave 的 1.4s）。再自己计一次时会等成两倍。
 function handleStart() {
   if (isLeaving.value) return;
   isLeaving.value = true;
   syncLeaveOrigin();
   stopMusic(); // 音乐跟着一起收，别在切场景那一刻硬断
+
+  // GPU 在线时，图层再叠一层「朝传送门收拢」的擦除，跟整体推近同时进行
+  if (gpuActive.value && !motionReduced.value) tweenWipe(1, LEAVE_DURATION_MS, 'inout');
+
   void nextTick(() => emit('start'));
 }
 
@@ -477,6 +620,7 @@ onMounted(() => {
 onUnmounted(() => {
   disarmGesture();
   window.clearInterval(fadeTimer);
+  window.cancelAnimationFrame(wipeRaf);
   const el = bgmRef.value;
   if (el) {
     el.pause();
@@ -525,6 +669,49 @@ onUnmounted(() => {
 .bg-world {
   position: absolute;
   inset: 0;
+}
+
+/*
+ * WebGPU 动效层。
+ * 尺寸必须给在这一层（内部的 canvas 自己没有尺寸），铺满整个舞台、压在底图之上。
+ * 默认整层透明：只有 shader 真的跑起来（.is-active）才显形，
+ * 这样没有 WebGPU 的机器看到的就是原来那套 CSS 动效，一帧都不会闪。
+ */
+.bg-gpu {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  mix-blend-mode: screen;
+  transition: opacity 900ms ease-out;
+}
+
+.bg-gpu.is-active {
+  opacity: 1;
+}
+
+/*
+ * GPU 接管后，同一件事不再让 CSS 做第二遍。
+ *
+ * 极光、放射光柱、余烬这三样和 shader 图层画的是同一个东西，叠在一起只会糊成一片，
+ * 所以直接收掉。必须连 animation 一起关 —— 入场动画用的是 forwards 填充，
+ * 光写 opacity: 0 压不住它。
+ *
+ * 核心的暖色辉光（.bg-core-glow）留着：那是传送门本身的亮度，属于底图的一部分，
+ * shader 的光柱是叠在它上面的。
+ */
+.bg-cover.is-gpu .bg-aurora,
+.bg-cover.is-gpu .bg-rays {
+  animation: none;
+  opacity: 0;
+}
+
+.bg-cover.is-gpu .bg-fx-ember {
+  opacity: 0;
+}
+
+/* WebGPU 在线时，雾由 shader 的 Fog 组件接管，CSS 三层雾带让位 */
+.bg-cover.is-gpu .bg-mist {
+  opacity: 0;
 }
 
 /* 底图比舞台四周各大 5%，给呼吸缩放与视差留余量 */
@@ -692,6 +879,27 @@ onUnmounted(() => {
     rgba(0, 0, 0, 0.22) 46%,
     rgba(0, 0, 0, 0) 78%
   );
+}
+
+/* 核心刺眼光源：约 50px 的小光点，正盖在光束放射处，柔化像素发射的起点 */
+.bg-core-point {
+  position: absolute;
+  left: var(--core-x);
+  top: var(--core-y);
+  width: 100px;
+  height: 100px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  mix-blend-mode: screen;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 50% 50%,
+    rgba(255, 255, 255, 0.95) 0%,
+    rgba(255, 244, 214, 0.7) 22%,
+    rgba(255, 210, 150, 0.3) 46%,
+    rgba(255, 210, 150, 0) 72%
+  );
+  filter: blur(2px);
 }
 
 /* 核心辉光：用亮度遮罩塑形，让光只从传送门核心透出来 */
@@ -960,7 +1168,6 @@ onUnmounted(() => {
   .bg-rays,
   .bg-core-glow,
   .bg-core-glow-fast,
-  .bg-mist,
   .bg-grain,
   .bg-flash {
     animation: none;
@@ -1380,9 +1587,9 @@ onUnmounted(() => {
   );
 }
 
-/* 🔴 这里的 1.4s 不只是动画时长，也是「切页要等多久」：
-   切页机制会读元素上的 animation-duration，取它和过渡时长的最大值来等。
-   所以改这个数字 = 改整个过场的时长，两处一起看（脚本里不再单独计时）。 */
+/* 这个时长是过场的唯一真源：Vue 的 <Transition> 离场时会读这里的 animation-duration，
+   按它等动画走完再卸载。脚本里的 LEAVE_DURATION_MS 只是让 GPU 擦除跟它对齐，不参与计时。
+   改时长就改这里，然后把脚本里那个数同步过来。 */
 .home-page.is-leaving {
   transform-origin: var(--leave-x) var(--leave-y);
   animation: cover-leave 1.4s cubic-bezier(0.45, 0, 0.65, 0.55) forwards;

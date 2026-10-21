@@ -14,7 +14,7 @@
  * 因此换底图只需更新 COVER_ART 里的几个数字，不必改任何动效代码。
  */
 
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
 import heroDeskGlowUrl from '../assets/home/hero-desk-glow.webp?url';
 import heroDeskAuroraAUrl from '../assets/home/hero-desk-aurora-a.webp?url';
@@ -151,6 +151,25 @@ export function useCoverBackground() {
   const flashRef = ref<HTMLElement | null>(null);
 
   const isPortrait = ref(false);
+  /**
+   * WebGPU 叠加层是否已接管背景动效。
+   *
+   * 为 true 时画布那一路（碎石 / 余烬）与对应的 CSS 层会全部让位给 shader 图层，
+   * 这里必须停掉 rAF 里的绘制 —— 两套动效同时画既费电又会互相打架。
+   */
+  const gpuActive = ref(false);
+  /**
+   * 是否要求减少动效：为 true 时连 WebGPU 层都不挂载，直接静态出图。
+   *
+   * 初值必须在 setup 阶段就取到 —— 如果等到 onMounted 才置位，首页会先把
+   * WebGPU 层挂上去、初始化一半再拆掉，白白闪一下。这里只读一次媒体查询。
+   */
+  const motionReduced = ref(
+    typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+  );
+  /** 传送门核心的归一化坐标（屏幕坐标系：左上角 0,0、y 轴向下），喂给 shader 的 center 用 */
+  const coreUvX = ref(0.5);
+  const coreUvY = ref(0.45);
   const coverArt = computed<CoverArt>(() => (isPortrait.value ? COVER_ART.port : COVER_ART.desk));
   const plateSrc = computed(() => coverArt.value.src);
   const auroraA = computed(() => coverArt.value.auroraA);
@@ -381,6 +400,11 @@ export function useCoverBackground() {
     stage.style.setProperty('--core-y', `${coreY.toFixed(1)}px`);
     stage.style.setProperty('--core-r', `${coreR.toFixed(1)}px`);
 
+    // shader 图层用的是 0~1 的归一化坐标，顺手在这里一起算好，
+    // 免得 HomePage 再量一次 DOM（量两次迟早会有一处忘记跟着 resize 更新）
+    coreUvX.value = stageW > 0 ? coreX / stageW : 0.5;
+    coreUvY.value = stageH > 0 ? coreY / stageH : 0.45;
+
     for (const canvas of [debrisRef.value, emberRef.value]) {
       if (!canvas) continue;
       canvas.width = Math.round(stageW * pixelRatio);
@@ -551,6 +575,10 @@ export function useCoverBackground() {
     if (disposed) return;
     rafId = requestAnimationFrame(frame);
 
+    // WebGPU 图层接管后，画布这一路彻底停手：留着 rAF 但不再画，
+    // 这样 GPU 不可用（或中途丢失）时只要把 gpuActive 置回 false 就能立刻恢复
+    if (gpuActive.value) return;
+
     // 画布按 45fps 上限更新：肉眼已看不出差别，但能明显省电
     if (!reduceMotion && timestamp - lastDraw > 1000 / 45) {
       lastDraw = timestamp;
@@ -561,6 +589,7 @@ export function useCoverBackground() {
 
   onMounted(() => {
     reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    motionReduced.value = reduceMotion;
 
     shards = Array.from({ length: SHARD_COUNT }, () => createShard(false));
     embers = Array.from({ length: EMBER_COUNT }, () => createEmber());
@@ -570,6 +599,20 @@ export function useCoverBackground() {
 
     rafId = requestAnimationFrame(frame);
     scheduleFlash();
+  });
+
+  /**
+   * 交给 GPU 之后，画布上最后一帧还留着，必须主动擦掉 ——
+   * 否则 shader 层下面压着一层静止的碎石和余烬，看起来像画面卡住了。
+   */
+  watch(gpuActive, active => {
+    if (!active) return;
+    for (const canvas of [debrisRef.value, emberRef.value]) {
+      const ctx = canvas?.getContext('2d');
+      if (!canvas || !ctx) continue;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
   });
 
   onUnmounted(() => {
@@ -592,5 +635,9 @@ export function useCoverBackground() {
     auroraB,
     glowVar,
     syncLayout,
+    gpuActive,
+    motionReduced,
+    coreUvX,
+    coreUvY,
   };
 }

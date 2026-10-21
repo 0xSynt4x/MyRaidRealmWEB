@@ -1848,9 +1848,7 @@
 
 - **Changed** 回填上一条提交的短哈希占位。纯文档改动，`dist/` 产物未变。
 
-### `XXXXXXX` — docs(changelog): 一次性收尾条目链，条目数与提交数对齐
-
-> 短哈希待回填（并入下一次真实改动）。
+### `cdad25e` — docs(changelog): 一次性收尾条目链，条目数与提交数对齐
 
 - **Fixed** `CHANGELOG.md` 与 git 历史长期对不上：174 次提交只有 170 条记录，且夹着
   `b0f4a99` 这个 git 里根本不存在的哈希、`4c76f22` 重复登记 3 次、`a3e2b1e` 拆成两条
@@ -1866,3 +1864,33 @@
   回填必须搭下一次真实改动，没有下一次就让它缺着，别再为回填单开提交。
 - 结果：条目数 174 = 提交数 174，重复 0、幽灵 0、缺失 0；`prettier --check` 通过。
 - 纯文档改动，`dist/` 产物未变，**不重新部署**。
+
+## 2026-10-20
+
+### `XXXXXXX` — feat(home): 首页动效层改用 WebGPU 实时渲染，入场过场重做
+
+- **Added** 依赖 `shaders@4.0.4`（MIT，单文件打进产物，无外部请求）：首页背景在原有底图之上
+  叠一层 WebGPU 实时渲染，画三样东西 —— 极光帘幕（`Aurora`）、从传送门射出的体积光
+  （`Godrays`，圆心跟着底图算出来的核心坐标走）、贴地翻涌的雾（`Fog`，替换原 CSS 三层
+  横向漂移雾带，随光标轻推）。
+- **Added** `src/utils/shaderSupport.ts`（新文件）：进程级记下「这台机器 GPU 起不来」，
+  首页每次回大厅都重挂载，记住一次失败就不再反复试初始化。
+- **Changed** `src/composables/useCoverBackground.ts`：`syncLayout()` 顺带把核心坐标换算成
+  0~1 归一化值（`coreUvX` / `coreUvY`）喂给 shader；GPU 接管后停掉两块 Canvas2D 的逐帧重绘
+  （rAF 继续跑，随时能回退），并把画布最后一帧擦干净，免得静止碎石压在新图层下面。
+  `motionReduced` 初值提到 setup 阶段读，避免「系统关了动效」的机器先把 GPU 层挂上去再拆。
+- **Changed** `src/components/setup/pages/HomePage.vue`：`<Shader :disable-telemetry="true">`
+  包一层 `<IrisWipe>` 再包三个特效层 —— 擦除圆心锁在传送门上，入场是「从门里往外打开」，
+  过场是「朝门里收回去」，跟原有的整体推近同时进行。GPU 在线时把原 CSS 极光、锥形光柱、
+  余烬 canvas 一起收掉（叠着会糊），核心辉光保留（那是传送门本身的亮度，属底图一部分）。
+- **Fixed** 过场时长口径写清楚：`cover-leave` 的 1.4s 是唯一真源 —— Vue 的 `<Transition>`
+  离场时会读元素的 `animation-duration` 按它等，脚本里另存一份 `LEAVE_DURATION_MS` 只用于
+  让 GPU 擦除对齐，不参与计时。之前误以为切页不等动画、在脚本里自己又等了一遍，
+  实测切页耗时 2829ms（约两倍）；改回后实测 **1418~1439ms**，正好一个过场时长。
+- 降级：无 WebGPU（`navigator.gpu` 不存在 / 拿不到适配器）或系统开了「减少动效」时，
+  GPU 层整层不挂载，原 CSS 动画 + Canvas2D 碎石余烬全量生效，观感与改造前一致。
+- 遥测已关：`shaders` 包默认会以 5% 采样向 `shaders.com` 上报域名与帧率，`disableTelemetry`
+  在源头短路。产物里 `startTelemetry` 出现 0 次（已被 tree-shake），全站外链仍只有项目原有的那些。
+- 体积：`dist/index.html` 3.04 MB → **5.52 MiB**（+约 2.5 MB，仍是单文件内联，断网可启动）。
+- `typecheck` 通过；`test` 133/133；`lint` 0 error（15 个 warning 均为既有问题）；
+  `build` 成功。浏览器冒烟（headless Chrome + WebGPU）：GPU 层挂载、无 console 报错。
