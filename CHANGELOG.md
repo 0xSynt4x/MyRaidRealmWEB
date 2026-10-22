@@ -1897,7 +1897,7 @@
 
 ## 2026-10-23
 
-### `XXXXXXX` — fix(comfyui): 适配 Qwen Image 2.1 类工作流，修正分辨率选择器档位写入
+### `1bd17d1` — fix(comfyui): 适配 Qwen Image 2.1 类工作流，修正分辨率选择器档位写入
 
 - **Added** `src/utils/comfyuiClient.ts` 新增导出 `fetchEnumOptions(baseUrl, nodeType, field, signal)`：
   向 ComfyUI `/object_info/<nodeType>` 拉某节点的枚举选项，兼容老式 `[[...]]` 与新式
