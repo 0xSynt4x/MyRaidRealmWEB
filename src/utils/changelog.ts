@@ -120,6 +120,10 @@ const CHANGELOG_SOURCE: ReadonlyArray<{ date: string; items: readonly string[] }
     date: '261020',
     items: ['首页极光、光束、雾气实时渲染', '开场与进入游戏的转场重做'],
   },
+  {
+    date: '261023',
+    items: ['生图可识别复杂工作流', '覆盖尺寸对选择器生效', '生图负向词可写入'],
+  },
 ];
 
 /** 第 `index` 条（从 0 起）对应的版本号 */

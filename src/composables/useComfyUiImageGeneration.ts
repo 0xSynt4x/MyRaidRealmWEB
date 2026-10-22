@@ -9,7 +9,12 @@ import {
   resolveNovelAiSize,
   useSettingsStore,
 } from '../stores/settings';
-import { ComfyUiError, detectComfyWorkflowFormat, generateComfyUiImage } from '../utils/comfyuiClient';
+import {
+  ComfyUiError,
+  detectComfyWorkflowFormat,
+  fetchEnumOptions,
+  generateComfyUiImage,
+} from '../utils/comfyuiClient';
 import { createGeneratedImageId, estimateDataUrlByteSize, saveGeneratedImage } from '../utils/imageStorage';
 import { composeImageStylePrompt } from '../utils/imageStylePresets';
 import { NovelAiImageError, generateNovelAiImage } from '../utils/novelAiImageClient';
@@ -138,6 +143,23 @@ export function useComfyUiImageGeneration() {
   }
 
   /**
+   * 找工作流里那个「管比例、不管宽高」的分辨率选择器类名 —— 用来去 ComfyUI 问它的真实档位表。
+   * 认不出来就返回空，让客户端退回内置标准档位名。
+   */
+  function findAspectSizeNodeType(workflow: Record<string, unknown>): string {
+    for (const node of Object.values(workflow)) {
+      if (!node || typeof node !== 'object') continue;
+      const record = node as Record<string, unknown>;
+      const classType = typeof record.class_type === 'string' ? record.class_type : '';
+      if (!/resolution|aspect/i.test(classType)) continue;
+      const inputs = record.inputs;
+      if (!inputs || typeof inputs !== 'object') continue;
+      if ('aspect_ratio' in (inputs as Record<string, unknown>)) return classType;
+    }
+    return '';
+  }
+
+  /**
    * 图片状态统一交给消息仓库写。
    * 正式楼层在 → 直接改；正文还在流式、楼层没落地 → 先暂存，等落地再并回 ——
    * 这样「生成中点出图」不会因为写不到楼层而白出。
@@ -180,6 +202,20 @@ export function useComfyUiImageGeneration() {
       return;
     }
 
+    /**
+     * 分辨率选择器的档位名是节点定义的**枚举表**，不是自由文本。
+     * 这里先去 ComfyUI 问真实选项；问不到就传空，由客户端退回内置标准档位名。
+     * 🔴 绝不能自己拼档位名 —— 拼错一个括号就对不上表项，选择器算不出宽高，
+     * 空 latent 拿不到尺寸，整条推理断掉，而 ComfyUI 仍报「执行成功」。
+     */
+    let aspectChoices: string[] | undefined;
+    if (config.overrideSize) {
+      const selectorType = findAspectSizeNodeType(workflow);
+      if (selectorType) {
+        aspectChoices = (await fetchEnumOptions(config.baseUrl, selectorType, 'aspect_ratio', signal)) ?? undefined;
+      }
+    }
+
     const images = await generateComfyUiImage({
       baseUrl: config.baseUrl,
       workflow,
@@ -189,6 +225,7 @@ export function useComfyUiImageGeneration() {
       negativePrompt: config.negativePrompt.trim() || undefined,
       width: config.overrideSize ? config.width : undefined,
       height: config.overrideSize ? config.height : undefined,
+      aspectChoices,
       randomSeed: config.randomSeed,
       fixedSeed: config.fixedSeed,
       signal,

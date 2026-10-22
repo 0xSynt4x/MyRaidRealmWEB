@@ -1894,3 +1894,48 @@
 - 体积：`dist/index.html` 3.04 MB → **5.52 MiB**（+约 2.5 MB，仍是单文件内联，断网可启动）。
 - `typecheck` 通过；`test` 133/133；`lint` 0 error（15 个 warning 均为既有问题）；
   `build` 成功。浏览器冒烟（headless Chrome + WebGPU）：GPU 层挂载、无 console 报错。
+
+## 2026-10-23
+
+### `XXXXXXX` — fix(comfyui): 适配 Qwen Image 2.1 类工作流，修正分辨率选择器档位写入
+
+- **Added** `src/utils/comfyuiClient.ts` 新增导出 `fetchEnumOptions(baseUrl, nodeType, field, signal)`：
+  向 ComfyUI `/object_info/<nodeType>` 拉某节点的枚举选项，兼容老式 `[[...]]` 与新式
+  `["COMBO", { options: [...] }]` 两种定义写法，失败返回 `null`。
+- **Added** `isNodeRefValue()`：判断某输入字段的值是否是一条上游连线（`["9", 0]`），
+  供「连线也算尺寸节点」与「只给比例的尺寸节点」两处识别使用。
+- **Added** `isSwitchNode()`：切换 / 分流节点不算提示词节点 —— 类名匹配
+  `switch|select|toggle|router|branch`，或身上有 `on_true` / `on_false` 两个口即判定；
+  **但若该节点存在明确的 `PROMPT_FIELD_PRIORITY` 字段则不影响**，避免误伤老工作流。
+- **Changed** `findPromptField`：「字段名对得上但值是一条连线」现在也算命中，并按「接线拆掉
+  再写文字」处理。正向提示词因此能直接落到 `TextEncodeQwenImage21` 这类编码器节点上，
+  不再触发「找不到可填提示词的节点」。
+- **Changed** `applyAspectSize`：**不再自己拼档位名**。档位名是节点定义的固定枚举表，
+  之前把 `1:1 (Square)` 改成 `16:9 (Ultrawide)`（比例对、括号里名字抄错）会直接对不上表项，
+  选择器算不出宽高 → 空 latent 拿不到尺寸 → 推理链断掉 → 保存节点无图可存，
+  而 ComfyUI 仍报「执行成功」。现在按「目标宽高比最接近」从**真实档位表**里原样取一个填回，
+  整个档位名整体替换，绝不保留原括号后缀；`major` 容差 12%。
+  内核新增 `parseAspectRatio()` 从档位名抠比例，无比例数字的按 `square` 兜底。
+- **Added** 兜底档位表 `FALLBACK_ASPECT_LABELS`（连不上 ComfyUI 时使用），与常见
+  `ResolutionSelector` 枚举一字不差：`1:1 (Square)` / `2:3 (Portrait Photo)` / `3:2 (Photo)` /
+  `3:4 (Portrait Standard)` / `4:3 (Standard)` / `9:16 (Portrait Widescreen)` /
+  `16:9 (Widescreen)` / `21:9 (Ultrawide)` / `9:21 (Portrait Ultrawide)`。
+- **Changed** `ComfyUiGenerateOptions` 新增 `aspectChoices?: string[]`，
+  由调用方传入现问来的真实档位表；`applySize()` 相应透传。
+- **Changed** `src/composables/useComfyUiImageGeneration.ts`：开启「覆盖尺寸」时先经
+  `findAspectSizeNodeType()` 找出工作流里管比例的节点类名，再 `fetchEnumOptions` 取真实档位表
+  一起交给出图函数；取不到就传空，由客户端退回内置表。
+- **Added** 负向词同一编码器分口识别：正向节点自己身上若有负向字段（如
+  `negative_prompt`）则正负共用该节点，不再顺着 `negative` 连线往上找（那条路会撞进
+  「预览值」中转节点而找不到词）。原「negativeNodeId === positiveNodeId 就清空」的规则
+  改为「该节点确无负向字段时才清空」。
+- **Fixed** 分辨率选择器识别放宽：`width` / `height` 被连线占用也算尺寸节点；
+  另新增「只给 `aspect_ratio` + `megapixels`、不给宽高」的选择器识别（`isAspectSizeNode`）。
+- **Removed** 删掉 `isPromptFieldName()`（接入连线判断后不再被使用）。
+- 验证：对 `Qwen-Image-2.1 Turbo 8步 官方原版.json` 实测 —— 正向识别 `459:452`、
+  负向同节点、尺寸节点 `['459:456','13']`、切换节点 `459:474` 已排除出可选列表。
+  出图端到端 21 项全过：1920×1080→`16:9 (Widescreen)`/2.07MP、1024²→`1:1 (Square)`/1.05MP、
+  1920×832→`21:9 (Ultrawide)`、1080×1920→`9:16 (Portrait Widescreen)`；
+  SD1.5 常规工作流回归（正向/负向/尺寸直写/固定种子）全部与原行为一致。
+- `typecheck` 通过；`test` 133/133（另含 AI 调试留档检查 35 项全过）；`lint` 0 error；
+  `build` 成功。

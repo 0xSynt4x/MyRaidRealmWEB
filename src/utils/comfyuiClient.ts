@@ -64,6 +64,11 @@ export interface ComfyUiGenerateOptions {
   sizeNodeIds?: string[];
   /** 种子节点，缺省时自动推断 */
   seedNodes?: { id: string; field: string }[];
+  /**
+   * 分辨率选择器的真实档位名（如 "16:9 (Widescreen)"）。
+   * 有就只在这里面挑；没有就退回内置标准档位名。见 fetchEnumOptions。
+   */
+  aspectChoices?: string[];
   pollIntervalMs?: number;
   timeoutMs?: number;
   signal?: AbortSignal;
@@ -125,9 +130,211 @@ function readNodeRef(value: unknown): string | null {
 
 /**
  * 节点里能装提示词的字段，按优先级排。
- * 不再死认 text 一个名字：SDXL 用 text_g / text_l，通配符节点用 wildcard_text。
+ * 不再死认 text 一个名字：SDXL 用 text_g / text_l，通配符节点用 wildcard_text；
+ * Qwen Image 2.1 的编码器用 prompt / negative_prompt。
  */
 const PROMPT_FIELD_PRIORITY = ['text', 'text_g', 'text_l', 'prompt', 'wildcard_text', 'populated_text'];
+
+/** 负向提示词用的字段名，正向的搜不到时用它兜底 */
+const NEGATIVE_FIELD_PRIORITY = ['negative_prompt', 'negative_text', 'neg_prompt', 'uc'];
+
+/** 囤提示词专用的节点：字段名叫 value，但装的就是提示词 */
+const TEXT_PRIMITIVE_TYPES = new Set(['PrimitiveString', 'PrimitiveStringMultiline', 'StringLiteral']);
+
+/** 身上只有比例、没有宽高的「分辨率选择器」类节点 */
+function isAspectSizeNode(classType: string): boolean {
+  return /resolution|aspect/i.test(classType);
+}
+
+/** 分辨率选择器常见的比例 → 宽高比（只用来挑最接近的比例，不问名字） */
+const ASPECT_RATIO_LABELS: { ratio: number }[] = [
+  { ratio: 1 },
+  { ratio: 16 / 9 },
+  { ratio: 9 / 16 },
+  { ratio: 4 / 3 },
+  { ratio: 3 / 4 },
+  { ratio: 3 / 2 },
+  { ratio: 2 / 3 },
+  { ratio: 21 / 9 },
+  { ratio: 9 / 21 },
+];
+
+/**
+ * 连不上 ComfyUI 时的兜底档位名。
+ * 🔴 这些名字必须与常见分辨率节点（如 ComfyUI-essentials 的 ResolutionSelector）的枚举表一字不差，
+ * 否则写进去等于没写 —— 选择器算不出宽高，空 latent 拿不到尺寸，整条推理断掉，
+ * 而 ComfyUI 仍报「执行成功」，保存节点却无图可存。能连上时应优先用 fetchEnumOptions 问真实选项。
+ */
+const FALLBACK_ASPECT_LABELS: string[] = [
+  '1:1 (Square)',
+  '16:9 (Widescreen)',
+  '9:16 (Portrait Widescreen)',
+  '4:3 (Standard)',
+  '3:4 (Portrait Standard)',
+  '3:2 (Photo)',
+  '2:3 (Portrait Photo)',
+  '21:9 (Ultrawide)',
+  '9:21 (Portrait Ultrawide)',
+];
+
+/**
+ * 把「宽 × 高」换成分辨率选择器的档位。
+ *
+ * 🔴 档位名是节点定义的**枚举表**，不是自由文本。自己拼字符串（比如把 "1:1 (Square)"
+ * 改成 "16:9 (Ultrawide)"）看着像对的，实际对不上表项，选择器算不出宽高 →
+ * 空 latent 拿不到尺寸 → 整条推理断掉 → 保存节点没东西可存，ComfyUI 却报「执行成功」。
+ *
+ * 所以只在**候选档位表**里挑：优先用 ComfyUI 现问来的真实选项（见 fetchResolutionChoices），
+ * 问不到时才用内置的标准档位名。挑法只认比例数字，括号里写什么都不影响。
+ */
+function aspectRatioLabelFor(width: number, height: number, choices?: string[]): string | null {
+  if (!(width > 0) || !(height > 0)) return null;
+  const target = width / height;
+
+  // 有真实选项就用真实的：从档位名里抠出 "16:9" 这种比例
+  if (choices && choices.length > 0) {
+    let best: { option: string; ratio: number } | null = null;
+    for (const option of choices) {
+      const ratio = parseAspectRatio(option);
+      if (ratio === null) continue;
+      if (!best || Math.abs(ratio - target) < Math.abs(best.ratio - target)) {
+        best = { option, ratio };
+      }
+    }
+    if (best && Math.abs(best.ratio - target) / target <= 0.12) {
+      return best.option;
+    }
+    return null;
+  }
+
+  // 没连上 ComfyUI：退回内置标准档位名（必须与常见包的表项一字不差）
+  let best: { ratio: number; index: number } | null = null;
+  ASPECT_RATIO_LABELS.forEach((entry, index) => {
+    if (!best || Math.abs(entry.ratio - target) < Math.abs(best.ratio - target)) {
+      best = { ratio: entry.ratio, index };
+    }
+  });
+  if (!best) return null;
+  const picked = best as { ratio: number; index: number };
+  if (Math.abs(picked.ratio - target) / target > 0.08) return null;
+  return FALLBACK_ASPECT_LABELS[picked.index] ?? null;
+}
+
+/** 从档位名里抠出宽高比："16:9 (Widescreen)" → 1.777…；认不出返回 null */
+function parseAspectRatio(label: string): number | null {
+  const match = /(\d+(?:\.\d+)?)\s*[:：x×*]\s*(\d+(?:\.\d+)?)/i.exec(label);
+  if (match) {
+    const w = Number(match[1]);
+    const h = Number(match[2]);
+    if (w > 0 && h > 0) return w / h;
+  }
+  // 没有比例数字的（"Square" 之类）就按名字认
+  if (/square|方/i.test(label)) return 1;
+  return null;
+}
+
+/** 问 ComfyUI 要某个节点的枚举选项；拿不到就返回 null（出图时退回内置表） */
+export async function fetchEnumOptions(
+  baseUrl: string,
+  nodeType: string,
+  field: string,
+  signal?: AbortSignal,
+): Promise<string[] | null> {
+  const normalized = normalizeComfyUiBaseUrl(baseUrl);
+  if (!normalized || !nodeType) return null;
+
+  try {
+    const response = await fetch(`${normalized}/object_info/${encodeURIComponent(nodeType)}`, { signal });
+    if (!response.ok) return null;
+    const payload = (await response.json()) as unknown;
+    if (!isNodeRecord(payload)) return null;
+
+    const info = payload[nodeType];
+    if (!isNodeRecord(info) || !isNodeRecord(info.input)) return null;
+
+    for (const bucket of ['required', 'optional']) {
+      const group = info.input[bucket];
+      if (!isNodeRecord(group)) continue;
+      const spec = group[field];
+      if (!Array.isArray(spec) || spec.length === 0) continue;
+      // 老写法：直接就是选项数组
+      if (Array.isArray(spec[0])) {
+        return (spec[0] as unknown[]).filter((item): item is string => typeof item === 'string');
+      }
+      // 新写法：["COMBO", { options: [...] }]
+      const options = isNodeRecord(spec[1]) ? spec[1].options : null;
+      if (Array.isArray(options)) {
+        return options.filter((item): item is string => typeof item === 'string');
+      }
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+/** 把目标宽高折成「比例档位 + 百万像素」，给分辨率选择器用 */
+function applyAspectSize(
+  workflow: Record<string, unknown>,
+  nodeIds: string[],
+  width: number,
+  height: number,
+  choices?: string[],
+): boolean {
+  const label = aspectRatioLabelFor(width, height, choices);
+  if (!label) return false;
+
+  let touched = false;
+  nodeIds.forEach(id => {
+    const node = workflow[id];
+    if (!isNodeRecord(node)) return;
+    const inputs = node.inputs;
+    if (!isNodeRecord(inputs)) return;
+
+    // 🔴 整个档位名原样替换，绝不保留原括号后缀 —— 后缀和比例是配对的，换了比例后缀就错了
+    if (typeof inputs.aspect_ratio === 'string') {
+      inputs.aspect_ratio = label;
+      touched = true;
+    }
+    if (typeof inputs.megapixels === 'number') {
+      const mega = Number(((width * height) / 1_000_000).toFixed(2));
+      if (mega > 0) {
+        inputs.megapixels = mega;
+        touched = true;
+      }
+    }
+  });
+  return touched;
+}
+
+/** 这个字段现在是不是一条上游连线：["9", 0] */
+function isNodeRefValue(value: unknown, workflow: Record<string, unknown>): boolean {
+  if (!Array.isArray(value) || value.length === 0) return false;
+  const refId = readNodeRef(value);
+  return refId !== null && isNodeRecord(workflow[refId]);
+}
+
+/**
+ * 切换 / 分流节点不是提示词节点。
+ *
+ * Qwen Image 2.1 那类工作流里，切换节点的「关」那一路本身就是一段提示词字符串，
+ * 会被误当成可写口 —— 结果玩家手选它、提示词确实写进去了，但整条增强器支路被绕过，
+ * 看着「生效了」其实全看开关脸色。
+ *
+ * 🔴 只在它**没有明确的提示词字段**时才排除：类名带 switch/select 之类、
+ * 或者身上有 on_true / on_false 两个口 —— 这类节点的字符串口是「走哪一路」，不是提示词。
+ * 万一某个老工作流的切换节点真的用 text / prompt 装词，照常保留，不误伤。
+ */
+function isSwitchNode(node: Record<string, unknown>): boolean {
+  const inputs = readNodeInputs(node);
+  const hasExplicitPromptField = PROMPT_FIELD_PRIORITY.some(field => typeof inputs[field] === 'string');
+  if (hasExplicitPromptField) return false;
+
+  const classType = typeof node.class_type === 'string' ? node.class_type : '';
+  if (/switch|select|toggle|router|branch/i.test(classType)) return true;
+  // 类名看不出来的，靠「on_true / on_false 两个口」认
+  return 'on_true' in inputs && 'on_false' in inputs;
+}
 
 /** 读玩家给节点起的标题：API 格式放在 _meta.title，界面格式放在 title */
 function readNodeTitle(node: Record<string, unknown>): string {
@@ -155,20 +362,56 @@ function hasTitleAlias(node: Record<string, unknown>, aliases: Set<string>): boo
  * 这些字段装的是文件名/配置，不是提示词。
  * 只在「白名单没命中、靠唯一文字字段兜底」时用来排除，避免把加载器节点当成提示词节点。
  */
+/** 这些字段装的是配置/参数，不是提示词：靠唯一文字字段兜底时用来排除 */
 const NON_PROMPT_FIELD_PATTERN =
-  /(name|path|file|prefix|image|url|type|mode|device|method|dtype|precision|crop|format|language|scheduler|sampler)$/i;
+  /(name|path|file|prefix|image|url|type|mode|device|method|dtype|precision|crop|format|language|scheduler|sampler|sigmas?|seeds?|steps|cfg|scale|ratio|megapixels|resolution|width|height|size|length|model|clip|vae|lora)$/i;
 
-/** 节点里有没有可写入的提示词字段；有的话返回字段名 */
+/**
+ * 节点里有没有可写入的提示词字段；有的话返回字段名。
+ *
+ * 🔴 字段名对得上（text / prompt / text_g …）就算可写，**不管它现在是文字还是连线**。
+ * Qwen Image 2.1 那类工作流里，编码器的 prompt 口常年被「提示词增强器 / 切换节点」
+ * 的连线占着，值不是字符串 —— 只看值是不是字符串的话，整个工作流会被判成「没有能填提示词
+ * 的节点」。真写的时候会把那根连线拆掉换成文字（见 applyPromptToNode）。
+ */
 function findPromptField(node: Record<string, unknown>): string | null {
+  return findPromptFieldIn(node, {});
+}
+
+function findPromptFieldIn(
+  node: Record<string, unknown>,
+  workflow: Record<string, unknown>,
+): string | null {
   const inputs = readNodeInputs(node);
+
+  // 第一优先：字段名对得上就是它（连线占着也算）
   for (const field of PROMPT_FIELD_PRIORITY) {
     if (typeof inputs[field] === 'string') return field;
+    if (field in inputs && (isNodeRefValue(inputs[field], workflow) || inputs[field] === null)) {
+      return field;
+    }
   }
 
-  // 字段名很冷门时退一步：整个节点只有一个文字字段、且它不像文件名/配置，那它就是提示词
+  // 兜底一：囤提示词的纯文本节点，字段名就叫 value
+  const classType = typeof node.class_type === 'string' ? node.class_type : '';
+  if (TEXT_PRIMITIVE_TYPES.has(classType) && typeof inputs.value === 'string') {
+    return 'value';
+  }
+
+  // 兜底二：字段名很冷门时退一步 —— 整个节点只有一个文字字段、且它不像文件名/配置
   const stringFields = Object.keys(inputs).filter(key => typeof inputs[key] === 'string');
   if (stringFields.length === 1 && !NON_PROMPT_FIELD_PATTERN.test(stringFields[0])) {
     return stringFields[0];
+  }
+  return null;
+}
+
+/** 找负向提示词字段：名字对得上就用（连线占着也算） */
+function findNegativeField(node: Record<string, unknown>, workflow: Record<string, unknown>): string | null {
+  const inputs = readNodeInputs(node);
+  for (const field of NEGATIVE_FIELD_PRIORITY) {
+    if (typeof inputs[field] === 'string') return field;
+    if (field in inputs && isNodeRefValue(inputs[field], workflow)) return field;
   }
   return null;
 }
@@ -410,7 +653,8 @@ export function analyzeComfyWorkflow(rawJson: string): ComfyUiWorkflowAnalysis {
     const classType = typeof node.class_type === 'string' ? node.class_type : '';
     const inputs = readNodeInputs(node);
     const title = readNodeTitle(node);
-    const promptField = findPromptField(node);
+    // 切换节点身上那段字符串是「开关走哪一路」，不是提示词 —— 不认它，免得玩家手选错
+    const promptField = isSwitchNode(node) ? null : findPromptField(node);
 
     if (/saveimage/i.test(classType)) {
       hasSaveImage = true;
@@ -440,10 +684,19 @@ export function analyzeComfyWorkflow(rawJson: string): ComfyUiWorkflowAnalysis {
       titledNegativeIds.push(id);
     }
 
-    if (typeof inputs.width === 'number' && typeof inputs.height === 'number') {
+    // 宽高被上游连线占着也算尺寸节点 —— 那是「分辨率选择器」在管，改的时候得反过去写它
+    const hasWidth = typeof inputs.width === 'number' || isNodeRefValue(inputs.width, workflow);
+    const hasHeight = typeof inputs.height === 'number' || isNodeRefValue(inputs.height, workflow);
+    if (hasWidth && hasHeight) {
       if (isCanvasSizeNode(classType)) {
         sizeNodeIds.unshift(id);
       } else {
+        sizeNodeIds.push(id);
+      }
+    }
+    // 只给比例、不给宽高的「分辨率选择器」，也是改尺寸时要动的节点
+    if (!(hasWidth && hasHeight) && isAspectSizeNode(classType)) {
+      if (typeof inputs.aspect_ratio === 'string' || typeof inputs.megapixels === 'number') {
         sizeNodeIds.push(id);
       }
     }
@@ -489,12 +742,29 @@ export function analyzeComfyWorkflow(rawJson: string): ComfyUiWorkflowAnalysis {
     }
   }
 
+  /**
+   * 第三优先：正负词出在同一个节点的两个口上。
+   * Qwen Image 2.1 的编码器就是这种：第 0 口正向、第 1 口负向（同一个 prompt /
+   * negative_prompt 节点），顺连线往上找只会撞进「预览值」那种中转节点，找不到词。
+   * 所以先看正向节点自己身上有没有负向字段，有就是它。
+   */
+  if (!negativeNodeId && positiveNodeId) {
+    const positiveNode = workflow[positiveNodeId];
+    if (isNodeRecord(positiveNode) && findNegativeField(positiveNode, workflow)) {
+      negativeNodeId = positiveNodeId;
+    }
+  }
+
   // 兜底：还是认不出就取第一个能装提示词的节点，至少给玩家一个起点
   if (!positiveNodeId) {
     positiveNodeId = writableNodeIds[0] ?? '';
   }
+  // 正负落在同一个节点上不算冲突（两词各占一个口），只有这个节点没有负向字段时才清掉
   if (negativeNodeId === positiveNodeId) {
-    negativeNodeId = '';
+    const sharedNode = workflow[positiveNodeId];
+    if (!isNodeRecord(sharedNode) || !findNegativeField(sharedNode, workflow)) {
+      negativeNodeId = '';
+    }
   }
 
   return {
@@ -581,28 +851,65 @@ export async function fetchComfyUiServerInfo(baseUrl: string, signal?: AbortSign
   };
 }
 
-function applyPromptToNode(workflow: Record<string, unknown>, nodeId: string, text: string): boolean {
+/**
+ * 把提示词写进指定节点。
+ *
+ * 🔴 那个口如果被上游连线占着（值形如 ["459:472", 0]），只把文字塞进去是不够的 ——
+ * ComfyUI 认的是连线，写进去的数字/字符串会被忽略。所以要先把连线拆掉、改成直写文字。
+ */
+function applyPromptToNode(
+  workflow: Record<string, unknown>,
+  nodeId: string,
+  text: string,
+  negative = false,
+): boolean {
   const node = workflow[nodeId];
   if (!isNodeRecord(node)) return false;
   const inputs = node.inputs;
   if (!isNodeRecord(inputs)) return false;
 
-  const field = findPromptField(node);
+  const field = negative ? findNegativeField(node, workflow) : findPromptFieldIn(node, workflow);
   if (!field) return false;
 
   inputs[field] = text;
   return true;
 }
 
-function applySize(workflow: Record<string, unknown>, sizeNodeIds: string[], width: number, height: number): void {
+function applySize(
+  workflow: Record<string, unknown>,
+  sizeNodeIds: string[],
+  width: number,
+  height: number,
+  aspectChoices?: string[],
+): void {
+  const aspectNodeIds: string[] = [];
   sizeNodeIds.forEach(id => {
     const node = workflow[id];
     if (!isNodeRecord(node)) return;
     const inputs = node.inputs;
     if (!isNodeRecord(inputs)) return;
+    // 宽高被上游连线占着时改不动 —— 那是「分辨率选择器」在管，换个办法写
+    const widthLinked = isNodeRefValue(inputs.width, workflow);
+    const heightLinked = isNodeRefValue(inputs.height, workflow);
+    if (widthLinked || heightLinked) {
+      aspectNodeIds.push(id);
+      return;
+    }
     if (typeof inputs.width === 'number') inputs.width = width;
     if (typeof inputs.height === 'number') inputs.height = height;
   });
+
+  // 宽高由选择器决定时，反过来去写选择器的「比例 + 百万像素」
+  if (aspectNodeIds.length > 0) {
+    const selectorIds = Object.keys(workflow).filter(id => {
+      const node = workflow[id];
+      if (!isNodeRecord(node)) return false;
+      const classType = typeof node.class_type === 'string' ? node.class_type : '';
+      return isAspectSizeNode(classType);
+    });
+    applyAspectSize(workflow, selectorIds, width, height, aspectChoices);
+    applyAspectSize(workflow, aspectNodeIds, width, height, aspectChoices);
+  }
 }
 
 /** 种子取值上限：ComfyUI 的种子节点普遍按 32 位无符号整数处理 */
@@ -677,7 +984,10 @@ export async function generateComfyUiImage(options: ComfyUiGenerateOptions): Pro
   }
 
   if (options.negativeNodeId && typeof options.negativePrompt === 'string') {
-    applyPromptToNode(workflow, options.negativeNodeId, options.negativePrompt);
+    // 负向词优先走「负向字段」；节点里没这个字段才退回正向口
+    if (!applyPromptToNode(workflow, options.negativeNodeId, options.negativePrompt, true)) {
+      applyPromptToNode(workflow, options.negativeNodeId, options.negativePrompt);
+    }
   }
 
   if (
@@ -690,7 +1000,7 @@ export async function generateComfyUiImage(options: ComfyUiGenerateOptions): Pro
       options.sizeNodeIds && options.sizeNodeIds.length > 0
         ? options.sizeNodeIds
         : analyzeComfyWorkflow(JSON.stringify(workflow)).sizeNodeIds;
-    applySize(workflow, sizeNodeIds, options.width, options.height);
+    applySize(workflow, sizeNodeIds, options.width, options.height, options.aspectChoices);
   }
 
   // 种子完全由前端给：开着开关就每轮随机，关着就用玩家填的固定值、留空则兜底随机一个。
