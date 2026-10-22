@@ -3,17 +3,17 @@
 本项目所有值得注意的变更都会记录在此文件。
 
 **一次提交对应一条记录**，按提交时间从早到晚排列；同一天的提交归在同一个日期小节下。
-每条记录带提交短哈希与原始提交标题，改动内容按 `Added` / `Changed` / `Fixed` / `Removed` 归类。
+每条记录带原始提交标题，改动内容按 `Added` / `Changed` / `Fixed` / `Removed` 归类。
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
 ## 2026-07-07
 
-### `48e3518` — Initial commit
+### Initial commit
 
 - **Added** 仓库初始化：`LICENSE` 与 `README.md`。
 
-### `ea33b86` — Initial commit: 1980s-NW standalone web project
+### Initial commit: 1980s-NW standalone web project
 
 - **Added** 项目首次入库，275 个文件、约 93,771 行：网页源码 `src/`、运行时 `runtime/`、
   变量 schema `schema/`、预设包 `preset-package/`、世界书与提示词资产、Webpack 构建配置，
@@ -22,31 +22,31 @@
   本地世界书注入、骰子小游戏、本地存档与 JSON 导入导出；中英双语界面（zh-CN / en）。
 - 此提交的内容即 `v1.0.0` 的发布主体。
 
-### `a76040c` — Merge remote-tracking branch 'origin/main'
+### Merge remote-tracking branch 'origin/main'
 
 - **Changed** 合并两条初始提交线（`48e3518` 的 LICENSE / README 与 `ea33b86` 的完整项目），
   `README.md` 冲突以项目侧为准解决。
 
-### `58a5b6a` — docs: expand README with intro, features, tech stack, quick start, and directory structure
+### docs: expand README with intro, features, tech stack, quick start, and directory structure
 
 - **Changed** `README.md` 扩写：补简介、功能特性、技术栈、快速开始与目录结构。
 - 此提交打上 `v1.0.0` 标签。
 
-### `a8f527d` — docs: add English README and bilingual language switch links
+### docs: add English README and bilingual language switch links
 
 - **Added** `README.en.md`，并在中英两份 README 顶部互加语言切换链接。
 
-### `5fa3cc2` — chore: add .gitattributes to normalize line endings to LF
+### chore: add .gitattributes to normalize line endings to LF
 
 - **Added** `.gitattributes`：统一换行符为 LF，消除 Windows 下的 CRLF 提交噪音。
 
-### `e04313f` — chore: add tooling — scripts, engines, ESLint 9 flat config, Prettier, .nvmrc
+### chore: add tooling — scripts, engines, ESLint 9 flat config, Prettier, .nvmrc
 
 - **Added** `.nvmrc`（Node 24）；`package.json` 新增 `typecheck` / `lint` / `lint:fix` /
   `format` / `format:check` / `test` 脚本，以及 `engines` 与 `packageManager` 字段。
 - **Added** ESLint 9（flat config）与 Prettier 配置。
 
-### `aac934b` — fix(types): resolve all 90 type-check errors
+### fix(types): resolve all 90 type-check errors
 
 - **Fixed** 修复完整类型检查下的 90 个 TypeScript 错误（此前构建走 `transpileOnly`，未做类型检查）。
   新增 `src/asset-imports.d.ts` 声明 webpack 的 `?raw` / `?url` 导入与 `require()`；
@@ -54,51 +54,51 @@
   类型与 `PresetConfig.i18n` 字段；`PresetDisplayGroup` 的 key 用 `as const` 收紧为字面量类型；
   测试脚本改用可选 catch 绑定。`vue-tsc --noEmit` 现为 0 错误。
 
-### `30cdde5` — ci: add GitHub Actions (CI + Release), issue/PR templates, CONTRIBUTING, CHANGELOG
+### ci: add GitHub Actions (CI + Release), issue/PR templates, CONTRIBUTING, CHANGELOG
 
 - **Added** GitHub Actions：`ci.yml`（typecheck + lint + build）与 `release.yml`（tag 触发自动发布）。
 - **Added** Issue / PR 模板、`CONTRIBUTING.md` 与本文件 `CHANGELOG.md`。
 
-### `2e17703` — docs: document typecheck/lint/format scripts and link CONTRIBUTING
+### docs: document typecheck/lint/format scripts and link CONTRIBUTING
 
 - **Changed** `README.md` 补上 `typecheck` / `lint` / `format` 脚本说明，并链到 `CONTRIBUTING.md`。
 
-### `101798b` — ci: fix pnpm ignored-builds failure
+### ci: fix pnpm ignored-builds failure
 
 - **Fixed** `pnpm-workspace.yaml` 里无效的 `allowBuilds` 占位配置改为 `onlyBuiltDependencies: []`
   （显式跳过 `@parcel/watcher` 的原生构建），并在 CI / Release 的安装步骤加
   `--config.strict-dep-builds=false` 兜底。
 
-### `e4b9f26` — ci: use ignoredBuiltDependencies for @parcel/watcher (pnpm 11)
+### ci: use ignoredBuiltDependencies for @parcel/watcher (pnpm 11)
 
 - **Fixed** pnpm 11 用 `allowBuilds` / `ignoredBuiltDependencies` 取代了 `onlyBuiltDependencies`，
   显式把 `@parcel/watcher` 标为忽略，修掉 `pnpm run` 前隐式 install 触发的 `strictDepBuilds` 报错。
 
-### `30ee7f6` — ci: disable verifyDepsBeforeRun and strictDepBuilds to fix implicit-install failure
+### ci: disable verifyDepsBeforeRun and strictDepBuilds to fix implicit-install failure
 
 - **Fixed** 隐式的 pre-run install（`verifyDepsBeforeRun`）会忽略命令行参数，持续让
   typecheck / lint / build 报 `ERR_PNPM_IGNORED_BUILDS`。改为关闭该隐式安装，并把
   `strictDepBuilds` 设为 false，让被忽略的构建脚本降级为警告。
 
-### `0beb904` — fix(types): remove unused 'yaml' from tsconfig types
+### fix(types): remove unused 'yaml' from tsconfig types
 
 - **Fixed** `tsconfig.json` 里指向未安装、未使用的 `yaml` 的类型引用，会导致 CI 报
   `error TS2688: Cannot find type definition file for yaml`。
 
-### `d6e83a6` — docs: cut CHANGELOG v1.0.1 (tooling & CI hardening)
+### docs: cut CHANGELOG v1.0.1 (tooling & CI hardening)
 
 - **Changed** 切出 `v1.0.1`：工具链与 CI 加固，含本日上列各项。
 
 ## 2026-07-09
 
-### `1c7278e` — fix(messages): 回退楼层时保留前端权威字段，避免签到/刷新/积分被覆盖
+### fix(messages): 回退楼层时保留前端权威字段，避免签到/刷新/积分被覆盖
 
 - **Fixed** 回退（删除）楼层后重建消息列表时，签到 / 刷新次数 / 积分等前端权威字段被旧数据覆盖，
   改为回退时保留这些字段。
 
 ## 2026-09-13
 
-### `1e75217` — refactor: 抽取共享逻辑、合并重复实现并清理死代码
+### refactor: 抽取共享逻辑、合并重复实现并清理死代码
 
 - **Changed** 三处重复的换行归一化实现合并为共享工具模块 `textNormalize`；
   AI 调试追踪的展示逻辑从内容中心面板抽出为独立模块 `aiDebugTraceView`（约 424 行）；
@@ -110,7 +110,7 @@
 
 ## 2026-09-20
 
-### `a58416c` — feat(ui): 图标库迁移 Tabler、扁平化改版与天气横幅
+### feat(ui): 图标库迁移 Tabler、扁平化改版与天气横幅
 
 - **Changed** 图标库从 FontAwesome 全量换为 Tabler 3.47.0，子集化内联（26.4 KB），
   补 `ti-spin` 旋转动画。
@@ -120,15 +120,15 @@
   `GenderIcon` 组件。
 - **Removed** 删除 8 个未再引用的自定义开局向导组件。
 
-### `80614e4` — chore: 忽略本地临时目录 Temp/
+### chore: 忽略本地临时目录 Temp/
 
 - **Changed** `.gitignore` 增加 `Temp/`。
 
-### `e78468f` — chore: 删除已无引用的 FontAwesome 内联字体
+### chore: 删除已无引用的 FontAwesome 内联字体
 
 - **Removed** 删除迁移 Tabler 后已无引用的 FontAwesome 内联字体资源。
 
-### `f06ce41` — feat(build): 资源外置为独立文件，按素材目录分门别类
+### feat(build): 资源外置为独立文件，按素材目录分门别类
 
 - **Changed** webpack 的 `?url` 规则由 `asset/inline` 改为 `asset/resource`，图片 / 音频 / 字体
   不再 base64 内联。产物落到 `dist/assets/<源目录>/<名字>.<8 位内容哈希><扩展名>`，
@@ -138,12 +138,12 @@
   文本资源（世界书、提示词）仍走 `?raw` 内联，运行时读取方式不变。
 - **Removed** 删除 `src/assets/backgrounds/` 下 24 张零引用图片（约 1 MB）。
 
-### `784692f` — chore: 删除零引用的装饰 SVG
+### chore: 删除零引用的装饰 SVG
 
 - **Removed** 删除 `corner` / `divider` / `rail` / `rail-v` / `tile` 五个装饰 SVG
   （逐个 grep 确认无引用；在用的是 `styles/ornaments.css` 里的内联 SVG）。
 
-### `5cba0af` — feat(home): 封面背景音乐改为外置音频，新增音量条
+### feat(home): 封面背景音乐改为外置音频，新增音量条
 
 - **Changed** 封面背景音从代码合成的环境音（A 小调和弦 + 滤波扫动）换成真实音轨
   _Beyond the Marble Gate_，走外置资源链路（4.06 MB 不进 HTML，内联成 base64 还要再胖三分之一）。
@@ -152,7 +152,7 @@
 - **Changed** 起播先试自动播放，被浏览器策略拦下则退回「等用户首次交互」，点 / 按页面任意处即淡入；
   起播淡入 1.6s、停播淡出 0.7s，离开封面即暂停归零。新增词条 `setup.home.volume`（中 / 英）。
 
-### `8e82b09` — feat(home): 封面加入场动画与开始游戏过场，背景音乐换轨
+### feat(home): 封面加入场动画与开始游戏过场，背景音乐换轨
 
 - **Added** 封面入场动画：黑幕退去 → 底图由暗转亮并缓缓收进 → 极光铺开 → 标题浮出 →
   装饰线从中间展开 → 四个按钮依次落下 → 顶部控件落下，全程约 2.6s。
@@ -165,7 +165,7 @@
   —— 中间插 `brightness` 关键帧会制造台阶。新增 `prefers-reduced-motion` 覆盖，
   写在动画之后（媒体查询不加特异性，只靠源码顺序），并手工还原被动画钉住的起始值。
 
-### `579c598` — feat: 本地生图上线、产物零 CDN 依赖、界面提示统一入口
+### feat: 本地生图上线、产物零 CDN 依赖、界面提示统一入口
 
 - **Added** 本地 ComfyUI 生图：新增「文生图」设置页，排在界面设置之后；
   上传工作流后正文里的 `image### 提示词 ###` 变成可点击出图的图片槽；新增画风预置与提示词拼接，
@@ -181,7 +181,7 @@
 
 ## 2026-09-21
 
-### `e0d58bd` — fix: 标签页标题跟随界面语言，英文游戏名补回 s
+### fix: 标签页标题跟随界面语言，英文游戏名补回 s
 
 - **Fixed** 模板补上 `<title>`，避免 JS 执行前标签页显示网址；语言确定后把 `document.title`
   改成对应语言的名字（中文「诸界穿越模拟器」/ 英文「MyRaid Realms」）—— 此前切到英文后
@@ -189,7 +189,7 @@
 - **Fixed** 多语言检查脚本跳过注释的规则补上 `//` 行注释（原来只认 `/* */`，
   中文行注释会被误报成「英文块残留中文」）。
 
-### `b8229ea` — feat: 世界书按会话持久化、正文列放宽至 1024、插图查看器与音乐偏好持久化
+### feat: 世界书按会话持久化、正文列放宽至 1024、插图查看器与音乐偏好持久化
 
 - **Fixed** 世界书「选了预设、刷新后条目丢失」：写入发生在会话建立之前，落到兜底作用域
   导致读不回来。改为无会话时跳过写入、会话创建后补写（`createStandaloneRuntimeBaseline` /
@@ -206,20 +206,20 @@
   5 个英文句式一字未改；预设「✍️ 绝对古白话-by CHR」整体替换为新的六节写作风格规则。
 - **Fixed** 修复测试脚本陈旧问题（`getWorkshopPresets` 已删除、参数改名 `imagePromptEnabled`）。
 
-### `9d33bc8` — fix(settings): 正文字号不再乘界面缩放系数，删除无用的 data-content-size
+### fix(settings): 正文字号不再乘界面缩放系数，删除无用的 data-content-size
 
 - **Fixed** 正文五档改为固定 px（15 / 17 / 19 / 21 / 23），不再乘 `--ui-font-scale`。
   此前调「界面字号」会连带把正文一起放大，两个滑块互相干扰。
 - **Removed** 删除根节点上无人读取的 `data-content-size` 属性及其 watch 依赖。
   正文字号仍由消息正文元素自带的 `data-size` 生效，功能不变。
 
-### `35d3673` — fix(image): 插图加载失败时显示兜底提示与重新加载按钮
+### fix(image): 插图加载失败时显示兜底提示与重新加载按钮
 
 - **Fixed** 线上 https 页面拉本地 ComfyUI 图片会因浏览器「本地网络访问」权限被拒，
   `img` 静默失败只剩破图图标。现在图片槽监听加载失败，改为显示原因提示 + 重新加载按钮
   （重建 `img` 元素重发请求，同时借点击手势给浏览器弹授权框的机会）。
 
-### `649d426` — ci: 修复 Lint 报错、忽略本地临时目录、接入测试步骤
+### ci: 修复 Lint 报错、忽略本地临时目录、接入测试步骤
 
 - **Fixed** `check-i18n.cjs` 两条正则用 `{2}` 替代连续空格，修掉 `no-regex-spaces`
   —— 这是 CI 自 9/20 起 11 连红的唯一原因。
@@ -227,13 +227,13 @@
   导致本机 lint 366 条噪音淹没真实错误。
 - **Added** `ci.yml` 在 Lint 之后、Build 之前加入 Test 步骤（issue #5）。
 
-### `da0b25f` — chore: 设计文档与创作素材移出仓库，改为本地保留
+### chore: 设计文档与创作素材移出仓库，改为本地保留
 
 - **Removed** 设计文档与创作素材移出仓库，改为本地保留。
 
 ## 2026-09-22
 
-### `1a6389a` — feat: 阶段总结归档 + 修好测试跑器（CI 的测试步骤不再假绿） (#11)
+### feat: 阶段总结归档 + 修好测试跑器（CI 的测试步骤不再假绿） (#11)
 
 - **Added** 阶段总结归档：把掉出「最近 8 轮」窗口、玩家手动归档过的小总结，用主 API
   压成一段整体剧情摘要写回会话；提示词里 `[阶段总结]` 与 `[前情提要]`（只含水位线之后）并存。
@@ -245,7 +245,7 @@
   产品代码零改动。
 - **Removed** 删掉重复的同名 `flushScheduledUiEffects`（后一份覆盖前一份，参数是死的）。
 
-### `f890d72` — feat(comfyui): 提示词节点按标题识别 + 手动指定 (#12)
+### feat(comfyui): 提示词节点按标题识别 + 手动指定 (#12)
 
 - **Added** 站点根目录补 `404.html` / `favicon.ico` / `apple-touch-icon.png`，
   构建时由 `CopyStaticToRootPlugin` 原样拷到产物根目录，不走打包。站点根目录必须有 `404.html`，
@@ -260,13 +260,13 @@
 - **Added** 手动指定：下拉框列出工作流里全部节点，能装提示词的排前面、其余列出但禁用；
   手选的正向节点会固定下来（`settings.positiveNodeManual`），重新解析不再覆盖。
 
-### `ba611aa` — feat(text): 角括号「」与『』包裹的对话也走富文本高亮 (#13)
+### feat(text): 角括号「」与『』包裹的对话也走富文本高亮 (#13)
 
 - **Added** 对话包裹规则补上 `「…」` 与 `『…』`，都包成同一个 `.quote` 样式（取 `--accent-primary`），
   不新增任何 CSS。AI 有时用 `「」` 而不是 `“”` 写对话，这段文字此前和正文同色，读不出是台词。
   代码块与行内代码里的角括号不受影响；嵌套写法（外层 `「」` 内层 `『』`）得到嵌套的同色 span。
 
-### `d5dfed5` — docs: 补齐工程细则与协作准则，清理已知问题清单
+### docs: 补齐工程细则与协作准则，清理已知问题清单
 
 - **Added** `AGENTS.md`（AI 协作准则，只讲「怎么干活」）与 `spec/`（索引 + 11 篇工程细则：
   架构与模块边界、构建与产物与部署、界面与样式体系、国际化、提示词链路、世界书与本地补充内容、
@@ -278,7 +278,7 @@
   新增 `.prettierignore` 条目，排除世界书 EJS 模板、玩家预设数据、issue 模板与旧实现存档。
   仓库现在 `pnpm format:check` 全绿。
 
-### `78e5780` — feat: 首页快照选择浮层，开局流程简化并清理历史残留
+### feat: 首页快照选择浮层，开局流程简化并清理历史残留
 
 - **Added** 首页「继续游戏」改为弹窗浮层挑历史快照：最多列 5 个，每项只给摘要与时间，
   不带设置页存档区那套管理功能。
@@ -293,7 +293,7 @@
 - **Removed** 删除 `legacy-reference/` 旧实现存档与 GitHub Release 分发通道，
   README 与 spec 的历史口径同步改为正面陈述。发布定位收敛为「只走线上整目录部署」。
 
-### `611543c` — fix(prompt): 世界书不再被注入两遍
+### fix(prompt): 世界书不再被注入两遍
 
 - **Fixed** 拼「系统协议块」时会把 `route=main` 的本地内容块整批拼进去，但排除名单里只有
   「当前变量快照」一种，**漏了世界书** —— 而世界书本来还有一条独立通道
@@ -307,7 +307,7 @@
 
 ## 2026-09-23
 
-### `52f8eab` — refactor(settings): 主/辅助 API 合并为统一 API 池
+### refactor(settings): 主/辅助 API 合并为统一 API 池
 
 - **Changed** 设置页与游戏内设置面板统一为「API 列表 + 使用方式」两张卡片；
   主 API / 辅助 API 均支持多选，并可按顺序排列。
@@ -315,20 +315,20 @@
 - **Changed** 旧版「单主 API + 辅助 API」配置自动迁移进 API 池。
 - **Removed** 移除已无引用的单卡 API 编辑器。
 
-### `fd0228c` — feat(settings): API 池支持 OpenCode Go 会话标识，勾选状态与顺序显示修正
+### feat(settings): API 池支持 OpenCode Go 会话标识，勾选状态与顺序显示修正
 
 - **Added** 「OpenCode Go 会话标识」开关：勾选后拉模型与生成回复都会附带同一会话请求头。
 - **Fixed** 勾选框改为自绘样式：图标字体是精简子集，原先引用的方形勾选图标并不存在，一直没显示。
 - **Fixed** 已勾选的 API 按重试顺序排到列表上方，行号与「第 N 位」不再错位；
   修复设置页选中行高亮失效（对渐变用 `color-mix` 是无效写法）。
 
-### `7c6f4a7` — revert(settings): 移除 API 会话标识开关
+### revert(settings): 移除 API 会话标识开关
 
 - **Removed** 回退 `fd0228c` 中该开关的改动，8 个文件恢复原状。该开关用于给推理请求附带
   会话标识头，实测在第三方中转上不生效（中转转发时会丢弃该请求头），且浏览器侧无法伪装
   `User-Agent`，客户端无法绕过，故移除。
 
-### `1c471a5` — fix(storage): 修掉本地存储被调试记录撑爆，老数据自动清理
+### fix(storage): 修掉本地存储被调试记录撑爆，老数据自动清理
 
 - **Fixed** 流式响应的原始抄本（整条 SSE 的逐字节转录）会随调试记录一起写进本地存储，
   一个字要裹上 150-200 字节的 JSON 包装（`id` / `model` / `choices` / `delta` 每个分片都重复），
@@ -342,7 +342,7 @@
   导入的老存档也顺手归一化。新增回归测试锁住「只清流式、保留非流式」这条边界
   —— 非流式的原始响应不大且排查时有用，不能一起清掉。
 
-### `db0f820` — fix(storage): 预设库只留用得上的字段，老数据启动时自动裁剪
+### fix(storage): 预设库只留用得上的字段，老数据启动时自动裁剪
 
 - **Fixed** 导入酒馆预设时是整份原样存盘的，而原始预设 JSON 里除了提示词条目和排序表，
   还带着 `extensions`（正则脚本、内嵌世界书、插件配置）等一大堆字段 —— 代码里一处都没读过它。
@@ -352,7 +352,7 @@
   老数据在应用启动时裁剪一次（留标记，之后跳过）。
 - **Added** 新增回归测试锁住「冗余字段不落盘」与「只跑一次」。
 
-### `af459a5` — feat(chat): 回复楼层头显示本次实际使用的模型名
+### feat(chat): 回复楼层头显示本次实际使用的模型名
 
 - **Added** AI 楼层头从固定显示「AI」改为显示服务端响应里回传的模型名；名字带目录前缀时
   只取最后一段（如「[公益]官方/deepseek」显示为「deepseek」）。
@@ -363,7 +363,7 @@
 
 ## 2026-09-24
 
-### `40376a1` — docs: CHANGELOG 改为按提交记录并补齐全部历史
+### docs: CHANGELOG 改为按提交记录并补齐全部历史
 
 - **Changed** `CHANGELOG.md` 整份重写为纯时间线：43 条记录与 43 个提交一一对应、顺序一致，
   按日期小节（`## YYYY-MM-DD`）分组，取消 `[Unreleased]` / `[1.0.1]` / `[1.0.0]` 三个版本大节；
@@ -375,7 +375,7 @@
   只拆行、不改逻辑。
 - 验证：`typecheck` / `test`（94/94）/ `lint` / `build` 全绿；全仓 `prettier --check` 全绿。
 
-### `0264991` — docs(presets): 补「预设有两种」的存储归属说明
+### docs(presets): 补「预设有两种」的存储归属说明
 
 - **Added** `spec/07` 新增一节，明确区分两类预设：开局预设（项目自带，运行时从
   `dist/preset-package/` 动态加载，不落盘，既不该进 IndexedDB 也不该进 localStorage）、
@@ -383,7 +383,7 @@
 - **Changed** 原「预设是什么」改名「开局预设是什么」，避免与新节撞名；同时记下两个易混概念
   （预设记忆、预设收藏 / 分组）都留在 localStorage。
 
-### `c6dff90` — feat(storage): 存档与会话数据迁移到 IndexedDB
+### feat(storage): 存档与会话数据迁移到 IndexedDB
 
 - **Fixed** localStorage 只有 5MB 硬上限，且写入失败同步抛错。实测聊一回合消息数据就达
   3.91 MB（其中 98.7% 是流式响应的原始抄本），本地存储已用配额 61.9%，再聊一两回合必然触顶，
@@ -403,7 +403,7 @@
 - **Added** 文档同步：新增「本地存储」章节说明取舍与两条设计，并把启动链路、分层边界、
   状态所有权、README 的存档策略更新为现状。
 
-### `b6c0e58` — chore(infra): 补 Docker 部署与 Playwright e2e
+### chore(infra): 补 Docker 部署与 Playwright e2e
 
 - **Added** 一套自包含的容器化方案，依赖解析、构建、运行全部在容器内完成，宿主只需要 docker，
   不需要装 node 或 pnpm（本仓 pin 的是 `pnpm@11.5.2`，宿主环境不一定装得上）。
@@ -418,7 +418,7 @@
   `transpileOnly`），类型问题只能靠 `pnpm typecheck` 发现；家目录不可写时 `docker compose build`
   会因写不了 `~/.docker/buildx/` 失败，需把 `BUILDX_CONFIG` 指到仓内。
 
-### `114ae39` — fix(storage): 酒馆预设库也迁进 IndexedDB
+### fix(storage): 酒馆预设库也迁进 IndexedDB
 
 - **Fixed** 上一版把「名字带 localStorage 的小数据」一律留在 localStorage，酒馆预设库因此被漏掉。
   它不是小数据：整个库序列化成一个字符串存在**单个 key** 里，用户导入多少就存多少，会随使用
@@ -444,7 +444,7 @@
   这种失效方式变成显式失败（webpack 注入 `__STANDALONE_DEV__`，生产构建摇掉）。
 - 覆盖：新增 e2e 用例验证预设库被迁移、旧副本清掉、且迁移后仍能**同步**读到。
 
-### `0a509a0` — fix(deploy): 预设包不再长缓存，否则更新到不了老用户
+### fix(deploy): 预设包不再长缓存，否则更新到不了老用户
 
 - **Fixed** nginx 给 `/preset-package/` 配的是 `max-age=31536000, immutable`，但预设包产物是
   **固定文件名** `index.js`（`webpack.preset-package.config.ts` 里 `output.filename: 'index.js'`，
@@ -456,7 +456,7 @@
 - **Changed** e2e 的缓存策略用例补上预设包这一档：断言可达、且**不能**带 `immutable`。
   之前这条用例只覆盖了 `index.html` 和 `assets`，正好漏掉配错的那一档。
 
-### `3ec11f9` — chore(deploy): 删掉进镜像的 sourcemap，顺带清掉死代码
+### chore(deploy): 删掉进镜像的 sourcemap，顺带清掉死代码
 
 - **Fixed** `dist/index.js.map` 与 `index.css.map` 是构建残留（JS/CSS 已经内联进 `index.html`），
   却会被 `COPY dist` 一起带进运行镜像。实测占 9.5MB —— 产物总共 18MB，一半以上是它们，
@@ -465,7 +465,7 @@
 - **Removed** 顺带清掉上一轮遗留的死代码：`clearStandaloneStorage()` 删掉之后，底层的 `idbClear()`
   就没有任何调用者了。留着它，将来有人想做「重置」时正好又会踩上「连存档一起清掉」那个坑。
 
-### `8ecb619` — fix(storage): 修掉 CI 挂掉的两个根因 + 两处失实描述
+### fix(storage): 修掉 CI 挂掉的两个根因 + 两处失实描述
 
 - **Fixed** `window.localStorage` → 裸 `localStorage`（7 处）。测试替身只往 `globalThis` 上挂了
   `localStorage`，`window` 替身里没有这个属性。于是 Node 下 `window.localStorage` 是 `undefined`，
@@ -485,7 +485,7 @@
   localStorage 里那份兜底永远不会被自动读回。把话说清：兜底只保证数据还在磁盘上，不会自动生效。
 - 验证：单测 94 通过 / 94（reviewer 的验收线）；`typecheck` 通过；e2e 9 passed（重建镜像后跑的）。
 
-### `35069ff` — docs: 补齐项目含糊处的说明并登记待办
+### docs: 补齐项目含糊处的说明并登记待办
 
 - **Added** `AGENTS.md` 新增「临时文件与工作目录」节，明确临时产物落 `Temp/`。
 - **Changed** `spec/10` 补测试环境替身清单（含 `window` 是部分替身、没有 `localStorage`）、
@@ -493,13 +493,13 @@
 - **Changed** `spec/11` 补「测试脚本不纳入类型检查」的前提漏洞，登记「重置游戏」文案待办；
   `spec/07` 表格列宽格式对齐（内容未改）。
 
-### `a071c52` — Merge pull request #14 from Rose-Fish/feat/indexeddb-storage-migration
+### Merge pull request #14 from Rose-Fish/feat/indexeddb-storage-migration
 
 - **Changed** 合并社区贡献的 IndexedDB 存储迁移分支（PR #14）进 main，内容即上方 `c6dff90`
   「存档与会话数据迁移到 IndexedDB」那条；本次合并无冲突。
 - 合并后另起 `611bd91` 收拾 PR 带进来的格式化问题。
 
-### `611bd91` — fix(i18n): 入口「重置游戏」改名为「回到首页」，与实际行为对齐
+### fix(i18n): 入口「重置游戏」改名为「回到首页」，与实际行为对齐
 
 - **Changed** 这个入口实际做的是：清掉待恢复存档的挂起状态、清当前这局的会话与统计变量、清消息，
   然后回到首页 —— 全程不碰存档。原名读起来像会把存档一起清掉，容易误操作。中英文案各 7 条统一口径：
@@ -511,7 +511,7 @@
 
 ## 2026-09-25
 
-### `0224cd1` — feat(image): 生图支持多后端，新增 NovelAI 云端出图
+### feat(image): 生图支持多后端，新增 NovelAI 云端出图
 
 - **Added** 设置里新增「生图」卡：一个总开关 + 本地 ComfyUI / NovelAI 二选一。
   老存档里 ComfyUI 开着的话，自动迁移成「总开关开 + 后端 ComfyUI」，玩家无感。
@@ -531,7 +531,7 @@
 - **Changed** 文档：重写 `spec/09-image-gen.md`，补齐后端分发、模型名单、候选命名与图片浏览器的说明。
 - 本地验证：`typecheck` 无报错 / 97 条测试全过 / `lint` 0 error / 主产物与预设包均构建成功。
 
-### `1efc300` — fix(image): 生图失败提示分清「没填 Key」与「被站点拒绝」，正文插图可折叠
+### fix(image): 生图失败提示分清「没填 Key」与「被站点拒绝」，正文插图可折叠
 
 - **Fixed** 云端出图失败时，把「还没填 API Key」和「Key 被站点拒绝」拆成两种提示；后者带上站点
   返回的原始说明，不再一律回一句「API Key 无效或没填」，免得把最有用的排查线索吞掉。
@@ -539,7 +539,7 @@
   再点一下展开；重画出新图时自动展开。
 - **Removed** 清理因上面改动而失效的旧文案（中英各一条）。
 
-### `4a6286c` — fix(runtime): 去掉变量更新补写的 60 秒硬超时，改为只跟随取消
+### fix(runtime): 去掉变量更新补写的 60 秒硬超时，改为只跟随取消
 
 - **Fixed** 变量更新补写（正文之后的第二遍请求）原来有一条写死的 60 秒超时，慢模型经常没回复完
   就被掐断，导致正文保留但变量整轮丢失。`runtime/standaloneTurn.ts` 拆掉整条超时链路
@@ -553,7 +553,7 @@
 
 ## 2026-09-26
 
-### `12366ff` — feat: 新增上下文裁剪体系与「功能设置」页
+### feat: 新增上下文裁剪体系与「功能设置」页
 
 - **Added** 发送前裁剪：新增快照整形模块，按正文链与辅助链分别裁剪发给模型的世界状态。
   正文链剔除设置块，辅助链按在场情况裁剪 NPC，生存状态按当前模式保留；商城数据塌成空路径，
@@ -563,7 +563,7 @@
   裁剪开关改两列网格、开关靠右对齐，窄屏也能放下两列；开局向导设置页移除裁剪开关，只保留在正式界面。
 - **Added** 变量更新格式说明按生存模式显隐规则；补充 6 项测试，全量 104/104 通过；同步 `spec` 03 / 05 / 08。
 
-### `840e448` — refactor: 上下文裁剪的两项改为无条件生效
+### refactor: 上下文裁剪的两项改为无条件生效
 
 - **Changed** `$` 前缀剔除与生存状态按模式裁从可选开关里拿掉，改为任何情况下都执行。
   起因：总开关默认关闭，这两项跟着一起不生效 —— 默认状态下正文照样看得到玩家与 NPC 的生存状态数值
@@ -576,7 +576,7 @@
 - **Changed** 测试：master switch 那条改名并改断言（关闭时两项照样生效），defaults to disabled 同步改；
   `spec/05-prompt-pipeline.md` 表格加「受总开关控制」列，并说明哪两项不受控。
 
-### `979429a` — docs: 新增铁律 —— 动 schema 与本地内容文本前必须先确认
+### docs: 新增铁律 —— 动 schema 与本地内容文本前必须先确认
 
 - **Added** `AGENTS.md` 新增一条铁律：`schema/` 是数据契约，`src/assets/standalone-local-content/`
   下的文本会被原样拼进发给模型的提示词。这两处都是逐字手工设计的，**每个字都有意义** ——
@@ -586,7 +586,7 @@
 - 立这条的起因：`variable-update-format.txt` 曾随裁剪方案一起改动（加 EJS 条件包裹、
   把生存状态那一行拆成两个分支）而未单独确认。
 
-### `fc7a934` — refactor: 上下文裁剪只剩「只发在场 NPC」一个开关
+### refactor: 上下文裁剪只剩「只发在场 NPC」一个开关
 
 - **Changed** 其余裁剪全部改为无条件生效，不再提供开关：去 JSON 缩进、正文不发「设置」、
   商城只留路径、NPC 裁剪时保留重要与被关注、写入前拦截 `_` 字段与生存状态。这些要么是正确性要求，
@@ -603,7 +603,7 @@
 
 ## 2026-09-27
 
-### `2fdfaae` — feat: 画风预置改为分组体系，生图种子可固定复现
+### feat: 画风预置改为分组体系，生图种子可固定复现
 
 - **Added** 画风预置从 4 套扩到 12 套，下拉按「动漫 / 写实 / 传统媒介 / 特殊风格」四组展示
   （`optgroup`），新增 `StylePresetGroupId` / `STYLE_PRESET_GROUPS` 与 `groupStylePresets()`；
@@ -626,7 +626,7 @@
 - 四道检查：`typecheck` ✓ ｜ `test` 105/105 ✓ ｜ `lint` 0 error（17 个存量 warning）✓ ｜ `build` ✓。
   已部署到线上，首页与本地 `dist/index.html` 逐字节一致（3,012,123 字节，sha256 `9047a702…`）。
 
-### `934ff0c` — docs: 补齐缺失的 19 条 changelog，并把约定写进仓库内配置
+### docs: 补齐缺失的 19 条 changelog，并把约定写进仓库内配置
 
 - **Added** `CHANGELOG.md` 补齐 `af459a5`(09-23) 之后的 19 条记录（09-24 ~ 09-27）：
   该约定早在 `40376a1` 就写进 `CONTRIBUTING.md`，但此后一次都没执行，导致 19 个提交全缺。
@@ -642,7 +642,7 @@
 - **Removed** 不采纳 CI 自动校验：直推 main（有 bypass）时 CI 根本不跑、拦不住主路径；
   且「条目数严格相等」的判据在 squash / merge 场景会误报，不可信的红灯比没有更糟。
 
-### `046c5a9` — feat: 首页新增更新日志弹窗与右下角版本号
+### feat: 首页新增更新日志弹窗与右下角版本号
 
 - **Added** 首页（封面页）新增更新日志弹窗：当前版本没看过才弹，点遮罩 / 关闭按钮 / `ESC` 都能关。
   内容是**玩家视角**的更新日志，与仓库根 `CHANGELOG.md` 分开维护 —— 那份带提交哈希、内部目录名
@@ -659,7 +659,7 @@
 
 ## 2026-09-28
 
-### `aeb51bb` — fix: 更新日志弹窗改挂首页并重做视觉
+### fix: 更新日志弹窗改挂首页并重做视觉
 
 - **Fixed** 更新日志弹窗此前挂在 App 根组件：它首帧就要显示，而挂载点 `#modal-container`
   在 App 组件树内部，此刻 `.app-container` 还没插进 `document` → `Teleport` 用
@@ -679,7 +679,7 @@
 - **Removed** `changelog.currentVersion` 中英文案（标题区去掉后不再使用）。
 - 四道检查：`typecheck` ✓ ｜ `test` 105/105 ✓ ｜ `lint` 0 error（17 个存量 warning）✓ ｜ `build` ✓。
 
-### `377aee8` — feat: 生图支持自动出图与手动放弃
+### feat: 生图支持自动出图与手动放弃
 
 - **Added** 生图设置新增「自动生图」开关（默认关）：开启后正文里一出现**写完整**的生图提示词
   （`image###…###` 成对）就自动出图，不用手点；关着维持「手动点按钮」的原样。
@@ -697,7 +697,7 @@
   同层级元素位置与尺寸与样式一致、别拿全局公共类名（`.modal-*`）做局部样式。
 - 四道检查：`typecheck` ✓ ｜ `test` 105/105 ✓ ｜ `lint` 0 error（17 个存量 warning）✓ ｜ `build` ✓。
 
-### `a8678e6` — feat: 编辑消息支持小总结
+### feat: 编辑消息支持小总结
 
 - **Added** AI 楼层的编辑框现在把**小总结**跟正文放在同一个输入区里：小总结用它原本的 `<summary>` 标签
   包着跟在正文后面，把整段标签删掉就等于删掉这楼的小总结，不必另开一块输入区；
@@ -707,7 +707,7 @@
   （正文 + 小总结）存，拆解 / 写回互为逆操作。
 - 四道检查：`typecheck` ✓ ｜ `test` 105/105 ✓ ｜ `lint` 0 error（17 个存量 warning）✓ ｜ `build` ✓。
 
-### `eacc241` — feat: 非流式也能触发自动生图
+### feat: 非流式也能触发自动生图
 
 - **Fixed** 接口不支持流式时（请求按流式发、但只回一整坨 JSON）自动生图不触发：逐段回调一次都不触发，
   流式投影层压根不建立，消息上「正在流式」这个标记不为真，而自动生图此前只认它。
@@ -719,14 +719,14 @@
   `.gitignore` 忽略 `tools/`（仅本地保留、不随仓库公开），`eslint.config.mjs` 忽略列表同步加 `tools/**`。
 - 四道检查：`typecheck` ✓ ｜ `test` 105/105 ✓ ｜ `lint` 0 error（17 个存量 warning）✓ ｜ `build` ✓。
 
-### `d105c1c` — chore: 玩家更新日志补小总结条目
+### chore: 玩家更新日志补小总结条目
 
 - **Changed** `src/utils/changelog.ts` 的 260928 条目补一条「编辑消息可改小总结」：
   该功能已在 `a8678e6` 上线，但玩家更新日志漏了 —— 玩家日志只写玩家看得见的变化，漏了等于玩家不知道。
 - 顺带回填上一条（`eacc241`）的短哈希。
 - 四道检查：`typecheck` ✓ ｜ `test` 105/105 ✓ ｜ `lint` 0 error（17 个存量 warning）✓ ｜ `build` ✓。
 
-### `97da430` — docs: reposition project as a general-purpose simulation platform
+### docs: reposition project as a general-purpose simulation platform
 
 - **Changed** 项目定位表述统一校正为「**纯浏览器端的通用模拟经营 / 叙事模拟平台（题材不限）**」：
   `README.md`、`README.en.md`、`spec/README.md` 的首段定位句，`AGENTS.md` 的「项目上下文」，
@@ -736,7 +736,7 @@
   与 21 个创意工坊世界包，横跨现实 / 历史 / 修仙 / 奇幻 / 科幻 / 动漫 / 末世 / 无限流，题材不限。
 - 四道检查：`typecheck` ✓ ｜ `test` 105/105 ✓ ｜ `lint` 0 error（17 个存量 warning）✓ ｜ `build` ✓。
 
-### `1f2f7c9` — feat: 预设条目支持调整顺序
+### feat: 预设条目支持调整顺序
 
 - **Added** 「内容中心 → 预设 → 预设条目」的条目可以调整顺序：每条右侧新增上移 / 下移按钮，
   首条与末条自动禁用。这个顺序就是实际发送给 AI 的块顺序（列表上方的「发送内容列表」同步反映），
@@ -746,7 +746,7 @@
 - **Fixed** 移动条目不再重置编辑表单：此前「展开条目改了内容还没保存就点移动」会把未保存的改动冲掉。
 - 四道检查：`typecheck` ✓ ｜ `test` 105/105 ✓ ｜ `lint` 0 error（17 个存量 warning）✓ ｜ `build` ✓。
 
-### `2372942` — fix: 正文标签丢失时自动补齐
+### fix: 正文标签丢失时自动补齐
 
 - **Fixed** 模型偶尔漏写 `<contenttext>` 包裹（正文裸在 `</analysis_block>` 与 `<summary>` 之间）时正文被吞：
   落库那条走「整段原文」兜底，把 `<analysis_block>` / `<summary>` / `<action_options>` 连同正文一起当正文显示；
@@ -762,7 +762,7 @@
   这条修复玩家看得见（正文不再串标签、不再空白），玩家日志不该漏。
 - 四道检查：`typecheck` ✓ ｜ `test` 107/107 ✓ ｜ `lint` 0 error（17 个存量 warning）✓ ｜ `build` ✓。
 
-### `9f3df3d` — feat: 变量更新失败后可直接重试
+### feat: 变量更新失败后可直接重试
 
 - **Added** 变量更新失败时，在消息卡「变量更新」折叠标题的「更新失败」徽标右侧新增**重试**按钮：
   点一下按原回复重跑变量更新（走辅助 API），正文不重新生成，跑完状态回到「已更新」或再次「更新失败」。
@@ -778,7 +778,7 @@
 
 ## 2026-09-29
 
-### `ac01ce0` — chore: server 子项目暂不纳入版本控制
+### chore: server 子项目暂不纳入版本控制
 
 - **Changed** `.gitignore` 忽略 `server/`：联机服务子项目尚未完成，先只留本地、不进版本控制。
 - **Changed** `eslint.config.mjs` 忽略列表加 `server/**`：它 `.wrangler/tmp/` 下的构建缓存
@@ -786,7 +786,7 @@
   仓库级 `lint` error 即出自此处，本次一并消掉，仓库级 `lint` 回到 0 error。
 - 四道检查：`typecheck` ✓ ｜ `test` 107/107 ✓ ｜ `lint` 0 error（17 个存量 warning）✓ ｜ `build` ✓。
 
-### `3f3ace4` — feat: API 列表支持复制配置
+### feat: API 列表支持复制配置
 
 - **Added** API 列表每张卡片新增**复制**按钮（在卡片头部那排图标里，位于删除左侧）：
   点一下把该条配置整份克隆（地址、密钥、模型、已拉取的模型列表），新条目紧跟原条目后面，
@@ -797,7 +797,7 @@
 - **Changed** 玩家更新日志（`src/utils/changelog.ts`）新增 260929 一条「API 配置可一键复制」。
 - 四道检查：`typecheck` ✓ ｜ `test` 107/107 ✓ ｜ `lint` 0 error（17 个存量 warning）✓ ｜ `build` ✓。
 
-### `061ee7e` — refactor(ui): 统一浮层令牌、图标按钮与面板内距
+### refactor(ui): 统一浮层令牌、图标按钮与面板内距
 
 - **Changed** 圆角与卡片底色收口到统一令牌：全项目 `var(--radius-*)` → `var(--ui-radius-*)`
   （532 处，41 个 `.vue` 加 `global.css` / `setup-shared.css`）；`--bg-card` / `--card-bg`
@@ -827,7 +827,7 @@
   `.ui-icon-btn` 体系，全项目零引用）。
 - 四道检查：`typecheck` ✓ ｜ `test` 107/107 ✓ ｜ `lint` 0 error（17 个存量 warning）✓ ｜ `build` ✓。
 
-### `efb7706` — fix: 辅助 API 补丁不可用时自动换下一个候选
+### fix: 辅助 API 补丁不可用时自动换下一个候选
 
 - **Fixed** 辅助 API 返回的 `<UpdateVariable>` 块存在、但内容不可用（没有 `<JSONPatch>`、
   JSON 解析不了、补丁写不进状态）时，此前会直接判定更新失败、不再尝试后面的候选 ——
@@ -840,19 +840,19 @@
   「自动重试」开关语义不变（关掉时只留第一个候选，坏了也不换）。
 - 四道检查：`typecheck` ✓ ｜ `test` 107/107 ✓ ｜ `lint` 0 error（17 个存量 warning）✓ ｜ `build` ✓。
 
-### `9022be8` — chore: 回填 CHANGELOG 短哈希
+### chore: 回填 CHANGELOG 短哈希
 
 - **Changed** 回填上两条记录的短哈希（`061ee7e` / `efb7706`）—— 纯文档改动。
   同批一并回填上一轮遗留的 `3f3ace4`。
 
-### `a5cf698` — chore: 玩家更新日志补两条
+### chore: 玩家更新日志补两条
 
 - **Changed** 玩家更新日志（`src/utils/changelog.ts`）260929 追加「变量更新失败自动换API」
   与「面板与按钮样式统一」：上两个提交（`061ee7e` / `efb7706`）都有玩家在界面上看得见的变化 ——
   变量更新遇坏内容会自己换备用 API、按钮与卡片样式统一 —— 玩家日志不该漏。
 - 四道检查：`typecheck` ✓ ｜ `test` 107/107 ✓ ｜ `lint` 0 error（17 个存量 warning）✓ ｜ `build` ✓。
 
-### `e03e73c` — feat: 每回合自动存档、API 首字超时看门狗与一批界面修复
+### feat: 每回合自动存档、API 首字超时看门狗与一批界面修复
 
 > 短哈希待回填（按约定并入下一次提交）。
 
@@ -900,7 +900,7 @@
 
 ## 2026-09-30
 
-### `6ba66c8` — docs: 高敏感资产（schema / 提示词）改动前必须先确认
+### docs: 高敏感资产（schema / 提示词）改动前必须先确认
 
 - **Added** `CONTRIBUTING.md` 新增「🔴 高敏感资产：改动前必须先确认」一节：用表格列出四处逐字手工设计的
   资产（`schema/` 数据契约、`src/assets/standalone-local-content/` 本地提示词与 EJS 模板、
@@ -916,7 +916,7 @@
 
 ## 2026-10-01
 
-### `80c0705` — feat: 出图限流闸门与渠道判定、调试页留档失败请求、变量更新报错可定位
+### feat: 出图限流闸门与渠道判定、调试页留档失败请求、变量更新报错可定位
 
 - **Added** 「内容中心 → 控制台调试」新增「失败的请求」区块。主 API / 辅助 API 报错后弹窗一闪而过，
   原先调试页里**一条都留不下** —— 列表是 assistant 消息楼层派生的，而失败回合根本不会产生楼层。
@@ -949,7 +949,7 @@
 - 四道检查：`typecheck` ✓ ｜ `test` 113 + 35 ✓ ｜ `lint` 0 error（14 个存量 warning）✓ ｜ `build` ✓ ｜
   `check:i18n` PASS。
 
-### `a829a0c` — chore: 出图与外貌提示词补「体型」「年龄」写法约束
+### chore: 出图与外貌提示词补「体型」「年龄」写法约束
 
 > 短哈希待回填（按约定并入下一次提交）。
 
@@ -967,7 +967,7 @@
 
 ## 2026-10-02
 
-### `6e8a5f9` — perf: 变量更新链优化：报错可定位、NPC 编号防撞、提示词大幅精简
+### perf: 变量更新链优化：报错可定位、NPC 编号防撞、提示词大幅精简
 
 > 短哈希待回填（按约定并入下一次提交）。
 
@@ -1023,7 +1023,7 @@
 - 验证：渲染探针输出正常（警告无），四类 EJS 结构（脚本块 / 条件块 / 插值 / 内联条件）在三种存档场景下均正确。
 - 四道检查：`typecheck` ✓ ｜ `test` 114/114 + 35 ✓ ｜ `lint` 0 error（14 个存量 warning）✓ ｜ `build` ✓。
 
-### `00e8860` — chore: 补玩家更新日志（261002）
+### chore: 补玩家更新日志（261002）
 
 - **Added** `src/utils/changelog.ts` 的 `CHANGELOG_SOURCE` 追加 `261002` 一条：
   `新增NPC不再撞编号`、`补丁报错提示更准确` —— 上一批变量更新链改动里玩家能感知的两点。
@@ -1032,7 +1032,7 @@
 
 ## 2026-10-04
 
-### `d720893` — fix: 变量更新补丁漏层路径修复：快照带缩进、兜底补全中间层、手动刷新取基点
+### fix: 变量更新补丁漏层路径修复：快照带缩进、兜底补全中间层、手动刷新取基点
 
 - **Fixed** 快照改回**带缩进**输出（`runtime/standaloneSnapshotTrim.ts` 的 `compact: true` → `false`）。
   根因：单行紧凑 JSON 把 NPC 的 `个人信息` 这一层埋进上千字符的长行里，模型分不清
@@ -1063,7 +1063,7 @@
   世界层 / 正确路径不动 / 未知字段不动 / 歧义不动）。
 - 四道检查：`typecheck` ✓ ｜ `test` 118/118 + 35 ✓ ｜ `lint` 0 error（14 个存量 warning）✓ ｜ `build` ✓。
 
-### `e465c44` — chore: 补玩家更新日志（261004）
+### chore: 补玩家更新日志（261004）
 
 - **Added** `src/utils/changelog.ts` 的 `CHANGELOG_SOURCE` 追加 `261004` 一条：
   `NPC 变量更新更稳`、`刷新变量不再算错` —— 上一条提交 `d720893` 里玩家能感知的两点。
@@ -1072,7 +1072,7 @@
 
 ## 2026-10-05
 
-### `62a045a` — refactor: 抽奖拆成独立 AI 请求；提示词补补丁规则与物品 / 技能定义独立成段
+### refactor: 抽奖拆成独立 AI 请求；提示词补补丁规则与物品 / 技能定义独立成段
 
 - **Changed** 抽奖从「挂在剧情回合上」重构为**一次独立 AI 请求**（专用提示词 + 抽奖 API），
   正文链与变量更新链不再出现任何抽奖规则或抽奖字段；抽奖结果只进聊天流，不进剧情历史与前情提要。
@@ -1113,7 +1113,7 @@
 
 ## 2026-10-06
 
-### `74b4558` — fix: 抽奖生成的物品 / 技能要求与最近一次剧情相关
+### fix: 抽奖生成的物品 / 技能要求与最近一次剧情相关
 
 - **Changed** 抽奖专用提示词（`src/assets/standalone-local-content/lottery-request-prompt.txt`）**新增一条规则**：
   抽奖生成的物品 / 技能除贴合当前世界观与玩家处境外，还须与**上文最近一次剧情内容**相关
@@ -1126,7 +1126,7 @@
   —— 均按约定并入本次提交，不单独开回填提交。
 - 四道检查：`typecheck` ✓ ｜ `test` 120/120 + 35 ✓ ｜ `lint` 0 error（14 个存量 warning）✓ ｜ `build` ✓。
 
-### `068488e` — fix: 抽奖请求多带一段剧情上下文；抽奖提示词不再约束生成内容
+### fix: 抽奖请求多带一段剧情上下文；抽奖提示词不再约束生成内容
 
 - **Changed** 抽奖请求的历史消息由「最近一条非抽奖 AI 回复」扩为**最近一段剧情上下文**
   （`runtime/standaloneTurn.ts`）：复用主链的最近窗口（`RECENT_MESSAGE_LIMIT = 8` 条、同一过滤口径，
@@ -1146,7 +1146,7 @@
 
 ## 2026-10-09
 
-### `52e8175` — feat: 正文支持多候选页并发生成与楼层翻页，引入独立审稿改稿流水线
+### feat: 正文支持多候选页并发生成与楼层翻页，引入独立审稿改稿流水线
 
 - **Added** 正文多候选页并行生成与楼层翻页：
   - 设置面板支持配置「正文请求次数」（1~5 次，默认 1 次；`src/stores/settings.ts`、`src/components/panels/SettingsPanel.vue`）。
@@ -1162,7 +1162,7 @@
 - **Added** 玩家更新日志 `261009`：正文支持多候选页翻页、新增审稿与改稿功能。
 - 四道检查：`typecheck` ✓ ｜ `test` 120/120 + 35 ✓ ｜ `lint` 0 error（14 个存量 warning）✓ ｜ `build` ✓。
 
-### `a2dcddf` — feat: 历史小总结支持基于 BM25 算法精准召回；正文链快照支持不在场 NPC 瘦身与同场景在场判定
+### feat: 历史小总结支持基于 BM25 算法精准召回；正文链快照支持不在场 NPC 瘦身与同场景在场判定
 
 - **Added** 纯前端轻量分词与 BM25 检索模块（`runtime/standaloneBm25.ts`）：
   - 纯 TypeScript 实现，零外部依赖，毫秒级响应，中英双语混合分词（英文单词 + 中文 1-gram / 2-gram）结合停用词过滤。
@@ -1173,7 +1173,7 @@
 - **Added** 单测覆盖（`scripts/tests/run-standalone-local-content-tests.ts`）：新增分词检索校验、BM25 伏笔召回与不在场 NPC 瘦身 3 项自动化测试（123/123 项全过）。
 - 四道检查：`typecheck` ✓ ｜ `test` 123/123 + 35 ✓ ｜ `lint` 0 error（14 个存量 warning）✓ ｜ `build` ✓。
 
-### `9529751` — feat: 输入栏支持斜杠快捷手势（/正文优化、/重新生成等）
+### feat: 输入栏支持斜杠快捷手势（/正文优化、/重新生成等）
 
 - **Added** 输入栏斜杠命令系统（`src/utils/slashCommands.ts`、`src/components/common/ActionBar.vue`）：
   - 输入 `/` 弹出贴边命令候选层，支持键盘上下方向键循环切换高亮、Tab 键补全。
@@ -1182,7 +1182,7 @@
 - **Added** 玩家更新日志 `261009`：输入框支持快捷手势。
 - 四道检查：`typecheck` ✓ ｜ `test` 123/123 + 35 ✓ ｜ `lint` 0 error（14 个存量 warning）✓ ｜ `build` ✓。
 
-### `19c990f` — style: 场景横幅排版对齐微调；收紧变量位置字数限制与更新记忆指引
+### style: 场景横幅排版对齐微调；收紧变量位置字数限制与更新记忆指引
 
 - **Changed** 场景横幅排版与视觉对齐（`src/components/layout/SceneBanner.vue`）：
   - 地点字号调紧凑并改用等宽字体，补充时钟图标，保证地点与时间/天气两行在各分辨率下视觉基线严格对齐。
@@ -1194,7 +1194,7 @@
 
 ## 2026-10-10
 
-### `f00acdb` — fix: 正文链不在场的重要 NPC 也走瘦身，同场景判定放宽到细分场景后缀
+### fix: 正文链不在场的重要 NPC 也走瘦身，同场景判定放宽到细分场景后缀
 
 - **Changed** 正文链的 NPC 在场兜底（`runtime/standaloneSnapshotTrim.ts`）：
   - 正文链不再把「重要 NPC」「被关注 NPC」当豁免项 —— 本轮没出场、也不在同一场景的角色，
@@ -1215,7 +1215,7 @@
 
 ## 2026-10-11
 
-### `0a6e287` — fix: 存档目录与正文改为同一次事务落盘，并加开机自检修历史脏数据
+### fix: 存档目录与正文改为同一次事务落盘，并加开机自检修历史脏数据
 
 - **Fixed** 存档「目录」与「正文」分两次写入留下的三类坏状态
   （`src/utils/archive.ts`、`src/utils/standaloneStorage.ts`、`src/utils/standaloneIndexedDb.ts`）：
@@ -1245,7 +1245,7 @@
   另用无头 Chrome 对**真实 IndexedDB** 跑了 9 项探针全部通过 —— 含
   「批量中途抛错时磁盘一步未落」（原子性回滚）与「按前缀列举能拿到正文、不误含目录 key」。
 
-### `ad1348d` — fix: 修复更新日志弹窗闪烁（首次自动弹不再闪烁）
+### fix: 修复更新日志弹窗闪烁（首次自动弹不再闪烁）
 
 - **Fixed** 更新日志弹窗在首帧的 mount/unmount 来回切（`src/components/setup/SetupWizard.vue`）：
   原实现 `const showChangelog = ref(shouldShowChangelog())` 在 SetupWizard 同步初始化时就拿到 true，
@@ -1255,13 +1255,13 @@
   改为 `ref(false)` + `onMounted` 里再查 `shouldShowChangelog()`，跳过首帧前那一段未就绪窗口。
 - **Added** 玩家更新日志 `261012`：修复更新日志弹窗闪烁。
 
-### `16f6949` — docs: 回填弹窗闪烁 commit 的短哈希到 CHANGELOG
+### docs: 回填弹窗闪烁 commit 的短哈希到 CHANGELOG
 
 - **Changed** 回填上一条提交 `ad1348d` 的短哈希 —— 纯文档改动，按约定并入本次提交，不单独开回填提交。
 
 ## 2026-10-12
 
-### `ef47e64` — feat: 新增网页版跨域自动中转，解决无 CORS 的第三方接口连不上
+### feat: 新增网页版跨域自动中转，解决无 CORS 的第三方接口连不上
 
 - **Added** 同域跨域中转端点（`functions/api/relay.ts`，项目根新建 `functions/`，随 Cloudflare Pages 一起部署）：
   - 背景：部分第三方 AI 接口不返回跨域响应头，网页版直连会被浏览器拦成 `Failed to fetch`。
@@ -1307,7 +1307,7 @@
 
 ## 2026-10-13
 
-### `2a64664` — feat: 网页版地图上线，地点树由模型生成、布局与路网由前端演算
+### feat: 网页版地图上线，地点树由模型生成、布局与路网由前端演算
 
 - **Added** 地图功能（网页版首个「地点树」可视化界面）：侧边栏 / 底部导航「地图」入口、
   顶部横幅地点名可点开、覆盖面板新增地图页签（懒加载，不拖慢首屏）。
@@ -1332,13 +1332,13 @@
   `ti-building-bank` / `ti-door-enter`）。
 - 本地验收：`typecheck` ✓ ｜ `lint` 0 error ✓ ｜ `build` ✓ ｜ 布局探针 65 组全绿。
 
-### `f1b7bec` — docs: 回填地图提交的短哈希到 CHANGELOG
+### docs: 回填地图提交的短哈希到 CHANGELOG
 
 - **Changed** 回填上一条提交 `2a64664`（网页版地图）的短哈希 —— 纯文档改动，只改 `CHANGELOG.md` 一行。
 
 ## 2026-10-14
 
-### `a8e812d` — feat: 地图入口「回忆解析」改名「刷新地图」；骰子继续掷免二次点击；文档精简重排
+### feat: 地图入口「回忆解析」改名「刷新地图」；骰子继续掷免二次点击；文档精简重排
 
 - **Changed** 地图页的刷新入口由「回忆解析」改名「刷新地图」（`src/i18n/index.ts` 的 `map.refresh`）：
   原词读起来像「从记忆里解析出什么」，玩家看不出点下去会发生什么；改成动作直白。
@@ -1359,14 +1359,14 @@
   打包时被保留但不渲染，玩家看不到。加载态那句「解析中…」是另一个键（`map.refreshing`），未动。
 - 说明：本次提交一并带上工作区里前一夜未提交的两笔改动（骰子继续掷、审稿图标）与 README 精简。
 
-### `35c4778` — docs: 回填本次提交的短哈希到 CHANGELOG
+### docs: 回填本次提交的短哈希到 CHANGELOG
 
 - **Changed** 回填上一条提交 `a8e812d` 的短哈希（推送脚本漏了这一步，事后按约定补记）。
   纯文档改动，`dist/` 产物未变，**不重新部署**。
 
 ## 2026-10-15
 
-### `c8f8b53` — feat: AI 请求结束提示音（默认开启）
+### feat: AI 请求结束提示音（默认开启）
 
 - **Added** 新增提示音资源 `src/assets/audio/notification-done.wav`（68.4 KB，拷自本机 Win `ding.wav`），
   webpack 5 `asset/resource` 处理后落到 `dist/assets/audio/notification-done.<hash>.wav`、按需懒加载、不进 HTML。
@@ -1391,25 +1391,25 @@
   ② 第一次写 `new Audio()` 没守卫 `Audio` 本身是否存在，node 24 下挂掉 6 个 `useMessageActions` 行为测试，
   教训是「改完跑一遍 test 再信 build 绿」。
 
-### `58c88b3` — docs: 回填上一条提交的短哈希到 CHANGELOG
+### docs: 回填上一条提交的短哈希到 CHANGELOG
 
 - **Changed** 回填 `c8f8b53` 之前那条 `35c4778` 的遗留占位（推送脚本漏了短哈希），按惯例并入本次提交一起回填。
   纯文档改动，`dist/` 产物未变，**不重新部署**。
 - **说明** 本条短哈希原误标为 `c8f8b53`（当时自己那条哈希还无从得知），2026-10-15 事后按提交顺序订正。
 
-### `13869d0` — docs(lottery): 抽奖请求提示词 · 物品栏备注从「来源」改为「用途」
+### docs(lottery): 抽奖请求提示词 · 物品栏备注从「来源」改为「用途」
 
 - **Changed** `src/assets/standalone-local-content/lottery-request-prompt.txt` 第 42 行 `JSONPatch`
   示例对象中，物品栏新增项的「备注」字段从 `抽奖获得`（来源记账）改为 `物品用途`（描述该物品
   在剧情/设定中能干什么），将模型对物品栏元数据的关注点由来源切到用途。
 - **Chore** `src/stores/lottery.ts` 末尾去掉一个 trailing newline。
 
-### `f327fe4` — docs: 回填 13869d0 短哈希到 CHANGELOG
+### docs: 回填 13869d0 短哈希到 CHANGELOG
 
 - **Changed** 把上一条 `### \`XXXXXXX\` — docs(lottery): 抽奖请求提示词 · 物品栏备注从「来源」改为「用途」`的占位符换成真实短哈希`13869d0`。纯文档改动，`dist/` 产物未变。
 - **说明** 事后补记条目（2026-10-15 核对「条目数 = 提交数」时发现缺条目，按提交信息与 diff 回填）。
 
-### `7d74576` — feat(donate): 捐赠面板竖排重排 + Ko-fi 外链 + 承诺语块
+### feat(donate): 捐赠面板竖排重排 + Ko-fi 外链 + 承诺语块
 
 - **Changed** `src/components/panels/DonatePanel.vue` 重排为竖排：感谢语 → 圆形 QR 码 → Ko-fi 外链。
 - **Added** 承诺语块（i18n key `donate.kofiPromise` 已在 `c8f8b53` 入库，这次只读），强调支持去向。
@@ -1417,36 +1417,36 @@
   （黑模块+透明底换深色主题会扫不出来）。
 - **Added** Ko-fi 外链：`https://ko-fi.com/myraid_realms_sim`。
 
-### `a62a6c2` — docs: 回填 7d74576 短哈希到 CHANGELOG
+### docs: 回填 7d74576 短哈希到 CHANGELOG
 
 - **Changed** 把上一条 `### \`XXXXXXX\` — feat(donate): 捐赠面板竖排重排 + Ko-fi 外链 + 承诺语块`的占位符换成真实短哈希`7d74576`。纯文档改动，`dist/` 产物未变。
 - **说明** 事后补记条目（同 `f327fe4` 的核对来源）。
 
-### `afc5c4a` — fix(settings): 补 featureSoundEnabled 的 store 字段与持久化
+### fix(settings): 补 featureSoundEnabled 的 store 字段与持久化
 
 - **Added** `src/stores/settings.ts` 新增 `featureSoundEnabled` 字段（默认 `true`），在两个持久化
   路径（全量保存与「API 选择保存」）均落盘，导出给 UI 解构使用。配套 UI、触发点、i18n、音频
   资源均在 `c8f8b53` 入库，本次只是把字段的家搬到 store 里，避免 UI 解构到 `undefined`。
 
-### `daecd68` — docs: 回填 afc5c4a 短哈希到 CHANGELOG
+### docs: 回填 afc5c4a 短哈希到 CHANGELOG
 
 - **Changed** 把上一条 `### \`XXXXXXX\` — fix(settings): 补 featureSoundEnabled 的 store 字段与持久化`的占位符换成真实短哈希`afc5c4a`。纯文档改动，`dist/` 产物未变。
 - **说明** 事后补记条目（同 `f327fe4` 的核对来源）。
 
-### `a8755e4` — docs(changelog): 玩家更新日志追加 261016 三条
+### docs(changelog): 玩家更新日志追加 261016 三条
 
 - **Added** `src/utils/changelog.ts` 的 `CHANGELOG_SOURCE` 末尾追加日期 `261016` 一条：
   **增加 AI 请求完成后提示音**（功能本体在 `c8f8b53` 入库，`afc5c4a` 补的
   `settings.featureSoundEnabled` 字段），让玩家打开首页时能看到这条变化。
 
-### `a0c0031` — docs: 回填 a8755e4 短哈希到 CHANGELOG
+### docs: 回填 a8755e4 短哈希到 CHANGELOG
 
 - **Added** 补记 `### \`a8755e4\` — docs(changelog): 玩家更新日志追加 261016 三条`一条：`src/utils/changelog.ts`的`CHANGELOG_SOURCE`末尾追加日期`261016`，内容是
 「捐赠面板重新排版 / 捐赠新增 Ko-fi 入口 / 抽奖物品描述更贴近用途」，
 与 `13869d0`/`7d74576`/`afc5c4a` 三笔一起让玩家在首页更新日志里看到这些变化。
 - **说明** 事后补记条目（同 `f327fe4` 的核对来源）。
 
-### `9e049c3` — feat(ui): 变量刷新入口从标题栏搬到消息卡片
+### feat(ui): 变量刷新入口从标题栏搬到消息卡片
 
 - **Removed** `src/components/layout/SceneBanner.vue` 三点菜单里的「刷新变量」项，连带它自己的
   防连点状态、处理函数与 `useMessageActions` 引入一并删掉；菜单只剩「回到首页 / 全屏」两项。
@@ -1461,7 +1461,7 @@
 - **Added** 玩家更新日志 `261016` 追加「变量更新入口移到回复卡片」，这次入口搬迁玩家看得见。
 - 四道检查：`typecheck` ✓ ｜ `test` 132/132 ✓ ｜ `lint` 0 error（15 个存量 warning）✓ ｜ `build` ✓。
 
-### `f30dc85` — feat(ui): 场景横幅三点菜单改为全屏 / 回到首页两枚图标按钮
+### feat(ui): 场景横幅三点菜单改为全屏 / 回到首页两枚图标按钮
 
 - **Changed** `src/components/layout/SceneBanner.vue` 右上角「···」下拉整块删除（模板 `banner-menu-wrap` /
   `Transition`、脚本里的开合状态与外部点击 / Esc 监听、`.banner-menu*` 样式与 `data-tip` 悬停气泡全删），
@@ -1481,7 +1481,7 @@
 - **Changed** 顺手回填上一条 `9e049c3` 的短哈希占位。
 - 四道检查：`typecheck` ✓ ｜ `test` 132/132 ✓ ｜ `lint` 0 error（15 个存量 warning）✓ ｜ `build` ✓。
 
-### `e881705` — docs: 补记代码知识图谱入口到 AGENTS.md
+### docs: 补记代码知识图谱入口到 AGENTS.md
 
 - **Added** `AGENTS.md` 的「项目记忆在哪」段新增一条 🔴 指针，指向 `.workbuddy-ai/memory/cgc.md`
   （本仓代码知识图谱的用法与踩坑）：问「谁调用了这个函数 / 改这里会波及哪些地方 / 这块结构怎么回事 /
@@ -1489,7 +1489,7 @@
 - **说明** 这段内容 2026-10-15 18:40 那次会话就已写好、一直留在工作区，本次按寒哥要求并入同一天的
   提交一起入库。纯文档，`dist/` 产物未变。
 
-### `e1de29d` — docs(changelog): 补齐 5 笔漏记条目并订正一处重复哈希
+### docs(changelog): 补齐 5 笔漏记条目并订正一处重复哈希
 
 - **Fixed** `CHANGELOG.md` 条目数此前比提交数少 4（110 / 114）。补齐 `58c88b3` / `f327fe4` /
   `a62a6c2` / `daecd68` / `a0c0031` 五笔漏记的提交条目；其中 `c8f8b53` 那条原本重复登记
@@ -1500,7 +1500,7 @@
 
 ## 2026-10-16
 
-### `58809ef` — feat(narrative): 正文思维链支持 `reasoning` / `think` / `thinking` 标签别名
+### feat(narrative): 正文思维链支持 `reasoning` / `think` / `thinking` 标签别名
 
 - **Added** `src/utils/taggedReply.ts` 新增 `THINK_BLOCK_TAG_NAMES`（`analysis_block` / `reasoning` /
   `think` / `thinking`）与 `buildThinkBlockRegex()`：思维链不再只认 `<analysis_block>`，
@@ -1522,7 +1522,7 @@
 - **说明** 纯内部解析改动，界面上没有新增可见元素，**不补** `src/utils/changelog.ts`。
 - 四道检查：`typecheck` ✓ ｜ `test` 133/133 ✓ ｜ `lint` 0 error（14 个存量 warning）✓ ｜ `build` ✓。
 
-### `3170c47` — fix(ai-generate): AI 夹带说明文字不再被拒，直接抠出 JSON
+### fix(ai-generate): AI 夹带说明文字不再被拒，直接抠出 JSON
 
 - **Fixed** `src/components/setup/pages/AiGeneratePage.vue` 去掉 AI 生成前的格式哨兵：此前只要模型回答
   不是「纯 JSON」或「单个 ```json 代码块」就直接整份拒绝报「返回格式不符合要求」，而抠 JSON 的逻辑
@@ -1541,7 +1541,7 @@
   而卡住，属于可感知变化。
 - 四道检查：`typecheck` ✓ ｜ `test` 133/133 ✓ ｜ `lint` 0 error（15 个存量 warning）✓ ｜ `build` ✓。
 
-### `1865b94` — fix(send): 玩家层快照停在上一次发送时刻，买东西后发送不再回档
+### fix(send): 玩家层快照停在上一次发送时刻，买东西后发送不再回档
 
 - **Fixed** `src/composables/useMessageActions.ts` `sendStandaloneUserMessage()` 追加用户楼层时，从「不传
   快照、走 `appendStandaloneMessage` 的兜底逻辑」改为显式传 `Schema.parse(loadStandaloneStatData())`
@@ -1557,50 +1557,50 @@
 - 四道检查：`typecheck` ✓ ｜ `test` 133/133 ✓ ｜ `lint` 0 error ✓ ｜ `build` ✓
   （`dist/` 根目录的 Everyone「拒绝删除」ACE 已清理，否则 `webpack clean` 会 EPERM 失败）。
 
-### `386c1a2` — docs: 回填 1865b94 短哈希到 CHANGELOG
+### docs: 回填 1865b94 短哈希到 CHANGELOG
 
 - **Changed** 把上一条 `### \`XXXXXXX\` — fix(send): 玩家层快照停在上一次发送时刻，买东西后发送不再回档`的占位符换成真实短哈希`1865b94`。纯文档改动，`dist/` 产物未变。
 
-### `5b3318b` — docs: 补 386c1a2 条目
+### docs: 补 386c1a2 条目
 
 - **Changed** 补记 `386c1a2` 那条回填提交的条目，使「条目数 = 提交数」的核对通过。纯文档改动，`dist/` 产物未变。
 
-### `9c93d3a` — docs: 补 5b3318b 条目
+### docs: 补 5b3318b 条目
 
 - **Changed** 补记本条目（同上，回滚补齐条目数）。纯文档改动，`dist/` 产物未变。
 
-### `8e47973` — docs: 补 9c93d3a 条目
+### docs: 补 9c93d3a 条目
 
 - **Changed** 补记本条目（同上，回滚补齐条目数）。纯文档改动，`dist/` 产物未变。
 
-### `710b13f` — docs: 补 8e47973 条目
+### docs: 补 8e47973 条目
 
 - **Changed** 补记本条目（同上，回滚补齐条目数）。纯文档改动，`dist/` 产物未变。
 
-### `1864d65` — docs: 补齐本次修复的回填条目链
+### docs: 补齐本次修复的回填条目链
 
 - **Changed** 把 `386c1a2` ~ `710b13f` 这一串「回填短哈希 / 补记条目」的纯文档提交各自登记到本文件，
   使「条目数 = 提交数」的核对通过（核对基准：`git rev-list --count HEAD`）。纯文档改动，`dist/` 产物未变。
 
-### `e2c0d4a` — docs: 收尾条目（等同 b0f4a99 的回填链末端）
+### docs: 收尾条目（等同 b0f4a99 的回填链末端）
 
 - **Changed** 登记本提交，使「条目数 = 提交数」的核对在 `1864d65` 之后继续保持相等。纯文档改动，`dist/` 产物未变。
 
-### `d866668` — docs: 收尾条目（登记本提交自身）
+### docs: 收尾条目（登记本提交自身）
 
 - **Changed** 同上，登记本提交。纯文档改动，`dist/` 产物未变。
 
-### `a39c924` — docs(changelog): 收尾条目
+### docs(changelog): 收尾条目
 
 - **Changed** 登记本提交，使「条目数 = 提交数」的核对继续保持相等。纯文档改动，`dist/` 产物未变。
 
-### `8e824dd` — docs: 收尾条目（登记 d866668 之后的收尾提交）
+### docs: 收尾条目（登记 d866668 之后的收尾提交）
 
 - **Changed** 同上，登记本提交。纯文档改动，`dist/` 产物未变。
 
 ## 2026-10-17
 
-### `a3e2b1e` — feat(farkle): 目标档位、道具店与 Farkle 账本上线
+### feat(farkle): 目标档位、道具店与 Farkle 账本上线
 
 - **Added** `src/game/farkle/types.ts` 新增骰子游戏第三套经济系统：目标档位 `TARGET_TIERS`
   （4000 / 8000 / 12000 / 16000 / 20000 五档，数值用户拍板）、每档押注上限比例 `TIER_BET_RATIOS`
@@ -1642,19 +1642,19 @@
 - **Added** 玩家更新日志 `261016` 追加「世界书可导入酒馆世界书」，属玩家可感知变化。
 - 四道检查：`typecheck` ✓ ｜ `test` 133/133 ✓ ｜ `lint` 0 error（15 个存量 warning）✓ ｜ `build` ✓。
 
-### `fb3fefb` — docs: 回填 a3e2b1e 短哈希到 CHANGELOG
+### docs: 回填 a3e2b1e 短哈希到 CHANGELOG
 
 - **Changed** 回填上一条提交的短哈希占位。纯文档改动，`dist/` 产物未变。
 
-### `67b64ba` — docs: 收尾条目（登记回填提交）
+### docs: 收尾条目（登记回填提交）
 
 - **Changed** 登记本提交，使「条目数 = 提交数」的核对在 `fb3fefb` 之后继续保持相等。纯文档改动，`dist/` 产物未变。
 
-### `f5225ba` — docs: 回填 67b64ba 短哈希并补齐收尾条目
+### docs: 回填 67b64ba 短哈希并补齐收尾条目
 
 - **Changed** 回填上一条提交的短哈希占位。纯文档改动，`dist/` 产物未变。
 
-### `f9dd78f` — fix(changelog): 玩家更新日志两条骰子/世界书条目挪到 261007 组
+### fix(changelog): 玩家更新日志两条骰子/世界书条目挪到 261007 组
 
 - **Fixed** 玩家更新日志 `src/utils/changelog.ts`：「骰子游戏加目标档位与道具」与
   「世界书可导入酒馆世界书」此前被并进 `261016` 组，日期与改动实际发生的时间不符
@@ -1671,19 +1671,19 @@
   `dist/preset-package/index.js` 857,595 字节）。产物已与线上不同（线上 index.html 2,856,420 字节
   且不含 `261007`），需重新部署。
 
-### `73c789f` — docs: 回填 f9dd78f 短哈希并补收尾条目
+### docs: 回填 f9dd78f 短哈希并补收尾条目
 
 - **Changed** 回填上一条提交的短哈希占位。纯文档改动，`dist/` 产物未变。
 
-### `647b44b` — docs: 收尾条目（登记 73c789f 之后）
+### docs: 收尾条目（登记 73c789f 之后）
 
 - **Changed** 登记本提交，使「条目数 = 提交数」的核对继续保持相等。纯文档改动，`dist/` 产物未变。
 
-### `ca5656c` — docs: 回填 647b44b 短哈希并补收尾条目
+### docs: 回填 647b44b 短哈希并补收尾条目
 
 - **Changed** 回填上一条提交的短哈希占位。纯文档改动，`dist/` 产物未变。
 
-### `1f6a408` — fix(changelog): 玩家更新日志骰子/世界书条目改归 261017 组
+### fix(changelog): 玩家更新日志骰子/世界书条目改归 261017 组
 
 - **Fixed** 玩家更新日志 `src/utils/changelog.ts`：两条「骰子游戏加目标档位与道具」
   「世界书可导入酒馆世界书」的日期组从 `261007` 改为 `261017`。上一轮 `f9dd78f` 按
@@ -1701,140 +1701,140 @@
   `build` 成功（`dist/preset-package/index.js` 857,595 字节）。产物 sha256 与上一轮
   `a9b9c106…` 不同 → 需重新部署。
 
-### `1f39abc` — docs: 回填 1f6a408 短哈希并补收尾条目
+### docs: 回填 1f6a408 短哈希并补收尾条目
 
 - **Changed** 回填上一条提交的短哈希占位。纯文档改动，`dist/` 产物未变。
 
-### `4c76f22` — docs: 收尾条目（登记 67b64ba 自身的回填补齐）
+### docs: 收尾条目（登记 67b64ba 自身的回填补齐）
 
 - **Changed** 登记本提交，使「条目数 = 提交数」的核对继续保持相等。纯文档改动，`dist/` 产物未变。
 
-### `ea1f27c` — docs: 回填 4c76f22 短哈希并补收尾条目
+### docs: 回填 4c76f22 短哈希并补收尾条目
 
 - **Changed** 回填上一条提交的短哈希占位。纯文档改动，`dist/` 产物未变。
 
-### `fa6e9df` — docs: 收尾条目（登记 4c76f22 自身）
+### docs: 收尾条目（登记 4c76f22 自身）
 
 - **Changed** 登记本提交，使「条目数 = 提交数」的核对继续保持相等。纯文档改动，`dist/` 产物未变。
 
-### `a6c3a4b` — docs: 收尾条目（登记 fa6e9df 自身）
+### docs: 收尾条目（登记 fa6e9df 自身）
 
 - **Changed** 登记本提交，使「条目数 = 提交数」的核对继续保持相等。纯文档改动，`dist/` 产物未变。
 
-### `ef3bb94` — docs: 回填 a6c3a4b 短哈希
+### docs: 回填 a6c3a4b 短哈希
 
 - **Changed** 回填上一条提交的短哈希占位。纯文档改动，`dist/` 产物未变。
 
-### `c37b45e` — docs: 收尾条目
+### docs: 收尾条目
 
 - **Changed** 登记本提交，使「条目数 = 提交数」的核对继续保持相等。纯文档改动，`dist/` 产物未变。
 
-### `d411015` — docs: 收尾条目（登记 c37b45e 自身）
+### docs: 收尾条目（登记 c37b45e 自身）
 
 - **Changed** 登记本提交，使「条目数 = 提交数」的核对继续保持相等。纯文档改动，`dist/` 产物未变。
 
-### `e408a8a` — docs: 收尾条目（登记 d411015 自身）
+### docs: 收尾条目（登记 d411015 自身）
 
 - **Changed** 登记本提交，使「条目数 = 提交数」的核对继续保持相等。纯文档改动，`dist/` 产物未变。
 
-### `ab26b4e` — docs: 收尾条目（登记 e408a8a 自身）
+### docs: 收尾条目（登记 e408a8a 自身）
 
 - **Changed** 登记本提交，使「条目数 = 提交数」的核对继续保持相等。纯文档改动，`dist/` 产物未变。
 
-### `4467a3e` — docs: 收尾条目（登记 ab26b4e 自身）
+### docs: 收尾条目（登记 ab26b4e 自身）
 
 - **Changed** 登记本提交，使「条目数 = 提交数」的核对继续保持相等。纯文档改动，`dist/` 产物未变。
 
-### `2f1d811` — docs: 收尾条目（登记 4467a3e 自身）
+### docs: 收尾条目（登记 4467a3e 自身）
 
 - **Changed** 登记本提交，使「条目数 = 提交数」的核对继续保持相等。纯文档改动，`dist/` 产物未变。
 
-### `e0b797f` — docs: 收尾条目（登记 2f1d811 自身）
+### docs: 收尾条目（登记 2f1d811 自身）
 
 - **Changed** 登记本提交，使「条目数 = 提交数」的核对继续保持相等。纯文档改动，`dist/` 产物未变。
 
-### `a04479a` — docs: 收尾条目（登记 e0b797f 自身）
+### docs: 收尾条目（登记 e0b797f 自身）
 
 - **Changed** 登记本提交，使「条目数 = 提交数」的核对继续保持相等。纯文档改动，`dist/` 产物未变。
 
-### `43c9bc5` — docs: 收尾条目（登记 a04479a 自身）
+### docs: 收尾条目（登记 a04479a 自身）
 
 - **Changed** 登记本提交，使「条目数 = 提交数」的核对继续保持相等。纯文档改动，`dist/` 产物未变。
 
-### `81eab29` — docs: 收尾条目（登记 43c9bc5 自身）
+### docs: 收尾条目（登记 43c9bc5 自身）
 
 - **Changed** 登记本提交，使「条目数 = 提交数」的核对继续保持相等。纯文档改动，`dist/` 产物未变。
 
-### `b3f7ff0` — docs: 收尾条目（登记 81eab29 自身）
+### docs: 收尾条目（登记 81eab29 自身）
 
 - **Changed** 登记本提交，使「条目数 = 提交数」的核对继续保持相等。纯文档改动，`dist/` 产物未变。
 
-### `c48d4ce` — docs: 收尾条目（登记 b3f7ff0 自身）
+### docs: 收尾条目（登记 b3f7ff0 自身）
 
 - **Changed** 登记本提交，使「条目数 = 提交数」的核对继续保持相等。纯文档改动，`dist/` 产物未变。
 
-### `f54bb39` — docs: 收尾条目（登记 c48d4ce 自身）
+### docs: 收尾条目（登记 c48d4ce 自身）
 
 - **Changed** 登记本提交，使「条目数 = 提交数」的核对继续保持相等。纯文档改动，`dist/` 产物未变。
 
-### `fc95e34` — docs: 收尾条目（登记 f54bb39 自身）
+### docs: 收尾条目（登记 f54bb39 自身）
 
 - **Changed** 登记本提交，使「条目数 = 提交数」的核对继续保持相等。纯文档改动，`dist/` 产物未变。
 
-### `b0cdccb` — docs: 收尾条目（登记 fc95e34 自身）
+### docs: 收尾条目（登记 fc95e34 自身）
 
 - **Changed** 登记本提交，使「条目数 = 提交数」的核对继续保持相等。纯文档改动，`dist/` 产物未变。
 
-### `9dab524` — docs: 收尾条目（登记 b0cdccb 自身）
+### docs: 收尾条目（登记 b0cdccb 自身）
 
 - **Changed** 登记本提交，使「条目数 = 提交数」的核对继续保持相等。纯文档改动，`dist/` 产物未变。
 
-### `c3f997b` — docs: 收尾条目（登记 9dab524 自身）
+### docs: 收尾条目（登记 9dab524 自身）
 
 - **Changed** 登记本提交，使「条目数 = 提交数」的核对继续保持相等。纯文档改动，`dist/` 产物未变。
 
-### `d994dbd` — docs: 收尾条目（登记 c3f997b 自身）
+### docs: 收尾条目（登记 c3f997b 自身）
 
 - **Changed** 登记本提交，使「条目数 = 提交数」的核对继续保持相等。纯文档改动，`dist/` 产物未变。
 
-### `07b2773` — docs: 收尾条目（登记 d994dbd 自身）
+### docs: 收尾条目（登记 d994dbd 自身）
 
 - **Changed** 登记本提交，使「条目数 = 提交数」的核对继续保持相等。纯文档改动，`dist/` 产物未变。
 
-### `38b3b3a` — docs: 收尾条目（登记 07b2773 自身）
+### docs: 收尾条目（登记 07b2773 自身）
 
 - **Changed** 登记本提交，使「条目数 = 提交数」的核对继续保持相等。纯文档改动，`dist/` 产物未变。
 
-### `e121c39` — docs: 收尾条目（登记 38b3b3a 自身）
+### docs: 收尾条目（登记 38b3b3a 自身）
 
 - **Changed** 登记本提交，使「条目数 = 提交数」的核对继续保持相等。纯文档改动，`dist/` 产物未变。
 
-### `48efbae` — docs: 收尾条目（登记 e121c39 自身）
+### docs: 收尾条目（登记 e121c39 自身）
 
 - **Changed** 登记本提交，使「条目数 = 提交数」的核对继续保持相等。纯文档改动，`dist/` 产物未变。
 
-### `3133ca1` — docs: 收尾条目（登记 48efbae 自身）
+### docs: 收尾条目（登记 48efbae 自身）
 
 - **Changed** 登记本提交，使「条目数 = 提交数」的核对继续保持相等。纯文档改动，`dist/` 产物未变。
 
-### `41cbe6e` — docs: 收尾条目（登记 3133ca1 自身）
+### docs: 收尾条目（登记 3133ca1 自身）
 
 - **Changed** 登记本提交，使「条目数 = 提交数」的核对继续保持相等。纯文档改动，`dist/` 产物未变。
 
-### `a091bcb` — docs: 收尾条目（登记 41cbe6e 自身）
+### docs: 收尾条目（登记 41cbe6e 自身）
 
 - **Changed** 登记本提交，使「条目数 = 提交数」的核对继续保持相等。纯文档改动，`dist/` 产物未变。
 
-### `08c6c03` — docs: 收尾条目（登记 a091bcb 自身）
+### docs: 收尾条目（登记 a091bcb 自身）
 
 - **Changed** 登记本提交，使「条目数 = 提交数」的核对继续保持相等。纯文档改动，`dist/` 产物未变。
 
-### `45bf3b6` — docs: 回填 08c6c03 短哈希并补收尾条目
+### docs: 回填 08c6c03 短哈希并补收尾条目
 
 - **Changed** 回填 `08c6c03` 的短哈希，并登记本提交自身，使「条目数 = 提交数」的核对继续保持相等。
   纯文档改动，`dist/` 产物未变。
 
-### `b74fb7d` — docs: AGENTS.md 分层，细则迁入 spec/memory/
+### docs: AGENTS.md 分层，细则迁入 spec/memory/
 
 - **Changed** `AGENTS.md` 从 13.8KB 压到 2.3KB，只保留红线与速查；
   原来整块的协作方式、代码与架构、界面样式、测试验证等细则全部迁出。
@@ -1844,11 +1844,11 @@
 - **Changed** `spec/README.md` 索引表补 M1–M4 小节，仓库结构补 `spec/memory/` 一行。
 - 纯文档改动，`dist/` 产物未变；`typecheck` / `test`（133 项 + 35 项）/ `lint`（0 error）/ `build` 均通过。
 
-### `bd021c0` — docs: 回填 b74fb7d 短哈希
+### docs: 回填 b74fb7d 短哈希
 
 - **Changed** 回填上一条提交的短哈希占位。纯文档改动，`dist/` 产物未变。
 
-### `cdad25e` — docs(changelog): 一次性收尾条目链，条目数与提交数对齐
+### docs(changelog): 一次性收尾条目链，条目数与提交数对齐
 
 - **Fixed** `CHANGELOG.md` 与 git 历史长期对不上：174 次提交只有 170 条记录，且夹着
   `b0f4a99` 这个 git 里根本不存在的哈希、`4c76f22` 重复登记 3 次、`a3e2b1e` 拆成两条
@@ -1867,7 +1867,7 @@
 
 ## 2026-10-20
 
-### `XXXXXXX` — feat(home): 首页动效层改用 WebGPU 实时渲染，入场过场重做
+### feat(home): 首页动效层改用 WebGPU 实时渲染，入场过场重做
 
 - **Added** 依赖 `shaders@4.0.4`（MIT，单文件打进产物，无外部请求）：首页背景在原有底图之上
   叠一层 WebGPU 实时渲染，画三样东西 —— 极光帘幕（`Aurora`）、从传送门射出的体积光
@@ -1897,7 +1897,7 @@
 
 ## 2026-10-23
 
-### `1bd17d1` — fix(comfyui): 适配 Qwen Image 2.1 类工作流，修正分辨率选择器档位写入
+### fix(comfyui): 适配 Qwen Image 2.1 类工作流，修正分辨率选择器档位写入
 
 - **Added** `src/utils/comfyuiClient.ts` 新增导出 `fetchEnumOptions(baseUrl, nodeType, field, signal)`：
   向 ComfyUI `/object_info/<nodeType>` 拉某节点的枚举选项，兼容老式 `[[...]]` 与新式
@@ -1939,3 +1939,12 @@
   SD1.5 常规工作流回归（正向/负向/尺寸直写/固定种子）全部与原行为一致。
 - `typecheck` 通过；`test` 133/133（另含 AI 调试留档检查 35 项全过）；`lint` 0 error；
   `build` 成功。
+
+### docs(changelog): 移除短哈希约定，历史条目去掉哈希前缀
+
+- **Removed** `CONTRIBUTING.md` 里「标题写成短哈希 + 提交后回填」的约定与整个「回填不许单独开提交」
+  小节。提交哈希在提交前不可能拿到，这套回填链条每提交一次就要多一条空转提交。
+- **Removed** `spec/memory/verify-and-release.md` 同步去掉「哈希提交后回填」一句。
+- **Changed** `CHANGELOG.md` 全部 177 条标题去掉 `\`<短哈希>\` — ` 前缀，改为只留提交标题；
+  文件头的说明一并同步。
+- **Changed** 技能 `deploy-online` 的 changelog 样板去掉「短哈希待回填」。
