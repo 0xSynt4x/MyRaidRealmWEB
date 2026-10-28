@@ -126,7 +126,7 @@ const CHANGELOG_SOURCE: ReadonlyArray<{ date: string; items: readonly string[] }
   },
   {
     date: '261028',
-    items: ['系统世界书条目正文可改', '改错可一键恢复内置原文', '清空即不发送该条目'],
+    items: ['系统世界书条目正文可改', '改错可一键恢复内置原文', '清空即不发送该条目', '修复更新日志弹窗闪烁'],
   },
 ];
 

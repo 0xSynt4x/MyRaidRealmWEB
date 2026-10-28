@@ -1979,3 +1979,18 @@
 - 测试补一条 `system local content entries accept player body overrides`（覆盖生效、按链路分流、
   空串丢块、归一化丢坏数据）。
 - `typecheck` 通过；`test` 134/134（另含 AI 调试留档检查 35 项全过）；`lint` 0 error；`build` 成功。
+
+## 2026-10-28
+
+### fix(changelog): 更新日志弹窗改用不透明底色，消除上半部分闪烁
+
+- **Fixed** 首页自动弹出的更新日志窗口上半部分不再一直闪。卡片原来底色透明，背后就是首页那套常驻动效
+  （传送门核心光斑 2.3 秒一轮明灭、光柱 5 秒一轮起伏，核心位置约在屏幕 45% 高处）：光从卡片里泛上来，
+  玩家看到的就是「更新日志上半截一直在闪」。
+- **Changed** `src/components/panels/ChangelogModal.vue`：`.changelog-modal` 的 `background` 由
+  `transparent` 改为 `var(--bg-primary)`（各主题下都是实色面）；玻璃色层 `::before` 退回只做调色，
+  不再负责透出背后的画面。注释同步改写，写明这层不透明底**永远不能**撤掉，也写明卡片不加
+  `backdrop-filter` —— 磨砂会把背后的画面糊成均匀色块，既治不了闪烁又白吃一层 GPU。
+- **Removed** 「卡片背后透出一点光影」的旧口径：背后是常驻动效，透一点就闪，这个效果不做。
+- **Changed** 玩家日志 `261028` 那组追加「修复更新日志弹窗闪烁」（玩家在首页更新日志弹窗里看得见）。
+- `typecheck` 通过；`test` 134/134（另含 AI 调试留档检查 35 项全过）；`lint` 0 error；`build` 成功。
