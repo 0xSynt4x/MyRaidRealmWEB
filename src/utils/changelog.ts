@@ -124,6 +124,10 @@ const CHANGELOG_SOURCE: ReadonlyArray<{ date: string; items: readonly string[] }
     date: '261023',
     items: ['生图可识别复杂工作流', '覆盖尺寸对选择器生效', '生图负向词可写入'],
   },
+  {
+    date: '261028',
+    items: ['系统世界书条目正文可改', '改错可一键恢复内置原文', '清空即不发送该条目'],
+  },
 ];
 
 /** 第 `index` 条（从 0 起）对应的版本号 */

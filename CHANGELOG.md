@@ -1948,3 +1948,34 @@
 - **Changed** `CHANGELOG.md` 全部 177 条标题去掉 `\`<短哈希>\` — ` 前缀，改为只留提交标题；
   文件头的说明一并同步。
 - **Changed** 技能 `deploy-online` 的 changelog 样板去掉「短哈希待回填」。
+
+## 2026-10-27
+
+### feat(worldbook): 系统世界书条目正文支持玩家改写
+
+- **Added** 「系统世界书条目」里的正文现在可以直接改：改完存进本地设置，下一轮发送就用这份内容，
+  两个入口都能改 —— 开局向导的设置页与游戏内设置面板。
+- **Added** `src/utils/standaloneLocalContent.ts` 新增 `StandaloneBuiltinAssetContentOverrideMap`
+  与 `normalizeStandaloneBuiltinAssetContentOverrides()`：只接受内置清单里**可改**条目的字符串值，
+  清单外的 id（老存档、手改本地存储留下的脏数据）与按难度现算的「世界难度规则」一律丢掉。
+- **Changed** `getStandaloneLocalContentManifest()` / `getStandaloneEffectiveLocalContentManifest()` /
+  `resolveStandaloneLocalContentEntries()` / `resolveStandaloneLocalContentBlocks()` 新增可选的
+  正文覆盖入参，渲染前用覆盖值替换 `rawContent`；标题、来源、发送目标仍由内置清单定死。
+- **Changed** 设置结构 `StandaloneLocalContentSettings` 新增 `builtinAssetContentOverrides`，
+  跟着本地设置一起落盘，也随存档导出/导入走（导入时同样过一遍归一）。
+- **Changed** 正文覆盖贯通整条运行链路：主回复、变量更新第二遍、审稿改稿、抽奖四条链路都带上，
+  不会出现「界面上改了、实际还在发内置原文」。
+- **Changed** 条目留空 = 这条不发送（渲染为空即丢块），不是回退默认值；要还原内置原文点「恢复默认」。
+  这样输入过程中清空不会被默认值顶回去。
+- **Changed** 「世界难度规则」保持只读，提示文案改为「按当前世界难度自动生成」，
+  其余条目换成「可直接改、清空即不发送、可恢复默认」的口径；改过的条目带「已修改」标识。
+- **Added** 中英文案四条：`contentEditableHint` / `contentOverridden` / `contentOverriddenHint` / `resetContent`。
+- **Changed** 输入改成「草稿 + 停手 600ms 落盘」（失焦、切走条目、离开面板时立刻落盘）：
+  设置是整包写 localStorage 的，每敲一个字都写一遍会卡，还会因为 `:value` 回填把正在输入的字顶掉。
+- **Fixed** 改回原样不再留覆盖：落盘前跟内置原文比一次，一样就当没改过（否则会留下一条和原文一字不差的
+  副本，这条从此不再跟内置更新，还白白挂个「已修改」）。
+- **Fixed** 条目提示不再自相矛盾：「世界难度规则」只显示「按难度自动生成、不能修改」；锁定发送目标 /
+  跟随设置开关的条目现在会额外说明「正文可以直接改」，不再漏掉最该改的那几条。
+- 测试补一条 `system local content entries accept player body overrides`（覆盖生效、按链路分流、
+  空串丢块、归一化丢坏数据）。
+- `typecheck` 通过；`test` 134/134（另含 AI 调试留档检查 35 项全过）；`lint` 0 error；`build` 成功。

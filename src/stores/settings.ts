@@ -13,7 +13,9 @@ import {
   applyWorldDifficultyToStandaloneLocalContent,
   getStandaloneLocalContentDefaultEnabledMap,
   getStandaloneLocalContentBuiltinRouteOverrides,
+  normalizeStandaloneBuiltinAssetContentOverrides,
   normalizeStandaloneBuiltinAssetRouteOverrides,
+  type StandaloneBuiltinAssetContentOverrideMap,
   type StandaloneBuiltinAssetRouteOverrideMap,
 } from '../utils/standaloneLocalContent';
 import {
@@ -61,6 +63,8 @@ export interface ApiConfig {
 export interface StandaloneLocalContentSettings {
   enabledAssets: Record<string, boolean>;
   builtinAssetRouteOverrides: StandaloneBuiltinAssetRouteOverrideMap;
+  /** 玩家改写过的系统条目正文；没写的条目用内置原文 */
+  builtinAssetContentOverrides: StandaloneBuiltinAssetContentOverrideMap;
 }
 
 /** 本地 ComfyUI 生图配置（开关已上移到「生图总开关」，这里只剩后端自己的参数） */
@@ -357,10 +361,14 @@ export function resolveStoredStandaloneLocalContentSettings(input: {
   const builtinAssetRouteOverrides = normalizeStandaloneBuiltinAssetRouteOverrides(
     input.storedSettings?.builtinAssetRouteOverrides ?? getStandaloneLocalContentBuiltinRouteOverrides(),
   );
+  const builtinAssetContentOverrides = normalizeStandaloneBuiltinAssetContentOverrides(
+    input.storedSettings?.builtinAssetContentOverrides,
+  );
 
   return {
     enabledAssets,
     builtinAssetRouteOverrides,
+    builtinAssetContentOverrides,
   };
 }
 

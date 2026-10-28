@@ -1022,7 +1022,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'contentCenter.tab.aiDebug': '控制台调试',
 
     'contentCenter.worldbook.systemSectionTitle': '系统世界书条目',
-    'contentCenter.worldbook.systemSectionSubtitle': '由预设或功能自动提供的固定内容。',
+    'contentCenter.worldbook.systemSectionSubtitle': '由系统提供的固定内容，正文可直接改，改完立刻生效。',
     'contentCenter.worldbook.editableSectionTitle': '可编辑世界书条目',
     'contentCenter.worldbook.editableSectionSubtitle': '可在这里补充、启用或关闭本局需要发送给 AI 的内容。',
     'contentCenter.worldbook.addEntry': '添加条目',
@@ -1043,7 +1043,12 @@ const messages: Record<Locale, Record<string, string>> = {
     'contentCenter.worldbook.sourceLabel': '来源',
     'contentCenter.worldbook.bodyLabel': '正文',
     'contentCenter.worldbook.editorHint': '这里填写希望 AI 长期参考的规则、设定或资料。',
-    'contentCenter.worldbook.readOnlyHint': '此条目由系统管理，当前只读。',
+    'contentCenter.worldbook.readOnlyHint': '此条目的正文按当前世界难度自动生成，不能修改。',
+    'contentCenter.worldbook.contentEditableHint':
+      '正文可以直接改，改完下一轮就用这份内容；清空表示这条不发送，点「恢复默认」还原内置原文。',
+    'contentCenter.worldbook.contentOverridden': '已修改',
+    'contentCenter.worldbook.contentOverriddenHint': '正文已改成你自己写的版本',
+    'contentCenter.worldbook.resetContent': '恢复默认',
     'contentCenter.worldbook.routeLockedHint': '系统条目的发送目标由功能决定，不能在这里修改。',
     'contentCenter.worldbook.settingsManaged': '设置管理',
     'contentCenter.worldbook.settingsManagedHint': '此条目会跟随设置开关自动启用或关闭。',
@@ -2994,7 +2999,8 @@ const messages: Record<Locale, Record<string, string>> = {
 
     /* —— 内容中心 · 世界书 —— */
     'contentCenter.worldbook.systemSectionTitle': 'System worldbook entries',
-    'contentCenter.worldbook.systemSectionSubtitle': 'Fixed content provided automatically by presets or features.',
+    'contentCenter.worldbook.systemSectionSubtitle':
+      'Fixed content provided by the system; edit a body here and it takes effect immediately.',
     'contentCenter.worldbook.editableSectionTitle': 'Editable worldbook entries',
     'contentCenter.worldbook.editableSectionSubtitle': 'Add, enable, or disable content sent to the AI for this run.',
     'contentCenter.worldbook.addEntry': 'Add entry',
@@ -3016,7 +3022,13 @@ const messages: Record<Locale, Record<string, string>> = {
     'contentCenter.worldbook.sourceLabel': 'Source',
     'contentCenter.worldbook.bodyLabel': 'Body',
     'contentCenter.worldbook.editorHint': 'Enter rules, settings, or reference material the AI should keep in mind.',
-    'contentCenter.worldbook.readOnlyHint': 'This entry is managed by the system and is read-only.',
+    'contentCenter.worldbook.readOnlyHint':
+      'The body of this entry is generated from the current world difficulty and cannot be edited.',
+    'contentCenter.worldbook.contentEditableHint':
+      'You can edit the body directly; the next turn uses it. Clearing it means the entry is not sent — use "Restore default" to get the built-in text back.',
+    'contentCenter.worldbook.contentOverridden': 'Edited',
+    'contentCenter.worldbook.contentOverriddenHint': 'The body has been replaced with your own version',
+    'contentCenter.worldbook.resetContent': 'Restore default',
     'contentCenter.worldbook.routeLockedHint':
       'The route of system entries is fixed by the feature and cannot be changed here.',
     'contentCenter.worldbook.settingsManaged': 'Managed in settings',

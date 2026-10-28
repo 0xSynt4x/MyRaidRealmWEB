@@ -584,6 +584,12 @@
                           >
                             {{ t('contentCenter.worldbook.settingsManaged') }}
                           </span>
+                          <span
+                            v-if="isSystemAssetContentOverridden(asset.id)"
+                            class="tag-chip compact-tag content-override-chip"
+                          >
+                            {{ t('contentCenter.worldbook.contentOverridden') }}
+                          </span>
                         </div>
                         <div class="compact-worldbook-meta-line">
                           <span class="compact-worldbook-preview">{{ assetPreviewText(asset) }}</span>
@@ -656,25 +662,44 @@
                     </div>
                     <div class="preset-detail-note-card worldbook-editor-note compact-worldbook-note">
                       <i class="ti ti-info-circle"></i>
-                      <p>
-                        {{
-                          isSystemAssetRouteLocked(asset.id)
-                            ? t('contentCenter.worldbook.routeLockedHint')
-                            : isSettingsManagedAsset(asset.id)
-                              ? t('contentCenter.worldbook.settingsManagedHint')
-                              : t('contentCenter.worldbook.readOnlyHint')
-                        }}
+                      <p v-if="isSystemAssetRouteLocked(asset.id)">
+                        {{ t('contentCenter.worldbook.routeLockedHint') }}
+                      </p>
+                      <p v-else-if="isSettingsManagedAsset(asset.id)">
+                        {{ t('contentCenter.worldbook.settingsManagedHint') }}
+                      </p>
+                      <p v-if="isSystemAssetContentEditable(asset.id)">
+                        {{ t('contentCenter.worldbook.contentEditableHint') }}
+                      </p>
+                      <p v-else>
+                        {{ t('contentCenter.worldbook.readOnlyHint') }}
                       </p>
                     </div>
                     <label class="worldbook-field worldbook-field-body compact-field">
                       <span class="summary-label">{{ t('contentCenter.worldbook.bodyLabel') }}</span>
                       <textarea
-                        class="worldbook-textarea compact-worldbook-textarea compact-worldbook-textarea-readonly"
-                        :value="resolveReadonlyAssetContent(asset.id)"
+                        class="worldbook-textarea compact-worldbook-textarea"
+                        :class="{ 'compact-worldbook-textarea-readonly': !isSystemAssetContentEditable(asset.id) }"
+                        :value="resolveSystemAssetContent(asset.id)"
                         rows="8"
-                        readonly
+                        :readonly="!isSystemAssetContentEditable(asset.id)"
+                        @input="handleSystemAssetContentInput(asset.id, $event)"
+                        @blur="commitSystemAssetContent(asset.id)"
                       />
                     </label>
+                    <div v-if="isSystemAssetContentEditable(asset.id)" class="compact-system-content-actions">
+                      <span v-if="isSystemAssetContentOverridden(asset.id)" class="summary-label">
+                        {{ t('contentCenter.worldbook.contentOverriddenHint') }}
+                      </span>
+                      <button
+                        v-if="isSystemAssetContentOverridden(asset.id)"
+                        class="ghost-btn compact-toggle-btn"
+                        type="button"
+                        @click="resetSystemAssetContent(asset.id)"
+                      >
+                        {{ t('contentCenter.worldbook.resetContent') }}
+                      </button>
+                    </div>
                   </div>
                 </article>
               </div>
@@ -808,7 +833,7 @@
 <script setup lang="ts">
 import { klona } from 'klona';
 import { storeToRefs } from 'pinia';
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useAssistantApiEditor } from '../../../composables/useAssistantApiEditor';
 import { useMessageActions } from '../../../composables/useMessageActions';
 import { useI18n } from '../../../i18n';
@@ -827,7 +852,9 @@ import { clearPendingStandaloneArchiveResume, loadPendingStandaloneArchiveResume
 import { writeSetupConfigToCurrentMessage } from '../../../utils/setupStartGame';
 import {
   buildWorldDifficultyStandaloneLocalContent,
+  getStandaloneBuiltinAssetDefaultContent,
   getStandaloneLocalContentManifest,
+  isEditableStandaloneBuiltinAssetContent,
   isLockedRouteStandaloneLocalContentAsset,
   isSettingsManagedStandaloneLocalContentAsset,
   type StandaloneLocalContentKind,
@@ -909,7 +936,7 @@ const {
 } = useStandaloneArchiveManager();
 
 const worldbookEntries = computed(() =>
-  getStandaloneLocalContentManifest().map(asset => {
+  getStandaloneLocalContentManifest(standaloneLocalContent.value.builtinAssetContentOverrides).map(asset => {
     const routeOverride = standaloneLocalContent.value.builtinAssetRouteOverrides[asset.id];
     const route = routeOverride ?? asset.route;
     const enabled =
@@ -1135,10 +1162,17 @@ function isSystemAssetExpanded(assetId: string) {
 }
 
 function toggleSystemAssetExpanded(assetId: string) {
+  // 收起前先把没落盘的正文写进去，别让切换把刚打的字丢掉
+  if (expandedSystemAssetId.value !== assetId) {
+    flushPendingSystemAssetContent();
+  }
   expandedSystemAssetId.value = expandedSystemAssetId.value === assetId ? null : assetId;
 }
 
 function expandSystemAsset(assetId: string) {
+  if (expandedSystemAssetId.value !== assetId) {
+    flushPendingSystemAssetContent();
+  }
   expandedSystemAssetId.value = assetId;
 }
 
@@ -1166,7 +1200,17 @@ function handleSystemAssetRouteTap(
   };
 }
 
-function resolveReadonlyAssetContent(assetId: string): string {
+/** 系统条目正文的编辑草稿：停手 600ms 才落盘，免得每敲一个字都整包写一遍 localStorage */
+const systemAssetDraft = ref<string | null>(null);
+const systemAssetDraftId = ref<string | null>(null);
+let systemAssetCommitTimer: ReturnType<typeof setTimeout> | null = null;
+
+function resolveSystemAssetContent(assetId: string): string {
+  // 正在改这一条就回草稿：`:value` 绑的是落盘值，中途任何重渲染都会把正在输入的字顶回去
+  if (systemAssetDraftId.value === assetId && systemAssetDraft.value !== null) {
+    return systemAssetDraft.value;
+  }
+
   const asset = worldbookEntries.value.find(entry => entry.id === assetId);
   if (!asset) {
     return '';
@@ -1176,7 +1220,104 @@ function resolveReadonlyAssetContent(assetId: string): string {
     return buildWorldDifficultyStandaloneLocalContent(settingsStore.worldDifficulty);
   }
 
-  return asset.rawContent.trim();
+  // 原文不 trim：这里是可编辑的输入框，抹掉首尾空白会让光标乱跳
+  return asset.rawContent;
+}
+
+/** 系统条目正文能不能改（世界难度是按难度现算的，没有可改原文） */
+function isSystemAssetContentEditable(assetId: string): boolean {
+  return isEditableStandaloneBuiltinAssetContent(assetId);
+}
+
+function isSystemAssetContentOverridden(assetId: string): boolean {
+  return Object.prototype.hasOwnProperty.call(
+    standaloneLocalContent.value.builtinAssetContentOverrides,
+    assetId,
+  );
+}
+
+function handleSystemAssetContentInput(assetId: string, event: Event) {
+  if (!isSystemAssetContentEditable(assetId)) {
+    return;
+  }
+
+  const target = event.target as HTMLTextAreaElement | null;
+  if (!target) {
+    return;
+  }
+
+  // 清空也照存：留空 = 这条不发送，靠「恢复默认」还原，避免输入过程中回退成默认值
+  systemAssetDraftId.value = assetId;
+  systemAssetDraft.value = target.value;
+
+  if (systemAssetCommitTimer !== null) {
+    clearTimeout(systemAssetCommitTimer);
+  }
+  systemAssetCommitTimer = setTimeout(() => {
+    systemAssetCommitTimer = null;
+    commitSystemAssetContent(assetId);
+  }, 600);
+}
+
+/** 把草稿写进设置（停手 600ms、失焦、切走、关页面时调用） */
+function commitSystemAssetContent(assetId: string) {
+  if (systemAssetCommitTimer !== null) {
+    clearTimeout(systemAssetCommitTimer);
+    systemAssetCommitTimer = null;
+  }
+
+  if (systemAssetDraftId.value !== assetId || systemAssetDraft.value === null) {
+    return;
+  }
+
+  const value = systemAssetDraft.value;
+  systemAssetDraftId.value = null;
+  systemAssetDraft.value = null;
+
+  const storedOverrides = standaloneLocalContent.value.builtinAssetContentOverrides;
+  const hasStoredOverride = Object.prototype.hasOwnProperty.call(storedOverrides, assetId);
+
+  // 改回原样就当没改过：留着一条和内置原文一样的副本会让这条不再跟内置更新
+  const nextOverrides = { ...storedOverrides };
+  if (value === getStandaloneBuiltinAssetDefaultContent(assetId)) {
+    if (!hasStoredOverride) {
+      return;
+    }
+    delete nextOverrides[assetId];
+  } else {
+    if (hasStoredOverride && storedOverrides[assetId] === value) {
+      return;
+    }
+    nextOverrides[assetId] = value;
+  }
+
+  standaloneLocalContent.value = {
+    ...standaloneLocalContent.value,
+    builtinAssetContentOverrides: nextOverrides,
+  };
+}
+
+function flushPendingSystemAssetContent() {
+  const pendingId = systemAssetDraftId.value;
+  if (pendingId) {
+    commitSystemAssetContent(pendingId);
+  }
+}
+
+function resetSystemAssetContent(assetId: string) {
+  if (systemAssetCommitTimer !== null) {
+    clearTimeout(systemAssetCommitTimer);
+    systemAssetCommitTimer = null;
+  }
+  systemAssetDraftId.value = null;
+  systemAssetDraft.value = null;
+
+  const nextOverrides = { ...standaloneLocalContent.value.builtinAssetContentOverrides };
+  delete nextOverrides[assetId];
+  standaloneLocalContent.value = {
+    ...standaloneLocalContent.value,
+    builtinAssetContentOverrides: nextOverrides,
+  };
 }
 
 function ensureEditableEntries(): LocalContentEntryConfig[] | null {
@@ -1401,6 +1542,11 @@ async function fetchModels(index: number, id: string) {
     isLoadingById.value[id] = false;
   }
 }
+
+// 离开设置页时把没落盘的正文写进去，别让最后几个字留在草稿里
+onBeforeUnmount(() => {
+  flushPendingSystemAssetContent();
+});
 
 watch(
   () => selectedPreset.value?.id ?? '',
@@ -1889,6 +2035,19 @@ async function startGame() {
 .settings-management-panel .settings-managed-chip {
   background: rgba(var(--accent-secondary-rgb), 0.14);
   color: var(--accent-secondary);
+}
+
+/* 「已修改」标识：跟「设置管理」同形，用提醒色把它挑出来 */
+.settings-management-panel .content-override-chip {
+  background: rgba(var(--accent-warning-rgb), 0.16);
+  color: var(--accent-warning);
+}
+
+.settings-management-panel .compact-system-content-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .settings-management-panel .primary-btn,

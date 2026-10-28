@@ -31,10 +31,12 @@ import {
   applyTextToImageToStandaloneLocalContent,
   applyFixedVariableUpdateStandaloneLocalContent,
   buildWorldDifficultyStandaloneLocalContent,
+  getStandaloneBuiltinAssetDefaultContent,
   getStandaloneLocalContentBuiltinRouteOverrides,
   getStandaloneLocalContentManifest,
   inferStandaloneLocalContentKind,
   normalizeLocalContentEntriesInput,
+  normalizeStandaloneBuiltinAssetContentOverrides,
   resolveStandaloneLocalContentEntries,
   resolveStandaloneLocalContentBlocks,
 } from '../../src/utils/standaloneLocalContent';
@@ -2050,6 +2052,76 @@ async function testStandaloneFeatureLocalContentBlocksFollowDedicatedToggles(): 
 
   assert.ok(!disabledBlocks.some(block => block.includes('[本地内容:文生图格式规则]')));
   assert.ok(!disabledBlocks.some(block => block.includes('[本地内容:多人联机规则]')));
+}
+
+async function testSystemLocalContentEntriesAcceptPlayerBodyOverrides(): Promise<void> {
+  const enabledMap = {
+    'main-api-prompt': true,
+    'current-stat-snapshot': false,
+    'plot-world-difficulty': false,
+    'variable-update-format': true,
+    'variable-update-rules': true,
+  };
+  const builtinContentOverrides = normalizeStandaloneBuiltinAssetContentOverrides({
+    'main-api-prompt': '玩家改过的主回复规则',
+    'variable-update-rules': '玩家改过的变量更新规则',
+    // 世界难度按难度现算、清单外的 id 也不该生效
+    'plot-world-difficulty': '不该生效',
+    'not-a-real-asset': '不该生效',
+  });
+
+  assert.deepEqual(Object.keys(builtinContentOverrides).sort(), ['main-api-prompt', 'variable-update-rules']);
+
+  const manifest = getStandaloneLocalContentManifest(builtinContentOverrides);
+  assert.equal(manifest.find(asset => asset.id === 'main-api-prompt')?.rawContent, '玩家改过的主回复规则');
+  // 没改的条目仍拿内置原文
+  assert.ok((manifest.find(asset => asset.id === 'variable-update-format')?.rawContent ?? '').length > 0);
+
+  const mainBlocks = resolveStandaloneLocalContentBlocks({
+    route: 'main',
+    enabledMap,
+    renderContext: createRenderContext(),
+    preset: null,
+    builtinContentOverrides,
+  });
+  assert.ok(mainBlocks.some(block => block.includes('玩家改过的主回复规则')));
+  assert.ok(!mainBlocks.some(block => block.includes('玩家改过的变量更新规则')));
+
+  const variableUpdateEntries = resolveStandaloneLocalContentEntries({
+    preset: null,
+    enabledMap,
+    builtinContentOverrides,
+  });
+  assert.equal(
+    variableUpdateEntries.find(asset => asset.id === 'variable-update-rules')?.rawContent,
+    '玩家改过的变量更新规则',
+  );
+
+  // 空串 = 这条不发送（渲染结果为空 → 整个块被丢掉），不是回退默认值
+  const blankedBlocks = resolveStandaloneLocalContentBlocks({
+    route: 'main',
+    enabledMap,
+    renderContext: createRenderContext(),
+    preset: null,
+    builtinContentOverrides: { 'main-api-prompt': '' },
+  });
+  assert.ok(!blankedBlocks.some(block => block.includes('[本地内容:主回复标签规则]')));
+
+  // 存设置时照样归一：老存档没有这个字段 → 空表
+  const normalizedSettings = resolveStoredStandaloneLocalContentSettings({
+    storedSettings: { builtinAssetContentOverrides: builtinContentOverrides },
+  });
+  assert.deepEqual(normalizedSettings.builtinAssetContentOverrides, builtinContentOverrides);
+
+  const legacySettings = resolveStoredStandaloneLocalContentSettings({ storedSettings: {} });
+  assert.deepEqual(legacySettings.builtinAssetContentOverrides, {});
+
+  // 出厂正文要能取回：界面拿它判断「是不是改回了原样」，一样就不留覆盖
+  const defaultMainApiPrompt = getStandaloneLocalContentManifest().find(asset => asset.id === 'main-api-prompt')
+    ?.rawContent;
+  assert.equal(getStandaloneBuiltinAssetDefaultContent('main-api-prompt'), defaultMainApiPrompt);
+  assert.notEqual(defaultMainApiPrompt, '玩家改过的主回复规则');
+  assert.equal(getStandaloneBuiltinAssetDefaultContent('not-a-real-asset'), undefined);
 }
 
 async function testTextToImageLocalContentAssetsSwitchWithBackend(): Promise<void> {
@@ -6323,6 +6395,10 @@ async function run(): Promise<void> {
     [
       'standalone feature local content blocks follow dedicated toggles',
       testStandaloneFeatureLocalContentBlocksFollowDedicatedToggles,
+    ],
+    [
+      'system local content entries accept player body overrides',
+      testSystemLocalContentEntriesAcceptPlayerBodyOverrides,
     ],
     ['text to image local content assets switch with backend', testTextToImageLocalContentAssetsSwitchWithBackend],
     ['novelai text to image block follows selected backend', testNovelAiTextToImageBlockFollowsSelectedBackend],

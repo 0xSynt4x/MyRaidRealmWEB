@@ -55,6 +55,19 @@
 | `shared`          | 两边都发           |
 
 筛选实现在 `resolveStandaloneLocalContentBlocks({ route, ... })`。
+
+## 玩家改写系统条目正文
+
+内置条目的正文允许玩家改，存在本地设置的 `builtinAssetContentOverrides`（跟着设置走、随存档导出导入），
+不写文件、不改仓库里的 `.txt` / `.md`：
+
+- 只覆盖正文，标题 / 来源 / 发送目标仍由内置清单定死；
+- 渲染前由 `getStandaloneLocalContentManifest(overrides)` 换掉 `rawContent`，
+  主回复、变量更新、审稿改稿三条链路都走同一份，不存在「界面改了但实际没发」；
+- **空串 = 这条不发送**（渲染为空即丢块），不是回退默认值；还原内置原文靠删掉这个键；
+- 「世界难度规则」按当前难度现算，没有可改原文，`isEditableStandaloneBuiltinAssetContent()` 判它只读；
+- 归一化 `normalizeStandaloneBuiltinAssetContentOverrides()` 会丢掉清单外的 id 与脏值，
+  老存档 / 手改本地存储不会把怪条目带进提示词。
 正文与变量更新是**两次独立请求**，路由搞错会导致模型看到不该看的规则。
 
 ## 预设 ↔ 世界资料的挂接

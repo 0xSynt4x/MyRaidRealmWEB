@@ -21,6 +21,14 @@ export type StandaloneLocalContentRoute = 'main' | 'variable_update' | 'shared';
 
 export type StandaloneBuiltinAssetRouteOverrideMap = Record<string, StandaloneLocalContentRoute>;
 
+/**
+ * 玩家改写过的系统条目正文。
+ *
+ * 只覆盖正文；标题、来源名、发送目标这些仍由内置清单定死。
+ * 没出现在这里（或不是字符串）的条目一律用内置原文。
+ */
+export type StandaloneBuiltinAssetContentOverrideMap = Record<string, string>;
+
 export type StandaloneLocalContentKind = 'worldbook' | 'plot_rule' | 'variable_update_rule' | 'general';
 
 export type StandaloneLocalContentAsset = {
@@ -286,6 +294,49 @@ const STANDALONE_LOCAL_CONTENT_MANIFEST: StandaloneLocalContentAsset[] = [
   },
 ];
 
+/** 「世界难度规则」是按当前难度现算的，没有可改的原文；除此之外的系统条目正文都允许玩家改写 */
+export function isEditableStandaloneBuiltinAssetContent(assetId: string): boolean {
+  return assetId !== 'plot-world-difficulty';
+}
+
+function resolveStandaloneBuiltinAssetContentOverride(
+  assetId: string,
+  contentOverrides?: StandaloneBuiltinAssetContentOverrideMap | null,
+): string | undefined {
+  if (!contentOverrides || !isEditableStandaloneBuiltinAssetContent(assetId)) {
+    return undefined;
+  }
+
+  const override = contentOverrides[assetId];
+  return typeof override === 'string' ? override : undefined;
+}
+
+/** 只保留「清单里有、能改、值是字符串」的覆盖项，脏数据（老存档、手改本地存储）直接丢掉 */
+export function normalizeStandaloneBuiltinAssetContentOverrides(
+  overrides?: Record<string, unknown> | null,
+): StandaloneBuiltinAssetContentOverrideMap {
+  if (!overrides || typeof overrides !== 'object') {
+    return {};
+  }
+
+  const editableAssetIds = new Set(
+    STANDALONE_LOCAL_CONTENT_MANIFEST.filter(asset => isEditableStandaloneBuiltinAssetContent(asset.id)).map(
+      asset => asset.id,
+    ),
+  );
+  const nextOverrides: StandaloneBuiltinAssetContentOverrideMap = {};
+
+  Object.entries(overrides).forEach(([assetId, value]) => {
+    if (!editableAssetIds.has(assetId) || typeof value !== 'string') {
+      return;
+    }
+
+    nextOverrides[assetId] = value;
+  });
+
+  return nextOverrides;
+}
+
 function renderStandaloneLocalContentAsset(
   asset: StandaloneLocalContentAsset,
   renderContext: StandaloneLocalContentRenderContext,
@@ -374,8 +425,18 @@ export function resolveStandaloneBuiltinAssetRoute(input: {
   return input.fallbackRoute;
 }
 
-export function getStandaloneLocalContentManifest(): StandaloneLocalContentAsset[] {
-  return STANDALONE_LOCAL_CONTENT_MANIFEST.map(asset => ({ ...asset }));
+export function getStandaloneLocalContentManifest(
+  contentOverrides?: StandaloneBuiltinAssetContentOverrideMap | null,
+): StandaloneLocalContentAsset[] {
+  return STANDALONE_LOCAL_CONTENT_MANIFEST.map(asset => ({
+    ...asset,
+    rawContent: resolveStandaloneBuiltinAssetContentOverride(asset.id, contentOverrides) ?? asset.rawContent,
+  }));
+}
+
+/** 取某条内置条目的出厂正文（不含玩家改写）：界面用来判断「是不是改回了原样」 */
+export function getStandaloneBuiltinAssetDefaultContent(assetId: string): string | undefined {
+  return STANDALONE_LOCAL_CONTENT_MANIFEST.find(asset => asset.id === assetId)?.rawContent;
 }
 
 export function inferStandaloneLocalContentKind(input: {
@@ -462,8 +523,9 @@ function normalizeCustomLocalContentEntries(
 export function getStandaloneEffectiveLocalContentManifest(
   preset: PresetConfig | null | undefined,
   customEntries?: LocalContentEntryConfig[] | null,
+  contentOverrides?: StandaloneBuiltinAssetContentOverrideMap | null,
 ): ResolvedStandaloneLocalContentEntry[] {
-  const builtinEntries = STANDALONE_LOCAL_CONTENT_MANIFEST.map(asset => ({
+  const builtinEntries = getStandaloneLocalContentManifest(contentOverrides).map(asset => ({
     ...asset,
     sourceKind: 'builtin' as const,
   }));
@@ -480,10 +542,11 @@ export function resolveStandaloneLocalContentEntries(input: {
   customEntries?: LocalContentEntryConfig[] | null;
   enabledMap?: Record<string, boolean>;
   builtinRouteOverrides?: StandaloneBuiltinAssetRouteOverrideMap;
+  builtinContentOverrides?: StandaloneBuiltinAssetContentOverrideMap | null;
 }): ResolvedStandaloneLocalContentStateEntry[] {
-  const { preset, customEntries, enabledMap = {}, builtinRouteOverrides } = input;
+  const { preset, customEntries, enabledMap = {}, builtinRouteOverrides, builtinContentOverrides } = input;
 
-  return getStandaloneEffectiveLocalContentManifest(preset, customEntries).map(asset => {
+  return getStandaloneEffectiveLocalContentManifest(preset, customEntries, builtinContentOverrides).map(asset => {
     const resolvedRoute =
       asset.sourceKind === 'builtin'
         ? resolveStandaloneBuiltinAssetRoute({
@@ -550,9 +613,17 @@ export function resolveStandaloneLocalContentBlocks(input: {
   preset?: PresetConfig | null;
   customEntries?: LocalContentEntryConfig[] | null;
   builtinRouteOverrides?: StandaloneBuiltinAssetRouteOverrideMap;
+  builtinContentOverrides?: StandaloneBuiltinAssetContentOverrideMap | null;
 }): string[] {
-  const { route, enabledMap, renderContext, preset, customEntries, builtinRouteOverrides } = input;
-  const manifest = resolveStandaloneLocalContentEntries({ preset, customEntries, enabledMap, builtinRouteOverrides });
+  const { route, enabledMap, renderContext, preset, customEntries, builtinRouteOverrides, builtinContentOverrides } =
+    input;
+  const manifest = resolveStandaloneLocalContentEntries({
+    preset,
+    customEntries,
+    enabledMap,
+    builtinRouteOverrides,
+    builtinContentOverrides,
+  });
 
   return manifest
     .filter(asset => asset.enabled && shouldIncludeRoute(asset.route, route))
