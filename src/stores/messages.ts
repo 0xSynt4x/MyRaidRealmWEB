@@ -3,6 +3,8 @@ import { computed, ref } from 'vue';
 import { Schema } from '../../schema/schema';
 import type { StandaloneAssistantDebugTrace } from '../utils/standaloneAiDebug';
 import { formatMessageContentForDisplay } from '../utils/messageFormatting';
+import { normalizeRenderWindow } from './settings';
+import { useSettingsStore } from './settings';
 import {
   commitStandaloneRuntimeStateFromStores,
   ensureStandaloneRuntimeBootstrapFromStores,
@@ -157,21 +159,33 @@ export const useMessagesStore = defineStore('messages', () => {
   let streamingFlushTimer: number | null = null;
 
   // ========== 计算属性 ==========
+  /**
+   * 界面渲染层数：正文区最多画最近多少条消息（设置里可调，0 = 不限制）。
+   * 只截「画出来」的这一层 —— messages 本身仍是全量，回退 / 重新生成 / 上下文组装都不受影响。
+   */
+  const displayWindow = computed(() => normalizeRenderWindow(useSettingsStore().renderWindow));
+
   const visibleMessages = computed<MessageRecord[]>(() => {
+    // 只画最近 N 层：楼层多了全量渲染会把输入、流式、开档一起拖垮
+    const windowSize = displayWindow.value;
+    const fullList = dedupeMessageRecords(messages.value);
+    const baseList =
+      windowSize > 0 && fullList.length > windowSize ? fullList.slice(fullList.length - windowSize) : fullList;
+
     if (!streamingRecord.value) {
-      return dedupeMessageRecords(messages.value);
+      return baseList;
     }
 
-    const merged = [...messages.value];
+    const merged = [...baseList];
     const existingIndex = merged.findIndex(message => message.message_id === streamingRecord.value?.message_id);
 
     if (existingIndex !== -1) {
       merged[existingIndex] = streamingRecord.value;
-      return dedupeMessageRecords(merged);
+      return merged;
     }
 
     merged.push(streamingRecord.value);
-    return dedupeMessageRecords(merged);
+    return merged;
   });
 
   const isEmpty = computed(() => visibleMessages.value.length === 0);
@@ -281,7 +295,14 @@ export const useMessagesStore = defineStore('messages', () => {
         debug_trace: pruneOversizedStreamingRawFromTrace((record as MessageRecord).debug_trace),
       };
     });
-    const displayReadyRecords = normalizedRecords.map(normalizeRecordForDisplay);
+    const displayWindow = normalizeRenderWindow(useSettingsStore().renderWindow);
+    // 开档提速：只给窗口内的楼层做格式化，窗口外的层界面上根本不画，那段纯展示准备工作直接跳过。
+    // 全量 formatMessageContent 是开档卡顿的大头 —— 1200 层每层都要过一遍富文本转换。
+    const displayReadyRecords = normalizedRecords.map((record, index) =>
+      displayWindow > 0 && index < normalizedRecords.length - displayWindow
+        ? { ...record, formatted: '' }
+        : normalizeRecordForDisplay(record),
+    );
     messages.value = repairStandaloneSnapshots(dedupeMessageRecords(displayReadyRecords));
     // 换存档 / 重载窗口时清掉落地信号：否则历史消息里恰好同号的那条会被当成「刚落地」，
     // 把旧提示词一股脑拉去出图。

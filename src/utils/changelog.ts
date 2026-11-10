@@ -128,6 +128,10 @@ const CHANGELOG_SOURCE: ReadonlyArray<{ date: string; items: readonly string[] }
     date: '261028',
     items: ['系统世界书条目正文可改', '改错可一键恢复内置原文', '清空即不发送该条目', '修复更新日志弹窗闪烁'],
   },
+  {
+    date: '261110',
+    items: ['新增界面渲染层数设置', '千楼存档输入不再卡', '开档加载大幅提速'],
+  },
 ];
 
 /** 第 `index` 条（从 0 起）对应的版本号 */

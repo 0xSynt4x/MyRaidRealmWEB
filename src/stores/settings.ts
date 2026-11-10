@@ -510,6 +510,25 @@ export function normalizeMapUpdateInterval(value: unknown): number {
   return Math.min(MAP_UPDATE_INTERVAL_MAX, Math.max(MAP_UPDATE_INTERVAL_MIN, rounded));
 }
 
+/**
+ * 界面渲染层数：正文区最多画最近多少条消息。
+ * 只限制「画出来」，不限制数据本身 —— 回退、重新生成、上下文组装照旧吃全量历史。
+ * 0 = 不限制（全部画出）；楼层很多时网页会明显变卡，所以给个可调的上限。
+ */
+export const RENDER_WINDOW_MIN = 0;
+export const RENDER_WINDOW_MAX = 5000;
+export const DEFAULT_RENDER_WINDOW = 200;
+
+/** 渲染层数解析：非法值回落到默认，越界值夹到区间内；0 合法，表示不限制 */
+export function normalizeRenderWindow(value: unknown): number {
+  const parsed = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(parsed)) {
+    return DEFAULT_RENDER_WINDOW;
+  }
+  const rounded = Math.round(parsed);
+  return Math.min(RENDER_WINDOW_MAX, Math.max(RENDER_WINDOW_MIN, rounded));
+}
+
 /** 主 API 一条都没选中时对外给出的空配置；模块级常量，保证引用稳定 */
 export const EMPTY_API_CONFIG: ApiConfig = {
   id: 'standalone-empty-api',
@@ -693,6 +712,14 @@ export const useSettingsStore = defineStore('settings', () => {
   /** 直连被跨域拦掉时是否改走本站同域中转 */
   const apiCorsRelay = ref<boolean>(initialApiPoolSettings.corsRelayEnabled);
 
+  /**
+   * 界面渲染层数：正文区最多画最近多少条消息，0 = 不限制。
+   * 只管「画出来」，数据层永远是全量 —— 回退/重生/上下文不受影响。
+   */
+  const renderWindow = ref<number>(
+    typeof stored.renderWindow === 'undefined' ? DEFAULT_RENDER_WINDOW : normalizeRenderWindow(stored.renderWindow),
+  );
+
   const pickApisFromPool = (ids: string[]): ApiConfig[] => {
     const byId = new Map(apiPool.value.map(api => [api.id, api]));
     return ids.map(id => byId.get(id)).filter((api): api is ApiConfig => Boolean(api));
@@ -848,6 +875,7 @@ export const useSettingsStore = defineStore('settings', () => {
       snapshotTrim: snapshotTrim.value,
       mapAutoUpdateEnabled: mapAutoUpdateEnabled.value,
       mapUpdateInterval: mapUpdateInterval.value,
+      renderWindow: renderWindow.value,
       imageGeneration: imageGeneration.value,
       comfyUi: comfyUi.value,
       novelAi: novelAi.value,
@@ -916,6 +944,7 @@ export const useSettingsStore = defineStore('settings', () => {
       snapshotTrim,
       mapAutoUpdateEnabled,
       mapUpdateInterval,
+      renderWindow,
       imageGeneration,
       comfyUi,
       novelAi,
@@ -1022,6 +1051,7 @@ export const useSettingsStore = defineStore('settings', () => {
     snapshotTrim,
     mapAutoUpdateEnabled,
     mapUpdateInterval,
+    renderWindow,
     imageGeneration,
     comfyUi,
     novelAi,

@@ -284,6 +284,21 @@
           </label>
         </div>
 
+        <!-- 界面渲染层数 -->
+        <div class="setting-row">
+          <span class="row-label">{{ t('settings.renderWindow') }}</span>
+          <input
+            v-model.number="renderWindow"
+            class="api-first-token-timeout-input"
+            type="number"
+            :min="RENDER_WINDOW_MIN"
+            :max="RENDER_WINDOW_MAX"
+            step="50"
+            @change="commitRenderWindow"
+          />
+          <span class="row-value status">{{ t('settings.renderWindowHint') }}</span>
+        </div>
+
         <!-- AI 请求结束提示音 -->
         <div class="setting-row">
           <span class="row-label">{{ t('settings.featureSoundEnabled') }}</span>
@@ -1375,6 +1390,9 @@ import {
   normalizeBodyRequestCount,
   BODY_REQUEST_COUNT_MIN,
   BODY_REQUEST_COUNT_MAX,
+  normalizeRenderWindow,
+  RENDER_WINDOW_MIN,
+  RENDER_WINDOW_MAX,
   type SurvivalMode,
   type Theme,
   type WorldDifficulty,
@@ -1439,6 +1457,7 @@ const {
   snapshotTrim,
   stageSummaryThreshold,
   bodyRequestCount,
+  renderWindow,
 } = storeToRefs(settingsStore);
 const { selectedPreset } = storeToRefs(setupStore);
 
@@ -1450,6 +1469,11 @@ function commitFirstTokenTimeoutSeconds() {
 /** 同理：正文请求次数的输入框失焦/回车时才夹到 1~上限之间 */
 function commitBodyRequestCount() {
   bodyRequestCount.value = normalizeBodyRequestCount(bodyRequestCount.value);
+}
+
+/** 同理：渲染层数的输入框失焦/回车时才夹到合法区间（0 = 不限制，也合法） */
+function commitRenderWindow() {
+  renderWindow.value = normalizeRenderWindow(renderWindow.value);
 }
 
 // 顶部列表编辑的是唯一的 API 池；主 API / 辅助 API 只是从池里勾选
